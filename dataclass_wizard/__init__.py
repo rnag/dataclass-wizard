@@ -99,3 +99,8 @@ setup_default_loader()
 # Setup the default type hooks to use when converting `dataclass` instances to
 # a JSON `string` or a Python `dict` object.
 setup_default_dumper()
+
+if PY36:
+    # Python 3.6 requires a backport for `datetime.fromisoformat()`
+    from backports.datetime_fromisoformat import MonkeyPatch
+    MonkeyPatch.patch_fromisoformat()
