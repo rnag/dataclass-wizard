@@ -2,6 +2,11 @@
 History
 =======
 
+0.2.1 (2021-08-03)
+------------------
+* Fix a bug for Python 3.6 where the build failed when using
+  the `PyForwardRef` annotation.
+
 0.2.0 (2021-08-03)
 ------------------
 

@@ -125,7 +125,7 @@ class UnionParser(AbstractParser):
 @dataclass
 class ForwardRefParser(AbstractParser):
 
-    base_type: Union[str, PyForwardRef]
+    base_type: Union[str, 'PyForwardRef']
     get_parser: InitVar[GetParserType]
 
     def __post_init__(self, cls: Type[T], get_parser: GetParserType):
