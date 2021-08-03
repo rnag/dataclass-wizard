@@ -11,7 +11,7 @@ from datetime import datetime, time, date
 from numbers import Number
 from typing import Union, List
 
-from ..type_defs import N, NUMBERS
+from ..type_def import N, NUMBERS
 
 
 # What values are considered "truthy" when converted to a boolean type.

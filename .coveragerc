@@ -1,5 +1,7 @@
 [run]
 branch = True
+omit =
+    */__version__.py
 
 [report]
 # Regexes for lines to exclude from consideration

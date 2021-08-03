@@ -4,7 +4,7 @@ __all__ = [
     'PyTypedDict',
     'NoneType',
     'ExplicitNullType',
-    'EXPLICIT_NULL',
+    'ExplicitNull',
     'NUMBERS',
     'T',
     'M',
@@ -63,4 +63,4 @@ class ExplicitNullType:
         return self.__class__.__qualname__
 
 
-EXPLICIT_NULL = ExplicitNullType()
+ExplicitNull = ExplicitNullType()

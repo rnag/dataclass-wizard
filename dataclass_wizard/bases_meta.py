@@ -21,7 +21,7 @@ class BaseJSONWizardMeta:
 
     # How should :class:`time` and :class:`datetime` objects be serialized
     # when converted to a Python dictionary object or a JSON string.
-    date_time_with_dump: ClassVar[DateTimeTo] = DateTimeTo.ISO_FORMAT
+    marshal_date_time_as: ClassVar[DateTimeTo] = DateTimeTo.ISO_FORMAT
 
     # True to enable Debug mode for additional debug log output and more
     # helpful messages during error handling.
@@ -67,35 +67,31 @@ class BaseJSONWizardMeta:
         Initialize hook which is called by the outer class (typically
         a sub-class of :class:`AbstractJSONWizard`)
         """
-
-        dt_serialize = cls.date_time_with_dump
-        from_dict_transform: LetterCase = cls.key_transform_with_load
-        to_dict_transform: LetterCase = cls.key_transform_with_dump
-        is_debug_enabled = cls.debug_enabled
+        cls_loader = get_loader(outer_cls)
+        cls_dumper = get_dumper(outer_cls)
 
         # noop; the default dump hook for `datetime` and `date` already
         # serializes using this approach.
-        if dt_serialize is not DateTimeTo.ISO_FORMAT:
+        if cls.marshal_date_time_as is not DateTimeTo.ISO_FORMAT:
 
-            if dt_serialize is DateTimeTo.TIMESTAMP:
+            if cls.marshal_date_time_as is DateTimeTo.TIMESTAMP:
                 # Update dump hooks for the `datetime` and `date` types
-                dumper = get_dumper(outer_cls)
-                dumper.register_dump_hook(datetime, lambda o, *_: round(o.timestamp()))
-                dumper.register_dump_hook(date, lambda o, *_: date_to_timestamp(o))
+                cls_dumper.register_dump_hook(
+                    datetime, lambda o, *_: round(o.timestamp()))
+                cls_dumper.register_dump_hook(
+                    date, lambda o, *_: date_to_timestamp(o))
 
-        if is_debug_enabled:
+        if cls.debug_enabled:
             LOG.setLevel('DEBUG')
             LOG.info('DEBUG Mode is enabled')
             # Decorate all hooks so they format more helpful messages
             # on error.
-            load_hooks = get_loader(outer_cls).__LOAD_HOOKS__
+            load_hooks = cls_loader.__LOAD_HOOKS__
             for typ in load_hooks:
                 load_hooks[typ] = try_with_load(load_hooks[typ])
 
-        if from_dict_transform:
-            transform_func = from_dict_transform
-            get_loader(outer_cls).transform_json_field = transform_func
+        if cls.key_transform_with_load:
+            cls_loader.transform_json_field = cls.key_transform_with_load
 
-        if to_dict_transform:
-            transform_func = to_dict_transform
-            get_dumper(outer_cls).transform_dataclass_field = transform_func
+        if cls.key_transform_with_dump:
+            cls_dumper.transform_dataclass_field = cls.key_transform_with_dump

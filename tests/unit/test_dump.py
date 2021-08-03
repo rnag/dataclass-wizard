@@ -6,7 +6,7 @@ import pytest
 from dataclass_wizard import JSONSerializable
 from dataclass_wizard.enums import LetterCase
 from dataclass_wizard.errors import ParseError
-from .conftest import *
+from ..conftest import *
 
 
 log = logging.getLogger(__name__)
@@ -37,7 +37,7 @@ def test_literal(input, expectation):
         actual = c.to_dict()
 
         assert actual == expected
-        log.info('Parsed object: %r', actual)
+        log.debug('Parsed object: %r', actual)
 
 
 @pytest.mark.parametrize(
@@ -77,4 +77,4 @@ def test_typed_dict(input, expectation):
 
     with expectation:
         result = c.to_dict()
-        log.info('Parsed object: %r', result)
+        log.debug('Parsed object: %r', result)

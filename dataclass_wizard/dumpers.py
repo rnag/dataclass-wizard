@@ -11,7 +11,7 @@ from .class_helper import (
     dataclass_fields, get_class, dataclass_field_to_json_field)
 from .constants import _DUMP_HOOKS
 from .log import LOG
-from .type_defs import NoneType
+from .type_def import NoneType
 from .utils.string_conv import to_camel_case
 
 

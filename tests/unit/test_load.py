@@ -8,7 +8,7 @@ import pytest
 
 from dataclass_wizard import JSONSerializable
 from dataclass_wizard.errors import ParseError
-from .conftest import *
+from ..conftest import *
 
 
 log = logging.getLogger(__name__)

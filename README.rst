@@ -26,7 +26,7 @@ Dataclass Wizard
 This library provides a set of simple, yet elegant *wizarding* tools for
 interacting with the Python ``dataclasses`` module.
 
-For full documentation, please see below:
+Full documentation is at:
 
 * https://dataclass-wizard.readthedocs.io
 
@@ -83,6 +83,12 @@ properties with default values in dataclasses:
 
     @dataclass
     class Vehicle(metaclass=property_wizard):
+
+        # Note: if you are fine with the default value for the annotated type (`0`
+        # in this case), comment out the below field and replace it with the
+        # following. The value assigned to `wheels` will be ignored, but it is
+        # helpful so IDEs won't complain the constructor is missing a parameter.
+        #   wheels: Union[int, str] = 0
         _wheels: Union[int, str] = 4
 
         @property
@@ -133,8 +139,8 @@ The Dataclass Wizard library is available on PyPI:
 The ``dataclass-wizard`` library officially supports **Python 3.6** or higher.
 
 
-JSON Serializable
------------------
+JSON Marshalling
+----------------
 
 ``JSONSerializable`` is a
 `Mixin <https://stackoverflow.com/a/547714/10237506>`__ class which
@@ -333,7 +339,7 @@ process (for example, to *camel case* or *snake case*), or when we want
 ``datetime`` and ``date`` objects to be converted to an epoch timestamp
 (as an ``int``) instead of the default behavior, which converts these
 objects to their ISO 8601 string representation via
-```isoformat`` <https://docs.python.org/3/library/datetime.html#datetime.datetime.isoformat>`__.
+`isoformat <https://docs.python.org/3/library/datetime.html#datetime.datetime.isoformat>`__.
 
 Such common behaviors can be easily specified on a per-class basis by
 defining an inner class which extends from ``JSONSerializable.Meta``, as
@@ -364,7 +370,7 @@ purposes it's named the same as the base class here.
             debug_enabled = True
             # How should :class:`date` and :class:`datetime` objects be serialized
             # when converted to a Python dictionary object or a JSON string.
-            date_time_with_dump = DateTimeTo.TIMESTAMP
+            marshal_date_time_as = DateTimeTo.TIMESTAMP
             # How JSON keys should be transformed to dataclass fields.
             key_transform_with_load = LetterCase.PASCAL
             # How dataclass fields should be transformed to JSON keys.
@@ -477,7 +483,7 @@ strings, so they are converted to all uppercase when ``to_dict`` or
     from typing import Union, AnyStr, Type
 
     from dataclass_wizard import JSONSerializable, DumpMixin, LoadMixin
-    from dataclass_wizard.type_defs import N
+    from dataclass_wizard.type_def import N
 
 
     @dataclass

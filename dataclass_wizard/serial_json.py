@@ -2,7 +2,7 @@ import json
 from typing import Type, Dict, Any, List, Union
 
 from .abstractions import AbstractJSONWizard, W
-from .base_meta import BaseJSONWizardMeta
+from .bases_meta import BaseJSONWizardMeta
 from .class_helper import call_meta_initializer_if_needed
 from .dumpers import asdict
 from .loaders import fromdict

@@ -4,7 +4,7 @@ from typing import Dict, Tuple, Type, Union, Callable
 
 from .abstractions import W
 from .parsers import Parser
-from .type_defs import ExplicitNullType
+from .type_def import ExplicitNullType
 from .utils.dict_helper import CaseInsensitiveDict
 
 

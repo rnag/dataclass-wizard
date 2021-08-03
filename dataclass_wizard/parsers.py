@@ -17,7 +17,7 @@ from dataclasses import dataclass, InitVar, field
 
 from .abstractions import AbstractParser
 from .errors import ParseError
-from .type_defs import NoneType, PyForwardRef, T, M, S
+from .type_def import NoneType, PyForwardRef, T, M, S
 from .utils.type_check import (
     get_origin, get_literal_args, get_named_tuple_field_types,
     get_keys_for_typed_dict)
@@ -66,7 +66,7 @@ class LiteralParser(AbstractParser):
             # The value of `o` is in the ones defined for the Literal, but
             # also confirm the type matches the one defined for the Literal.
             if type_does_not_match:
-                expected_val = next(v for v in self.value_to_type if v == o)
+                expected_val = next(v for v in self.value_to_type if v == o)    # pragma: no branch
                 e = TypeError(
                     'Value did not match expected type for the Literal')
 
@@ -125,7 +125,7 @@ class UnionParser(AbstractParser):
 @dataclass
 class ForwardRefParser(AbstractParser):
 
-    base_type: Union[str, 'ForwardRef']
+    base_type: Union[str, PyForwardRef]
     get_parser: InitVar[GetParserType]
 
     def __post_init__(self, cls: Type[T], get_parser: GetParserType):

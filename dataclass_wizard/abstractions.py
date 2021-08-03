@@ -11,7 +11,7 @@ from typing import (
     Optional, SupportsInt, FrozenSet, Sequence, AnyStr, TypeVar, Text
 )
 
-from .type_defs import M, N, T
+from .type_def import M, N, T
 
 
 # Create a generic variable that can be 'AbstractJSONWizard', or any subclass.

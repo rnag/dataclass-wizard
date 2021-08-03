@@ -1,5 +1,5 @@
 """
-Dataclass Wizard - a wizarding tool for interacting with Python `dataclasses`
+Dataclass Wizard - a set of wizarding tools for interacting with `dataclasses`
 """
 
 __title__ = 'dataclass-wizard'

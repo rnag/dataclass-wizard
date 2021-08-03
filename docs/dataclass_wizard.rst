@@ -20,18 +20,18 @@ dataclass\_wizard.abstractions module
    :undoc-members:
    :show-inheritance:
 
-dataclass\_wizard.base\_meta module
------------------------------------
-
-.. automodule:: dataclass_wizard.base_meta
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 dataclass\_wizard.bases module
 ------------------------------
 
 .. automodule:: dataclass_wizard.bases
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+dataclass\_wizard.bases\_meta module
+------------------------------------
+
+.. automodule:: dataclass_wizard.bases_meta
    :members:
    :undoc-members:
    :show-inheritance:
@@ -124,10 +124,10 @@ dataclass\_wizard.serial\_json module
    :undoc-members:
    :show-inheritance:
 
-dataclass\_wizard.type\_defs module
------------------------------------
+dataclass\_wizard.type\_def module
+----------------------------------
 
-.. automodule:: dataclass_wizard.type_defs
+.. automodule:: dataclass_wizard.type_def
    :members:
    :undoc-members:
    :show-inheritance:

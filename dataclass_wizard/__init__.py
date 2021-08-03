@@ -100,7 +100,7 @@ setup_default_loader()
 # a JSON `string` or a Python `dict` object.
 setup_default_dumper()
 
-if PY36:
+if PY36:    # pragma: no cover
     # Python 3.6 requires a backport for `datetime.fromisoformat()`
     from backports.datetime_fromisoformat import MonkeyPatch
     MonkeyPatch.patch_fromisoformat()

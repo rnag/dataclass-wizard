@@ -16,7 +16,7 @@ __all__ = [
 import typing
 
 from ..constants import PY36, PY38
-from ..type_defs import PyLiteral, PyTypedDict
+from ..type_def import PyLiteral, PyTypedDict
 
 
 class RealPyTypedDict(PyTypedDict):

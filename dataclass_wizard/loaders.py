@@ -15,7 +15,7 @@ from .constants import _LOAD_HOOKS
 from .errors import ParseError
 from .log import LOG
 from .parsers import *
-from .type_defs import EXPLICIT_NULL, PyForwardRef, NoneType, M, N, T
+from .type_def import ExplicitNull, PyForwardRef, NoneType, M, N, T
 from .utils.string_conv import to_snake_case
 from .utils.type_check import is_literal, is_typed_dict, is_generic, get_origin
 from .utils.type_conv import as_bool, as_str, as_datetime, as_date, as_time, as_int
@@ -380,7 +380,7 @@ def _load_to_dataclass(d: Dict[str, Any], cls: Type[T]) -> T:
         if not field_name:
             # On an initial run, or no resolved field name
 
-            if field_name is EXPLICIT_NULL:
+            if field_name is ExplicitNull:
                 continue
 
             # Transform JSON field name (typically camel-cased) to the
@@ -395,7 +395,7 @@ def _load_to_dataclass(d: Dict[str, Any], cls: Type[T]) -> T:
 
             except KeyError:
                 # Else, we see an unknown field in the dictionary object
-                json_to_dataclass_field[json_field] = EXPLICIT_NULL
+                json_to_dataclass_field[json_field] = ExplicitNull
                 LOG.warning('JSON field %r missing from dataclass schema, '
                             'parsed field=%r',
                             json_field, underscored_field)
