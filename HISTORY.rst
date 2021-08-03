@@ -2,6 +2,10 @@
 History
 =======
 
+0.2.3 (2021-08-03)
+------------------
+* Add better keywords for the package
+
 0.2.2 (2021-08-03)
 ------------------
 * Explicitly add a dependency on ``typing-extensions`` for Python 3.6 and 3.7

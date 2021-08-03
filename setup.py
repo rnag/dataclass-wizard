@@ -38,7 +38,10 @@ setup(
     include_package_data=True,
     install_requires=requires,
     license=about['__license__'],
-    keywords=['dataclass-wizard'],
+    keywords=['dataclasses', 'dataclass', 'wizard', 'json', 'dataclass json',
+              'property', 'field_property', 'json dataclass', 'serialization',
+              'deserialization', 'json marshal', 'json serialize',
+              'json deserialize', 'jsons'],
     classifiers=[
         # Ref: https://pypi.org/classifiers/
         'Development Status :: 4 - Beta',
