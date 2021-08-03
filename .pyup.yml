@@ -1,0 +1,28 @@
+# see https://pyup.io/docs/configuration/ for all available options
+update: all
+# configure dependency pinning globally
+pin: True
+# set the default branch
+branch: main
+# update schedule
+# allowed: "every day", "every week", ..
+schedule: 'every month'
+# search for requirement files
+search: False
+# specify requirement files by hand
+requirements:
+  - requirements.txt:
+      pin: False
+  - requirements-dev.txt
+# add a label to pull requests, default is not set
+label_prs: update
+# assign users to pull requests, default is not set
+assignees:
+ - rnag
+# configure the branch prefix the bot is using
+# default: pyup-
+branch_prefix: pyup/
+# set a global prefix for PRs, default is not set
+# pr_prefix: "Bug #12345"
+# allow to close stale PRs
+close_prs: True

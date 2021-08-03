@@ -1,0 +1,310 @@
+"""
+Contains implementations for Abstract Base Classes
+"""
+from abc import ABC, abstractmethod
+from dataclasses import dataclass, InitVar
+from datetime import datetime, time, date
+from decimal import Decimal
+from enum import Enum
+from typing import (
+    Any, Type, Union, List, Tuple, NamedTupleMeta, Dict, SupportsFloat,
+    Optional, SupportsInt, FrozenSet, Sequence, AnyStr, TypeVar, Text
+)
+
+from .type_defs import M, N, T
+
+
+# Create a generic variable that can be 'AbstractJSONWizard', or any subclass.
+W = TypeVar('W', bound='AbstractJSONWizard')
+
+
+class AbstractJSONWizard(ABC):
+    """
+    Abstract class that defines the methods a sub-class must implement at a
+    minimum to be considered a "true" JSON Wizard.
+
+    In particular, these are the abstract methods which - if correctly
+    implemented - will allow a concrete sub-class (ideally a dataclass) to
+    be properly loaded from, and serialized to, JSON.
+
+    """
+    @classmethod
+    @abstractmethod
+    def from_json(cls: Type[W], string: str) -> Union[W, List[W]]:
+        """
+        Converts a JSON `string` to an instance of the dataclass, or a list of
+        the dataclass instances.
+        """
+
+    @classmethod
+    @abstractmethod
+    def from_list(cls: Type[W], o: List[Dict[str, Any]]) -> List[W]:
+        """
+        Converts a Python `list` object to a list of the dataclass instances.
+        """
+
+    @classmethod
+    @abstractmethod
+    def from_dict(cls: Type[W], o: Dict[str, Any]) -> W:
+        """
+        Converts a Python `dict` object to an instance of the dataclass.
+        """
+
+    @abstractmethod
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Converts the dataclass instance to a Python dictionary object that is
+        JSON serializable.
+        """
+
+    @abstractmethod
+    def to_json(self, indent=None) -> str:
+        """
+        Converts the dataclass instance to a JSON `string` representation.
+        """
+
+
+@dataclass
+class AbstractParser(ABC):
+    """
+    Abstract parsers, which will ideally act as dispatchers to route objects
+    to the `load` or `dump` hook methods responsible for transforming the
+    objects into the annotated type for the dataclass field for which value we
+    want to set. The error handling logic should ideally be implemented on the
+    Parser (dispatcher) side.
+
+    There can be more complex Parsers, for example ones which will handle
+    ``typing.Union``, ``typing.Literal``, ``Dict``, and ``NamedTuple`` types.
+    There can even be nested Parsers, which will be useful for handling
+    collection and sequence types.
+
+    """
+
+    # This represents the class that contains the field that has an annotated
+    # type `base_type`. This is primarily useful for resolving `ForwardRef`
+    # types, where we need the globals of the class to resolve the underlying
+    # type of the reference.
+    cls: InitVar[Type[T]]
+
+    # This is usually the underlying base type of the annotation (for example,
+    # for `List[str]` it will be `list`), though in some cases this will be
+    # the annotation itself.
+    base_type: Type[T]
+
+    def __contains__(self, item) -> bool:
+        """
+        Return true if the Parser is expected to handle the specified item
+        type. Checks against the exact type instead of `isinstance` so we can
+        handle special cases like `bool`, which is subclass of `int`.
+        """
+        return type(item) is self.base_type
+
+    @abstractmethod
+    def __call__(self, o: Any):
+        """
+        Parse object `o`
+        """
+
+
+class AbstractLoader(ABC):
+    """
+    Abstract loader which defines the helper methods that can be used to load
+    an object `o` into an object of annotated (or concrete) type `base_type`.
+
+    """
+    @staticmethod
+    @abstractmethod
+    def transform_json_field(string: str) -> str:
+        """
+        Transform a JSON field name (which will typically be camel-cased) into
+        the conventional format for a dataclass field name (which will ideally
+        be snake-cased).
+        """
+
+    @staticmethod
+    @abstractmethod
+    def default_load_to(o: T, *_) -> T:
+        """
+        Default load function if no other paths match. Generally, this will
+        be a stub load method.
+        """
+
+    @staticmethod
+    @abstractmethod
+    def load_after_type_check(o: Any, base_type: Type[T]) -> T:
+        """
+        Load an object `o`, after confirming that it is indeed of
+        type `base_type`.
+
+        :raises ParseError: If the object is not of the expected type.
+        """
+
+    @staticmethod
+    @abstractmethod
+    def load_to_str(o: Union[Text, N, None], base_type: Type[str]) -> str:
+        """
+        Load a string or numeric type into a new object of type `base_type`
+        (generally a sub-class of the :class:`str` type)
+        """
+
+    @staticmethod
+    @abstractmethod
+    def load_to_int(o: Union[SupportsInt, str], base_type: Type[N]) -> N:
+        """
+        Load a string or int into a new object of type `base_type`
+        (generally a sub-class of the :class:`int` type)
+        """
+
+    @staticmethod
+    @abstractmethod
+    def load_to_float(o: Union[SupportsFloat, str], base_type: Type[N]) -> N:
+        """
+        Load a string or float into a new object of type `base_type`
+        (generally a sub-class of the :class:`float` type)
+        """
+
+    @staticmethod
+    @abstractmethod
+    def load_to_bool(o: Union[str, bool, N], base_type: Type[bool]) -> bool:
+        """
+        Load a bool, string, or an numeric value into a new object of type
+        `base_type` (generally a sub-class of the :class:`bool` type)
+        """
+
+    @staticmethod
+    @abstractmethod
+    def load_to_enum(o: Union[AnyStr, N], base_type: Type[Enum]) -> Enum:
+        """
+        Load an object `o` into a new object of type `base_type` (generally a
+        sub-class of the :class:`Enum` type)
+        """
+
+    @classmethod
+    @abstractmethod
+    def load_to_list(
+            cls, o: Union[List, Tuple], base_type: Type[List],
+            elem_parser: AbstractParser) -> List[Any]:
+        """
+        Load a list or tuple into a new object of type `base_type` (generally
+        a :class:`list` or a sub-class of one)
+        """
+
+    @classmethod
+    @abstractmethod
+    def load_to_tuple(
+            cls, o: Union[List, Tuple], base_type: Type[Tuple],
+            elem_parsers: Sequence[AbstractParser]) -> Tuple:
+        """
+        Load a list or tuple into a new object of type `base_type` (generally
+        a :class:`tuple` or a sub-class of one)
+        """
+
+    @classmethod
+    @abstractmethod
+    def load_to_named_tuple(
+            cls, o: Union[Dict, List], base_type: Type[NamedTupleMeta],
+            field_to_parser: Optional[Dict[str, AbstractParser]]
+    ) -> NamedTupleMeta:
+        """
+        Load a dictionary or list to a `NamedTuple` sub-type (or an
+        un-annotated `namedtuple`)
+        """
+
+    @classmethod
+    @abstractmethod
+    def load_to_dict(
+            cls, o: Dict, base_type: Type[M],
+            key_parser: AbstractParser,
+            val_parser: AbstractParser) -> Dict:
+        """
+        Load an object `o` into a new object of type `base_type` (generally a
+        :class:`dict` or a sub-class of one)
+        """
+
+    @classmethod
+    @abstractmethod
+    def load_to_typed_dict(
+            cls, o: Dict, base_type: Type[M],
+            key_to_parser: Dict[str, AbstractParser],
+            required_keys: FrozenSet[str],
+            optional_keys: FrozenSet[str]) -> Dict:
+        """
+        Load an object `o` annotated as a ``TypedDict`` sub-class into a new
+        object of type `base_type` (generally a :class:`dict` or a sub-class
+        of one)
+        """
+
+    @staticmethod
+    @abstractmethod
+    def load_to_decimal(o: N, base_type: Type[Decimal]) -> Decimal:
+        """
+        Load an object `o` into a new object of type `base_type` (generally a
+        :class:`Decimal` or a sub-class of one)
+        """
+
+    @staticmethod
+    @abstractmethod
+    def load_to_datetime(
+            o: Union[str, N], base_type: Type[datetime]) -> datetime:
+        """
+        Load a string or number (int or float) into a new object of type
+        `base_type` (generally a :class:`datetime` or a sub-class of one)
+        """
+
+    @staticmethod
+    @abstractmethod
+    def load_to_time(o: str, base_type: Type[time]) -> time:
+        """
+        Load a string or number (int or float) into a new object of type
+        `base_type` (generally a :class:`time` or a sub-class of one)
+        """
+
+    @staticmethod
+    @abstractmethod
+    def load_to_date(o: Union[str, N], base_type: Type[date]) -> date:
+        """
+        Load a string or number (int or float) into a new object of type
+        `base_type` (generally a :class:`date` or a sub-class of one)
+        """
+
+    @classmethod
+    @abstractmethod
+    def load_with_object(cls, o: Any, ann_type: Type[T]) -> T:
+        """
+        TODO consider removing this method
+        """
+
+    @classmethod
+    @abstractmethod
+    def get_parser_for_annotation(cls, ann_type: Type[T],
+                                  base_cls: Type[T] = None) -> AbstractParser:
+        """
+        Returns the Parser (dispatcher) for a given annotation type.
+
+        `base_cls` is the original class object, this is useful when the
+        annotated type is a :class:`typing.ForwardRef` object
+        """
+
+
+class AbstractDumper(ABC):
+
+    def __pre_as_dict__(self):
+        """
+        Optional hook that runs before the dataclass instance is processed and
+        before it is converted to a dictionary object via :meth:`to_dict`.
+
+        To override this, subclasses need to extend from :class:`DumpMixIn`
+        and implement this method. A simple example is shown below:
+
+        >>> from dataclasses import dataclass
+        >>> from dataclass_wizard import JSONSerializable, DumpMixin
+        >>>
+        >>>
+        >>> @dataclass
+        >>> class MyClass(JSONSerializable, DumpMixin):
+        >>>     my_str: str
+        >>>
+        >>>     def __pre_as_dict__(self):
+        >>>         self.my_str = self.my_str.swapcase()
+
+        """
