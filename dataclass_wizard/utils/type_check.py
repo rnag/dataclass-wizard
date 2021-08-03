@@ -6,6 +6,7 @@ __all__ = [
     'is_literal',
     'get_origin',
     'get_literal_args',
+    'get_keys_for_typed_dict',
     'get_named_tuple_field_types',
     'is_typed_dict',
     'is_generic',
@@ -14,7 +15,7 @@ __all__ = [
 
 import typing
 
-from ..constants import PY36
+from ..constants import PY36, PY38
 from ..type_defs import PyLiteral, PyTypedDict
 
 
@@ -27,7 +28,29 @@ TypedDictType = type(RealPyTypedDict)
 del RealPyTypedDict
 
 
+def get_keys_for_typed_dict(cls):
+    """
+    Given a :class:`TypedDict` sub-class, returns a pair of
+    (required_keys, optional_keys)
+    """
+    return cls.__required_keys__, cls.__optional_keys__
+
+
 if not PY36:
+
+    if PY38:
+        def get_keys_for_typed_dict(cls):
+            """
+            Given a :class:`TypedDict` sub-class, returns a pair of
+            (required_keys, optional_keys)
+
+            Note: The `typing` library for Python 3.8 doesn't seem to define
+              the ``__required_keys__`` and ``__optional_keys__`` attributes.
+            """
+            if cls.__total__:
+                return frozenset(cls.__annotations__), frozenset()
+
+            return frozenset(), frozenset(cls.__annotations__)
 
     def is_literal(cls) -> bool:
         try:

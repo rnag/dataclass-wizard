@@ -18,8 +18,9 @@ from dataclasses import dataclass, InitVar, field
 from .abstractions import AbstractParser
 from .errors import ParseError
 from .type_defs import NoneType, PyForwardRef, T, M, S
-from .utils.type_check import (get_origin, get_literal_args,
-                               get_named_tuple_field_types)
+from .utils.type_check import (
+    get_origin, get_literal_args, get_named_tuple_field_types,
+    get_keys_for_typed_dict)
 
 
 GetParserType = Callable[[Type[T], Type[T]], AbstractParser]
@@ -291,8 +292,8 @@ class TypedDictParser(AbstractParser):
             for k, v in self.base_type.__annotations__.items()
         }
 
-        self.required_keys = self.base_type.__required_keys__
-        self.optional_keys = self.base_type.__optional_keys__
+        self.required_keys, self.optional_keys = get_keys_for_typed_dict(
+            self.base_type)
 
     def __call__(self, o: M) -> M:
         try:

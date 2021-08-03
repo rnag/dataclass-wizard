@@ -121,6 +121,18 @@ properties with default values in dataclasses:
         v.wheels = '123'
         assert v.wheels == 123
 
+
+Installing Dataclass Wizard and Supported Versions
+--------------------------------------------------
+The Dataclass Wizard library is available on PyPI:
+
+.. code-block:: shell
+
+    $ python -m pip install dataclass-wizard
+
+The ``dataclass-wizard`` library officially supports **Python 3.6** or higher.
+
+
 JSON Serializable
 -----------------
 
