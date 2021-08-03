@@ -2,6 +2,10 @@
 History
 =======
 
+0.2.2 (2021-08-03)
+------------------
+* Explicitly add a dependency on ``typing-extensions`` for Python 3.6 and 3.7
+
 0.2.1 (2021-08-03)
 ------------------
 * Fix a bug for Python 3.6 where the build failed when using
