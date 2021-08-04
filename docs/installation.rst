@@ -12,7 +12,7 @@ To install Dataclass Wizard, run this command in your terminal:
 
 .. code-block:: console
 
-    $ pip install dataclass_wizard
+    $ pip install dataclass-wizard
 
 This is the preferred method to install Dataclass Wizard, as it will always install the most recent stable release.
 
@@ -32,13 +32,13 @@ You can either clone the public repository:
 
 .. code-block:: console
 
-    $ git clone git://github.com/rnag/dataclass_wizard
+    $ git clone git://github.com/rnag/dataclass-wizard
 
 Or download the `tarball`_:
 
 .. code-block:: console
 
-    $ curl -OJL https://github.com/rnag/dataclass_wizard/tarball/master
+    $ curl -OJL https://github.com/rnag/dataclass-wizard/tarball/master
 
 Once you have a copy of the source, you can install it with:
 
@@ -47,5 +47,5 @@ Once you have a copy of the source, you can install it with:
     $ python setup.py install
 
 
-.. _Github repo: https://github.com/rnag/dataclass_wizard
-.. _tarball: https://github.com/rnag/dataclass_wizard/tarball/master
+.. _Github repo: https://github.com/rnag/dataclass-wizard
+.. _tarball: https://github.com/rnag/dataclass-wizard/tarball/master

@@ -8,6 +8,8 @@ Welcome to Dataclass Wizard's documentation!
    readme
    installation
    usage
+   using_field_properties
+   advanced/index
    modules
    contributing
    history

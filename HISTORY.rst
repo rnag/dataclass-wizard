@@ -2,6 +2,13 @@
 History
 =======
 
+0.2.4 (2021-08-04)
+------------------
+* Update README docs
+
+  * Move the section on *Advanced Usage* to the main docs
+  * Cleanup usage and docs in the *Field Properties* section
+
 0.2.3 (2021-08-03)
 ------------------
 * Add better keywords for the package
