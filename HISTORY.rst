@@ -2,6 +2,15 @@
 History
 =======
 
+0.3.0 (2021-08-05)
+------------------
+* Some minor code refactoring
+* Require ``typing-extensions`` library up till Python 3.9 now
+  (it's main use for Python 3.8 and 3.9 is the updated ``get_origin`` and ``get_args`` helper functions)
+* The default ``__str__`` method is now optional, and can be skipped via the flag ``str=False``
+* Add some more test cases
+
+
 0.2.4 (2021-08-04)
 ------------------
 * Update README docs
