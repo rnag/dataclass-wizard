@@ -1,7 +1,7 @@
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Union, List
+from typing import Union, List, ClassVar
 
 import pytest
 
@@ -645,6 +645,10 @@ def test_property_wizard_with_literal_type():
 
         # Annotate `wheels` as a literal that should only be set to 1 or 0
         # (similar to how the binary numeral system works, for example)
+        #
+        # Note: we can assign a default value for `wheels` explicitly, so that
+        # the IDE doesn't complain when we omit the argument to the
+        # constructor method, but it's technically not required.
         wheels: Literal[1, '1', 0, '0']
 
         @property
@@ -682,8 +686,6 @@ def test_property_wizard_with_concrete_type():
     @dataclass
     class Vehicle(metaclass=property_wizard):
 
-        # Annotate `wheels` as a literal that should only be set to 1 or 0
-        # (similar to how the binary numeral system works, for example)
         wheels: int
 
         @property
@@ -698,13 +700,10 @@ def test_property_wizard_with_concrete_type():
     log.debug(v)
     assert v.wheels == 0
 
-    # The IDE should display a warning (`wheels` only accepts [0, 1]), however
-    # it won't prevent the assignment here.
     v = Vehicle(wheels=3)
     log.debug(v)
     assert v.wheels == 3
 
-    # The IDE should display no warning here, as this is an acceptable value
     v = Vehicle('1')
     log.debug(v)
     assert v.wheels == 1, 'The constructor should use our setter method'
@@ -717,39 +716,82 @@ def test_property_wizard_with_concrete_type_and_default_factory_raises_type_erro
     """
     Using `property_wizard` when the dataclass field associated with a
     property is annotated with a non-generic type, such as a `datetime`, which
-    doesn't have a no-argument constructor. Since `property_wizard` is not
-    able to instantiate a new `datetime`, the default value should be None.
+    doesn't have a no-args constructor. Since `property_wizard` is not able to
+    instantiate a new `datetime`, the default value should be ``None``.
 
     """
     @dataclass
     class Vehicle(metaclass=property_wizard):
 
-        # Annotate `wheels` as a literal that should only be set to 1 or 0
-        # (similar to how the binary numeral system works, for example)
-        wheels: datetime
+        # Date when the vehicle was sold
+        sold_dt: datetime
 
         @property
-        def _wheels(self) -> int:
-            return self._wheels
+        def _sold_dt(self) -> int:
+            return self._sold_dt
 
-        @_wheels.setter
-        def _wheels(self, wheels: Union[int, str]):
-            self._wheels = int(wheels)
+        @_sold_dt.setter
+        def _sold_dt(self, sold_dt: datetime):
+            """Save the datetime with the year set to `2010`"""
+            self._sold_dt = sold_dt.replace(year=2010)
 
-    # TypeError: int() argument is `None`
-    with pytest.raises(TypeError):
+    # AttributeError: 'NoneType' object has no attribute 'replace'
+    with pytest.raises(AttributeError):
         _ = Vehicle()
 
-    # The IDE should display a warning (`wheels` only accepts [0, 1]), however
-    # it won't prevent the assignment here.
-    v = Vehicle(wheels=3)
-    log.debug(v)
-    assert v.wheels == 3
+    dt = datetime(2020, 1, 1, 12, 0, 0)             # Jan. 1 2020 12:00 PM
+    expected_dt = datetime(2010, 1, 1, 12, 0, 0)    # Jan. 1 2010 12:00 PM
 
-    # The IDE should display no warning here, as this is an acceptable value
-    v = Vehicle('1')
+    v = Vehicle(sold_dt=dt)
     log.debug(v)
-    assert v.wheels == 1, 'The constructor should use our setter method'
+    assert v.sold_dt != dt
+    assert v.sold_dt == expected_dt, 'The constructor should use our setter ' \
+                                     'method'
 
-    v.wheels = '123'
-    assert v.wheels == 123, 'Expected assignment to use the setter method'
+    dt = datetime.min
+    expected_dt = datetime.min.replace(year=2010)
+
+    v.sold_dt = dt
+    assert v.sold_dt == expected_dt, 'Expected assignment to use the setter ' \
+                                     'method'
+
+
+def test_property_wizard_with_generic_type_which_is_not_supported():
+    """
+    Using `property_wizard` when the dataclass field associated with a
+    property is annotated with a generic type other than one of the supported
+    types (e.g. Literal and Union).
+
+    """
+
+    @dataclass
+    class Vehicle(metaclass=property_wizard):
+        # Date when the vehicle was sold
+        sold_dt: ClassVar[datetime]
+
+        @property
+        def _sold_dt(self) -> int:
+            return self._sold_dt
+
+        @_sold_dt.setter
+        def _sold_dt(self, sold_dt: datetime):
+            """Save the datetime with the year set to `2010`"""
+            self._sold_dt = sold_dt.replace(year=2010)
+
+    v = Vehicle()
+    log.debug(v)
+
+    dt = datetime(2020, 1, 1, 12, 0, 0)  # Jan. 1 2020 12:00 PM
+    expected_dt = datetime(2010, 1, 1, 12, 0, 0)  # Jan. 1 2010 12:00 PM
+
+    # TypeError: __init__() got an unexpected keyword argument 'sold_dt'
+    #   Note: This is expected because the field for the property is a
+    #   `ClassVar`, and even `dataclasses` excludes this annotated type
+    #   from the constructor.
+    with pytest.raises(TypeError):
+        _ = Vehicle(sold_dt=dt)
+
+    # Our property should still work as expected, however
+    v.sold_dt = dt
+    assert v.sold_dt == expected_dt, 'Expected assignment to use the setter ' \
+                                     'method'

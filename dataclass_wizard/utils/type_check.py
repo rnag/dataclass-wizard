@@ -5,7 +5,7 @@ Utility module for checking generic types provided by the `typing` library.
 __all__ = [
     'is_literal',
     'get_origin',
-    'get_literal_args',
+    'get_args',
     'get_keys_for_typed_dict',
     'get_named_tuple_field_types',
     'is_typed_dict',
@@ -14,8 +14,9 @@ __all__ = [
 ]
 
 import typing
+from collections.abc import Callable
 
-from ..constants import PY36, PY38
+from ..constants import PY36, PY38, PY310_OR_ABOVE
 from ..type_def import PyLiteral, PyTypedDict
 
 
@@ -36,7 +37,33 @@ def get_keys_for_typed_dict(cls):
     return cls.__required_keys__, cls.__optional_keys__
 
 
-if not PY36:
+if not PY36:    # pragma: no cover
+    # Python 3.7+
+
+    _BASE_GENERIC_TYPES = (
+        typing._GenericAlias,
+        typing._SpecialForm,
+    )
+
+
+    def _is_generic(cls):
+        return isinstance(cls, _BASE_GENERIC_TYPES)
+
+
+    def _is_base_generic(cls):
+        if isinstance(cls, typing._GenericAlias):
+            if cls.__origin__ in {typing.Generic, typing._Protocol}:
+                return False
+
+            if isinstance(cls, typing._VariadicGenericAlias):
+                return True
+
+            return len(cls.__parameters__) > 0
+
+        if isinstance(cls, typing._SpecialForm):
+            return cls._name in {'ClassVar', 'Union', 'Optional'}
+
+        return False
 
     if PY38:
         def get_keys_for_typed_dict(cls):
@@ -58,7 +85,7 @@ if not PY36:
         except AttributeError:
             return False
 
-    def get_origin(cls, raise_=True):
+    def _get_origin(cls, raise_=False):
         try:
             return cls.__origin__
         except AttributeError:
@@ -66,14 +93,18 @@ if not PY36:
                 raise
             return cls
 
-    # TODO maybe refactor into a generic `get_args` method
-    def get_literal_args(cls):
-        return cls.__args__
+    # Ref:
+    #   https://github.com/python/typing/blob/master/typing_extensions/src_py3/typing_extensions.py#L2111
+    if PY310_OR_ABOVE:
+        _get_args = typing.get_args
+    else:
+        from typing_extensions import get_args as _get_args
 
-    def get_named_tuple_field_types(cls, raise_=True):
+
+    def _get_named_tuple_field_types(cls, raise_=True):
         """
-        Get annotations for a :class:`typing.NamedTuple` sub-class. The latest
-        Python versions only support the `__annotations__` attribute.
+        Note: The latest Python versions only support the `__annotations__`
+        attribute.
         """
         try:
             return cls.__annotations__
@@ -82,8 +113,25 @@ if not PY36:
                 raise
             return None
 
-else:
+else:   # pragma: no cover
     # Python 3.6
+
+    _BASE_GENERIC_TYPES = (
+        typing._FinalTypingBase,
+        typing.GenericMeta,
+    )
+
+
+    def _is_generic(cls):
+        return isinstance(cls, _BASE_GENERIC_TYPES)
+
+
+    def _is_base_generic(cls):
+        if isinstance(cls, (typing.GenericMeta, typing._Union)):
+            return cls.__args__ in {None, ()}
+
+        return isinstance(cls, typing._Optional)
+
     # Ref: https://github.com/python/typing/blob/master/typing_extensions/src_py3/typing_extensions.py#L572
 
     def is_literal(cls) -> bool:
@@ -92,21 +140,46 @@ else:
         except AttributeError:
             return False
 
-    def get_origin(cls, raise_=True):
+    def _get_origin(cls, raise_=False):
+
         try:
-            return getattr(cls, '__extra__', cls.__origin__)
+            extra = cls.__extra__
+            if extra is None and isinstance(cls, typing.GenericMeta):
+                return typing.Generic
+            return extra
+
         except AttributeError:
-            if raise_:
-                raise
-            return cls
 
-    def get_literal_args(cls):
-        return cls.__values__
+            try:
+                return cls.__origin__
+            except AttributeError:
+                if is_literal(cls):
+                    return PyLiteral
+                if isinstance(cls, typing._ClassVar):
+                    return typing.ClassVar
+                if raise_:
+                    raise
+                return cls
 
-    def get_named_tuple_field_types(cls, raise_=True):
+
+    def _get_args(cls):
+        if is_literal(cls):
+            return cls.__values__
+
+        try:
+            res = cls.__args__
+            if get_origin(cls) is Callable and res[0] is not Ellipsis:
+                res = (list(res[:-1]), res[-1])
+            return res
+        except AttributeError:
+            # This can happen if it's annotated w/o a subscript, e.g.
+            #   my_union: Union
+            return ()
+
+
+    def _get_named_tuple_field_types(cls, raise_=True):
         """
-        Get annotations for a :class:`typing.NamedTuple` sub-class. Prior to
-        PEP 526, only `_field_types` attribute was assigned.
+        Note: Prior to PEP 526, only `_field_types` attribute was assigned.
         """
         try:
             return cls._field_types
@@ -141,37 +214,49 @@ def is_base_generic(cls):
     return _is_base_generic(cls)
 
 
-if hasattr(typing, '_GenericAlias'):
-    # python 3.7
-    def _is_generic(cls):
-        return isinstance(cls, (typing._GenericAlias, typing._SpecialForm))
+def get_args(cls):
+    """
+    Get type arguments with all substitutions performed.
+
+    For unions, basic simplifications used by Union constructor are performed.
+    Examples::
+        get_args(Dict[str, int]) == (str, int)
+        get_args(int) == ()
+        get_args(Union[int, Union[T, int], str][int]) == (int, str)
+        get_args(Union[int, Tuple[T, int]][str]) == (int, Tuple[str, int])
+        get_args(Callable[[], T][int]) == ([], int)
+    """
+    return _get_args(cls)
 
 
-    def _is_base_generic(cls):
-        if isinstance(cls, typing._GenericAlias):
-            if cls.__origin__ in {typing.Generic, typing._Protocol}:
-                return False
+# TODO refactor to use `typing.get_origin` when time permits.
+def get_origin(cls, raise_=False):
+    """
+    Get the un-subscripted value of a type. If we're unable to retrieve this
+    value, return type `cls` if `raise_` is false.
 
-            if isinstance(cls, typing._VariadicGenericAlias):
-                return True
+    This supports generic types, Callable, Tuple, Union, Literal, Final and
+    ClassVar. Return None for unsupported types.
 
-            return len(cls.__parameters__) > 0
+    Examples::
 
-        if isinstance(cls, typing._SpecialForm):
-            return cls._name in {'ClassVar', 'Union', 'Optional'}
+        get_origin(Literal[42]) is Literal
+        get_origin(int) is int
+        get_origin(ClassVar[int]) is ClassVar
+        get_origin(Generic) is Generic
+        get_origin(Generic[T]) is Generic
+        get_origin(Union[T, int]) is Union
+        get_origin(List[Tuple[T, T]][int]) == list
 
-        return False
+    :raise AttributeError: When the `raise_` flag is enabled, and we are
+      unable to retrieve the un-subscripted value.
 
-elif hasattr(typing, '_Union'):
-    # python 3.6
-    def _is_generic(cls):
-        return isinstance(
-            cls, (typing.GenericMeta, typing._Any, typing._Union,
-                  typing._Optional, typing._ClassVar))
+    """
+    return _get_origin(cls, raise_=raise_)
 
 
-    def _is_base_generic(cls):
-        if isinstance(cls, (typing.GenericMeta, typing._Union)):
-            return cls.__args__ in {None, ()}
-
-        return isinstance(cls, typing._Optional)
+def get_named_tuple_field_types(cls, raise_=True):
+    """
+    Get annotations for a :class:`typing.NamedTuple` sub-class.
+    """
+    return _get_named_tuple_field_types(cls, raise_)

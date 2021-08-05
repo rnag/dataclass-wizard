@@ -19,7 +19,7 @@ from .abstractions import AbstractParser
 from .errors import ParseError
 from .type_def import NoneType, PyForwardRef, T, M, S
 from .utils.type_check import (
-    get_origin, get_literal_args, get_named_tuple_field_types,
+    get_origin, get_args, get_named_tuple_field_types,
     get_keys_for_typed_dict)
 
 
@@ -43,7 +43,7 @@ class LiteralParser(AbstractParser):
 
     def __post_init__(self, cls: Type[T]):
         self.value_to_type = {
-            val: type(val) for val in get_literal_args(self.base_type)
+            val: type(val) for val in get_args(self.base_type)
         }
 
     def __call__(self, o: Any):
@@ -150,14 +150,17 @@ class ListParser(AbstractParser):
     elem_parser: AbstractParser = field(init=False)
 
     def __post_init__(self, cls: Type[T], get_parser: GetParserType):
+
+        # Get the subscripted element type
+        #   ex. `List[str]` -> `str`
         try:
-            elem_type, = getattr(self.base_type, '__args__')
-        except AttributeError:
+            elem_type, = get_args(self.base_type)
+        except ValueError:
             elem_type = Any
 
         # Base type of the object which is instantiable
-        # For example, Dict[str, str] will be `dict`
-        self.base_type = get_origin(self.base_type, raise_=False)
+        #   ex. `List[str]` -> `list`
+        self.base_type = get_origin(self.base_type)
 
         self.elem_parser = get_parser(elem_type, cls)
 
@@ -190,14 +193,13 @@ class TupleParser(AbstractParser):
 
     def __post_init__(self, cls: Type[T], get_parser: GetParserType):
 
-        try:
-            elem_types = getattr(self.base_type, '__args__')
-        except AttributeError:
-            elem_types = []
+        # Get the subscripted values
+        #   ex. `Tuple[bool, int]` -> (bool, int)
+        elem_types = get_args(self.base_type)
 
         # Base type of the object which is instantiable
-        # For example, Dict[str, str] will be `dict`
-        self.base_type = get_origin(self.base_type, raise_=False)
+        #   ex. `Tuple[bool, int]` -> `tuple`
+        self.base_type = get_origin(self.base_type)
 
         self.elem_parsers = tuple(get_parser(t, cls) for t in elem_types)
         self.num_elem = len(self.elem_parsers)
@@ -259,13 +261,13 @@ class MappingParser(AbstractParser):
 
     def __post_init__(self, cls: Type[T], get_parser: GetParserType):
         try:
-            key_type, val_type = getattr(self.base_type, '__args__')
-        except AttributeError:
+            key_type, val_type = get_args(self.base_type)
+        except ValueError:
             key_type = val_type = Any
 
         # Base type of the object which is instantiable
-        # For example, Dict[str, str] will be `dict`
-        self.base_type: Type[M] = get_origin(self.base_type, raise_=False)
+        #   ex. `Dict[str, Any]` -> `dict`
+        self.base_type: Type[M] = get_origin(self.base_type)
 
         self.key_parser = get_parser(key_type, cls)
         self.val_parser = get_parser(val_type, cls)

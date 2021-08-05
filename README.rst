@@ -138,9 +138,9 @@ The ``dataclass-wizard`` library officially supports **Python 3.6** or higher.
 JSON Marshalling
 ----------------
 
-``JSONSerializable`` is a Mixin_ class which provides the following
-helper methods that are useful for loading (and serializing) a
-dataclass to JSON, as defined by the ``AbstractJSONWizard`` interface.
+``JSONSerializable`` is a Mixin_ class which provides the following helper
+methods that are useful for serializing (and loading) a dataclass instance
+to/from JSON, as defined by the ``AbstractJSONWizard`` interface.
 
 .. list-table::
    :widths: 10 40 35
@@ -170,18 +170,20 @@ dataclass to JSON, as defined by the ``AbstractJSONWizard`` interface.
      - Converts the dataclass instance to a JSON string
        representation.
 
-Additionally, it implements a ``__str__`` method, which will pretty
-print the JSON representation of an object; this is quite useful for
-debugging purposes. Whenever you invoke ``print(obj)`` or ``str(obj)``,
-for example, it'll invoke this method which will pretty print the
-dataclass object.
+Additionally, it adds a default ``__str__`` method to subclasses, which will
+pretty print the JSON representation of an object; this is quite useful for
+debugging purposes. Whenever you invoke ``print(obj)`` or ``str(obj)``, for
+example, it'll call this method which will format the dataclass object as
+a prettified JSON string. If you prefer a ``__str__`` method to not be
+added, you can pass in ``str=False`` when extending from the Mixin class
+as mentioned `here <https://dataclass-wizard.readthedocs.io/en/latest/advanced/common_use_cases.html#skip-the-str>`_.
 
 Note that the ``__repr__`` method, which is implemented by the
 ``dataclass`` decorator, is also available. To invoke the Python object
 representation of the dataclass instance, you can instead use
 ``repr(obj)`` or ``f'{obj!r}'``.
 
-To mark a dataclass instance as being JSON serializable (and
+To mark a dataclass as being JSON serializable (and
 de-serializable), simply sub-class from ``JSONSerializable`` as shown
 below. You can also extend from the class alias ``JSONWizard``, if you
 prefer to use that instead.

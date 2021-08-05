@@ -17,7 +17,7 @@ from .log import LOG
 from .parsers import *
 from .type_def import ExplicitNull, PyForwardRef, NoneType, M, N, T
 from .utils.string_conv import to_snake_case
-from .utils.type_check import is_literal, is_typed_dict, is_generic, get_origin
+from .utils.type_check import is_literal, is_typed_dict, is_generic, get_origin, get_args
 from .utils.type_conv import as_bool, as_str, as_datetime, as_date, as_time, as_int
 
 
@@ -100,7 +100,7 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
 
     @classmethod
     def load_to_named_tuple(
-            cls, o: Union[Dict, List], base_type: Type[NamedTupleMeta],
+            cls, o: Union[Dict, List, Tuple], base_type: Type[NamedTupleMeta],
             field_to_parser: Optional[Dict[str, AbstractParser]]
     ) -> NamedTupleMeta:
 
@@ -113,7 +113,7 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
                 # strings, so we don't need to convert them.
                 return base_type(**{k: field_to_parser[k](v)
                                     for k, v in o.items()})
-
+            # We're passed in a list or a tuple.
             field_parsers = list(field_to_parser.values())
             return base_type(*[
                 parser(elem) for parser, elem in zip(field_parsers, o)])
@@ -121,9 +121,9 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
         else:
             # Annotated as just a regular `collections.namedtuple`
             if isinstance(o, dict):
-                return base_type(**LoadMixin.load_with_object(o, dict))
-
-            return base_type(*LoadMixin.load_with_object(o, list))
+                return base_type(**cls.load_with_object(o, dict))
+            # We're passed in a list or a tuple.
+            return base_type(*cls.load_with_object(o, list))
 
     @classmethod
     def load_to_dict(
@@ -218,7 +218,7 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
             # This property will be available for most generic types in the
             # `typing` library.
             try:
-                base_type = get_origin(ann_type)
+                base_type = get_origin(ann_type, raise_=True)
 
             # If we can't access this property, it's likely a non-generic
             # class or a non-generic sub-type.
@@ -263,15 +263,22 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
             # basically anything that's subscriptable.
             else:
                 if base_type is Union:
-                    base_types = ann_type.__args__
+                    # Get the subscripted values
+                    #   ex. `Union[int, str]` -> (int, str)
+                    base_types = get_args(ann_type)
 
-                    if NoneType in base_types and len(base_types) == 2:
+                    if not base_types:
+                        # Annotated as just `Union` (no subscripted types)
+                        load_hook = cls.default_load_to
+
+                    elif NoneType in base_types and len(base_types) == 2:
                         # Special case for Optional[x], which is actually Union[x, None]
                         return OptionalParser(
                             base_cls, base_types[0], cls.get_parser_for_annotation)
 
-                    return UnionParser(
-                        base_cls, base_types, cls.get_parser_for_annotation)
+                    else:
+                        return UnionParser(
+                            base_cls, base_types, cls.get_parser_for_annotation)
 
                 elif issubclass(base_type, dict):
                     load_hook = cls.load_to_dict

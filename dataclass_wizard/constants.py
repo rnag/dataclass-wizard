@@ -14,6 +14,9 @@ PY38 = sys.version_info[:2] == (3, 8)
 # Check if currently running Python 3.8 or higher
 PY38_OR_ABOVE = sys.version_info[:2] >= (3, 8)
 
+# Check if currently running Python 3.10 or higher
+PY310_OR_ABOVE = sys.version_info[:2] >= (3, 10)
+
 # The dictionary key that identifies the default loader / dumper
 _DEFAULT = '__DEFAULT__'
 
