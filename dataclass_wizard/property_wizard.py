@@ -3,7 +3,7 @@ from functools import wraps
 from typing import Dict, Any, get_type_hints, Type, Union, Tuple, Optional
 
 from .type_def import T, NoneType
-from .utils.type_check import is_literal, get_literal_args, get_origin
+from .utils.type_check import is_literal, get_args, get_origin, is_generic
 
 
 AnnotationType = Dict[str, Type[T]]
@@ -38,15 +38,14 @@ def property_wizard(*args, **kwargs):
                 # The property is read-only, not settable
                 continue
 
-            if f.startswith('_'):
-                # The property is marked as 'private' (i.e. starts with an
-                # underscore)
-                _handle_underscored_property(
-                    cls, f, val, annotations, annotation_repls)
-            else:
+            if not f.startswith('_'):
                 # The property is marked as 'public' (i.e. no leading
                 # underscore)
-                _handle_public_property(
+                _process_public_property(
+                    cls, f, val, annotations, annotation_repls)
+            else:
+                # The property is marked as 'private'
+                _process_underscored_property(
                     cls, f, val, annotations, annotation_repls)
 
     if annotation_repls:
@@ -59,9 +58,9 @@ def property_wizard(*args, **kwargs):
     return cls
 
 
-def _handle_public_property(cls: Type, public_f: str, val: property,
-                            annotations: AnnotationType,
-                            annotation_repls: Dict[str, str]):
+def _process_public_property(cls: Type, public_f: str, val: property,
+                             annotations: AnnotationType,
+                             annotation_repls: Dict[str, str]):
     """
     Handles the case when the property is marked as 'public' (i.e. no leading
     underscore)
@@ -109,11 +108,11 @@ def _handle_public_property(cls: Type, public_f: str, val: property,
     setattr(cls, public_f, val)
 
 
-def _handle_underscored_property(cls: Type, under_f: str, val: property,
-                                 annotations: AnnotationType,
-                                 annotation_repls: Dict[str, str]):
+def _process_underscored_property(cls: Type, under_f: str, val: property,
+                                  annotations: AnnotationType,
+                                  annotation_repls: Dict[str, str]):
     """
-    Handles the case when the property is marked as 'public' (i.e. leads with
+    Handles the case when the property is marked as 'private' (i.e. leads with
     an underscore)
     """
 
@@ -132,12 +131,7 @@ def _handle_underscored_property(cls: Type, under_f: str, val: property,
             # Check if the value of the public field is a dataclass Field. If
             # so, we can use the `default` if one is set.
             if isinstance(default, Field):
-                if default.default is not MISSING:
-                    default = default.default
-                elif default.default_factory is not MISSING:
-                    default = default.default_factory()
-                else:
-                    default = _default_from_annotation(annotations, public_f)
+                default = _default_from_field(annotations, public_f, default)
 
     elif under_f in annotations:
         # Also add it to the list of class annotations to replace later
@@ -189,19 +183,20 @@ def _default_from_annotation(cls_annotations: AnnotationType, field: str):
     """
     default_type = cls_annotations.get(field)
 
-    if is_literal(default_type):
-        args = get_literal_args(default_type)
-        default_value = _default_from_typing_args(args)
-        return default_value
+    if is_generic(default_type):
+        # Annotated type is a Generic from the `typing` module
+        args = get_args(default_type)
 
-    origin = get_origin(default_type, raise_=False)
+        if is_literal(default_type):
+            # It's a `Literal` type
+            return _default_from_typing_args(args)
 
-    if origin is Union:
-        args = getattr(default_type, '__args__', None)
-        default_type = _default_from_typing_args(args)
-        if default_type is not None:
-            return default_type()
-        return default_type
+        if get_origin(default_type) is Union:
+            # It's a `Union` (or `Optional`) type
+            default_type = _default_from_typing_args(args)
+            if default_type is not None:
+                return default_type()
+            return default_type
 
     try:
         return default_type()

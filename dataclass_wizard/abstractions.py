@@ -95,7 +95,7 @@ class AbstractParser(ABC):
         """
         Return true if the Parser is expected to handle the specified item
         type. Checks against the exact type instead of `isinstance` so we can
-        handle special cases like `bool`, which is subclass of `int`.
+        handle special cases like `bool`, which is a subclass of `int`.
         """
         return type(item) is self.base_type
 
@@ -202,11 +202,11 @@ class AbstractLoader(ABC):
     @classmethod
     @abstractmethod
     def load_to_named_tuple(
-            cls, o: Union[Dict, List], base_type: Type[NamedTupleMeta],
+            cls, o: Union[Dict, List, Tuple], base_type: Type[NamedTupleMeta],
             field_to_parser: Optional[Dict[str, AbstractParser]]
     ) -> NamedTupleMeta:
         """
-        Load a dictionary or list to a `NamedTuple` sub-type (or an
+        Load a dictionary, list, or tuple to a `NamedTuple` sub-class (or an
         un-annotated `namedtuple`)
         """
 

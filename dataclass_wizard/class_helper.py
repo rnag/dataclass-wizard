@@ -69,7 +69,7 @@ def call_meta_initializer_if_needed(cls: Type[W]):
     """
     Calls the Meta initializer when the inner :class:`Meta` is sub-classed.
     """
-    cls_name = cls.__name__
+    cls_name = get_class_name(cls)
 
     if cls_name in _META_INITIALIZER:
         _META_INITIALIZER[cls_name](cls)
@@ -100,8 +100,8 @@ def get_class_name(class_or_instance) -> str:
 
 def get_outer_class_name(inner_cls, default=None, raise_=True):
     """
-    Attempt to return the name of the outer (enclosing) class, given
-    a reference to the inner class.
+    Attempt to return the fully qualified name of the outer (enclosing) class,
+    given a reference to the inner class.
 
     If any errors occur - such as when `inner_cls` is not a real inner
     class - then an error will be raised if `raise_` is true, and if not
@@ -109,7 +109,7 @@ def get_outer_class_name(inner_cls, default=None, raise_=True):
 
     """
     try:
-        return inner_cls.__qualname__.rsplit('.', 2)[-2]
+        return get_class_name(inner_cls).rsplit('.', 1)[-2]
 
     except IndexError:
         if raise_:

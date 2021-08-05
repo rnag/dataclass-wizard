@@ -1,5 +1,5 @@
 Serializer Hooks
-~~~~~~~~~~~~~~~~
+================
 
     Note: To customize the load or dump process for annotated types
     instead of individual fields, please see the `Type

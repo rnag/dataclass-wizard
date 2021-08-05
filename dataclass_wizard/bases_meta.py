@@ -4,6 +4,7 @@ Import scenario if we move it there, since the `loaders` and `dumpers` modules
 both import directly from `bases`.
 
 """
+import sys
 from datetime import datetime, date
 from typing import ClassVar, Type
 

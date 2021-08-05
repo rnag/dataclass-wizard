@@ -11,7 +11,7 @@ package_name = 'dataclass_wizard'
 packages = find_packages(include=[package_name, f'{package_name}.*'])
 
 requires = [
-    'typing-extensions>=3.7.4.2; python_version < "3.8"',
+    'typing-extensions>=3.7.4.2; python_version <= "3.9"',
     'dataclasses; python_version == "3.6"',
     'backports-datetime-fromisoformat==1.0.0; python_version == "3.6"'
 ]
@@ -30,7 +30,7 @@ setup(
     name=about['__title__'],
     version=about['__version__'],
     description=about['__description__'],
-    long_description=readme + '\n\n' + history,
+    long_description=readme,
     author=about['__author__'],
     author_email=about['__author_email__'],
     url=about['__url__'],

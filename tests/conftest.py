@@ -1,7 +1,7 @@
 __all__ = [
     'does_not_raise',
-    # For compatibility with Python 3.6
     'PY36',
+    # For compatibility with Python 3.6 and 3.7
     'Literal',
     'TypedDict'
 ]
@@ -20,10 +20,7 @@ else:
 
 try:
     from typing import Literal
-except ImportError:
-    from typing_extensions import Literal
-
-try:
     from typing import TypedDict
 except ImportError:
+    from typing_extensions import Literal
     from typing_extensions import TypedDict

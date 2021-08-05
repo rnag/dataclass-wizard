@@ -1,4 +1,6 @@
 import json
+# noinspection PyProtectedMember
+from dataclasses import _create_fn, _set_new_attribute
 from typing import Type, Dict, Any, List, Union
 
 from .abstractions import AbstractJSONWizard, W
@@ -61,18 +63,26 @@ class JSONSerializable(AbstractJSONWizard):
         """
         return json.dumps(self.to_dict(), indent=indent)
 
-    def __str__(self):
-        """
-        Converts the dataclass instance to a *prettified* JSON string
-        representation, when the `str()` method is invoked.
-        """
-        return self.to_json(indent=2)
-
-    def __init_subclass__(cls):
+    def __init_subclass__(cls, str=True):
         """
         Checks for optional settings and flags that may be passed in by the
-        sub-class.
+        sub-class, and calls the Meta initializer when :class:`Meta` is sub-classed.
+
+        :param str: True to add a default `__str__` method to the subclass.
         """
         super().__init_subclass__()
         # Calls the Meta initializer when inner :class:`Meta` is sub-classed.
         call_meta_initializer_if_needed(cls)
+        # Add a `__str__` method to the subclass, if needed
+        if str:
+            _set_new_attribute(cls, '__str__', _str_fn())
+
+
+def _str_fn():
+    """
+    Converts the dataclass instance to a *prettified* JSON string
+    representation, when the `str()` method is invoked.
+    """
+    return _create_fn('__str__',
+                      ('self',),
+                      ['return self.to_json(indent=2)'])

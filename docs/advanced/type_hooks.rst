@@ -1,5 +1,5 @@
 Type Hooks
-~~~~~~~~~~
+==========
 
 Sometimes you might want to customize the load and dump process for
 (annotated) variable types, rather than for specific dataclass fields.
