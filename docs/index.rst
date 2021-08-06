@@ -7,7 +7,7 @@ Welcome to Dataclass Wizard's documentation!
 
    readme
    installation
-   usage
+   quickstart
    using_field_properties
    advanced/index
    modules
