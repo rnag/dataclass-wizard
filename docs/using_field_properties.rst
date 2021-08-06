@@ -133,7 +133,7 @@ assign an initial value to the field property, if one is not explicitly passed
 in via the constructor method. The metaclass also pairs well with the
 ``JSONSerializable`` (aliased to the ``JSONWizard``) Mixin class.
 
-Here is our revised approach after updating to above class to use
+Here is our revised approach after updating the above class to use
 the ``property_wizard`` metaclass:
 
 .. code:: python3
@@ -158,7 +158,7 @@ the ``property_wizard`` metaclass:
 
         @wheels.setter
         def wheels(self, wheels: Union[int, str]):
-            self._wheels = 0 if isinstance(wheels, property) else int(wheels)
+            self._wheels = int(wheels)
 
 
     if __name__ == '__main__':
