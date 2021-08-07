@@ -17,8 +17,10 @@ from .log import LOG
 from .parsers import *
 from .type_def import ExplicitNull, PyForwardRef, NoneType, M, N, T
 from .utils.string_conv import to_snake_case
-from .utils.type_check import is_literal, is_typed_dict, is_generic, get_origin, get_args
-from .utils.type_conv import as_bool, as_str, as_datetime, as_date, as_time, as_int
+from .utils.type_check import (
+    is_literal, is_typed_dict, is_generic, get_origin, get_args)
+from .utils.type_conv import (
+    as_bool, as_str, as_datetime, as_date, as_time, as_int)
 
 
 class LoadMixin(AbstractLoader, BaseLoadHook):

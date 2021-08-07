@@ -56,6 +56,30 @@ def test_to_pascal_case(string, expected):
 @pytest.mark.parametrize(
     'string,expected',
     [
+        ('device_type', 'device-type'),
+        ('IO_Error', 'io-error'),
+        ('isACamelCasedWORD', 'is-a-camel-cased-word'),
+        ('ATitledWordToTESTWith', 'a-titled-word-to-test-with'),
+        ('not-a-tester', 'not-a-tester'),
+        ('helloworld', 'helloworld'),
+        ('A', 'a'),
+        ('TESTing_if_thisWorks', 'tes-ting-if-this-works'),
+        ('a_B_Cde_fG_hi', 'a-b-cde-f-g-hi'),
+        ('ALL_CAPS', 'all-caps'),
+        ('WoRd', 'wo-rd'),
+        ('HIThereHOWIsItGoinG', 'hi-there-how-is-it-goin-g'),
+        ('How_-Are-_YoUDoing__TeST', 'how-are-yo-u-doing-te-st'),
+        ('thisIsWithANumber42ToTEST', 'this-is-with-a-number42-to-test')
+    ]
+)
+def test_to_lisp_case(string, expected):
+    actual = to_lisp_case(string)
+    assert actual == expected
+
+
+@pytest.mark.parametrize(
+    'string,expected',
+    [
         ('device_type', 'device_type'),
         ('IO_Error', 'io_error'),
         ('isACamelCasedWORD', 'is_a_camel_cased_word'),

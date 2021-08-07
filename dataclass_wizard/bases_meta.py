@@ -9,13 +9,14 @@ from datetime import datetime, date
 from typing import ClassVar, Type
 
 from .abstractions import W
-from .class_helper import _META_INITIALIZER, get_outer_class_name
+from .class_helper import _META_INITIALIZER, get_outer_class_name, get_class_name
 from .decorators import try_with_load
 from .dumpers import get_dumper
 from .enums import LetterCase, DateTimeTo
+from .errors import ParseError
 from .loaders import get_loader
 from .log import LOG
-from .utils.type_conv import date_to_timestamp
+from .utils.type_conv import date_to_timestamp, as_enum
 
 
 class BaseJSONWizardMeta:
@@ -83,6 +84,7 @@ class BaseJSONWizardMeta:
                     date, lambda o, *_: date_to_timestamp(o))
 
         if cls.debug_enabled:
+
             LOG.setLevel('DEBUG')
             LOG.info('DEBUG Mode is enabled')
             # Decorate all hooks so they format more helpful messages
@@ -92,7 +94,27 @@ class BaseJSONWizardMeta:
                 load_hooks[typ] = try_with_load(load_hooks[typ])
 
         if cls.key_transform_with_load:
-            cls_loader.transform_json_field = cls.key_transform_with_load
+
+            try:
+                cls_loader.transform_json_field = as_enum(
+                    cls.key_transform_with_load, LetterCase)
+
+            except ParseError as e:
+                # We run into a parsing error while loading the enum; Add
+                # additional info on the Exception object before re-raising it
+                e.class_name = get_class_name(cls)
+                e.field_name = 'key_transform_with_load'
+                raise
 
         if cls.key_transform_with_dump:
-            cls_dumper.transform_dataclass_field = cls.key_transform_with_dump
+
+            try:
+                cls_dumper.transform_dataclass_field = as_enum(
+                    cls.key_transform_with_dump, LetterCase)
+
+            except ParseError as e:
+                # We run into a parsing error while loading the enum; Add
+                # additional info on the Exception object before re-raising it
+                e.class_name = get_class_name(cls)
+                e.field_name = 'key_transform_with_dump'
+                raise

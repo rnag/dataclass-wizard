@@ -7,11 +7,13 @@ __all__ = [
     'ExplicitNull',
     'NUMBERS',
     'T',
+    'E',
     'M',
     'N',
     'S'
 ]
 
+from enum import Enum
 from typing import TypeVar, Mapping, Sequence
 
 from .constants import PY36, PY38_OR_ABOVE
@@ -24,6 +26,9 @@ NUMBERS = int, float
 
 # Generic type
 T = TypeVar('T')
+
+# Enum subclass type
+E = TypeVar('E', bound=Enum)
 
 # Mapping type
 M = TypeVar('M', bound=Mapping)
