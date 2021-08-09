@@ -4,10 +4,10 @@ Tests for the `loaders` module, but more importantly for the `parsers` module.
 Note: I might refactor this into a separate `test_parsers.py` as time permits.
 """
 import logging
-from collections import namedtuple
+from collections import namedtuple, defaultdict
 from dataclasses import dataclass
 from datetime import datetime, date, time
-from typing import List, Optional, Union, Tuple, Dict, NamedTuple, Type
+from typing import List, Optional, Union, Tuple, Dict, NamedTuple, Type, DefaultDict
 
 import pytest
 
@@ -544,6 +544,53 @@ def test_dict(input, expectation, expected):
 
         log.debug('Parsed object: %r', result)
         assert result.my_dict == expected
+
+
+@pytest.mark.parametrize(
+    'input,expectation,expected',
+    [
+        (
+            None, pytest.raises(AttributeError), None
+        ),
+        (
+            {}, does_not_raise(), {}
+        ),
+        (
+            # Wrong types for both key and value
+            {'key': 'value'}, pytest.raises(ValueError), None),
+        (
+            {'1': 'test', '2': 't', '3': ['false']}, does_not_raise(),
+            {1: ['t', 'e', 's', 't'],
+             2: ['t'],
+             3: ['false']}
+        ),
+        (
+            # Might need to change this behavior if needed: currently it
+            # raises an error, which I think is good for now since we don't
+            # want to add `null`s to a list anyway.
+            {2: None}, pytest.raises(ParseError), None
+        ),
+        (
+            # Incorrect type - `list`, but should be a `dict`
+            [{'my_str': 'test', 'my_int': 2, 'my_bool': True}],
+            pytest.raises(AttributeError), None
+        )
+    ]
+)
+def test_default_dict(input, expectation, expected):
+
+    @dataclass
+    class MyClass(JSONSerializable):
+        my_def_dict: DefaultDict[int, list]
+
+    d = {'myDefDict': input}
+
+    with expectation:
+        result = MyClass.from_dict(d)
+
+        log.debug('Parsed object: %r', result)
+        assert isinstance(result.my_def_dict, defaultdict)
+        assert result.my_def_dict == expected
 
 
 @pytest.mark.parametrize(

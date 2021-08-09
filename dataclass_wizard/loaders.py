@@ -1,10 +1,11 @@
+from collections import defaultdict
 from dataclasses import is_dataclass
 from datetime import datetime, time, date
 from decimal import Decimal
 from enum import Enum
 from typing import (
     Dict, List, Tuple, Sequence, Optional, Union, Type, Any, NamedTupleMeta,
-    SupportsFloat, SupportsInt, FrozenSet, AnyStr, Text
+    SupportsFloat, SupportsInt, FrozenSet, AnyStr, Text, Callable
 )
 from uuid import UUID
 
@@ -16,7 +17,7 @@ from .constants import _LOAD_HOOKS
 from .errors import ParseError
 from .log import LOG
 from .parsers import *
-from .type_def import ExplicitNull, PyForwardRef, NoneType, M, N, T, E, U
+from .type_def import ExplicitNull, PyForwardRef, NoneType, M, N, T, E, U, DD
 from .utils.string_conv import to_snake_case
 from .utils.type_check import (
     is_literal, is_typed_dict, is_generic, get_origin, get_args)
@@ -89,9 +90,9 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
 
         return base_type(o)
 
-    @classmethod
+    @staticmethod
     def load_to_list(
-            cls, o: Union[List, Tuple], base_type: Type[List],
+            o: Union[List, Tuple], base_type: Type[List],
             elem_parser: AbstractParser) -> List[Any]:
 
         return base_type(elem_parser(elem) for elem in o)
@@ -136,9 +137,9 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
             list_parser = cls.get_parser_for_annotation(list)
             return base_type(*list_parser(o))
 
-    @classmethod
+    @staticmethod
     def load_to_dict(
-            cls, o: Dict, base_type: Type[M],
+            o: Dict, base_type: Type[M],
             key_parser: AbstractParser,
             val_parser: AbstractParser) -> Dict:
 
@@ -147,9 +148,22 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
             for k, v in o.items()
         )
 
-    @classmethod
+    @staticmethod
+    def load_to_defaultdict(
+            o: Dict, base_type: Type[DD],
+            default_factory: Callable[[], T],
+            key_parser: AbstractParser,
+            val_parser: AbstractParser) -> DD:
+
+        return base_type(
+            default_factory,
+            {key_parser(k): val_parser(v)
+             for k, v in o.items()}
+        )
+
+    @staticmethod
     def load_to_typed_dict(
-            cls, o: Dict, base_type: Type[M],
+            o: Dict, base_type: Type[M],
             key_to_parser: Dict[str, AbstractParser],
             required_keys: FrozenSet[str],
             optional_keys: FrozenSet[str]) -> Dict:
@@ -271,6 +285,11 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
                         return UnionParser(
                             base_cls, base_types, cls.get_parser_for_annotation)
 
+                elif issubclass(base_type, defaultdict):
+                    load_hook = cls.load_to_defaultdict
+                    return DefaultDictParser(
+                        base_cls, ann_type, cls.get_parser_for_annotation, load_hook)
+
                 elif issubclass(base_type, dict):
                     load_hook = cls.load_to_dict
                     return MappingParser(
@@ -340,6 +359,7 @@ def setup_default_loader(cls=LoadMixin):
     cls.register_load_hook(list, cls.load_to_list)
     cls.register_load_hook(tuple, cls.load_to_tuple)
     cls.register_load_hook(NamedTupleMeta, cls.load_to_named_tuple)
+    cls.register_load_hook(defaultdict, cls.load_to_defaultdict)
     cls.register_load_hook(dict, cls.load_to_dict)
     cls.register_load_hook(Decimal, cls.load_to_decimal)
     # Dates and times

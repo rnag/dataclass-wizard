@@ -1,4 +1,5 @@
 # noinspection PyProtectedMember
+from collections import defaultdict
 from dataclasses import _is_dataclass_instance
 from datetime import datetime, time, date
 from decimal import Decimal
@@ -12,7 +13,7 @@ from .class_helper import (
     dataclass_fields, get_class, dataclass_field_to_json_field)
 from .constants import _DUMP_HOOKS
 from .log import LOG
-from .type_def import NoneType
+from .type_def import NoneType, DD
 from .utils.string_conv import to_camel_case
 
 
@@ -86,6 +87,14 @@ class DumpMixin(AbstractDumper, BaseDumpHook):
                    for k, v in o.items())
 
     @staticmethod
+    def dump_with_defaultdict(
+            o: Dict, _typ: Type[DD], dict_factory, hooks):
+
+        return {_asdict_inner(k, dict_factory, hooks):
+                _asdict_inner(v, dict_factory, hooks)
+                for k, v in o.items()}
+
+    @staticmethod
     def dump_with_decimal(o: Decimal, *_):
         return str(o)
 
@@ -123,6 +132,7 @@ def setup_default_dumper(cls=DumpMixin):
     cls.register_dump_hook(list, cls.dump_with_list_or_tuple)
     cls.register_dump_hook(tuple, cls.dump_with_list_or_tuple)
     cls.register_dump_hook(NamedTupleMeta, cls.dump_with_named_tuple)
+    cls.register_dump_hook(defaultdict, cls.dump_with_defaultdict)
     cls.register_dump_hook(dict, cls.dump_with_dict)
     cls.register_dump_hook(Decimal, cls.dump_with_decimal)
     # Dates and times

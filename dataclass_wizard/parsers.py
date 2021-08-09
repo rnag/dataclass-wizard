@@ -8,6 +8,7 @@ __all__ = ['Parser',
            'VariadicTupleParser',
            'NamedTupleParser',
            'MappingParser',
+           'DefaultDictParser',
            'TypedDictParser']
 
 import sys
@@ -18,7 +19,7 @@ from dataclasses import dataclass, InitVar, field
 
 from .abstractions import AbstractParser
 from .errors import ParseError
-from .type_def import NoneType, PyForwardRef, T, M, S
+from .type_def import NoneType, PyForwardRef, T, M, S, DD
 from .utils.type_check import (
     get_origin, get_args, get_named_tuple_field_types,
     get_keys_for_typed_dict)
@@ -354,6 +355,24 @@ class MappingParser(AbstractParser):
 
     def __call__(self, o: M) -> M:
         return self.hook(o, self.base_type, self.key_parser, self.val_parser)
+
+
+@dataclass
+class DefaultDictParser(MappingParser):
+    # Override the type annotations here
+    base_type: Type[DD]
+    hook: Callable[
+        [Any, Type[DD], Callable[[], T], AbstractParser, AbstractParser], DD]
+    # The default factory argument to pass to the `defaultdict` subclass
+    default_factory: Callable[[], T] = field(init=False)
+
+    def __post_init__(self, cls: Type[T], get_parser: GetParserType):
+        super().__post_init__(cls, get_parser)
+        self.default_factory = self.val_parser.base_type
+
+    def __call__(self, o: M) -> M:
+        return self.hook(o, self.base_type, self.default_factory,
+                         self.key_parser, self.val_parser)
 
 
 @dataclass

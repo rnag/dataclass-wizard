@@ -10,12 +10,13 @@ __all__ = [
     'E',
     'U',
     'M',
+    'DD',
     'N',
     'S'
 ]
 
 from enum import Enum
-from typing import TypeVar, Mapping, Sequence
+from typing import TypeVar, Mapping, Sequence, DefaultDict
 from uuid import UUID
 
 from .constants import PY36, PY38_OR_ABOVE
@@ -37,6 +38,9 @@ U = TypeVar('U', bound=UUID)
 
 # Mapping type
 M = TypeVar('M', bound=Mapping)
+
+# DefaultDict type
+DD = TypeVar('DD', bound=DefaultDict)
 
 # Numeric type
 N = TypeVar('N', int, float, complex)
