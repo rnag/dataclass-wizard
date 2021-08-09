@@ -8,6 +8,7 @@ __all__ = [
     'NUMBERS',
     'T',
     'E',
+    'U',
     'M',
     'N',
     'S'
@@ -15,6 +16,7 @@ __all__ = [
 
 from enum import Enum
 from typing import TypeVar, Mapping, Sequence
+from uuid import UUID
 
 from .constants import PY36, PY38_OR_ABOVE
 from .decorators import discard_kwargs
@@ -29,6 +31,9 @@ T = TypeVar('T')
 
 # Enum subclass type
 E = TypeVar('E', bound=Enum)
+
+# UUID subclass type
+U = TypeVar('U', bound=UUID)
 
 # Mapping type
 M = TypeVar('M', bound=Mapping)

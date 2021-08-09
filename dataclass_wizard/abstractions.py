@@ -5,13 +5,12 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, InitVar
 from datetime import datetime, time, date
 from decimal import Decimal
-from enum import Enum
 from typing import (
     Any, Type, Union, List, Tuple, NamedTupleMeta, Dict, SupportsFloat,
     Optional, SupportsInt, FrozenSet, Sequence, AnyStr, TypeVar, Text
 )
 
-from .type_def import M, N, T
+from .type_def import M, N, T, E, U
 
 
 # Create a generic variable that can be 'AbstractJSONWizard', or any subclass.
@@ -173,10 +172,18 @@ class AbstractLoader(ABC):
 
     @staticmethod
     @abstractmethod
-    def load_to_enum(o: Union[AnyStr, N], base_type: Type[Enum]) -> Enum:
+    def load_to_enum(o: Union[AnyStr, N], base_type: Type[E]) -> E:
         """
         Load an object `o` into a new object of type `base_type` (generally a
         sub-class of the :class:`Enum` type)
+        """
+
+    @staticmethod
+    @abstractmethod
+    def load_to_uuid(o: Union[AnyStr, U], base_type: Type[U]) -> U:
+        """
+        Load an object `o` into a new object of type `base_type` (generally a
+        sub-class of the :class:`UUID` type)
         """
 
     @classmethod

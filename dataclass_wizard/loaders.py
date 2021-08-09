@@ -6,6 +6,7 @@ from typing import (
     Dict, List, Tuple, Sequence, Optional, Union, Type, Any, NamedTupleMeta,
     SupportsFloat, SupportsInt, FrozenSet, AnyStr, Text
 )
+from uuid import UUID
 
 from .abstractions import AbstractLoader, AbstractParser
 from .bases import BaseLoadHook
@@ -15,7 +16,7 @@ from .constants import _LOAD_HOOKS
 from .errors import ParseError
 from .log import LOG
 from .parsers import *
-from .type_def import ExplicitNull, PyForwardRef, NoneType, M, N, T
+from .type_def import ExplicitNull, PyForwardRef, NoneType, M, N, T, E, U
 from .utils.string_conv import to_snake_case
 from .utils.type_check import (
     is_literal, is_typed_dict, is_generic, get_origin, get_args)
@@ -79,7 +80,12 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
         return as_bool(o)
 
     @staticmethod
-    def load_to_enum(o: Union[AnyStr, N], base_type: Type[Enum]) -> Enum:
+    def load_to_enum(o: Union[AnyStr, N], base_type: Type[E]) -> E:
+
+        return base_type(o)
+
+    @staticmethod
+    def load_to_uuid(o: Union[AnyStr, U], base_type: Type[U]) -> U:
 
         return base_type(o)
 
@@ -214,6 +220,9 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
                     elif issubclass(base_type, Enum):
                         load_hook = hooks.get(Enum)
 
+                    elif issubclass(base_type, UUID):
+                        load_hook = hooks.get(UUID)
+
                     elif issubclass(base_type, tuple) \
                             and hasattr(base_type, '_fields'):
                         load_hook = hooks.get(NamedTupleMeta)
@@ -327,6 +336,7 @@ def setup_default_loader(cls=LoadMixin):
     cls.register_load_hook(NoneType, cls.default_load_to)
     # Complex types
     cls.register_load_hook(Enum, cls.load_to_enum)
+    cls.register_load_hook(UUID, cls.load_to_uuid)
     cls.register_load_hook(list, cls.load_to_list)
     cls.register_load_hook(tuple, cls.load_to_tuple)
     cls.register_load_hook(NamedTupleMeta, cls.load_to_named_tuple)

@@ -12,9 +12,11 @@ from typing import List, Optional, Union, Tuple, Dict, NamedTuple, Type
 import pytest
 
 from dataclass_wizard import JSONSerializable
+from dataclass_wizard.class_helper import dataclass_fields
 from dataclass_wizard.errors import ParseError
 from dataclass_wizard.parsers import OptionalParser, Parser
 from dataclass_wizard.type_def import NoneType, T
+from .conftest import MyUUIDSubclass
 from ..conftest import *
 
 
@@ -69,6 +71,32 @@ def test_literal(input, expectation):
     with expectation:
         result = MyClass.from_dict(d)
         log.debug('Parsed object: %r', result)
+
+
+@pytest.mark.parametrize(
+    'input',
+    [
+        '12345678-1234-1234-1234-1234567abcde',
+        '{12345678-1234-5678-1234-567812345678}',
+        '12345678123456781234567812345678',
+        'urn:uuid:12345678-1234-5678-1234-567812345678'
+    ]
+)
+def test_uuid(input):
+
+    @dataclass
+    class MyUUIDTestClass(JSONSerializable):
+        my_id: MyUUIDSubclass
+
+    d = {'MyID': input}
+
+    result = MyUUIDTestClass.from_dict(d)
+    log.debug('Parsed object: %r', result)
+
+    expected = MyUUIDSubclass(input)
+
+    assert result.my_id == expected
+    assert isinstance(result.my_id, MyUUIDSubclass)
 
 
 @pytest.mark.parametrize(

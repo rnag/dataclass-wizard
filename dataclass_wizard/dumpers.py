@@ -4,6 +4,7 @@ from datetime import datetime, time, date
 from decimal import Decimal
 from enum import Enum
 from typing import Type, Dict, Any, List, Union, Tuple, NamedTupleMeta
+from uuid import UUID
 
 from .abstractions import AbstractDumper
 from .bases import BaseDumpHook
@@ -57,6 +58,10 @@ class DumpMixin(AbstractDumper, BaseDumpHook):
     @staticmethod
     def dump_with_enum(o: Enum, *_):
         return o.value
+
+    @staticmethod
+    def dump_with_uuid(o: UUID, *_):
+        return o.hex
 
     @staticmethod
     def dump_with_list_or_tuple(
@@ -114,6 +119,7 @@ def setup_default_dumper(cls=DumpMixin):
     cls.register_dump_hook(NoneType, cls.dump_with_null)
     # Complex types
     cls.register_dump_hook(Enum, cls.dump_with_enum)
+    cls.register_dump_hook(UUID, cls.dump_with_uuid)
     cls.register_dump_hook(list, cls.dump_with_list_or_tuple)
     cls.register_dump_hook(tuple, cls.dump_with_list_or_tuple)
     cls.register_dump_hook(NamedTupleMeta, cls.dump_with_named_tuple)
