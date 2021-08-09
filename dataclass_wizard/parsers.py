@@ -92,6 +92,7 @@ class OptionalParser(AbstractParser):
         self.parser = get_parser(self.base_type, cls)
 
     def __contains__(self, item):
+        """Check if parser is expected to handle the specified item type."""
         if type(item) is NoneType:
             return True
 
@@ -117,6 +118,7 @@ class UnionParser(AbstractParser):
                              if t is not NoneType)
 
     def __contains__(self, item):
+        """Check if parser is expected to handle the specified item type."""
         return type(item) in self.base_type
 
     def __call__(self, o: Any):
