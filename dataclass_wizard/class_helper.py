@@ -109,12 +109,18 @@ def get_outer_class_name(inner_cls, default=None, raise_=True):
 
     """
     try:
-        return get_class_name(inner_cls).rsplit('.', 1)[-2]
+        name = get_class_name(inner_cls).rsplit('.', 1)[-2]
+        # This is mainly for our test cases, where we nest the class
+        # definition in the test func. Either way, it's not a valid class.
+        assert not name.endswith('<locals>')
 
-    except IndexError:
+    except (IndexError, AssertionError):
         if raise_:
             raise
         return default
+
+    else:
+        return name
 
 
 def get_class(obj):

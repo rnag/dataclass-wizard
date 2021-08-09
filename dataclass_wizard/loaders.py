@@ -98,7 +98,8 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
         if elem_parsers:
             return base_type(parser(e) for parser, e in zip(elem_parsers, o))
         else:
-            return base_type(cls.load_with_object(e, Any) for e in o)
+            any_parser: AbstractParser = cls.get_parser_for_annotation(Any)
+            return base_type(any_parser(e) for e in o)
 
     @classmethod
     def load_to_named_tuple(
@@ -123,9 +124,11 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
         else:
             # Annotated as just a regular `collections.namedtuple`
             if isinstance(o, dict):
-                return base_type(**cls.load_with_object(o, dict))
+                dict_parser = cls.get_parser_for_annotation(dict)
+                return base_type(**dict_parser(o))
             # We're passed in a list or a tuple.
-            return base_type(*cls.load_with_object(o, list))
+            list_parser = cls.get_parser_for_annotation(list)
+            return base_type(*list_parser(o))
 
     @classmethod
     def load_to_dict(
@@ -178,29 +181,6 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
     def load_to_date(o: Union[str, N], base_type: Type[date]) -> date:
 
         return as_date(o, base_type)
-
-    # TODO consider removing this method
-    @classmethod
-    def load_with_object(cls, o: Any, ann_type: Type[T]) -> T:
-        if o is None:
-            return o
-
-        parser = cls.get_parser_for_annotation(ann_type)
-
-        if parser is None:
-            hooks = cls.__LOAD_HOOKS__
-
-            # If we got this far, then we should check if `hooks` contains
-            # the base object type, this time using `isinstance`.
-            for t in hooks:
-                if isinstance(o, t):
-                    # TODO handle generics better?
-                    parser = Parser(
-                        # Generic types can't be instantiated
-                        t if is_generic(ann_type) else ann_type, hooks[t])
-                    break
-
-        return parser(o)
 
     @classmethod
     def get_parser_for_annotation(cls, ann_type: Type[T],
@@ -294,8 +274,18 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
 
                 elif issubclass(base_type, tuple):
                     load_hook = cls.load_to_tuple
-                    return TupleParser(
-                        base_cls, ann_type, cls.get_parser_for_annotation, load_hook)
+                    # Check if the `Tuple` appears in the variadic form
+                    #   i.e. Tuple[str, ...]
+                    args = get_args(ann_type)
+                    is_variadic = args and args[-1] is ...
+                    # Determine the parser for the annotation
+                    parser: Type[AbstractParser] = TupleParser
+                    if is_variadic:
+                        parser = VariadicTupleParser
+
+                    return parser(
+                        base_cls, ann_type, cls.get_parser_for_annotation,
+                        load_hook)
 
                 else:
                     load_hook = hooks.get(base_type)
@@ -418,14 +408,19 @@ def _load_to_dataclass(d: Dict[str, Any], cls: Type[T]) -> T:
         except ParseError as e:
             # We run into a parsing error while loading the field value; Add
             # additional info on the Exception object before re-raising it
-            e.class_name = cls.__qualname__
-            e.field_name = field_name
+            #
+            # First confirm these values are not already set by an inner
+            # dataclass. If so, it likely makes it easier to debug the cause.
+            if not e.class_name:
+                e.class_name = cls.__qualname__
+                e.field_name = field_name
             raise
 
     obj = cls(**cls_kwargs)
     return obj
 
 
+# noinspection SpellCheckingInspection
 def fromdict(cls: Type[T], d: Dict[str, Any]) -> T:
     """
     Converts a Python dictionary object to a dataclass instance.

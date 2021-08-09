@@ -4,9 +4,8 @@ Import scenario if we move it there, since the `loaders` and `dumpers` modules
 both import directly from `bases`.
 
 """
-import sys
 from datetime import datetime, date
-from typing import ClassVar, Type
+from typing import ClassVar, Type, Union, Optional
 
 from .abstractions import W
 from .class_helper import _META_INITIALIZER, get_outer_class_name, get_class_name
@@ -16,6 +15,7 @@ from .enums import LetterCase, DateTimeTo
 from .errors import ParseError
 from .loaders import get_loader
 from .log import LOG
+from .type_def import E
 from .utils.type_conv import date_to_timestamp, as_enum
 
 
@@ -23,7 +23,7 @@ class BaseJSONWizardMeta:
 
     # How should :class:`time` and :class:`datetime` objects be serialized
     # when converted to a Python dictionary object or a JSON string.
-    marshal_date_time_as: ClassVar[DateTimeTo] = DateTimeTo.ISO_FORMAT
+    marshal_date_time_as: ClassVar[Union[DateTimeTo, str]] = None
 
     # True to enable Debug mode for additional debug log output and more
     # helpful messages during error handling.
@@ -34,14 +34,14 @@ class BaseJSONWizardMeta:
     # Note that this only applies to keys which are to be set on dataclass
     # fields; other fields such as the ones for `TypedDict` or `NamedTuple`
     # sub-classes won't be similarly transformed.
-    key_transform_with_load: ClassVar[LetterCase] = None
+    key_transform_with_load: ClassVar[Union[LetterCase, str]] = None
 
     # How dataclass fields should be transformed to JSON keys.
     #
     # Note that this only applies to dataclass fields; other fields such as
     # the ones for `TypedDict` or `NamedTuple` sub-classes won't be similarly
     # transformed.
-    key_transform_with_dump: ClassVar[LetterCase] = None
+    key_transform_with_dump: ClassVar[Union[LetterCase, str]] = None
 
     @classmethod
     def _init_subclass(cls):
@@ -72,16 +72,20 @@ class BaseJSONWizardMeta:
         cls_loader = get_loader(outer_cls)
         cls_dumper = get_dumper(outer_cls)
 
-        # noop; the default dump hook for `datetime` and `date` already
-        # serializes using this approach.
-        if cls.marshal_date_time_as is not DateTimeTo.ISO_FORMAT:
+        if cls.marshal_date_time_as:
+            enum_val = cls._safe_as_enum('marshal_date_time_as', DateTimeTo)
 
-            if cls.marshal_date_time_as is DateTimeTo.TIMESTAMP:
+            if enum_val is DateTimeTo.TIMESTAMP:
                 # Update dump hooks for the `datetime` and `date` types
                 cls_dumper.register_dump_hook(
                     datetime, lambda o, *_: round(o.timestamp()))
                 cls_dumper.register_dump_hook(
                     date, lambda o, *_: date_to_timestamp(o))
+
+            elif enum_val is DateTimeTo.ISO_FORMAT:
+                # noop; the default dump hook for `datetime` and `date` already
+                # serializes using this approach.
+                pass
 
         if cls.debug_enabled:
 
@@ -95,26 +99,29 @@ class BaseJSONWizardMeta:
 
         if cls.key_transform_with_load:
 
-            try:
-                cls_loader.transform_json_field = as_enum(
-                    cls.key_transform_with_load, LetterCase)
-
-            except ParseError as e:
-                # We run into a parsing error while loading the enum; Add
-                # additional info on the Exception object before re-raising it
-                e.class_name = get_class_name(cls)
-                e.field_name = 'key_transform_with_load'
-                raise
+            cls_loader.transform_json_field = cls._safe_as_enum(
+                'key_transform_with_load', LetterCase)
 
         if cls.key_transform_with_dump:
 
-            try:
-                cls_dumper.transform_dataclass_field = as_enum(
-                    cls.key_transform_with_dump, LetterCase)
+            cls_dumper.transform_dataclass_field = cls._safe_as_enum(
+                'key_transform_with_dump', LetterCase)
 
-            except ParseError as e:
-                # We run into a parsing error while loading the enum; Add
-                # additional info on the Exception object before re-raising it
-                e.class_name = get_class_name(cls)
-                e.field_name = 'key_transform_with_dump'
-                raise
+    @classmethod
+    def _safe_as_enum(cls, name: str, base_type: Type[E]) -> Optional[E]:
+        """
+        Attempt to return the value for class attribute :attr:`attr_name` as
+        a :type:`base_type`.
+
+        :raises ParseError: If we are unable to convert the value of the class
+          attribute to an Enum of type `base_type`.
+        """
+        try:
+            return as_enum(getattr(cls, name), base_type)
+
+        except ParseError as e:
+            # We run into a parsing error while loading the enum; Add
+            # additional info on the Exception object before re-raising it
+            e.class_name = get_class_name(cls)
+            e.field_name = name
+            raise

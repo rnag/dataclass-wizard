@@ -5,6 +5,7 @@ __all__ = ['Parser',
            'ForwardRefParser',
            'ListParser',
            'TupleParser',
+           'VariadicTupleParser',
            'NamedTupleParser',
            'MappingParser',
            'TypedDictParser']
@@ -90,6 +91,12 @@ class OptionalParser(AbstractParser):
 
         self.parser = get_parser(self.base_type, cls)
 
+    def __contains__(self, item):
+        if type(item) is NoneType:
+            return True
+
+        return super().__contains__(item)
+
     def __call__(self, o: Any):
         if o is None:
             return o
@@ -108,6 +115,9 @@ class UnionParser(AbstractParser):
 
         self.parsers = tuple(get_parser(t, cls) for t in self.base_type
                              if t is not NoneType)
+
+    def __contains__(self, item):
+        return type(item) in self.base_type
 
     def __call__(self, o: Any):
         if o is None:
@@ -183,40 +193,108 @@ class ListParser(AbstractParser):
 
 @dataclass
 class TupleParser(AbstractParser):
+    """
+    Parser for subscripted and un-subscripted `Tuple`s.
+
+    See :class:`VariadicTupleParser` for the parser that handles the variadic
+    form, i.e. `Tuple[str, ...]`
+    """
+
+    # Base type of the object which is instantiable
+    #   ex. `Tuple[bool, int]` -> `tuple`
     base_type: Type[S]
     get_parser: InitVar[GetParserType]
     hook: Callable[
         [Any, Type[S], Tuple[AbstractParser, ...]], S]
 
-    elem_parser: Tuple[AbstractParser, ...] = field(init=False)
-    num_elem: int = field(init=False)
+    # A collection with a parser for each type argument
+    elem_parsers: Tuple[AbstractParser, ...] = field(init=False)
+    # Total count is generally the number of type arguments to `Tuple`, but
+    # can be `infinity` when a `Tuple` appears in its un-subscripted form.
+    total_count: Union[int, float] = field(init=False)
+    # Minimum number of *required* type arguments (this excludes types
+    # which appear as `Optional` or `Union`, for example)
+    required_count: int = field(init=False)
 
     def __post_init__(self, cls: Type[T], get_parser: GetParserType):
 
         # Get the subscripted values
         #   ex. `Tuple[bool, int]` -> (bool, int)
         elem_types = get_args(self.base_type)
-
-        # Base type of the object which is instantiable
-        #   ex. `Tuple[bool, int]` -> `tuple`
         self.base_type = get_origin(self.base_type)
-
         self.elem_parsers = tuple(get_parser(t, cls) for t in elem_types)
-        self.num_elem = len(self.elem_parsers)
+        #   If the annotation appears in its un-subscripted form, e.g. as just
+        #   a `Tuple`, we can default this to `Infinity` instead.
+        self.total_count = len(self.elem_parsers) or float('inf')
+        # Check for the count of parsers which don't handle `NoneType` - this
+        # should exclude the parsers for `Union` types that have `None` in the
+        # list of args.
+        self.required_count = len(tuple(p for p in self.elem_parsers
+                                  if None not in p))
 
     def __call__(self, o: M) -> M:
         """
         Load an object `o` into a new object of type `base_type` (generally a
         :class:`tuple` or a sub-class of one)
         """
-        if len(o) != self.num_elem and self.num_elem:
+        # Confirm that the number of arguments in `o` matches the count in the
+        # typed annotation.
+        if not self.required_count <= len(o) <= self.total_count:
             e = TypeError(f'Wrong number of elements.')
+            if self.required_count != self.total_count:
+                desired_count = f'{self.required_count} - {self.total_count}'
+            else:
+                desired_count = self.total_count
+
             raise ParseError(
                 e, o, [p.base_type for p in self.elem_parsers],
-                desired_count=self.num_elem,
+                desired_count=desired_count,
                 actual_count=len(o))
 
         return self.hook(o, self.base_type, self.elem_parsers)
+
+
+@dataclass
+class VariadicTupleParser(TupleParser):
+    """
+    Parser that handles the variadic form of `Tuple`s, i.e. `Tuple[str, ...]`
+
+    Per `PEP 484`, only *one* required type is allowed before the `Ellipsis`.
+    That is, `Tuple[int, ...]` is valid whereas `Tuple[int, str, ...]` would
+    be invalid. See below for more info.
+
+    * https://github.com/python/typing/issues/180
+
+    """
+    # For `Tuple[T, ...]`, we only need a parser for `T`
+    variadic_parser: Tuple[AbstractParser] = field(init=False)
+
+    def __post_init__(self, cls: Type[T], get_parser: GetParserType):
+
+        # Get the subscripted values
+        #   ex. `Tuple[str, ...]` -> (str, )
+        elem_types = get_args(self.base_type)
+        # Base type of the object which is instantiable
+        #   ex. `Tuple[bool, int]` -> `tuple`
+        self.base_type = get_origin(self.base_type)
+        # A one-element tuple containing the parser the first type argument
+        self.variadic_parser = get_parser(elem_types[0], cls),
+        # Total count should be `Infinity` here, since the variadic form
+        # accepts any number of possible arguments.
+        self.total_count = float('inf')
+        # Check for the count of parsers which don't handle `NoneType` - this
+        # should exclude the parsers for `Union` types that have `None` in the
+        # list of args.
+        self.required_count = 0 if None in self.variadic_parser[0] else 1
+
+    def __call__(self, o: M) -> M:
+        """
+        Load an object `o` into a new object of type `base_type` (generally a
+        :class:`tuple` or a sub-class of one)
+        """
+        # When the annotation is defined as `Tuple[str, int, ...]` for example
+        self.elem_parsers = self.variadic_parser * len(o)
+        return super().__call__(o)
 
 
 @dataclass

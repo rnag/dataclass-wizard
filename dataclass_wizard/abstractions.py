@@ -269,13 +269,6 @@ class AbstractLoader(ABC):
 
     @classmethod
     @abstractmethod
-    def load_with_object(cls, o: Any, ann_type: Type[T]) -> T:
-        """
-        TODO consider removing this method
-        """
-
-    @classmethod
-    @abstractmethod
     def get_parser_for_annotation(cls, ann_type: Type[T],
                                   base_cls: Type[T] = None) -> AbstractParser:
         """
