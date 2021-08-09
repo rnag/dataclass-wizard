@@ -5,14 +5,12 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, InitVar
 from datetime import datetime, time, date
 from decimal import Decimal
-from enum import Enum
 from typing import (
     Any, Type, Union, List, Tuple, NamedTupleMeta, Dict, SupportsFloat,
-    Optional, SupportsInt, FrozenSet, Sequence, AnyStr, TypeVar, Text
+    Optional, SupportsInt, FrozenSet, Sequence, AnyStr, TypeVar, Text, Callable
 )
 
-from .type_def import M, N, T
-
+from .type_def import M, N, T, E, U, DD
 
 # Create a generic variable that can be 'AbstractJSONWizard', or any subclass.
 W = TypeVar('W', bound='AbstractJSONWizard')
@@ -173,16 +171,24 @@ class AbstractLoader(ABC):
 
     @staticmethod
     @abstractmethod
-    def load_to_enum(o: Union[AnyStr, N], base_type: Type[Enum]) -> Enum:
+    def load_to_enum(o: Union[AnyStr, N], base_type: Type[E]) -> E:
         """
         Load an object `o` into a new object of type `base_type` (generally a
         sub-class of the :class:`Enum` type)
         """
 
-    @classmethod
+    @staticmethod
+    @abstractmethod
+    def load_to_uuid(o: Union[AnyStr, U], base_type: Type[U]) -> U:
+        """
+        Load an object `o` into a new object of type `base_type` (generally a
+        sub-class of the :class:`UUID` type)
+        """
+
+    @staticmethod
     @abstractmethod
     def load_to_list(
-            cls, o: Union[List, Tuple], base_type: Type[List],
+            o: Union[List, Tuple], base_type: Type[List],
             elem_parser: AbstractParser) -> List[Any]:
         """
         Load a list or tuple into a new object of type `base_type` (generally
@@ -210,10 +216,10 @@ class AbstractLoader(ABC):
         un-annotated `namedtuple`)
         """
 
-    @classmethod
+    @staticmethod
     @abstractmethod
     def load_to_dict(
-            cls, o: Dict, base_type: Type[M],
+            o: Dict, base_type: Type[M],
             key_parser: AbstractParser,
             val_parser: AbstractParser) -> Dict:
         """
@@ -221,10 +227,22 @@ class AbstractLoader(ABC):
         :class:`dict` or a sub-class of one)
         """
 
-    @classmethod
+    @staticmethod
+    @abstractmethod
+    def load_to_defaultdict(
+            o: Dict, base_type: Type[DD],
+            default_factory: Callable[[], T],
+            key_parser: AbstractParser,
+            val_parser: AbstractParser) -> DD:
+        """
+        Load an object `o` into a new object of type `base_type` (generally a
+        :class:`collections.defaultdict` or a sub-class of one)
+        """
+
+    @staticmethod
     @abstractmethod
     def load_to_typed_dict(
-            cls, o: Dict, base_type: Type[M],
+            o: Dict, base_type: Type[M],
             key_to_parser: Dict[str, AbstractParser],
             required_keys: FrozenSet[str],
             optional_keys: FrozenSet[str]) -> Dict:
@@ -265,13 +283,6 @@ class AbstractLoader(ABC):
         """
         Load a string or number (int or float) into a new object of type
         `base_type` (generally a :class:`date` or a sub-class of one)
-        """
-
-    @classmethod
-    @abstractmethod
-    def load_with_object(cls, o: Any, ann_type: Type[T]) -> T:
-        """
-        TODO consider removing this method
         """
 
     @classmethod

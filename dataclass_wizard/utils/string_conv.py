@@ -1,5 +1,6 @@
 __all__ = ['to_camel_case',
            'to_pascal_case',
+           'to_lisp_case',
            'to_snake_case']
 
 import re
@@ -37,6 +38,28 @@ def to_pascal_case(string):
 
     return string[0].upper() + re.sub(
         r"(?:_)(.)", lambda m: m.group(1).upper(), string[1:])
+
+
+def to_lisp_case(string: str) -> str:
+    """
+    Make a hyphenated, lowercase form from the expression in the string.
+
+    Example::
+
+        >>> to_lisp_case("DeviceType")
+        'device-type'
+
+    """
+    string = string.replace('_', '-')
+    # Short path: the field is already lower-cased, so we don't need to handle
+    # for camel or title case.
+    if string.islower():
+        return replace_multi_with_single(string, '-')
+
+    result = re.sub(
+        r'((?!^)(?<!-)[A-Z][a-z]+|(?<=[a-z0-9])[A-Z])', r'-\1', string)
+
+    return replace_multi_with_single(result.lower(), '-')
 
 
 def to_snake_case(string: str) -> str:

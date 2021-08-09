@@ -1,13 +1,22 @@
+"""
+Tests for the `loaders` module, but more importantly for the `parsers` module.
+
+Note: I might refactor this into a separate `test_parsers.py` as time permits.
+"""
 import logging
-from collections import namedtuple
+from collections import namedtuple, defaultdict
 from dataclasses import dataclass
 from datetime import datetime, date, time
-from typing import List, Optional, Union, Tuple, Dict, NamedTuple
+from typing import List, Optional, Union, Tuple, Dict, NamedTuple, Type, DefaultDict
 
 import pytest
 
 from dataclass_wizard import JSONSerializable
+from dataclass_wizard.class_helper import dataclass_fields
 from dataclass_wizard.errors import ParseError
+from dataclass_wizard.parsers import OptionalParser, Parser
+from dataclass_wizard.type_def import NoneType, T
+from .conftest import MyUUIDSubclass
 from ..conftest import *
 
 
@@ -62,6 +71,32 @@ def test_literal(input, expectation):
     with expectation:
         result = MyClass.from_dict(d)
         log.debug('Parsed object: %r', result)
+
+
+@pytest.mark.parametrize(
+    'input',
+    [
+        '12345678-1234-1234-1234-1234567abcde',
+        '{12345678-1234-5678-1234-567812345678}',
+        '12345678123456781234567812345678',
+        'urn:uuid:12345678-1234-5678-1234-567812345678'
+    ]
+)
+def test_uuid(input):
+
+    @dataclass
+    class MyUUIDTestClass(JSONSerializable):
+        my_id: MyUUIDSubclass
+
+    d = {'MyID': input}
+
+    result = MyUUIDTestClass.from_dict(d)
+    log.debug('Parsed object: %r', result)
+
+    expected = MyUUIDSubclass(input)
+
+    assert result.my_id == expected
+    assert isinstance(result.my_id, MyUUIDSubclass)
 
 
 @pytest.mark.parametrize(
@@ -348,6 +383,49 @@ def test_tuple(input, expectation, expected):
     'input,expectation,expected',
     [
         (
+            # Wrong number of elements (technically the wrong type)
+            [{}], pytest.raises(ParseError), None),
+        (
+            [True, False, True], pytest.raises(TypeError), None),
+        (
+            [1, 'hello'], does_not_raise(), (1, 'hello')
+        ),
+        (
+            ['1', 'two', 'tRuE'], does_not_raise(), (1, 'two', True)),
+        (
+            ['1', 'two', None, 3], does_not_raise(), (1, 'two', None, 3)),
+        (
+            ['1', 'two', 'false', None], does_not_raise(),
+            (1, 'two', False, None)),
+        (
+            'testing', pytest.raises(ParseError), None
+        ),
+    ]
+)
+def test_tuple_with_optional_args(input, expectation, expected):
+    """
+    Test case when annotated type has any "optional" arguments, such as
+    `Tuple[str, Optional[int]]` or
+    `Tuple[bool, Optional[str], Union[int, None]]`.
+    """
+
+    @dataclass
+    class MyClass(JSONSerializable):
+        my_tuple: Tuple[int, str, Optional[bool], Union[str, int, None]]
+
+    d = {'My__Tuple': input}
+
+    with expectation:
+        result = MyClass.from_dict(d)
+
+        log.debug('Parsed object: %r', result)
+        assert result.my_tuple == expected
+
+
+@pytest.mark.parametrize(
+    'input,expectation,expected',
+    [
+        (
             # This is when we don't really specify what elements the tuple is
             # expected to contain.
             [{}], does_not_raise(), ({},)),
@@ -372,6 +450,51 @@ def test_tuple_without_type_hinting(input, expectation, expected):
     @dataclass
     class MyClass(JSONSerializable):
         my_tuple: tuple
+
+    d = {'My__Tuple': input}
+
+    with expectation:
+        result = MyClass.from_dict(d)
+
+        log.debug('Parsed object: %r', result)
+        assert result.my_tuple == expected
+
+
+@pytest.mark.parametrize(
+    'input,expectation,expected',
+    [
+        (
+            # Technically this is the wrong type (dict != int) however the
+            # conversion to `int` still succeeds. Might need to change this
+            # behavior later if needed.
+            [{}], does_not_raise(), (0, )),
+        (
+            [True, False, True], pytest.raises(TypeError), None),
+        (
+            # Raises a `ValueError` because `hello` cannot be converted to int
+            [1, 'hello'], pytest.raises(ValueError), None
+        ),
+        (
+            [1], does_not_raise(), (1, )),
+        (
+            ['1', 2, '3'], does_not_raise(), (1, 2, 3)),
+        (
+            ['1', '2', None, '4', 5, 6, '7'], does_not_raise(),
+            (1, 2, 0, 4, 5, 6, 7)),
+        (
+            'testing', pytest.raises(ValueError), None
+        ),
+    ]
+)
+def test_tuple_with_variadic_args(input, expectation, expected):
+    """
+    Test case when annotated type is in the "variadic" format, i.e.
+    `Tuple[str, ...]`
+    """
+
+    @dataclass
+    class MyClass(JSONSerializable):
+        my_tuple: Tuple[int, ...]
 
     d = {'My__Tuple': input}
 
@@ -421,6 +544,53 @@ def test_dict(input, expectation, expected):
 
         log.debug('Parsed object: %r', result)
         assert result.my_dict == expected
+
+
+@pytest.mark.parametrize(
+    'input,expectation,expected',
+    [
+        (
+            None, pytest.raises(AttributeError), None
+        ),
+        (
+            {}, does_not_raise(), {}
+        ),
+        (
+            # Wrong types for both key and value
+            {'key': 'value'}, pytest.raises(ValueError), None),
+        (
+            {'1': 'test', '2': 't', '3': ['false']}, does_not_raise(),
+            {1: ['t', 'e', 's', 't'],
+             2: ['t'],
+             3: ['false']}
+        ),
+        (
+            # Might need to change this behavior if needed: currently it
+            # raises an error, which I think is good for now since we don't
+            # want to add `null`s to a list anyway.
+            {2: None}, pytest.raises(ParseError), None
+        ),
+        (
+            # Incorrect type - `list`, but should be a `dict`
+            [{'my_str': 'test', 'my_int': 2, 'my_bool': True}],
+            pytest.raises(AttributeError), None
+        )
+    ]
+)
+def test_default_dict(input, expectation, expected):
+
+    @dataclass
+    class MyClass(JSONSerializable):
+        my_def_dict: DefaultDict[int, list]
+
+    d = {'myDefDict': input}
+
+    with expectation:
+        result = MyClass.from_dict(d)
+
+        log.debug('Parsed object: %r', result)
+        assert isinstance(result.my_def_dict, defaultdict)
+        assert result.my_def_dict == expected
 
 
 @pytest.mark.parametrize(
@@ -695,3 +865,27 @@ def test_named_tuple_without_type_hinting(input, expectation, expected):
             expected = MyNamedTuple(**expected)
 
         assert result.my_nt == expected
+
+
+@pytest.mark.parametrize(
+    'input,expected',
+    [
+        (None, True),
+        (NoneType, False),
+        ('hello world', True),
+        (123, False),
+    ]
+)
+def test_optional_parser_contains(input, expected):
+    """
+    Test case for :meth:`OptionalParser.__contains__`, added for code
+    coverage.
+
+    """
+    base_type: Type[T] = str
+    mock_parser = Parser(None, None, lambda: None)
+    optional_parser = OptionalParser(
+        None, base_type, lambda a, b: mock_parser)
+
+    actual = input in optional_parser
+    assert actual == expected

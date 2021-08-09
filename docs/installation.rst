@@ -38,7 +38,7 @@ Or download the `tarball`_:
 
 .. code-block:: console
 
-    $ curl -OJL https://github.com/rnag/dataclass-wizard/tarball/master
+    $ curl -OJL https://github.com/rnag/dataclass-wizard/tarball/main
 
 Once you have a copy of the source, you can install it with:
 
@@ -48,4 +48,4 @@ Once you have a copy of the source, you can install it with:
 
 
 .. _Github repo: https://github.com/rnag/dataclass-wizard
-.. _tarball: https://github.com/rnag/dataclass-wizard/tarball/master
+.. _tarball: https://github.com/rnag/dataclass-wizard/tarball/main

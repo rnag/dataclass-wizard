@@ -2,6 +2,31 @@
 History
 =======
 
+0.4.0 (2021-08-09)
+------------------
+**Features and Improvements**
+
+* Add support for serializing the following Python types:
+    - ``defaultdict`` (via the ``typing.DefaultDict`` annotation)
+    - ``UUID``'s
+    - The special variadic form of ``Tuple``.
+      For example, ``Tuple[str, ...]``.
+    - A special case where optional type arguments are passed to ``Tuple``.
+      For example, ``Tuple[str, Optional[int], Union[bool, str, None]]``
+* Add new ``LetterCase.LISP`` Enum member, which references the ``to_lisp_case`` helper function
+* All the ``Enum``-subclass attributes in ``JSONSerializable.Meta``
+  now additionally support strings as values; they will be parsed using the Enum
+  ``name`` field by default, and should format helpful messages on
+  any lookup errors.
+* Remove the ``LoadMixin.load_with_object`` method, as that was already
+  deprecated and slated to be removed.
+
+**Bugfixes**
+
+* Update the ``get_class_name`` helper function to handle the edge case
+  when classes are defined within a function.
+* Update a few ``load_to...`` methods as a ``staticmethod``
+
 0.3.0 (2021-08-05)
 ------------------
 * Some minor code refactoring

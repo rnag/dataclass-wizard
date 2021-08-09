@@ -1,11 +1,13 @@
+from collections import defaultdict
 from dataclasses import is_dataclass
 from datetime import datetime, time, date
 from decimal import Decimal
 from enum import Enum
 from typing import (
     Dict, List, Tuple, Sequence, Optional, Union, Type, Any, NamedTupleMeta,
-    SupportsFloat, SupportsInt, FrozenSet, AnyStr, Text
+    SupportsFloat, SupportsInt, FrozenSet, AnyStr, Text, Callable
 )
+from uuid import UUID
 
 from .abstractions import AbstractLoader, AbstractParser
 from .bases import BaseLoadHook
@@ -15,10 +17,12 @@ from .constants import _LOAD_HOOKS
 from .errors import ParseError
 from .log import LOG
 from .parsers import *
-from .type_def import ExplicitNull, PyForwardRef, NoneType, M, N, T
+from .type_def import ExplicitNull, PyForwardRef, NoneType, M, N, T, E, U, DD
 from .utils.string_conv import to_snake_case
-from .utils.type_check import is_literal, is_typed_dict, is_generic, get_origin, get_args
-from .utils.type_conv import as_bool, as_str, as_datetime, as_date, as_time, as_int
+from .utils.type_check import (
+    is_literal, is_typed_dict, is_generic, get_origin, get_args)
+from .utils.type_conv import (
+    as_bool, as_str, as_datetime, as_date, as_time, as_int)
 
 
 class LoadMixin(AbstractLoader, BaseLoadHook):
@@ -77,13 +81,18 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
         return as_bool(o)
 
     @staticmethod
-    def load_to_enum(o: Union[AnyStr, N], base_type: Type[Enum]) -> Enum:
+    def load_to_enum(o: Union[AnyStr, N], base_type: Type[E]) -> E:
 
         return base_type(o)
 
-    @classmethod
+    @staticmethod
+    def load_to_uuid(o: Union[AnyStr, U], base_type: Type[U]) -> U:
+
+        return base_type(o)
+
+    @staticmethod
     def load_to_list(
-            cls, o: Union[List, Tuple], base_type: Type[List],
+            o: Union[List, Tuple], base_type: Type[List],
             elem_parser: AbstractParser) -> List[Any]:
 
         return base_type(elem_parser(elem) for elem in o)
@@ -96,7 +105,8 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
         if elem_parsers:
             return base_type(parser(e) for parser, e in zip(elem_parsers, o))
         else:
-            return base_type(cls.load_with_object(e, Any) for e in o)
+            any_parser: AbstractParser = cls.get_parser_for_annotation(Any)
+            return base_type(any_parser(e) for e in o)
 
     @classmethod
     def load_to_named_tuple(
@@ -121,13 +131,15 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
         else:
             # Annotated as just a regular `collections.namedtuple`
             if isinstance(o, dict):
-                return base_type(**cls.load_with_object(o, dict))
+                dict_parser = cls.get_parser_for_annotation(dict)
+                return base_type(**dict_parser(o))
             # We're passed in a list or a tuple.
-            return base_type(*cls.load_with_object(o, list))
+            list_parser = cls.get_parser_for_annotation(list)
+            return base_type(*list_parser(o))
 
-    @classmethod
+    @staticmethod
     def load_to_dict(
-            cls, o: Dict, base_type: Type[M],
+            o: Dict, base_type: Type[M],
             key_parser: AbstractParser,
             val_parser: AbstractParser) -> Dict:
 
@@ -136,9 +148,22 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
             for k, v in o.items()
         )
 
-    @classmethod
+    @staticmethod
+    def load_to_defaultdict(
+            o: Dict, base_type: Type[DD],
+            default_factory: Callable[[], T],
+            key_parser: AbstractParser,
+            val_parser: AbstractParser) -> DD:
+
+        return base_type(
+            default_factory,
+            {key_parser(k): val_parser(v)
+             for k, v in o.items()}
+        )
+
+    @staticmethod
     def load_to_typed_dict(
-            cls, o: Dict, base_type: Type[M],
+            o: Dict, base_type: Type[M],
             key_to_parser: Dict[str, AbstractParser],
             required_keys: FrozenSet[str],
             optional_keys: FrozenSet[str]) -> Dict:
@@ -177,29 +202,6 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
 
         return as_date(o, base_type)
 
-    # TODO consider removing this method
-    @classmethod
-    def load_with_object(cls, o: Any, ann_type: Type[T]) -> T:
-        if o is None:
-            return o
-
-        parser = cls.get_parser_for_annotation(ann_type)
-
-        if parser is None:
-            hooks = cls.__LOAD_HOOKS__
-
-            # If we got this far, then we should check if `hooks` contains
-            # the base object type, this time using `isinstance`.
-            for t in hooks:
-                if isinstance(o, t):
-                    # TODO handle generics better?
-                    parser = Parser(
-                        # Generic types can't be instantiated
-                        t if is_generic(ann_type) else ann_type, hooks[t])
-                    break
-
-        return parser(o)
-
     @classmethod
     def get_parser_for_annotation(cls, ann_type: Type[T],
                                   base_cls: Type[T] = None) -> AbstractParser:
@@ -231,6 +233,9 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
 
                     elif issubclass(base_type, Enum):
                         load_hook = hooks.get(Enum)
+
+                    elif issubclass(base_type, UUID):
+                        load_hook = hooks.get(UUID)
 
                     elif issubclass(base_type, tuple) \
                             and hasattr(base_type, '_fields'):
@@ -280,6 +285,11 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
                         return UnionParser(
                             base_cls, base_types, cls.get_parser_for_annotation)
 
+                elif issubclass(base_type, defaultdict):
+                    load_hook = cls.load_to_defaultdict
+                    return DefaultDictParser(
+                        base_cls, ann_type, cls.get_parser_for_annotation, load_hook)
+
                 elif issubclass(base_type, dict):
                     load_hook = cls.load_to_dict
                     return MappingParser(
@@ -292,8 +302,18 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
 
                 elif issubclass(base_type, tuple):
                     load_hook = cls.load_to_tuple
-                    return TupleParser(
-                        base_cls, ann_type, cls.get_parser_for_annotation, load_hook)
+                    # Check if the `Tuple` appears in the variadic form
+                    #   i.e. Tuple[str, ...]
+                    args = get_args(ann_type)
+                    is_variadic = args and args[-1] is ...
+                    # Determine the parser for the annotation
+                    parser: Type[AbstractParser] = TupleParser
+                    if is_variadic:
+                        parser = VariadicTupleParser
+
+                    return parser(
+                        base_cls, ann_type, cls.get_parser_for_annotation,
+                        load_hook)
 
                 else:
                     load_hook = hooks.get(base_type)
@@ -335,9 +355,11 @@ def setup_default_loader(cls=LoadMixin):
     cls.register_load_hook(NoneType, cls.default_load_to)
     # Complex types
     cls.register_load_hook(Enum, cls.load_to_enum)
+    cls.register_load_hook(UUID, cls.load_to_uuid)
     cls.register_load_hook(list, cls.load_to_list)
     cls.register_load_hook(tuple, cls.load_to_tuple)
     cls.register_load_hook(NamedTupleMeta, cls.load_to_named_tuple)
+    cls.register_load_hook(defaultdict, cls.load_to_defaultdict)
     cls.register_load_hook(dict, cls.load_to_dict)
     cls.register_load_hook(Decimal, cls.load_to_decimal)
     # Dates and times
@@ -416,14 +438,19 @@ def _load_to_dataclass(d: Dict[str, Any], cls: Type[T]) -> T:
         except ParseError as e:
             # We run into a parsing error while loading the field value; Add
             # additional info on the Exception object before re-raising it
-            e.class_name = cls.__qualname__
-            e.field_name = field_name
+            #
+            # First confirm these values are not already set by an inner
+            # dataclass. If so, it likely makes it easier to debug the cause.
+            if not e.class_name:
+                e.class_name = cls.__qualname__
+                e.field_name = field_name
             raise
 
     obj = cls(**cls_kwargs)
     return obj
 
 
+# noinspection SpellCheckingInspection
 def fromdict(cls: Type[T], d: Dict[str, Any]) -> T:
     """
     Converts a Python dictionary object to a dataclass instance.

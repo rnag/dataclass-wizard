@@ -1,9 +1,10 @@
 import logging
 from dataclasses import dataclass
+from uuid import UUID
 
 import pytest
 
-from dataclass_wizard import JSONSerializable
+from dataclass_wizard import JSONSerializable, LoadMixin, DumpMixin
 from dataclass_wizard.enums import LetterCase
 from dataclass_wizard.errors import ParseError
 from ..conftest import *
@@ -25,13 +26,42 @@ log = logging.getLogger(__name__)
 def test_literal(input, expectation):
 
     @dataclass
-    class MyClass(JSONSerializable):
-        KEY_TRANSFORM_TO_DICT = LetterCase.PASCAL
+    class MyClass(JSONSerializable, LoadMixin, DumpMixin):
+        class Meta(JSONSerializable.Meta):
+            key_transform_with_dump = 'PASCAL'
 
         my_lit: Literal['e1', 'e2', 0]
 
     c = MyClass(my_lit=input)
     expected = {'MyLit': input}
+
+    with expectation:
+        actual = c.to_dict()
+
+        assert actual == expected
+        log.debug('Parsed object: %r', actual)
+
+
+@pytest.mark.parametrize(
+    'input,expectation',
+    [
+        (UUID('12345678-1234-1234-1234-1234567abcde'), does_not_raise()),
+        (UUID('{12345678-1234-5678-1234-567812345678}'), does_not_raise()),
+        (UUID('12345678123456781234567812345678'), does_not_raise()),
+        (UUID('urn:uuid:12345678-1234-5678-1234-567812345678'), does_not_raise()),
+    ]
+)
+def test_uuid(input, expectation):
+
+    @dataclass
+    class MyClass(JSONSerializable, LoadMixin, DumpMixin):
+        class Meta(JSONSerializable.Meta):
+            key_transform_with_dump = 'Snake'
+
+        my_id: UUID
+
+    c = MyClass(my_id=input)
+    expected = {'my_id': input.hex}
 
     with expectation:
         actual = c.to_dict()

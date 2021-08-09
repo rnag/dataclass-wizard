@@ -5,6 +5,7 @@ Re-usable Enum definitions
 from enum import Enum
 
 from .utils.string_conv import *
+from .utils.wrappers import FuncWrapper
 
 
 class DateTimeTo(Enum):
@@ -13,12 +14,19 @@ class DateTimeTo(Enum):
 
 
 class LetterCase(Enum):
+
     # Converts strings (generally in snake case) to camel case.
     #   ex: `my_field_name` -> `myFieldName`
-    CAMEL = to_camel_case
+    CAMEL = FuncWrapper(to_camel_case)
     # Converts strings to "upper" camel case.
     #   ex: `my_field_name` -> `MyFieldName`
-    PASCAL = to_pascal_case
+    PASCAL = FuncWrapper(to_pascal_case)
+    # Converts strings (generally in camel or snake case) to lisp case.
+    #   ex: `myFieldName` -> `my-field-name`
+    LISP = FuncWrapper(to_lisp_case)
     # Converts strings (generally in camel case) to snake case.
     #   ex: `myFieldName` -> `my_field_name`
-    SNAKE = to_snake_case
+    SNAKE = FuncWrapper(to_snake_case)
+
+    def __call__(self, *args):
+        return self.value.f(*args)
