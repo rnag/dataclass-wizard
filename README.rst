@@ -47,28 +47,27 @@ Using the built-in JSON marshalling support for dataclasses:
 .. code:: python3
 
     from dataclasses import dataclass, field
-    from typing import Optional, List
+    from typing import Optional, List, Tuple
 
     from dataclass_wizard import JSONSerializable
 
 
     @dataclass
     class MyClass(JSONSerializable):
-
         my_str: Optional[str]
+        is_active_tuple: Tuple[bool, ...]
         list_of_int: List[int] = field(default_factory=list)
-        is_active: bool = False
 
 
-    string = """{"my_str": 20, "ListOfInt": ["1", "2", 3], "isActive": "true"}"""
+    string = """{"my_str": 20, "ListOfInt": ["1", "2", 3], "isActiveTuple": ["true", "false", 1, false]}"""
     c = MyClass.from_json(string)
     print(repr(c))
     # prints:
-    #   MySampleClass(my_str='20', list_of_int=[1, 2, 3], is_active=True)
+    #   MyClass(my_str='20', is_active_tuple=(True, False, True, False), list_of_int=[1, 2, 3])
 
     print(c.to_json())
     # prints:
-    #   {"myStr": "20", "listOfInt": [1, 2, 3], "isActive": true}
+    #   {"myStr": "20", "isActiveTuple": [true, false, true, false], "listOfInt": [1, 2, 3]}
 
 ... and with the ``property_wizard``, which provides supports for
 field properties with default values in dataclasses:
@@ -193,9 +192,10 @@ Mixin class:
 
 .. code:: python3
 
-    from dataclasses import dataclass
+    from collections import defaultdict
+    from dataclasses import dataclass, field
     from datetime import datetime
-    from typing import Optional, List, Literal, Union, Dict, Any, NamedTuple
+    from typing import Optional, List, Literal, Union, Dict, Any, NamedTuple, DefaultDict
 
     from dataclass_wizard import JSONSerializable
 
@@ -215,7 +215,8 @@ Mixin class:
         birthdate: datetime
         gender: Literal['M', 'F', 'N/A']
         occupation: Union[str, List[str]]
-        details: Optional[str] = None
+        hobbies: DefaultDict[str, List[str]] = field(
+            default_factory=lambda: defaultdict(list))
 
 
     class Name(NamedTuple):
@@ -238,7 +239,7 @@ Mixin class:
                 'birthdate': '1950-02-28T17:35:20Z',
                 'gender': 'M',
                 'occupation': ['sailor', 'fisher'],
-                'details': 'My sample details here'
+                'Hobbies': {'M-F': ('chess', 123, 'reading'), 'Sat-Sun': ['parasailing']}
             },
             {
                 'name': ('Janice', 'Darr', 'Dr.'),
@@ -261,12 +262,14 @@ Mixin class:
     #           Person(
     #               name=Name(first='Roberto', last='Fuirron', salutation='Mr.'),
     #               age=21, birthdate=datetime.datetime(1950, 2, 28, 17, 35, 20, tzinfo=datetime.timezone.utc),
-    #               gender='M', occupation=['sailor', 'fisher'], details='My sample details here'
+    #               gender='M', occupation=['sailor', 'fisher'],
+    #               hobbies=defaultdict(<class 'list'>, {'M-F': ['chess', '123', 'reading'], 'Sat-Sun': ['parasailing']})
     #           ),
     #           Person(
     #               name=Name(first='Janice', last='Darr', salutation='Dr.'),
     #               age=45, birthdate=datetime.datetime(1971, 11, 5, 5, 10, 59),
-    #               gender='F', occupation='Dentist', details=None
+    #               gender='F', occupation='Dentist',
+    #               hobbies=defaultdict(<class 'list'>, {})
     #           )
     #       ], is_enabled=True)
 
@@ -300,7 +303,16 @@ Mixin class:
     #             "sailor",
     #             "fisher"
     #           ],
-    #           "details": "My sample details here"
+    #           "hobbies": {
+    #             "M-F": [
+    #               "chess",
+    #               "123",
+    #               "reading"
+    #             ],
+    #             "Sat-Sun": [
+    #               "parasailing"
+    #             ]
+    #           }
     #         },
     #         {
     #           "name": [
@@ -312,7 +324,7 @@ Mixin class:
     #           "birthdate": "1971-11-05T05:10:59",
     #           "gender": "F",
     #           "occupation": "Dentist",
-    #           "details": null
+    #           "hobbies": {}
     #         }
     #       ],
     #       "isEnabled": true

@@ -2,6 +2,11 @@
 History
 =======
 
+0.4.1 (2021-08-09)
+------------------
+
+* Update README docs with usage of newly supported features
+
 0.4.0 (2021-08-09)
 ------------------
 **Features and Improvements**
