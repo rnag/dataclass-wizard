@@ -1,8 +1,8 @@
 .. highlight:: shell
 
-=====================================
-Notes on Python Version Compatibility
-=====================================
+================
+Py Compatibility
+================
 
 Just a quick note that even though this library supports Python 3.6+,
 some of the new features introduced in the latest Python
@@ -13,8 +13,8 @@ To work around that, there's a great library called ``typing-extensions`` (you c
 find it on PyPI `here`_) that backports all the new
 ``typing`` features introduced so that earlier Python versions can also
 benefit from them. Note that the ``dataclass-wizard`` package already requires
-this dependency for **Python version 3.9 or earlier**, so this library
-should be installed by default.
+this dependency for **Python version 3.9 or earlier**, so there's no need
+to install this library separately.
 
 With the ``typing-extensions`` module, you can take advantage of the
 following new types from the ``typing`` module for Python 3.6+. Most of them are currently
