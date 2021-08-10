@@ -16,7 +16,8 @@ To customize the dump process, simply extend from ``DumpMixin`` and
 override the ``__pre_as_dict__`` method which will be called whenever
 you invoke the ``to_dict`` or ``to_json`` methods. Please note that this
 will pass in the original dataclass instance, so updating any values
-will affect the fields of the underlying dataclass.
+will affect the fields of the underlying dataclass (**this might change
+in a future revision**).
 
 A simple example to illustrate both approaches is shown below:
 

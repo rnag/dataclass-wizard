@@ -9,6 +9,7 @@ Welcome to Dataclass Wizard's documentation!
    installation
    quickstart
    using_field_properties
+   python_compatibility
    advanced/index
    modules
    contributing

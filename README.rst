@@ -196,6 +196,8 @@ Mixin class:
     from dataclasses import dataclass, field
     from datetime import datetime
     from typing import Optional, List, Literal, Union, Dict, Any, NamedTuple, DefaultDict
+    # Note: for Python 3.9+, you can import the following from `typing` instead
+    from typing_extensions import Literal
 
     from dataclass_wizard import JSONSerializable
 
