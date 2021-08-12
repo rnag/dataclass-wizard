@@ -18,20 +18,20 @@ first, let's start out by defining what I mean by a field property.
 
 Here is how I'd define the use of a *field property* in Python ``dataclasses``:
 
-* A property that is also defined as ``dataclass`` field, such that an
-  initial value can be set or passed in via the constructor method. This is mostly
-  just syntactic sugar, to hint to the ``dataclass`` decorator that you want to add a
-  parameter to the constructor and associate it with the property.
-  The other implicit constraint is that setting the property via the constructor
-  method and via the assignment operator should both call the validation logic
-  in the property's ``setter`` method, so that ``Foo(x=bar)`` and ``foo.x = bar``
-  should both achieve the same purpose.
+    A property that is also defined as ``dataclass`` field, such that an
+    initial value can be set or passed in via the constructor method. This is mostly
+    just syntactic sugar, to hint to the ``dataclass`` decorator that you want to add a
+    parameter to the constructor and associate it with the property.
+    The other implicit constraint is that setting the property via the constructor
+    method and via the assignment operator should both call the validation logic
+    in the property's ``setter`` method, so that ``Foo(x=bar)`` and ``foo.x = bar``
+    should both achieve the same purpose.
 
 
 If you are interested in learning more, I would recommend that you to check out
 this great article that delves a bit deeper into using properties in ``dataclasses`` :
 
-    https://florimond.dev/en/posts/2018/10/reconciling-dataclasses-and-properties-in-python/
+* https://florimond.dev/en/posts/2018/10/reconciling-dataclasses-and-properties-in-python/
 
 
 First, let's start out by exploring how field properties
