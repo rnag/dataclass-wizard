@@ -7,8 +7,10 @@ both import directly from `bases`.
 from datetime import datetime, date
 from typing import ClassVar, Type, Union, Optional
 
-from .abstractions import W
-from .class_helper import _META_INITIALIZER, get_outer_class_name, get_class_name
+from .abstractions import W, AbstractJSONWizard
+from .class_helper import (
+    _META_INITIALIZER, get_outer_class_name, get_class_name, create_new_class
+)
 from .decorators import try_with_load
 from .dumpers import get_dumper
 from .enums import LetterCase, DateTimeTo
@@ -62,15 +64,32 @@ class BaseJSONWizardMeta:
         # one for the outer class.
         if outer_cls_name is not None:
             _META_INITIALIZER[outer_cls_name] = cls._meta_initialize
+        else:
+            # The `Meta` class is defined as an outer class. Emit a warning
+            # here, just so we can ensure awareness of this special case.
+            LOG.warning('The %r class is not declared as an Inner Class, so '
+                        'these are global settings that will apply to all '
+                        'JSONSerializable sub-classes.', get_class_name(cls))
+
+            # Create a new class of `Type[W]`, and then pass `create=False` so
+            # that we don't create new loader / dumper for the class.
+            new_cls = create_new_class(cls, (AbstractJSONWizard, ))
+            cls._meta_initialize(new_cls, create=False)
 
     @classmethod
-    def _meta_initialize(cls, outer_cls: Type[W]):
+    def _meta_initialize(cls, outer_cls: Type[W], create=True):
         """
         Initialize hook which is called by the outer class (typically
         a sub-class of :class:`AbstractJSONWizard`)
+
+        :param outer_cls:
+        :param create: When true, a separate loader/dumper will be created
+          for the class. If disabled, this will access the root loader/dumper,
+          so modifying this should affect global settings across all
+          dataclasses that use the JSON load/dump process.
         """
-        cls_loader = get_loader(outer_cls)
-        cls_dumper = get_dumper(outer_cls)
+        cls_loader = get_loader(outer_cls, create=create)
+        cls_dumper = get_dumper(outer_cls, create=create)
 
         if cls.marshal_date_time_as:
             enum_val = cls._safe_as_enum('marshal_date_time_as', DateTimeTo)

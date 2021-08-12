@@ -3,7 +3,8 @@ __all__ = [
     'PY36',
     # For compatibility with Python 3.6 and 3.7
     'Literal',
-    'TypedDict'
+    'TypedDict',
+    'Annotated'
 ]
 
 import sys
@@ -21,6 +22,8 @@ else:
 try:
     from typing import Literal
     from typing import TypedDict
+    from typing import Annotated
 except ImportError:
     from typing_extensions import Literal
     from typing_extensions import TypedDict
+    from typing_extensions import Annotated

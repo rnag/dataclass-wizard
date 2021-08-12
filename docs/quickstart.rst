@@ -29,7 +29,8 @@ and declare and use field properties with default values.
         list_of_int: List[int] = field(default_factory=list)
         # You can also define this as `my_dt`, however only the annotation
         # will carry over in that case, since the value is re-declared by
-        # the property below.
+        # the property below. See also the 'Using Field Properties' section
+        # in the docs for a more elegant approach.
         _my_dt: datetime = datetime(2000, 1, 1)
 
         @property

@@ -18,20 +18,20 @@ first, let's start out by defining what I mean by a field property.
 
 Here is how I'd define the use of a *field property* in Python ``dataclasses``:
 
-* A property that is also defined as ``dataclass`` field, such that an
-  initial value can be set or passed in via the constructor method. This is mostly
-  just syntactic sugar, to hint to the ``dataclass`` decorator that you want to add a
-  parameter to the constructor and associate it with the property.
-  The other implicit constraint is that setting the property via the constructor
-  method and via the assignment operator should both call the validation logic
-  in the property's ``setter`` method, so that ``Foo(x=bar)`` and ``foo.x = bar``
-  should both achieve the same purpose.
+    A property that is also defined as ``dataclass`` field, such that an
+    initial value can be set or passed in via the constructor method. This is mostly
+    just syntactic sugar, to hint to the ``dataclass`` decorator that you want to add a
+    parameter to the constructor and associate it with the property.
+    The other implicit constraint is that setting the property via the constructor
+    method and via the assignment operator should both call the validation logic
+    in the property's ``setter`` method, so that ``Foo(x=bar)`` and ``foo.x = bar``
+    should both achieve the same purpose.
 
 
-If you are interested in learning more, I would recommend that you to check out
+If you are interested in learning more, I would recommend that you check out
 this great article that delves a bit deeper into using properties in ``dataclasses`` :
 
-    https://florimond.dev/en/posts/2018/10/reconciling-dataclasses-and-properties-in-python/
+* https://florimond.dev/en/posts/2018/10/reconciling-dataclasses-and-properties-in-python/
 
 
 First, let's start out by exploring how field properties
@@ -112,7 +112,7 @@ expected. But from what I can tell there seems to be a few main issues with this
 
 There's a couple good examples out there of handling properties with default values
 in ``dataclasses``, and a solid attempt at supporting this can be found in the
-`link here <https://github.com/florimondmanca/www/issues/102#issuecomment-733947821>`_.
+`link here`_.
 
 But as I've pointed out, there's only two main issues I had with the solution above:
 
@@ -124,7 +124,7 @@ But as I've pointed out, there's only two main issues I had with the solution ab
    especially if I'm adding another field property to the class.
 
 
-The ``dataclass-wizard`` package provides a `metaclass <https://realpython.com/python-metaclasses/>`_ approach which
+The ``dataclass-wizard`` package provides a `metaclass`_ approach which
 attempts to resolve this issue with minimal overhead and setup involved.
 
 The metaclass ``property_wizard`` provides support for using field properties
@@ -183,6 +183,82 @@ the ``property_wizard`` metaclass:
 
         # We've successfully managed to handle the edge case above!
         print(v)
+
+But fortunately... there is yet an even simpler approach!
+
+Using the `Annotated`_ type from the ``typing`` module (introduced in Python 3.9)
+it is possible to set a default value for the field property in the annotation itself.
+This is done by adding a ``field`` extra in the ``Annotated`` definition as
+shown below; here we'll instead import the type from the ``typing-extensions``
+module, just so that the code works for Python 3.6+ without issue.
+
+.. code:: python3
+
+    from dataclasses import dataclass, field
+    from typing import Union
+    from typing_extensions import Annotated
+
+    from dataclass_wizard import property_wizard
+
+
+    @dataclass
+    class Vehicle(metaclass=property_wizard):
+
+        wheels: Annotated[Union[int, str], field(default=4)]
+        # Uncomment the field below if you want to make your IDE a bit happier.
+        #   _wheels: int = field(init=False)
+
+        @property
+        def wheels(self) -> int:
+            return self._wheels
+
+        @wheels.setter
+        def wheels(self, wheels: Union[int, str]):
+            self._wheels = int(wheels)
+
+
+    if __name__ == '__main__':
+        v = Vehicle(wheels='3')
+
+        print(v)
+        # prints:
+        #   Vehicle(wheels=3)
+
+        # This works as expected!
+        assert v.wheels == 3, 'The constructor should use our setter method'
+
+        # So does this...
+        v.wheels = '6'
+        assert v.wheels == 6
+
+        # Our `setter` method is still passed in a `property` object, but the
+        # updated `setter` method (added by the metaclass) is now able to
+        # automatically check for this value, and update `_wheels` with the
+        # default value for the annotated type.
+        v = Vehicle()
+
+        print(v)
+        # prints:
+        #   Vehicle(wheels=4)
+
+So what are the benefits of the ``Annotated`` approach
+over the previous one? Well, here are a few I can think of:
+
+* An IDE implicitly understands that a variable with a type annotation ``Annotated[T, extras...]``
+  is the same as annotating it with a type ``T``, so it can offer the same
+  type hints and suggestions as it normally would.
+
+* The ``Annotated`` declaration also seems a bit more explicit to me, and other
+  developers looking at the code can more clearly understand where ``wheels``
+  gets its default value from.
+
+* You won't need to play around with adding a leading underscore to the
+  field property (i.e. marking it as *private*). Both the annotated type and
+  an initial value is set in the annotation itself.
+
+.. _link here: https://github.com/florimondmanca/www/issues/102#issuecomment-733947821
+.. _metaclass: https://realpython.com/python-metaclasses/
+.. _Annotated: https://docs.python.org/3.9/library/typing.html#typing.Annotated
 
 More Examples
 -------------

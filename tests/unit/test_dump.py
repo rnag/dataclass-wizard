@@ -4,8 +4,7 @@ from uuid import UUID
 
 import pytest
 
-from dataclass_wizard import JSONSerializable, LoadMixin, DumpMixin
-from dataclass_wizard.enums import LetterCase
+from dataclass_wizard import JSONSerializable
 from dataclass_wizard.errors import ParseError
 from ..conftest import *
 
@@ -26,7 +25,7 @@ log = logging.getLogger(__name__)
 def test_literal(input, expectation):
 
     @dataclass
-    class MyClass(JSONSerializable, LoadMixin, DumpMixin):
+    class MyClass(JSONSerializable):
         class Meta(JSONSerializable.Meta):
             key_transform_with_dump = 'PASCAL'
 
@@ -54,7 +53,7 @@ def test_literal(input, expectation):
 def test_uuid(input, expectation):
 
     @dataclass
-    class MyClass(JSONSerializable, LoadMixin, DumpMixin):
+    class MyClass(JSONSerializable):
         class Meta(JSONSerializable.Meta):
             key_transform_with_dump = 'Snake'
 

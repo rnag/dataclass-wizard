@@ -2,7 +2,9 @@ from typing import Any, Type
 
 
 class ParseError(Exception):
-
+    """
+    Base error class raised by this library.
+    """
     _TEMPLATE = ('Failure parsing field `{field}` in class `{cls}`. Expected '
                  'a type {ann_type}, got {obj_type}.\n'
                  '  value: {o!r}\n'

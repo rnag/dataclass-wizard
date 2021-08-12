@@ -187,7 +187,7 @@ class ListParser(AbstractParser):
         # TODO
         except Exception:
             if not isinstance(o, self.base_type):
-                e = TypeError(f'Incorrect type for field')
+                e = TypeError('Incorrect type for field')
                 raise ParseError(
                     e, o, self.base_type, desired_type=list)
             else:
@@ -197,10 +197,10 @@ class ListParser(AbstractParser):
 @dataclass
 class TupleParser(AbstractParser):
     """
-    Parser for subscripted and un-subscripted `Tuple`s.
+    Parser for subscripted and un-subscripted :class:`Tuple`'s.
 
     See :class:`VariadicTupleParser` for the parser that handles the variadic
-    form, i.e. `Tuple[str, ...]`
+    form, i.e. ``Tuple[str, ...]``
     """
 
     # Base type of the object which is instantiable
@@ -243,7 +243,7 @@ class TupleParser(AbstractParser):
         # Confirm that the number of arguments in `o` matches the count in the
         # typed annotation.
         if not self.required_count <= len(o) <= self.total_count:
-            e = TypeError(f'Wrong number of elements.')
+            e = TypeError('Wrong number of elements.')
             if self.required_count != self.total_count:
                 desired_count = f'{self.required_count} - {self.total_count}'
             else:
@@ -260,17 +260,20 @@ class TupleParser(AbstractParser):
 @dataclass
 class VariadicTupleParser(TupleParser):
     """
-    Parser that handles the variadic form of `Tuple`s, i.e. `Tuple[str, ...]`
+    Parser that handles the variadic form of :class:`Tuple`'s,
+    i.e. ``Tuple[str, ...]``
 
-    Per `PEP 484`, only *one* required type is allowed before the `Ellipsis`.
-    That is, `Tuple[int, ...]` is valid whereas `Tuple[int, str, ...]` would
-    be invalid. See below for more info.
+    Per `PEP 484`_, only **one** required type is allowed before the
+    ``Ellipsis``. That is, ``Tuple[int, ...]`` is valid whereas
+    ``Tuple[int, str, ...]`` would be invalid. `See here`_ for more info.
 
-    * https://github.com/python/typing/issues/180
+    .. _PEP 484: https://www.python.org/dev/peps/pep-0484/
+    .. _See here: https://github.com/python/typing/issues/180
 
     """
+
     # For `Tuple[T, ...]`, we only need a parser for `T`
-    variadic_parser: Tuple[AbstractParser] = field(init=False)
+    first_elem_parser: Tuple[AbstractParser] = field(init=False)
 
     def __post_init__(self, cls: Type[T], get_parser: GetParserType):
 
@@ -280,23 +283,23 @@ class VariadicTupleParser(TupleParser):
         # Base type of the object which is instantiable
         #   ex. `Tuple[bool, int]` -> `tuple`
         self.base_type = get_origin(self.base_type)
-        # A one-element tuple containing the parser the first type argument
-        self.variadic_parser = get_parser(elem_types[0], cls),
+        # A one-element tuple containing the parser for the first type
+        # argument.
+        self.first_elem_parser = get_parser(elem_types[0], cls),
         # Total count should be `Infinity` here, since the variadic form
         # accepts any number of possible arguments.
         self.total_count = float('inf')
         # Check for the count of parsers which don't handle `NoneType` - this
         # should exclude the parsers for `Union` types that have `None` in the
         # list of args.
-        self.required_count = 0 if None in self.variadic_parser[0] else 1
+        self.required_count = 0 if None in self.first_elem_parser[0] else 1
 
     def __call__(self, o: M) -> M:
         """
         Load an object `o` into a new object of type `base_type` (generally a
         :class:`tuple` or a sub-class of one)
         """
-        # When the annotation is defined as `Tuple[str, int, ...]` for example
-        self.elem_parsers = self.variadic_parser * len(o)
+        self.elem_parsers = self.first_elem_parser * len(o)
         return super().__call__(o)
 
 
@@ -407,7 +410,7 @@ class TypedDictParser(AbstractParser):
 
         except Exception:
             if not isinstance(o, dict):
-                e = TypeError(f'Incorrect type for object')
+                e = TypeError('Incorrect type for object')
                 raise ParseError(
                     e, o, self.base_type, desired_type=self.base_type)
             else:

@@ -6,7 +6,7 @@ from typing import Union, List, ClassVar
 import pytest
 
 from dataclass_wizard import property_wizard
-from ..conftest import Literal
+from ..conftest import Literal, Annotated
 
 
 log = logging.getLogger(__name__)
@@ -236,6 +236,81 @@ def test_property_wizard_with_underscored_property_and_field():
     # Note that my IDE complains here, and suggests `_wheels` as a possible
     # keyword argument to the constructor method; however, that's wrong and
     # will error if you try it way.
+    v = Vehicle(wheels=3)
+    log.debug(v)
+    assert v.wheels == 3
+
+    v = Vehicle('6')
+    log.debug(v)
+    assert v.wheels == 6, 'The constructor should use our setter method'
+
+    v.wheels = '123'
+    assert v.wheels == 123, 'Expected assignment to use the setter method'
+
+
+def test_property_wizard_with_public_property_and_annotated_field():
+    """
+    Using `property_wizard` when the dataclass has both a property and field
+    name *without* a leading underscore, and the field is a
+    :class:`typing.Annotated` type.
+    """
+    @dataclass
+    class Vehicle(metaclass=property_wizard):
+
+        # The value of `wheels` here will be ignored, since `wheels` is simply
+        # re-assigned on the following property definition.
+        wheels: Annotated[Union[int, str], field(default=4)] = None
+
+        @property
+        def wheels(self) -> int:
+            return self._wheels
+
+        @wheels.setter
+        def wheels(self, wheels: Union[int, str]):
+            self._wheels = int(wheels)
+
+    v = Vehicle()
+    log.debug(v)
+    assert v.wheels == 4
+
+    v = Vehicle(wheels=3)
+    log.debug(v)
+    assert v.wheels == 3
+
+    v = Vehicle('6')
+    log.debug(v)
+    assert v.wheels == 6, 'The constructor should use our setter method'
+
+    v.wheels = '123'
+    assert v.wheels == 123, 'Expected assignment to use the setter method'
+
+
+def test_property_wizard_with_private_property_and_annotated_field_with_no_useful_extras():
+    """
+    Using `property_wizard` when the dataclass has both a property and field
+    name with a leading underscore, and the field is a
+    :class:`typing.Annotated` type without any extras that are a
+    :class:`dataclasses.Field` type.
+    """
+    @dataclass
+    class Vehicle(metaclass=property_wizard):
+
+        # The value of `wheels` here will be ignored, since `wheels` is simply
+        # re-assigned on the following property definition.
+        _wheels: Annotated[Union[int, str], 'Hello world!', 123] = None
+
+        @property
+        def _wheels(self) -> int:
+            return self._wheels
+
+        @_wheels.setter
+        def _wheels(self, wheels: Union[int, str]):
+            self._wheels = int(wheels)
+
+    v = Vehicle()
+    log.debug(v)
+    assert v.wheels == 0
+
     v = Vehicle(wheels=3)
     log.debug(v)
     assert v.wheels == 3

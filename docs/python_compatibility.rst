@@ -4,6 +4,9 @@
 Py Compatibility
 ================
 
+Python 3.6+
+-----------
+
 Just a quick note that even though this library supports Python 3.6+,
 some of the new features introduced in the latest Python
 versions might not be available from the ``typing`` module, depending on
@@ -22,7 +25,7 @@ supported by the ``JSONSerializable`` class, however the ones that are *not*
 are marked with an asterisk (``*``) below.
 
 Introduced in *Python 3.9*:
-    * `Annotated`_ (added by `PEP 593`_) ``*``
+    * `Annotated`_ (added by `PEP 593`_)
 
 Introduced in *Python 3.8*:
     * `Literal`_
@@ -45,7 +48,7 @@ may change in a future release.
 .. _TypedDict: https://docs.python.org/3.8/library/typing.html#typing.TypedDict
 
 Importing the New Types
------------------------
+~~~~~~~~~~~~~~~~~~~~~~~
 
 You can import the new types (for example, the ones mentioned above) using the below
 syntax:
@@ -54,3 +57,39 @@ syntax:
 
     from typing_extensions import Literal, TypedDict, Annotated
 
+
+The Latest and Greatest
+-----------------------
+
+If you already have Python 3.9 or higher, you can leverage the new support for parameterized
+standard collections that was added as part of `PEP 585`_, and avoid these imports from
+the ``typing`` module altogether:
+
+.. code:: python3
+
+    from collections import defaultdict
+    from dataclasses import dataclass
+    # Notice we only need *one* import here from the typing module
+    from typing import Union
+
+    from dataclass_wizard import JSONWizard
+
+
+    @dataclass
+    class MyClass(JSONWizard):
+        my_list: list[str]
+        my_dict: defaultdict[str, list[int]]
+        my_tuple: tuple[Union[int, str], ...]
+
+
+    if __name__ == '__main__':
+        data = {'my_list': ['testing'], 'my_dict': {'key': [1, 2, '3']}, 'my_tuple': (1, '2')}
+
+        c = MyClass.from_dict(data)
+
+        print(repr(c))
+        # prints:
+        #   MyClass(my_list=['testing'], my_dict=defaultdict(<class 'list'>, {'key': [1, 2, 3]}), my_tuple=(1, '2'))
+
+
+.. _PEP 585: https://www.python.org/dev/peps/pep-0585/
