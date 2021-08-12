@@ -10,11 +10,14 @@ __all__ = [
     'get_named_tuple_field_types',
     'is_typed_dict',
     'is_generic',
-    'is_base_generic'
+    'is_base_generic',
+    'is_annotated',
+    'get_type_hints_with_extras'
 ]
 
 import typing
 from collections.abc import Callable
+from functools import partial
 
 from ..constants import PY36, PY38, PY310_OR_ABOVE
 from ..type_def import PyLiteral, PyTypedDict
@@ -44,6 +47,17 @@ if not PY36:    # pragma: no cover
         typing._GenericAlias,
         typing._SpecialForm,
     )
+
+    try:
+        from typing_extensions import get_type_hints, _AnnotatedAlias
+    except ImportError:
+        from typing import get_type_hints, _AnnotatedAlias
+
+    _get_type_hints_with_extras = partial(get_type_hints, include_extras=True)
+
+
+    def _is_annotated(cls):
+        return isinstance(cls, _AnnotatedAlias)
 
 
     def _is_generic(cls):
@@ -121,6 +135,9 @@ else:   # pragma: no cover
         typing.GenericMeta,
     )
 
+    from typing import get_type_hints as _get_type_hints_with_extras
+    from typing_extensions import AnnotatedMeta
+
 
     def _is_generic(cls):
         return isinstance(cls, _BASE_GENERIC_TYPES)
@@ -131,6 +148,9 @@ else:   # pragma: no cover
             return cls.__args__ in {None, ()}
 
         return isinstance(cls, typing._Optional)
+
+    def _is_annotated(cls):
+        return isinstance(cls, AnnotatedMeta)
 
     # Ref: https://github.com/python/typing/blob/master/typing_extensions/src_py3/typing_extensions.py#L572
 
@@ -165,6 +185,9 @@ else:   # pragma: no cover
     def _get_args(cls):
         if is_literal(cls):
             return cls.__values__
+
+        if is_annotated(cls):
+            return (cls.__args__[0], ) + cls.__metadata__
 
         try:
             res = cls.__args__
@@ -260,3 +283,20 @@ def get_named_tuple_field_types(cls, raise_=True):
     Get annotations for a :class:`typing.NamedTuple` sub-class.
     """
     return _get_named_tuple_field_types(cls, raise_)
+
+
+def is_annotated(cls):
+    """
+    Detects a :class:`typing.Annotated` class.
+    """
+    return _is_annotated(cls)
+
+
+def get_type_hints_with_extras(obj):
+    """
+    Generally the same as :func:`typing.get_type_hints`, but passes
+    ``extras=True`` by default, so that we can also retrieve the arguments
+    for :class:`typing.Annotated` types.
+
+    """
+    return _get_type_hints_with_extras(obj)

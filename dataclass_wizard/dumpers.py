@@ -1,5 +1,5 @@
-# noinspection PyProtectedMember
 from collections import defaultdict
+# noinspection PyProtectedMember
 from dataclasses import _is_dataclass_instance
 from datetime import datetime, time, date
 from decimal import Decimal
@@ -10,7 +10,10 @@ from uuid import UUID
 from .abstractions import AbstractDumper
 from .bases import BaseDumpHook
 from .class_helper import (
-    dataclass_fields, get_class, dataclass_field_to_json_field)
+    create_new_class,
+    dataclass_fields, dataclass_field_to_json_field,
+    dataclass_to_dumper, set_class_dumper,
+)
 from .constants import _DUMP_HOOKS
 from .log import LOG
 from .type_def import NoneType, DD
@@ -141,14 +144,30 @@ def setup_default_dumper(cls=DumpMixin):
     cls.register_dump_hook(date, cls.dump_with_date)
 
 
-def get_dumper(class_or_instance=None) -> Type[DumpMixin]:
+def get_dumper(class_or_instance=None, create=False) -> Type[DumpMixin]:
     """
-    Get the dumper for the class, or use the default one if none exists.
-    """
-    if hasattr(class_or_instance, _DUMP_HOOKS):
-        return get_class(class_or_instance)
+    Get the dumper for the class, using the following logic:
 
-    return DumpMixin
+        * Return the class if it's already a sub-class of :class:`DumpMixin`
+        * If `create` is enabled, a new sub-class of :class:`DumpMixin` for
+          the class will be generated and cached on the initial run.
+        * Otherwise, we will return the base dumper, :class:`DumpMixin`, which
+          can potentially be shared by more than one dataclass.
+
+    """
+    try:
+        return dataclass_to_dumper(class_or_instance)
+
+    except KeyError:
+
+        if hasattr(class_or_instance, _DUMP_HOOKS):
+            return set_class_dumper(class_or_instance, class_or_instance)
+
+        elif create:
+            cls_dumper = create_new_class(class_or_instance, (DumpMixin, ))
+            return set_class_dumper(class_or_instance, cls_dumper)
+
+        return set_class_dumper(class_or_instance, DumpMixin)
 
 
 def asdict(obj, *, dict_factory=dict) -> Dict[str, Any]:

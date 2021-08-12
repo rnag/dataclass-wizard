@@ -12,7 +12,10 @@ from uuid import UUID
 from .abstractions import AbstractLoader, AbstractParser
 from .bases import BaseLoadHook
 from .class_helper import (
-    get_class, dataclass_field_to_load_parser, json_field_to_dataclass_field)
+    get_class_name, create_new_class,
+    dataclass_to_loader, set_class_loader,
+    dataclass_field_to_load_parser, json_field_to_dataclass_field,
+)
 from .constants import _LOAD_HOOKS
 from .errors import ParseError
 from .log import LOG
@@ -20,9 +23,11 @@ from .parsers import *
 from .type_def import ExplicitNull, PyForwardRef, NoneType, M, N, T, E, U, DD
 from .utils.string_conv import to_snake_case
 from .utils.type_check import (
-    is_literal, is_typed_dict, is_generic, get_origin, get_args)
+    is_literal, is_typed_dict, get_origin, get_args, is_annotated
+)
 from .utils.type_conv import (
-    as_bool, as_str, as_datetime, as_date, as_time, as_int)
+    as_bool, as_str, as_datetime, as_date, as_time, as_int
+)
 
 
 class LoadMixin(AbstractLoader, BaseLoadHook):
@@ -210,12 +215,21 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
         load_hook = hooks.get(ann_type)
         base_type = ann_type
 
+        # TODO: I'll need to refactor the code below to remove the nested `if`
+        #   statements, when time allows. Right now the branching logic is
+        #   unseemly and there's really no need for that, as any such
+        #   performance gains (if they do exist) are minimal at best.
         if load_hook is None:
             # Need to check this first, because the `Literal` type in Python
             # 3.6 behaves a bit differently (doesn't have an `__origin__`
             # attribute for example)
             if is_literal(ann_type):
                 return LiteralParser(cls, ann_type)
+
+            if is_annotated(ann_type):
+                # Given `Annotated[T, MaxValue(10), ...]`, we only need `T`
+                ann_type = get_args(ann_type)[0]
+                return cls.get_parser_for_annotation(ann_type, base_cls)
 
             # This property will be available for most generic types in the
             # `typing` library.
@@ -368,14 +382,30 @@ def setup_default_loader(cls=LoadMixin):
     cls.register_load_hook(date, cls.load_to_date)
 
 
-def get_loader(class_or_instance=None) -> Type[LoadMixin]:
+def get_loader(class_or_instance=None, create=False) -> Type[LoadMixin]:
     """
-    Get the loader for the class, or use the default one if none exists.
-    """
-    if hasattr(class_or_instance, _LOAD_HOOKS):
-        return get_class(class_or_instance)
+    Get the loader for the class, using the following logic:
 
-    return LoadMixin
+        * Return the class if it's already a sub-class of :class:`LoadMixin`
+        * If `create` is enabled, a new sub-class of :class:`LoadMixin` for
+          the class will be generated and cached on the initial run.
+        * Otherwise, we will return the base loader, :class:`LoadMixin`, which
+          can potentially be shared by more than one dataclass.
+
+    """
+    try:
+        return dataclass_to_loader(class_or_instance)
+
+    except KeyError:
+
+        if hasattr(class_or_instance, _LOAD_HOOKS):
+            return set_class_loader(class_or_instance, class_or_instance)
+
+        elif create:
+            cls_loader = create_new_class(class_or_instance, (LoadMixin, ))
+            return set_class_loader(class_or_instance, cls_loader)
+
+        return set_class_loader(class_or_instance, LoadMixin)
 
 
 # TODO move to :class:`LoadMixin` if possible
@@ -425,9 +455,10 @@ def _load_to_dataclass(d: Dict[str, Any], cls: Type[T]) -> T:
             except KeyError:
                 # Else, we see an unknown field in the dictionary object
                 json_to_dataclass_field[json_field] = ExplicitNull
-                LOG.warning('JSON field %r missing from dataclass schema, '
-                            'parsed field=%r',
-                            json_field, underscored_field)
+                LOG.warning(
+                    'JSON field %r missing from dataclass schema, '
+                    'class=%r, parsed field=%r',
+                    json_field, get_class_name(cls), underscored_field)
                 continue
 
         try:

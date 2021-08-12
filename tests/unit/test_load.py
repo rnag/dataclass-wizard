@@ -12,7 +12,6 @@ from typing import List, Optional, Union, Tuple, Dict, NamedTuple, Type, Default
 import pytest
 
 from dataclass_wizard import JSONSerializable
-from dataclass_wizard.class_helper import dataclass_fields
 from dataclass_wizard.errors import ParseError
 from dataclass_wizard.parsers import OptionalParser, Parser
 from dataclass_wizard.type_def import NoneType, T
@@ -71,6 +70,38 @@ def test_literal(input, expectation):
     with expectation:
         result = MyClass.from_dict(d)
         log.debug('Parsed object: %r', result)
+
+
+@pytest.mark.parametrize(
+    'input,expected',
+    [
+        (True, True),
+        (None, None),
+        ('TrUe', True),
+        ('y', True),
+        ('T', True),
+        ('F', False),
+        (1, True),
+        (False, False),
+        (0, False),
+    ]
+)
+def test_annotated(input, expected):
+
+    @dataclass(unsafe_hash=True)
+    class MaxLen:
+        length: int
+
+    @dataclass
+    class MyClass(JSONSerializable):
+        bool_or_none: Annotated[Optional[bool], MaxLen(23), "testing", 123]
+
+    d = {'Bool-OR-None': input}
+
+    result = MyClass.from_dict(d)
+    log.debug('Parsed object: %r', result)
+
+    assert result.bool_or_none == expected
 
 
 @pytest.mark.parametrize(

@@ -102,3 +102,165 @@ names that are defined in the dataclass; other keys such as the ones for
 transformed. If you need similar behavior for any of the ``typing``
 sub-classes mentioned, simply convert them to dataclasses and the key
 transform should then apply for those fields.
+
+``Meta`` settings will only affect the Outer Class
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+All attributes set in the ``Meta`` class will only apply to the
+outer dataclass, and should not affect the load/dump process for
+other dataclasses. However if you do desire this behavior, see the
+:ref:`Global Meta Settings<Global Meta>` section below.
+
+Here's a quick example to demonstrate this behavior:
+
+.. code:: python3
+
+    import logging
+    from dataclasses import dataclass
+    from datetime import date
+
+    from dataclass_wizard import JSONSerializable
+
+    # Sets up logging, so that library logs are visible in the console.
+    logging.basicConfig(level='INFO')
+
+
+    @dataclass
+    class FirstClass(JSONSerializable):
+
+        class _(JSONSerializable.Meta):
+            debug_enabled = True
+            marshal_date_time_as = 'Timestamp'
+            key_transform_with_load = 'Pascal'
+            key_transform_with_dump = 'SNAKE'
+
+        MyStr: str
+        MyDate: date
+
+
+    @dataclass
+    class SecondClass(JSONSerializable):
+
+        # If `SecondClass` were to define it's own `Meta` class, those changes
+        # would only be applied to `SecondClass`, and no other dataclass.
+        # class _(JSONSerializable.Meta):
+        #     key_transform_with_dump = 'PASCAL'
+
+        my_str: str
+        my_date: date
+
+
+    def main():
+
+        data = {'my_str': 'test', 'myDATE': '2010-12-30'}
+
+        c1 = FirstClass.from_dict(data)
+        print(repr(c1))
+        # prints:
+        #   FirstClass(MyStr='test', MyDate=datetime.date(2010, 12, 30))
+
+        string = c1.to_json()
+        print(string)
+        # prints:
+        #   {"my_str": "test", "my_date": 1293685200}
+
+        c2 = SecondClass.from_dict(data)
+        print(repr(c2))
+        # prints:
+        #   SecondClass(my_str='test', my_date=datetime.date(2010, 12, 30))
+
+        string = c2.to_json()
+        print(string)
+        # prints:
+        #   {"myStr": "test", "myDate": "2010-12-30"}
+
+
+    if __name__ == '__main__':
+        main()
+
+.. _Global Meta:
+
+Global ``Meta`` Settings
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+In case you want global ``Meta`` settings that will apply to
+all dataclasses which sub-class from ``JSONSerializable``, you
+can simply define ``JSONSerializable.Meta`` as an outer class
+as shown in the example below.
+
+.. code:: python3
+
+    import logging
+    from dataclasses import dataclass
+    from datetime import date
+
+    from dataclass_wizard import JSONSerializable
+
+    # Sets up logging, so that library logs are visible in the console.
+    logging.basicConfig(level='INFO')
+
+
+    @dataclass
+    class FirstClass(JSONSerializable):
+
+        MyStr: str
+        MyDate: date
+
+
+    @dataclass
+    class SecondClass(JSONSerializable):
+
+        # If `SecondClass` were to define it's own `Meta` class, those changes
+        # will effectively override the global `Meta` settings below, but only
+        # for `SecondClass` itself and no other dataclass.
+        # class _(JSONSerializable.Meta):
+        #     key_transform_with_dump = 'CAMEL'
+
+        AnotherStr: str
+        OtherDate: date
+
+
+    class GlobalJSONMeta(JSONSerializable.Meta):
+        """
+        Global settings for the JSON load/dump process, that should apply to
+        *all* subclasses of `JSONSerializable`.
+
+        Note: it does not matter where this class is defined, as long as it's
+        declared before any methods in `JSONSerializable` are called.
+        """
+        debug_enabled = True
+        marshal_date_time_as = 'Timestamp'
+        key_transform_with_load = 'Pascal'
+        key_transform_with_dump = 'SNAKE'
+
+
+    def main():
+
+        data1 = {'my_str': 'test', 'myDATE': '2010-12-30'}
+
+        c1 = FirstClass.from_dict(data1)
+        print(repr(c1))
+        # prints:
+        #   FirstClass(MyStr='test', MyDate=datetime.date(2010, 12, 30))
+
+        string = c1.to_json()
+        print(string)
+        # prints:
+        #   {"my_str": "test", "my_date": 1293685200}
+
+        data2 = {'another_str': 'test', 'OtherDate': '2010-12-30'}
+
+        c2 = SecondClass.from_dict(data2)
+        print(repr(c2))
+        # prints:
+        #   SecondClass(AnotherStr='test', OtherDate=datetime.date(2010, 12, 30))
+
+        string = c2.to_json()
+        print(string)
+        # prints:
+        #   {"another_str": "test", "other_date": 1293685200}
+
+
+    if __name__ == '__main__':
+        main()
+

@@ -1,16 +1,22 @@
 from collections import defaultdict
 from dataclasses import Field, fields
-from typing import Dict, Tuple, Type, Union, Callable
+from typing import Dict, Tuple, Type, Union, Callable, Optional
 
-from .abstractions import W
+from .abstractions import W, AbstractLoader, AbstractDumper
 from .parsers import Parser
-from .type_def import ExplicitNullType
+from .type_def import ExplicitNullType, T
 from .utils.dict_helper import CaseInsensitiveDict
 
 
 # A cached mapping of fully qualified class name to the list of fields, as
 # returned by `dataclasses.fields()`.
 _FIELDS: Dict[str, Tuple[Field]] = {}
+
+# A mapping of dataclass name to its loader.
+_CLASS_TO_LOADER: Dict[str, Type[AbstractLoader]] = {}
+
+# A mapping of dataclass name to its dumper.
+_CLASS_TO_DUMPER: Dict[str, Type[AbstractDumper]] = {}
 
 # A cached mapping of a dataclass to each of its case-insensitive field names
 # and load hook.
@@ -30,6 +36,42 @@ _DATACLASS_FIELD_TO_JSON_FIELD: Dict[str, Dict[str, str]] = defaultdict(dict)
 # :class:`JSONSerializable.Meta` is sub-classed.
 _META_INITIALIZER: Dict[
     str, Callable[[Type[W]], None]] = {}
+
+
+def dataclass_to_loader(class_or_instance):
+    """
+    Returns the loader for a dataclass.
+    """
+    name = get_class_name(class_or_instance)
+    return _CLASS_TO_LOADER[name]
+
+
+def dataclass_to_dumper(class_or_instance):
+    """
+    Returns the dumper for a dataclass.
+    """
+    name = get_class_name(class_or_instance)
+    return _CLASS_TO_DUMPER[name]
+
+
+def set_class_loader(class_or_instance, loader: Type[AbstractLoader]):
+    """
+    Set (and return) the loader for a dataclass.
+    """
+    name = get_class_name(class_or_instance)
+    _CLASS_TO_LOADER[name] = get_class(loader)
+
+    return _CLASS_TO_LOADER[name]
+
+
+def set_class_dumper(class_or_instance, dumper: Type[AbstractDumper]):
+    """
+    Set (and return) the dumper for a dataclass.
+    """
+    name = get_class_name(class_or_instance)
+    _CLASS_TO_DUMPER[name] = get_class(dumper)
+
+    return _CLASS_TO_DUMPER[name]
 
 
 def json_field_to_dataclass_field(class_or_instance):
@@ -87,6 +129,25 @@ def dataclass_fields(class_or_instance) -> Tuple[Field]:
         _FIELDS[name] = fields(class_or_instance)
 
     return _FIELDS[name]
+
+
+def create_new_class(
+        class_or_instance, bases: Tuple[T, ...],
+        suffix: Optional[str] = None, attr_dict=None) -> T:
+    """
+    Create (dynamically) and return a new class that sub-classes from a list
+    of `bases`.
+    """
+    if not suffix and bases:
+        suffix = get_class_name(bases[0])
+
+    new_cls_name = f'{get_class_name(class_or_instance)}{suffix}'
+
+    return type(
+        new_cls_name,
+        bases,
+        attr_dict or {}
+    )
 
 
 def get_class_name(class_or_instance) -> str:

@@ -74,8 +74,9 @@ field properties with default values in dataclasses:
 
 .. code:: python3
 
-    from dataclasses import dataclass
+    from dataclasses import dataclass, field
     from typing import Union
+    from typing_extensions import Annotated
 
     from dataclass_wizard import property_wizard
 
@@ -83,13 +84,13 @@ field properties with default values in dataclasses:
     @dataclass
     class Vehicle(metaclass=property_wizard):
 
-        # Note: The example below uses the default value for the annotated type
-        # (0 here, because `int` appears first). The right-hand value assigned to
-        # `wheels` is ignored, as it is simply re-declared by the property. To
-        # specify a default value of 4, comment out the `wheels` field and
-        # replace it with the `_wheels` declaration below.
-        #   _wheels: Union[int, str] = 4
-        wheels: Union[int, str] = 0
+        # Note: The example below uses the default value from the `field` extra in
+        # the `Annotated` definition; if `wheels` were annotated as a `Union` type,
+        # it would default to 0, because `int` appears as the first type argument.
+        #
+        # The right-hand value assigned to `wheels` is ignored as it is simply
+        # re-declared by the property, and can be omitted if needed.
+        wheels: Annotated[Union[int, str], field(default=4)] = None
 
         @property
         def wheels(self) -> int:
@@ -104,7 +105,7 @@ field properties with default values in dataclasses:
         v = Vehicle()
         print(v)
         # prints:
-        #   Vehicle(wheels=0)
+        #   Vehicle(wheels=4)
 
         v = Vehicle(wheels=3)
         print(v)
