@@ -127,8 +127,8 @@ def test_meta_config_is_not_implicitly_shared_between_dataclasses(mock_log):
 
     c = MyFirstClass.from_json(string)
 
-    log.info(repr(c))
-    log.info('Prettified JSON: %s', c)
+    log.debug(repr(c))
+    log.debug('Prettified JSON: %s', c)
 
     assert c.myStr == 'hello world'
 
@@ -147,8 +147,8 @@ def test_meta_config_is_not_implicitly_shared_between_dataclasses(mock_log):
     """
     c = MySecondClass.from_json(string)
 
-    log.info(repr(c))
-    log.info('Prettified JSON: %s', c)
+    log.debug(repr(c))
+    log.debug('Prettified JSON: %s', c)
 
     expected_dt = datetime(2020, 1, 2, 3, 4, 5)
     expected_date = date(2010, 11, 30)
