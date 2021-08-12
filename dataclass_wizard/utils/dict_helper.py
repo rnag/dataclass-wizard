@@ -1,9 +1,24 @@
+"""
+The implementation below uses code in the `structures` module from the library
+Requests (https://github.com/kennethreitz/requests).
+
+This library is available under the Apache 2.0 license, which can be
+obtained from http://www.apache.org/licenses/LICENSE-2.0.
+
+The library Requests contains the following attribution notices:
+
+    Requests
+    Copyright 2019 Kenneth Reitz
+
+
+See the end of this file for the original Apache license from this library.
+"""
 from collections import OrderedDict
 from collections.abc import MutableMapping, Mapping
-from typing import Tuple, Any
 
 
-# A `CaseInsensitiveDict` implementation, copied from `requests.structures`
+# A `CaseInsensitiveDict` implementation, copied from the source below.
+#   - https://github.com/kennethreitz/requests/blob/master/requests/structures.py#L15
 class CaseInsensitiveDict(MutableMapping):
     """A case-insensitive ``dict``-like object.
 
@@ -42,10 +57,8 @@ class CaseInsensitiveDict(MutableMapping):
         # key alongside the value.
         self._store[key.lower()] = (key, value)
 
-    def get_item(self, key) -> Tuple[str, Any]:
-        """Return a tuple of the key and value"""
-        return self._store[key.lower()]
-
+    # NOTE: The following code has been *modified*. This method is
+    #   present only in this implementation.
     def get_key(self, key) -> str:
         """Return the original cased key"""
         return self._store[key.lower()][0]
@@ -84,3 +97,18 @@ class CaseInsensitiveDict(MutableMapping):
 
     def __repr__(self):
         return str(dict(self.items()))
+
+
+# Copyright 2013 Kenneth Reitz
+#
+#    Licensed under the Apache License, Version 2.0 (the "License");
+#    you may not use this file except in compliance with the License.
+#    You may obtain a copy of the License at
+#
+#        http://www.apache.org/licenses/LICENSE-2.0
+#
+#    Unless required by applicable law or agreed to in writing, software
+#    distributed under the License is distributed on an "AS IS" BASIS,
+#    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#    See the License for the specific language governing permissions and
+#    limitations under the License.

@@ -1,3 +1,13 @@
+"""
+The implementation below uses code adapted from the `asdict` helper function
+from the library Dataclasses (https://github.com/ericvsmith/dataclasses).
+
+This library is available under the Apache 2.0 license, which can be
+obtained from http://www.apache.org/licenses/LICENSE-2.0.
+
+
+See the end of this file for the original Apache license from this library.
+"""
 from collections import defaultdict
 # noinspection PyProtectedMember
 from dataclasses import _is_dataclass_instance
@@ -192,15 +202,22 @@ def asdict(obj, *, dict_factory=dict) -> Dict[str, Any]:
     if not _is_dataclass_instance(obj):
         raise TypeError("asdict() should be called on dataclass instances")
 
+    # -- The following lines are added, and are not present in original implementation. --
     cls_dumper = get_dumper(obj)
     hooks = cls_dumper.__DUMP_HOOKS__
 
     # Call the optional hook that runs before we process the dataclass
     cls_dumper.__pre_as_dict__(obj)
+    # -- END --
 
     return _asdict_inner(obj, dict_factory, hooks)
 
 
+# NOTE: This method has been modified to accept a `hook` argument, and the
+# return type has been annotated as `Any`. The logic inside this method has
+# also been heavily modified from the original implementation in
+# `dataclasses`. However, I will call out specific lines where it is taken
+# directly from the original version.
 def _asdict_inner(obj, dict_factory, hooks) -> Any:
 
     typ = type(obj)
@@ -210,6 +227,7 @@ def _asdict_inner(obj, dict_factory, hooks) -> Any:
     if dump_hook is not None:
         return dump_hook(*hook_args)
 
+    # -- This check is the same as in the original version --
     if _is_dataclass_instance(obj):
 
         dataclass_to_json_field = dataclass_field_to_json_field(obj)
@@ -217,6 +235,7 @@ def _asdict_inner(obj, dict_factory, hooks) -> Any:
         result = []
 
         for f in dataclass_fields(obj):
+            # -- This line is *mostly* the same as in the original version --
             value = _asdict_inner(getattr(obj, f.name), dict_factory, hooks)
 
             json_field = dataclass_to_json_field.get(f.name)
@@ -226,12 +245,14 @@ def _asdict_inner(obj, dict_factory, hooks) -> Any:
                 json_field = cls_dumper.transform_dataclass_field(f.name)
                 dataclass_to_json_field[f.name] = json_field
 
+            # -- This line is *mostly* the same as in the original version --
             result.append((json_field, value))
-
+        # -- This line is the same as in the original version --
         return dict_factory(result)
 
     else:
 
+        # -- The following `if` condition and comments are the same as in the original version --
         if isinstance(obj, tuple) and hasattr(obj, '_fields'):
             # obj is a namedtuple.  Recurse into it, but the returned
             # object is another namedtuple of the same type.  This is
@@ -249,3 +270,18 @@ def _asdict_inner(obj, dict_factory, hooks) -> Any:
         LOG.warning('Using default dumper, object=%r, type=%r', obj, typ)
 
         return DumpMixin.default_dump_with(*hook_args)
+
+
+# Copyright 2017-2018 Eric V. Smith
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.

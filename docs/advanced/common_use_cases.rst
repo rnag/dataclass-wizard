@@ -103,8 +103,8 @@ transformed. If you need similar behavior for any of the ``typing``
 sub-classes mentioned, simply convert them to dataclasses and the key
 transform should then apply for those fields.
 
-``Meta`` settings will only affect the Outer Class
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Any ``Meta`` settings only affect the Outer Class
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 All attributes set in the ``Meta`` class will only apply to the
 outer dataclass, and should not affect the load/dump process for
@@ -180,7 +180,7 @@ Here's a quick example to demonstrate this behavior:
 
 .. _Global Meta:
 
-Global ``Meta`` Settings
+Global ``Meta`` settings
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
 In case you want global ``Meta`` settings that will apply to
@@ -228,6 +228,7 @@ as shown in the example below.
         Note: it does not matter where this class is defined, as long as it's
         declared before any methods in `JSONSerializable` are called.
         """
+
         debug_enabled = True
         marshal_date_time_as = 'Timestamp'
         key_transform_with_load = 'Pascal'

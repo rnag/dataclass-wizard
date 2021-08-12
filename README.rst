@@ -88,9 +88,9 @@ field properties with default values in dataclasses:
         # the `Annotated` definition; if `wheels` were annotated as a `Union` type,
         # it would default to 0, because `int` appears as the first type argument.
         #
-        # The right-hand value assigned to `wheels` is ignored as it is simply
-        # re-declared by the property, and can be omitted if needed.
-        wheels: Annotated[Union[int, str], field(default=4)] = None
+        # Any right-hand value assigned to `wheels` is ignored as it is simply
+        # re-declared by the property; here it is simply omitted for brevity.
+        wheels: Annotated[Union[int, str], field(default=4)]
 
         @property
         def wheels(self) -> int:
@@ -185,7 +185,7 @@ representation of the dataclass instance, you can instead use
 
 To mark a dataclass as being JSON serializable (and
 de-serializable), simply sub-class from ``JSONSerializable`` as shown
-below. You can also extend from the class alias ``JSONWizard``, if you
+below. You can also extend from the aliased name ``JSONWizard``, if you
 prefer to use that instead.
 
 Here is a (more) complete example of using the ``JSONSerializable``

@@ -2,6 +2,32 @@
 History
 =======
 
+0.5.0 (2021-08-12)
+------------------
+**Features and Improvements**
+
+* ``JSONSerializable`` now supports dataclass fields with an `Annotated`_ type.
+* The ``property_wizard`` metaclass has been (similarly) updated to support
+  `Annotated` field properties; such types can be resolved by
+  making a call to ``typing.get_type_hints`` with the argument ``include_extras=True``.
+* Support for adding global JSON load/dump settings, e.g. when ``JSONSerializable.Meta`` is defined
+  as an outer class.
+* Add proper source attributions, and apply the LICENSE and any NOTICE (if applicable) from
+  the sources.
+* Update comments in code to clarify or elaborate where
+  needed.
+* Update Sphinx docs/
+
+**Bugfixes**
+
+* When ``JSONSerializable.Meta`` is defined as an inner class - which is the most common
+  scenario - it should now be correctly applied per-class, rather than mutating
+  the load/dump process for other dataclasses that don't define their own inner ``Meta`` class.
+* When logging a message if a JSON key is missing from a dataclass schema, the dataclass
+  name is now also included in the message.
+
+.. _Annotated: https://docs.python.org/3.9/library/typing.html#typing.Annotated
+
 0.4.1 (2021-08-09)
 ------------------
 

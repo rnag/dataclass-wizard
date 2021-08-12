@@ -28,7 +28,7 @@ Here is how I'd define the use of a *field property* in Python ``dataclasses``:
     should both achieve the same purpose.
 
 
-If you are interested in learning more, I would recommend that you to check out
+If you are interested in learning more, I would recommend that you check out
 this great article that delves a bit deeper into using properties in ``dataclasses`` :
 
 * https://florimond.dev/en/posts/2018/10/reconciling-dataclasses-and-properties-in-python/
