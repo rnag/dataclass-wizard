@@ -20,16 +20,19 @@ from collections.abc import Callable
 from functools import partial
 
 from ..constants import PY36, PY38, PY310_OR_ABOVE
-from ..type_def import PyLiteral, PyTypedDict
+from ..type_def import PyLiteral, PyTypedDicts
 
 
-class RealPyTypedDict(PyTypedDict):
-    pass  # create a real class, because `PyTypedDict` is a helper function
+# TODO maybe move this to `type_def` if it makes sense
+TypedDictTypes = []
 
+for PyTypedDict in PyTypedDicts:
+    class RealPyTypedDict(PyTypedDict):
+        pass  # create a real class, because `PyTypedDict` is a helper function
 
-TypedDictType = type(RealPyTypedDict)
+    TypedDictTypes.append(type(RealPyTypedDict))
 
-del RealPyTypedDict
+    del RealPyTypedDict
 
 
 def get_keys_for_typed_dict(cls):
@@ -216,7 +219,7 @@ def is_typed_dict(cls: typing.Type) -> bool:
     """
     Checks if `cls` is a sub-class of ``TypedDict``
     """
-    return type(cls) is TypedDictType
+    return type(cls) in TypedDictTypes
 
 
 def is_generic(cls):
