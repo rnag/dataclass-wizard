@@ -2,13 +2,12 @@ import logging
 from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Union, List, ClassVar, DefaultDict
+from typing import Union, List, ClassVar, DefaultDict, Set
 
 import pytest
 
 from dataclass_wizard import property_wizard
-from ..conftest import Literal, Annotated
-
+from ..conftest import Literal, Annotated, PY39_OR_ABOVE
 
 log = logging.getLogger(__name__)
 
@@ -873,107 +872,49 @@ def test_property_wizard_with_generic_type_which_is_not_supported():
                                      'method'
 
 
-def test_property_wizard_with_mutable_types():
+def test_property_wizard_with_mutable_types_v1():
     """
-    The `property_wizard` should not otherwise affect properties which are
-    read-only (i.e. ones which don't define a `setter` method)
-
-    """
-    @dataclass
-    class Vehicle(metaclass=property_wizard):
-        _wheels: list = field(default_factory=list)
-
-        @property
-        def wheels(self) -> list:
-            return self._wheels
-
-        @wheels.setter
-        def wheels(self, wheels):
-            self._wheels = wheels
-
-    v1 = Vehicle(wheels=[1, 2])
-    v1.wheels.append(3)
-    log.debug(v1)
-
-    v2 = Vehicle()
-    log.debug(v2)
-
-    v2.wheels.append(3)
-    v2.wheels.append(2)
-    v2.wheels.append(1)
-
-    v3 = Vehicle()
-    log.debug(v3)
-
-    v3.wheels.append(1)
-    v3.wheels.append(1)
-    v3.wheels.append(1)
-
-    assert v1.wheels == [1, 2, 3]
-    assert v2.wheels == [3, 2, 1]
-    assert v3.wheels == [1, 1, 1]
-
-
-def test_property_wizard_with_mutable_types2():
-    """
-    The `property_wizard` should not otherwise affect properties which are
-    read-only (i.e. ones which don't define a `setter` method)
-
+    The `property_wizard` handles mutable collections (e.g. subclasses of list,
+    dict, and set) as expected. The defaults for these mutable types should
+    use a `default_factory` so we can observe the expected behavior.
     """
 
     @dataclass
     class Vehicle(metaclass=property_wizard):
-        wheels: Annotated[List[int], field(default_factory=list)]
 
-        @property
-        def wheels(self) -> list:
-            return self._wheels
-
-        @wheels.setter
-        def wheels(self, wheels):
-            self._wheels = wheels
-
-
-    v1 = Vehicle(wheels=[1, 2])
-    v1.wheels.append(3)
-    log.debug(v1)
-
-    v2 = Vehicle()
-    log.debug(v2)
-
-    v2.wheels.append(3)
-    v2.wheels.append(2)
-    v2.wheels.append(1)
-
-    v3 = Vehicle()
-    log.debug(v3)
-
-    v3.wheels.append(1)
-    v3.wheels.append(1)
-    v3.wheels.append(1)
-
-    assert v1.wheels == [1, 2, 3]
-    assert v2.wheels == [3, 2, 1]
-    assert v3.wheels == [1, 1, 1]
-
-
-def test_property_wizard_with_mutable_types3():
-
-    @dataclass
-    class Vehicle(metaclass=property_wizard):
         wheels: List[Union[int, str]]
+        # _wheels: List[Union[int, str]] = field(init=False)
+
+        inverse_bool_set: Set[bool]
+        # Not needed, but we can also define this as below if we want to
+        # inverse_bool_set: Annotated[Set[bool], field(default_factory=set)]
+
+        # We'll need the `field(default_factory=...)` syntax here, because
+        # otherwise the default_factory will be `defaultdict()`, which is not what
+        # we want.
         wheels_dict: Annotated[
             DefaultDict[str, List[str]],
             field(default_factory=lambda: defaultdict(list))
         ]
 
         @property
-        def wheels(self) -> int:
+        def wheels(self) -> List[int]:
             return self._wheels
 
         @wheels.setter
-        def wheels(self, wheels: Union[int, str]):
-            self._wheels = wheels
+        def wheels(self, wheels: List[Union[int, str]]):
+            self._wheels = [int(w) for w in wheels]
+
+        @property
+        def inverse_bool_set(self) -> Set[bool]:
+            return self._inverse_bool_set
+
+        @inverse_bool_set.setter
+        def inverse_bool_set(self, bool_set: Set[bool]):
+            # Confirm that we're passed in the right type when no value is set via
+            # the constructor (i.e. from the `property_wizard` metaclass)
+            assert isinstance(bool_set, set)
+            self._inverse_bool_set = {not b for b in bool_set}
 
         @property
         def wheels_dict(self) -> int:
@@ -983,18 +924,176 @@ def test_property_wizard_with_mutable_types3():
         def wheels_dict(self, wheels: Union[int, str]):
             self._wheels_dict = wheels
 
-    v = Vehicle()
-    v.wheels.append('4')
-    v.wheels_dict['a'].append('5')
-    log.debug(v)
+    v1 = Vehicle(wheels=['1', '2', '3'],
+                 inverse_bool_set={True, False},
+                 wheels_dict=defaultdict(list, key=['value']))
+    v1.wheels_dict['key2'].append('another value')
+    log.debug(v1)
 
     v2 = Vehicle()
-    v2.wheels.append('1')
-    v2.wheels_dict['b'].append('2')
+    v2.wheels.append(4)
+    v2.wheels_dict['a'].append('5')
+    v2.inverse_bool_set.add(True)
     log.debug(v2)
 
-    assert v.wheels == ['4']
-    assert v.wheels_dict == {'a': ['5']}
+    v3 = Vehicle()
+    v3.wheels.append(1)
+    v3.wheels_dict['b'].append('2')
+    v3.inverse_bool_set.add(False)
+    log.debug(v3)
 
-    assert v2.wheels == ['1']
-    assert v2.wheels_dict == {'b': ['2']}
+    assert v1.wheels == [1, 2, 3]
+    assert v1.inverse_bool_set == {False, True}
+    assert v1.wheels_dict == {'key': ['value'], 'key2': ['another value']}
+
+    assert v2.wheels == [4]
+    assert v2.inverse_bool_set == {True}
+    assert v2.wheels_dict == {'a': ['5']}
+
+    assert v3.wheels == [1]
+    assert v3.inverse_bool_set == {False}
+    assert v3.wheels_dict == {'b': ['2']}
+
+
+def test_property_wizard_with_mutable_types_v2():
+    """
+    The `property_wizard` handles mutable collections (e.g. subclasses of list,
+    dict, and set) as expected. The defaults for these mutable types should
+    use a `default_factory` so we can observe the expected behavior.
+
+    In this version, we explicitly pass in the `field(default_factory=...)`
+    syntax for all field properties, though it's technically not needed.
+    """
+
+    @dataclass
+    class Vehicle(metaclass=property_wizard):
+        wheels: Annotated[List[int], field(default_factory=list)]
+        _wheels_list: list = field(default_factory=list)
+
+        @property
+        def wheels_list(self) -> list:
+            return self._wheels_list
+
+        @wheels_list.setter
+        def wheels_list(self, wheels):
+            self._wheels_list = wheels
+
+        @property
+        def wheels(self) -> list:
+            return self._wheels
+
+        @wheels.setter
+        def wheels(self, wheels):
+            self._wheels = wheels
+
+    v1 = Vehicle(wheels=[1, 2], wheels_list=[2, 1])
+    v1.wheels.append(3)
+    v1.wheels_list.insert(0, 3)
+    log.debug(v1)
+
+    v2 = Vehicle()
+    log.debug(v2)
+
+    v2.wheels.append(2)
+    v2.wheels.append(1)
+    v2.wheels_list.append(1)
+    v2.wheels_list.append(2)
+
+    v3 = Vehicle()
+    log.debug(v3)
+
+    v3.wheels.append(1)
+    v3.wheels.append(1)
+    v3.wheels_list.append(5)
+    v3.wheels_list.append(5)
+
+    assert v1.wheels == [1, 2, 3]
+    assert v1.wheels_list == [3, 2, 1]
+    assert v2.wheels == [2, 1]
+    assert v2.wheels_list == [1, 2]
+    assert v3.wheels == [1, 1]
+    assert v3.wheels_list == [5, 5]
+
+
+@pytest.mark.skipif(not PY39_OR_ABOVE, reason='requires Python 3.9 or higher')
+def test_property_wizard_with_mutable_types_with_parameterized_standard_collections():
+    """
+    Test case for mutable types with a Python 3.9 specific feature:
+    parameterized standard collections. As such, this test case is only
+    expected to pass for Python 3.9+.
+    """
+
+    @dataclass
+    class Vehicle(metaclass=property_wizard):
+
+        wheels: list[Union[int, str]]
+        # _wheels: List[Union[int, str]] = field(init=False)
+
+        inverse_bool_set: set[bool]
+        # Not needed, but we can also define this as below if we want to
+        # inverse_bool_set: Annotated[Set[bool], field(default_factory=set)]
+
+        # We'll need the `field(default_factory=...)` syntax here, because
+        # otherwise the default_factory will be `defaultdict()`, which is not what
+        # we want.
+        wheels_dict: Annotated[
+            defaultdict[str, List[str]],
+            field(default_factory=lambda: defaultdict(list))
+        ]
+
+        @property
+        def wheels(self) -> List[int]:
+            return self._wheels
+
+        @wheels.setter
+        def wheels(self, wheels: List[Union[int, str]]):
+            self._wheels = [int(w) for w in wheels]
+
+        @property
+        def inverse_bool_set(self) -> Set[bool]:
+            return self._inverse_bool_set
+
+        @inverse_bool_set.setter
+        def inverse_bool_set(self, bool_set: Set[bool]):
+            # Confirm that we're passed in the right type when no value is set via
+            # the constructor (i.e. from the `property_wizard` metaclass)
+            assert isinstance(bool_set, set)
+            self._inverse_bool_set = {not b for b in bool_set}
+
+        @property
+        def wheels_dict(self) -> int:
+            return self._wheels_dict
+
+        @wheels_dict.setter
+        def wheels_dict(self, wheels: Union[int, str]):
+            self._wheels_dict = wheels
+
+    v1 = Vehicle(wheels=['1', '2', '3'],
+                 inverse_bool_set={True, False},
+                 wheels_dict=defaultdict(list, key=['value']))
+    v1.wheels_dict['key2'].append('another value')
+    log.debug(v1)
+
+    v2 = Vehicle()
+    v2.wheels.append(4)
+    v2.wheels_dict['a'].append('5')
+    v2.inverse_bool_set.add(True)
+    log.debug(v2)
+
+    v3 = Vehicle()
+    v3.wheels.append(1)
+    v3.wheels_dict['b'].append('2')
+    v3.inverse_bool_set.add(False)
+    log.debug(v3)
+
+    assert v1.wheels == [1, 2, 3]
+    assert v1.inverse_bool_set == {False, True}
+    assert v1.wheels_dict == {'key': ['value'], 'key2': ['another value']}
+
+    assert v2.wheels == [4]
+    assert v2.inverse_bool_set == {True}
+    assert v2.wheels_dict == {'a': ['5']}
+
+    assert v3.wheels == [1]
+    assert v3.inverse_bool_set == {False}
+    assert v3.wheels_dict == {'b': ['2']}

@@ -13,6 +13,9 @@ import sys
 # Check if we are running Python 3.6
 PY36 = sys.version_info[:2] == (3, 6)
 
+# Check if we are running Python 3.9+
+PY39_OR_ABOVE = sys.version_info[:2] >= (3, 9)
+
 # Ref: https://docs.pytest.org/en/6.2.x/example/parametrize.html#parametrizing-conditional-raising
 if sys.version_info[:2] >= (3, 7):
     from contextlib import nullcontext as does_not_raise

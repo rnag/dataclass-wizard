@@ -72,7 +72,11 @@ def _process_public_property(cls: Type, public_f: str, val: property,
     # The field with a leading underscore
     under_f = '_' + public_f
 
+    # The field value that defines either a `default` or `default_factory`
     fval: Field = dataclass_field()
+
+    # This flag is used to keep a track of whether we already have a default
+    # value set (either from the public or the underscored field)
     is_set: bool = False
 
     if public_f not in annotations and under_f not in annotations:
@@ -94,10 +98,10 @@ def _process_public_property(cls: Type, public_f: str, val: property,
             #   i.e. my_var: str
             fval = _default_from_annotation(annotations, under_f)
         else:
-            # Check if the value of underscored field is a dataclass Field.
-            # If so, we can use the `default` if one is set.
+            # Check if the value of underscored field is a dataclass Field. If
+            # so, we can use the `default` or `default_factory` if one is set.
             if isinstance(v, Field):
-                fval, is_set = _default_from_field(annotations, under_f, v)
+                fval, is_set = _process_field(annotations, under_f, v)
             else:
                 fval.default = v
                 is_set = True
@@ -127,6 +131,8 @@ def _process_underscored_property(cls: Type, under_f: str, val: property,
 
     # The field *without* a leading underscore
     public_f = under_f.lstrip('_')
+
+    # The field value that defines either a `default` or `default_factory`
     fval: Field = dataclass_field()
 
     if public_f not in annotations and under_f not in annotations:
@@ -145,14 +151,13 @@ def _process_underscored_property(cls: Type, under_f: str, val: property,
         # First, get the type annotation for the public field
         fval = _default_from_annotation(annotations, public_f)
 
-        if not fval.default and fval.default_factory is MISSING \
-                and hasattr(cls, public_f):
+        if hasattr(cls, public_f):
             # Get the value of the field without a leading underscore
             v = getattr(cls, public_f)
             # Check if the value of the public field is a dataclass Field.
             # If so, we can use the `default` if one is set.
             if isinstance(v, Field):
-                fval = _default_from_field(annotations, public_f, v)[0]
+                fval = _process_field(annotations, public_f, v)[0]
             else:
                 fval.default = v
 
@@ -171,12 +176,16 @@ def _process_underscored_property(cls: Type, under_f: str, val: property,
     delattr(cls, under_f)
 
 
-def _default_from_field(cls_annotations: AnnotationType,
-                        field: str, field_val: Field) -> Tuple[Field, bool]:
+def _process_field(cls_annotations: AnnotationType,
+                   field: str, field_val: Field) -> Tuple[Field, bool]:
     """
     Get the default value for `field`, which is defined as a
-    :class:`dataclasses.Field`. If no `default` or `default_factory` is
-    defined, then return the default value from the annotated type instead.
+    :class:`dataclasses.Field`.
+
+    Returns a two-element tuple of (fval, is_set), where `is_set` will be
+    False when no `default` or `default_factory` is defined for the Field;
+    in that case, `fval` will be the default value from the annotated type
+    instead.
     """
 
     if field_val.default is not MISSING:
@@ -202,20 +211,25 @@ def _default_from_annotation(
         # Annotated type is a Generic from the `typing` module
         return _default_from_generic_type(default_type, field)
 
-    return _resolve_default(default_type)
+    return _default_from_type(default_type)
 
 
-def _resolve_default(default_type: Type[T]) -> Field:
+def _default_from_type(default_type: Type[T]) -> Field:
+    """
+    Get the default value for a type. If it's a mutable type, we want to
+    use the `default_factory` instead; otherwise, we just use the default
+    value from the no-args constructor for the type.
+    """
+
     try:
         # Check if it's callable with no args
         default = default_type()
     except TypeError:
         return dataclass_field()
     else:
-        origin = get_origin(default_type)
         # Check for mutable types, as they need to use a default factory.
-        if issubclass(origin, (list, dict, set)):
-            return dataclass_field(default_factory=origin)
+        if isinstance(default, (list, dict, set)):
+            return dataclass_field(default_factory=default_type)
         # Else, we can just return the default value without a factory.
         return dataclass_field(default=default)
 
@@ -236,7 +250,7 @@ def _default_from_generic_type(
         # Loop over and search for any `dataclasses.Field` types
         for extra in extras:
             if isinstance(extra, Field):
-                return _default_from_field(
+                return _process_field(
                     {field: default_type}, field, extra)[0]
         # Else, if none of the extras are particularly useful, just process
         # type `T`, which can be either a concrete or Generic sub-type.
@@ -249,9 +263,9 @@ def _default_from_generic_type(
     if origin is Union:
         # The Generic type appears as `Optional[T]` or `Union[T1, T2, ...]`
         default_type = _default_from_typing_args(args)
-        return _resolve_default(default_type)
+        return _default_from_type(default_type)
 
-    return _resolve_default(origin)
+    return _default_from_type(origin)
 
 
 def _default_from_typing_args(args: Optional[Tuple[Type[T], ...]]):
@@ -278,9 +292,14 @@ def _wrapper(fset, fval: Field):
     """
     Wraps the property `setter` method to check if we are passed in a property
     object itself, which will be true when no initial value is specified.
+
+    ``fval`` here is a :class:`dataclasses.Field` that contains either a
+    `default` or `default_factory`.
     """
+
     if fval.default_factory is not MISSING:
-        # The initial value for the property is a default factory.
+        # The initial value for the property is returned from a default
+        # factory.
         default_factory = fval.default_factory
 
         @wraps(fset)
