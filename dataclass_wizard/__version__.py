@@ -6,7 +6,7 @@ __title__ = 'dataclass-wizard'
 __description__ = 'Marshal dataclasses to/from JSON and Python dict objects, ' \
                   'and add support for field properties with initial values.'
 __url__ = 'https://github.com/rnag/dataclass-wizard'
-__version__ = '0.5.0'
+__version__ = '0.5.1'
 __author__ = 'Ritvik Nag'
 __author_email__ = 'rv.kvetch@gmail.com'
 __license__ = 'Apache 2.0'
