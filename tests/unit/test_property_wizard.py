@@ -1,7 +1,8 @@
 import logging
+from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Union, List, ClassVar
+from typing import Union, List, ClassVar, DefaultDict
 
 import pytest
 
@@ -870,3 +871,130 @@ def test_property_wizard_with_generic_type_which_is_not_supported():
     v.sold_dt = dt
     assert v.sold_dt == expected_dt, 'Expected assignment to use the setter ' \
                                      'method'
+
+
+def test_property_wizard_with_mutable_types():
+    """
+    The `property_wizard` should not otherwise affect properties which are
+    read-only (i.e. ones which don't define a `setter` method)
+
+    """
+    @dataclass
+    class Vehicle(metaclass=property_wizard):
+        _wheels: list = field(default_factory=list)
+
+        @property
+        def wheels(self) -> list:
+            return self._wheels
+
+        @wheels.setter
+        def wheels(self, wheels):
+            self._wheels = wheels
+
+    v1 = Vehicle(wheels=[1, 2])
+    v1.wheels.append(3)
+    log.debug(v1)
+
+    v2 = Vehicle()
+    log.debug(v2)
+
+    v2.wheels.append(3)
+    v2.wheels.append(2)
+    v2.wheels.append(1)
+
+    v3 = Vehicle()
+    log.debug(v3)
+
+    v3.wheels.append(1)
+    v3.wheels.append(1)
+    v3.wheels.append(1)
+
+    assert v1.wheels == [1, 2, 3]
+    assert v2.wheels == [3, 2, 1]
+    assert v3.wheels == [1, 1, 1]
+
+
+def test_property_wizard_with_mutable_types2():
+    """
+    The `property_wizard` should not otherwise affect properties which are
+    read-only (i.e. ones which don't define a `setter` method)
+
+    """
+
+    @dataclass
+    class Vehicle(metaclass=property_wizard):
+        wheels: Annotated[List[int], field(default_factory=list)]
+
+        @property
+        def wheels(self) -> list:
+            return self._wheels
+
+        @wheels.setter
+        def wheels(self, wheels):
+            self._wheels = wheels
+
+
+    v1 = Vehicle(wheels=[1, 2])
+    v1.wheels.append(3)
+    log.debug(v1)
+
+    v2 = Vehicle()
+    log.debug(v2)
+
+    v2.wheels.append(3)
+    v2.wheels.append(2)
+    v2.wheels.append(1)
+
+    v3 = Vehicle()
+    log.debug(v3)
+
+    v3.wheels.append(1)
+    v3.wheels.append(1)
+    v3.wheels.append(1)
+
+    assert v1.wheels == [1, 2, 3]
+    assert v2.wheels == [3, 2, 1]
+    assert v3.wheels == [1, 1, 1]
+
+
+def test_property_wizard_with_mutable_types3():
+
+    @dataclass
+    class Vehicle(metaclass=property_wizard):
+        wheels: List[Union[int, str]]
+        wheels_dict: Annotated[
+            DefaultDict[str, List[str]],
+            field(default_factory=lambda: defaultdict(list))
+        ]
+
+        @property
+        def wheels(self) -> int:
+            return self._wheels
+
+        @wheels.setter
+        def wheels(self, wheels: Union[int, str]):
+            self._wheels = wheels
+
+        @property
+        def wheels_dict(self) -> int:
+            return self._wheels_dict
+
+        @wheels_dict.setter
+        def wheels_dict(self, wheels: Union[int, str]):
+            self._wheels_dict = wheels
+
+    v = Vehicle()
+    v.wheels.append('4')
+    v.wheels_dict['a'].append('5')
+    log.debug(v)
+
+    v2 = Vehicle()
+    v2.wheels.append('1')
+    v2.wheels_dict['b'].append('2')
+    log.debug(v2)
+
+    assert v.wheels == ['4']
+    assert v.wheels_dict == {'a': ['5']}
+
+    assert v2.wheels == ['1']
+    assert v2.wheels_dict == {'b': ['2']}
