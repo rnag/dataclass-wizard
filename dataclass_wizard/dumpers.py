@@ -26,7 +26,7 @@ from .class_helper import (
 )
 from .constants import _DUMP_HOOKS
 from .log import LOG
-from .type_def import NoneType, DD
+from .type_def import NoneType, DD, LS
 from .utils.string_conv import to_camel_case
 
 
@@ -83,6 +83,13 @@ class DumpMixin(AbstractDumper, BaseDumpHook):
             dict_factory, hooks):
 
         return typ(_asdict_inner(v, dict_factory, hooks) for v in o)
+
+    @staticmethod
+    def dump_with_set(
+            o: Union[LS], _typ: Type[LS],
+            dict_factory, hooks):
+
+        return list(_asdict_inner(v, dict_factory, hooks) for v in o)
 
     @staticmethod
     def dump_with_named_tuple(
@@ -142,6 +149,8 @@ def setup_default_dumper(cls=DumpMixin):
     # Complex types
     cls.register_dump_hook(Enum, cls.dump_with_enum)
     cls.register_dump_hook(UUID, cls.dump_with_uuid)
+    cls.register_dump_hook(set, cls.dump_with_set)
+    cls.register_dump_hook(frozenset, cls.dump_with_set)
     cls.register_dump_hook(list, cls.dump_with_list_or_tuple)
     cls.register_dump_hook(tuple, cls.dump_with_list_or_tuple)
     cls.register_dump_hook(NamedTupleMeta, cls.dump_with_named_tuple)

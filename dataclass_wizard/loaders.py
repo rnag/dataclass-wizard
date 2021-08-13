@@ -5,7 +5,7 @@ from decimal import Decimal
 from enum import Enum
 from typing import (
     Dict, List, Tuple, Sequence, Optional, Union, Type, Any, NamedTupleMeta,
-    SupportsFloat, SupportsInt, FrozenSet, AnyStr, Text, Callable
+    SupportsFloat, SupportsInt, FrozenSet, AnyStr, Text, Callable, Set
 )
 from uuid import UUID
 
@@ -20,7 +20,10 @@ from .constants import _LOAD_HOOKS
 from .errors import ParseError
 from .log import LOG
 from .parsers import *
-from .type_def import ExplicitNull, PyForwardRef, NoneType, M, N, T, E, U, DD
+from .type_def import (
+    ExplicitNull, PyForwardRef, NoneType,
+    M, N, T, E, U, DD, LS
+)
 from .utils.string_conv import to_snake_case
 from .utils.type_check import (
     is_literal, is_typed_dict, get_origin, get_args, is_annotated
@@ -96,9 +99,9 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
         return base_type(o)
 
     @staticmethod
-    def load_to_list(
-            o: Union[List, Tuple], base_type: Type[List],
-            elem_parser: AbstractParser) -> List[Any]:
+    def load_to_list_or_set(
+            o: Union[List, Set, Tuple], base_type: Type[LS],
+            elem_parser: AbstractParser) -> LS:
 
         return base_type(elem_parser(elem) for elem in o)
 
@@ -309,9 +312,9 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
                     return MappingParser(
                         base_cls, ann_type, cls.get_parser_for_annotation, load_hook)
 
-                elif issubclass(base_type, list):
-                    load_hook = cls.load_to_list
-                    return ListParser(
+                elif issubclass(base_type, (list, set, frozenset)):
+                    load_hook = cls.load_to_list_or_set
+                    return IterableParser(
                         base_cls, ann_type, cls.get_parser_for_annotation, load_hook)
 
                 elif issubclass(base_type, tuple):
@@ -339,9 +342,9 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
             return MappingParser(
                 base_cls, ann_type, cls.get_parser_for_annotation, load_hook)
 
-        elif issubclass(base_type, list):
-            load_hook = cls.load_to_list
-            return ListParser(
+        elif issubclass(base_type, (list, set, frozenset)):
+            load_hook = cls.load_to_list_or_set
+            return IterableParser(
                 base_cls, ann_type, cls.get_parser_for_annotation, load_hook)
 
         elif issubclass(base_type, tuple):
@@ -370,7 +373,9 @@ def setup_default_loader(cls=LoadMixin):
     # Complex types
     cls.register_load_hook(Enum, cls.load_to_enum)
     cls.register_load_hook(UUID, cls.load_to_uuid)
-    cls.register_load_hook(list, cls.load_to_list)
+    cls.register_load_hook(set, cls.load_to_list_or_set)
+    cls.register_load_hook(frozenset, cls.load_to_list_or_set)
+    cls.register_load_hook(list, cls.load_to_list_or_set)
     cls.register_load_hook(tuple, cls.load_to_tuple)
     cls.register_load_hook(NamedTupleMeta, cls.load_to_named_tuple)
     cls.register_load_hook(defaultdict, cls.load_to_defaultdict)

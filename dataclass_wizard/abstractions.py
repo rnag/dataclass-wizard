@@ -7,10 +7,10 @@ from datetime import datetime, time, date
 from decimal import Decimal
 from typing import (
     Any, Type, Union, List, Tuple, NamedTupleMeta, Dict, SupportsFloat,
-    Optional, SupportsInt, FrozenSet, Sequence, AnyStr, TypeVar, Text, Callable
+    Optional, SupportsInt, FrozenSet, Sequence, AnyStr, TypeVar, Text, Callable, Set
 )
 
-from .type_def import M, N, T, E, U, DD
+from .type_def import M, N, T, E, U, DD, LS
 
 # Create a generic variable that can be 'AbstractJSONWizard', or any subclass.
 W = TypeVar('W', bound='AbstractJSONWizard')
@@ -187,12 +187,12 @@ class AbstractLoader(ABC):
 
     @staticmethod
     @abstractmethod
-    def load_to_list(
-            o: Union[List, Tuple], base_type: Type[List],
-            elem_parser: AbstractParser) -> List[Any]:
+    def load_to_list_or_set(
+            o: Union[List, Set, Tuple], base_type: Type[LS],
+            elem_parser: AbstractParser) -> LS:
         """
-        Load a list or tuple into a new object of type `base_type` (generally
-        a :class:`list` or a sub-class of one)
+        Load a list, set or tuple into a new object of type `base_type`
+        (generally a list, set, or a sub-class of one)
         """
 
     @classmethod

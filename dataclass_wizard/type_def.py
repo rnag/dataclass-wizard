@@ -12,7 +12,8 @@ __all__ = [
     'M',
     'DD',
     'N',
-    'S'
+    'S',
+    'LS'
 ]
 
 from enum import Enum
@@ -47,6 +48,9 @@ N = TypeVar('N', int, float, complex)
 
 # Sequence type
 S = TypeVar('S', bound=Sequence)
+
+# List or Set type
+LS = TypeVar('LS', list, set, frozenset)
 
 # The class of the `None` singleton, cached for re-usability
 NoneType = type(None)
