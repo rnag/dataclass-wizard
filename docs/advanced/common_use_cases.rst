@@ -111,7 +111,7 @@ outer dataclass, and should not affect the load/dump process for
 other dataclasses. However if you do desire this behavior, see the
 :ref:`Global Meta Settings<Global Meta>` section below.
 
-Here's a quick example to demonstrate this behavior:
+Here's a quick example to confirm this behavior:
 
 .. code:: python3
 

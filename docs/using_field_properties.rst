@@ -266,3 +266,138 @@ TODO.
 
 For now, please check out the test cases `here <https://github.com/rnag/dataclass-wizard/blob/main/tests/unit/test_property_wizard.py>`_
 for additional examples.
+
+
+Mutable Types
+-------------
+
+Field properties annotated with any of the known
+mutable types (``list``, ``dict``, and ``set``) should have
+their initial value generated via a *default factory*
+rather than a constant *default* value.
+
+`v0.5.1 <history.html#0.5.1 (2021-08-13)>`__ introduced
+a bug fix for the aforementioned behavior, and also updated
+the metaclass so that the ``field(default_factory=...)``
+declaration on a field property is now properly used
+as expected.
+
+For field properties that are annotated as any mutable types,
+the recommended approach is to pass in the ``default_factory``
+argument so that a initial value can be set as expected, in the
+case that no value is passed in via the constructor method.
+
+The following example confirms that field properties with mutable
+types are now set with initial values as expected:
+
+.. code:: python3
+
+    from collections import defaultdict
+    from dataclasses import dataclass, field
+    from typing import Union, List, Set, DefaultDict
+    from typing_extensions import Annotated
+
+    from dataclass_wizard import property_wizard
+
+
+    @dataclass
+    class Vehicle(metaclass=property_wizard):
+        wheels: List[Union[int, str]]
+        # Uncomment the field below if you want to make your IDE a bit happier.
+        #   _wheels: List[int] = field(init=False)
+
+        inverse_bools: Set[bool]
+        # If we wanted to, we can also define this as below:
+        #   inverse_bools: Annotated[Set[bool], field(default_factory=set)]
+
+        # We need to use the `field(default_factory=...)` syntax here, because
+        # otherwise the value is initialized from the no-args constructor,
+        # i.e. defaultdict()`, which is not what we want.
+        inventory: Annotated[
+            DefaultDict[str, List[Union[int, str]]],
+            field(default_factory=lambda: defaultdict(list))
+        ]
+
+        @property
+        def wheels(self) -> List[int]:
+            return self._wheels
+
+        @wheels.setter
+        def wheels(self, wheels: List[Union[int, str]]):
+            # Try to avoid a list comprehension, as that will defeat the point
+            # of this example (as that generates a list with a new "id").
+            for i, w in enumerate(wheels):
+                wheels[i] = int(w)
+            self._wheels = wheels
+
+        @property
+        def inverse_bools(self) -> Set[bool]:
+            return self._inverse_bools
+
+        @inverse_bools.setter
+        def inverse_bools(self, bool_set: Set[bool]):
+            # Again, try to avoid a set comprehension here for demo purposes.
+            for b in bool_set:
+                to_add = not b
+                if to_add not in bool_set:
+                    bool_set.discard(b)
+                    bool_set.add(to_add)
+
+            self._inverse_bools = bool_set
+
+        @property
+        def inventory(self) -> DefaultDict[str, List[Union[int, str]]]:
+            return self._inventory
+
+        @inventory.setter
+        def inventory(self, inventory: DefaultDict[str, List[Union[int, str]]]):
+            if 'Keys' in inventory:
+                del inventory['Keys']
+            self._inventory = inventory
+
+
+    if __name__ == '__main__':
+        # Confirm that we go through our setter methods
+        v1 = Vehicle(
+            wheels=['1', '2', '3'],
+            inverse_bools={True, False},
+            inventory=defaultdict(list, Keys=['remove me'])
+        )
+
+        v1.inventory['Spare tires'].append(2)
+        print(v1)
+        # prints:
+        #   Vehicle(wheels=[1, 2, 3], inverse_bools={False, True}, inventory=defaultdict(<class 'list'>, {'Spare tires': [2]}))
+
+        # Confirm that mutable (list, dict, set) types are not modified, as we will
+        # use a `default factory` in this case.
+
+        v2 = Vehicle()
+        v2.wheels.append(3)
+        v2.inventory['Truck'].append('fire truck')
+        v2.inverse_bools.add(True)
+        print(v2)
+        # prints:
+        #   Vehicle(wheels=[3], inverse_bools={True}, inventory=defaultdict(<class 'list'>, {'Truck': ['fire truck']}))
+
+        v3 = Vehicle()
+        v3.wheels.append(5)
+        v3.inventory['Windshields'].append(3)
+        v3.inverse_bools.add(False)
+        print(v3)
+        # prints:
+        #   Vehicle(wheels=[5], inverse_bools={False}, inventory=defaultdict(<class 'list'>, {'Windshields': [3]}))
+
+        # Confirm that mutable type fields are not shared between dataclass instances.
+
+        assert v1.wheels == [1, 2, 3]
+        assert v1.inverse_bools == {False, True}
+        assert v1.inventory == {'Spare tires': [2]}
+
+        assert v2.wheels == [3]
+        assert v2.inverse_bools == {True}
+        assert v2.inventory == {'Truck': ['fire truck']}
+
+        assert v3.wheels == [5]
+        assert v3.inverse_bools == {False}
+        assert v3.inventory == {'Windshields': [3]}
