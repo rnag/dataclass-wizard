@@ -2,6 +2,23 @@
 History
 =======
 
+0.5.1 (2021-08-13)
+------------------
+**Bugfixes**
+
+* The ``property_wizard`` metaclass should now correctly handle cases when field
+  properties are annotated as a standard mutable type (``list``, ``dict``,
+  or ``set``).
+* The ``property_wizard`` metaclass should now also honor the ``default_factory``
+  argument to a dataclass *field* object as expected.
+* Resolved an issue where in some cases the JSON load/dump process failed when
+  Python 3.8+ users imported ``TypedDict`` from ``typing`` instead of the
+  ``typing_extensions`` module. Now it should correctly work regardless of which
+  version of ``TypedDict`` is used. This is especially important because of
+  `an issue with TypedDict`_ that is present in Python 3.8.
+
+.. _an issue with TypedDict: https://bugs.python.org/issue38834
+
 0.5.0 (2021-08-12)
 ------------------
 **Features and Improvements**
