@@ -105,6 +105,51 @@ def test_meta_initializer_runs_as_expected(mock_log):
     assert d['my_dt'] == round(expected_dt.timestamp())
 
 
+def test_json_key_to_field_when_add_is_a_falsy_value(mock_log):
+    """
+    The `json_key_to_field` attribute is specified when subclassing
+    :class:`JSONSerializable.Meta`, but the `__all__` field a falsy value.
+
+    Added for code coverage.
+    """
+
+    @dataclass
+    class MyClass(JSONSerializable):
+
+        class Meta(JSONSerializable.Meta):
+            debug_enabled = True
+            json_key_to_field = {
+                '__all__': False,
+                'my_json_str': 'myCustomStr',
+                'anotherJSONField': 'myCustomStr'
+            }
+            key_transform_with_dump = LetterCase.SNAKE
+
+        myCustomStr: str
+
+    mock_log.info.assert_called_once_with('DEBUG Mode is enabled')
+
+    string = """
+    {
+        "my_json_str": "test that this is mapped to 'myCustomStr'"
+    }
+    """
+    c = MyClass.from_json(string)
+
+    log.debug(repr(c))
+    log.debug('Prettified JSON: %s', c)
+
+    assert c.myCustomStr == "test that this is mapped to 'myCustomStr'"
+
+    d = c.to_dict()
+
+    # Assert that the default key transform is used when converting the
+    # dataclass to JSON.
+    assert 'my_json_str' not in d
+    assert 'my_custom_str' in d
+    assert d['my_custom_str'] == "test that this is mapped to 'myCustomStr'"
+
+
 def test_meta_config_is_not_implicitly_shared_between_dataclasses(mock_log):
 
     @dataclass
