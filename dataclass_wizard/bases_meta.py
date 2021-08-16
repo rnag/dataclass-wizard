@@ -9,8 +9,8 @@ from typing import ClassVar, Type, Union, Optional, Dict
 
 from .abstractions import W, AbstractJSONWizard
 from .class_helper import (
-    _META_INITIALIZER, get_outer_class_name, get_class_name, create_new_class, json_field_to_dataclass_field,
-    dataclass_field_to_json_field
+    _META_INITIALIZER, get_outer_class_name, get_class_name, create_new_class,
+    json_field_to_dataclass_field, dataclass_field_to_json_field
 )
 from .decorators import try_with_load
 from .dumpers import get_dumper
@@ -33,6 +33,11 @@ class BaseJSONWizardMeta:
     #
     # Note: this is in addition to the implicit field transformations, like
     #   "myStr" -> "my_str"
+    #
+    # If the reverse mapping is also desired (i.e. dataclass field to JSON
+    # key), then specify the "__all__" key as a truthy value. If multiple JSON
+    # keys are specified for a dataclass field, only the first one provided is
+    # used in this case.
     json_key_to_field: Dict[str, str] = None
 
     # How should :class:`time` and :class:`datetime` objects be serialized
@@ -124,9 +129,9 @@ class BaseJSONWizardMeta:
                 # we don't know if there are multiple JSON keys mapped to a
                 # single dataclass field. So to be safe, we should only set
                 # the first JSON key mapped to each dataclass field.
-                for k, v in cls.json_key_to_field.items():
-                    if v not in dataclass_to_json_field:
-                        dataclass_to_json_field[v] = k
+                for json_key, field in cls.json_key_to_field.items():
+                    if field not in dataclass_to_json_field:
+                        dataclass_to_json_field[field] = json_key
 
         if cls.marshal_date_time_as:
             enum_val = cls._safe_as_enum('marshal_date_time_as', DateTimeTo)

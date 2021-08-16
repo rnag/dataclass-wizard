@@ -22,7 +22,8 @@ from .bases import BaseDumpHook
 from .class_helper import (
     create_new_class,
     dataclass_fields, dataclass_field_to_json_field,
-    dataclass_to_dumper, set_class_dumper, setup_dump_config_for_cls_if_needed,
+    dataclass_to_dumper, set_class_dumper,
+    setup_dump_config_for_cls_if_needed,
 )
 from .constants import _DUMP_HOOKS
 from .log import LOG
