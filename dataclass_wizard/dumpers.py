@@ -23,10 +23,11 @@ from .class_helper import (
     create_new_class,
     dataclass_fields, dataclass_field_to_json_field,
     dataclass_to_dumper, set_class_dumper,
+    setup_dump_config_for_cls_if_needed,
 )
 from .constants import _DUMP_HOOKS
 from .log import LOG
-from .type_def import NoneType, DD
+from .type_def import NoneType, DD, LS
 from .utils.string_conv import to_camel_case
 
 
@@ -83,6 +84,13 @@ class DumpMixin(AbstractDumper, BaseDumpHook):
             dict_factory, hooks):
 
         return typ(_asdict_inner(v, dict_factory, hooks) for v in o)
+
+    @staticmethod
+    def dump_with_set(
+            o: Union[LS], _typ: Type[LS],
+            dict_factory, hooks):
+
+        return list(_asdict_inner(v, dict_factory, hooks) for v in o)
 
     @staticmethod
     def dump_with_named_tuple(
@@ -142,6 +150,8 @@ def setup_default_dumper(cls=DumpMixin):
     # Complex types
     cls.register_dump_hook(Enum, cls.dump_with_enum)
     cls.register_dump_hook(UUID, cls.dump_with_uuid)
+    cls.register_dump_hook(set, cls.dump_with_set)
+    cls.register_dump_hook(frozenset, cls.dump_with_set)
     cls.register_dump_hook(list, cls.dump_with_list_or_tuple)
     cls.register_dump_hook(tuple, cls.dump_with_list_or_tuple)
     cls.register_dump_hook(NamedTupleMeta, cls.dump_with_named_tuple)
@@ -205,6 +215,10 @@ def asdict(obj, *, dict_factory=dict) -> Dict[str, Any]:
     # -- The following lines are added, and are not present in original implementation. --
     cls_dumper = get_dumper(obj)
     hooks = cls_dumper.__DUMP_HOOKS__
+
+    # Pass the class reference itself, since we know we have an instance of
+    # the class.
+    setup_dump_config_for_cls_if_needed(type(obj))
 
     # Call the optional hook that runs before we process the dataclass
     cls_dumper.__pre_as_dict__(obj)

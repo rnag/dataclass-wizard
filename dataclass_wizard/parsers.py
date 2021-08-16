@@ -3,7 +3,7 @@ __all__ = ['Parser',
            'UnionParser',
            'OptionalParser',
            'ForwardRefParser',
-           'ListParser',
+           'IterableParser',
            'TupleParser',
            'VariadicTupleParser',
            'NamedTupleParser',
@@ -19,7 +19,7 @@ from dataclasses import dataclass, InitVar, field
 
 from .abstractions import AbstractParser
 from .errors import ParseError
-from .type_def import NoneType, PyForwardRef, T, M, S, DD
+from .type_def import NoneType, PyForwardRef, T, M, S, DD, LS
 from .utils.type_check import (
     get_origin, get_args, get_named_tuple_field_types,
     get_keys_for_typed_dict)
@@ -34,7 +34,18 @@ class Parser(AbstractParser):
     hook: Callable[[Any, Type[T]], T]
 
     def __call__(self, o: Any) -> T:
-        return self.hook(o, self.base_type)
+        try:
+            return self.hook(o, self.base_type)
+
+        except TypeError:
+            if self.hook is None:
+                err = TypeError('Provided type is not currently supported.')
+                raise ParseError(
+                    err, o, self.base_type,
+                    unsupported_type=self.base_type
+                )
+            # Else, raise the original error.
+            raise
 
 
 @dataclass
@@ -155,11 +166,14 @@ class ForwardRefParser(AbstractParser):
 
 
 @dataclass
-class ListParser(AbstractParser):
-
-    base_type: Type[S]
+class IterableParser(AbstractParser):
+    """
+    Parser for a :class:`list` or a :class:`set` type, or a subclass of either
+    type.
+    """
+    base_type: Type[LS]
     get_parser: InitVar[GetParserType]
-    hook: Callable[[S, Type[list], AbstractParser], list]
+    hook: Callable[[LS, Type[LS], AbstractParser], LS]
     elem_parser: AbstractParser = field(init=False)
 
     def __post_init__(self, cls: Type[T], get_parser: GetParserType):
@@ -177,10 +191,10 @@ class ListParser(AbstractParser):
 
         self.elem_parser = get_parser(elem_type, cls)
 
-    def __call__(self, o: S) -> S:
+    def __call__(self, o: LS) -> LS:
         """
         Load an object `o` into a new object of type `base_type` (generally a
-        :class:`list` or a sub-class of one)
+        list, set, or a sub-class of one)
         """
         try:
             return self.hook(o, self.base_type, self.elem_parser)
@@ -189,7 +203,8 @@ class ListParser(AbstractParser):
             if not isinstance(o, self.base_type):
                 e = TypeError('Incorrect type for field')
                 raise ParseError(
-                    e, o, self.base_type, desired_type=list)
+                    e, o, self.base_type,
+                    desired_type=self.base_type)
             else:
                 raise
 

@@ -74,6 +74,9 @@ __all__ = [
     'LoadMixin',
     'DumpMixin',
     'property_wizard',
+    # Models
+    'json_field',
+    'json_key'
 ]
 
 import logging
@@ -81,6 +84,7 @@ import logging
 from .constants import PY36
 from .dumpers import DumpMixin, setup_default_dumper
 from .loaders import LoadMixin, setup_default_loader
+from .models import json_field, json_key
 from .property_wizard import property_wizard
 from .serial_json import JSONSerializable
 

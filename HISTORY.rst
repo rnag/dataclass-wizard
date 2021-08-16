@@ -2,6 +2,25 @@
 History
 =======
 
+0.6.0 (2021-08-16)
+------------------
+
+* Support ``set`` and ``frozenset`` types in the JSON load and dump process,
+  as well as their equivalents in the ``typing`` module.
+* Support custom JSON key mappings for dataclass fields.
+* Add new exported helper functions:
+    - ``json_field``: This can be thought of as an alias to ``dataclasses.field(...)``,
+      but one which also represents a mapping of one or more JSON key names to a
+      dataclass field.
+    - ``json_key``: Represents a mapping of one or more JSON key names for a
+      dataclass field.
+* Add an optional attribute ``json_key_to_field`` to ``JSONSerializable.Meta``
+* Rename ``ListParser`` to ``IterableParser``, since this parser will also be
+  used for Set types.
+* Update the ``__call__`` method of the default ``Parser`` to raise a ``ParseError``,
+  so we can provide a more helpful error message when an unknown or unsupported type
+  annotation is encountered.
+
 0.5.1 (2021-08-13)
 ------------------
 **Bugfixes**

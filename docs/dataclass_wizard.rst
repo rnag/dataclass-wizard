@@ -100,6 +100,14 @@ dataclass\_wizard.log module
    :undoc-members:
    :show-inheritance:
 
+dataclass\_wizard.models module
+-------------------------------
+
+.. automodule:: dataclass_wizard.models
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 dataclass\_wizard.parsers module
 --------------------------------
 

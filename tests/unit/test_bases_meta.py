@@ -48,11 +48,17 @@ def test_meta_initializer_runs_as_expected(mock_log):
 
         class Meta(JSONSerializable.Meta):
             debug_enabled = True
+            json_key_to_field = {
+                '__all__': True,
+                'my_json_str': 'myCustomStr',
+                'anotherJSONField': 'myCustomStr'
+            }
             marshal_date_time_as = DateTimeTo.TIMESTAMP
             key_transform_with_load = 'Camel'
             key_transform_with_dump = LetterCase.SNAKE
 
         myStr: Optional[str]
+        myCustomStr: str
         myDate: date
         listOfInt: List[int] = field(default_factory=list)
         isActive: bool = False
@@ -63,6 +69,7 @@ def test_meta_initializer_runs_as_expected(mock_log):
     string = """
     {
         "my_str": 20,
+        "my_json_str": "test that this is mapped to 'myCustomStr'",
         "ListOfInt": ["1", "2", 3],
         "isActive": "true",
         "my_dt": "2020-01-02T03:04:05",
@@ -78,6 +85,7 @@ def test_meta_initializer_runs_as_expected(mock_log):
     expected_date = date(2010, 11, 30)
 
     assert c.myStr == '20'
+    assert c.myCustomStr == "test that this is mapped to 'myCustomStr'"
     assert c.listOfInt == [1, 2, 3]
     assert c.isActive
     assert c.myDate == expected_date
@@ -87,7 +95,7 @@ def test_meta_initializer_runs_as_expected(mock_log):
 
     # Assert all JSON keys are converted to snake case
     expected_json_keys = ['my_str', 'list_of_int', 'is_active',
-                          'my_date', 'my_dt']
+                          'my_date', 'my_dt', 'my_json_str']
     assert all(k in d for k in expected_json_keys)
 
     # Assert that date and datetime objects are serialized to timestamps (int)
@@ -95,6 +103,51 @@ def test_meta_initializer_runs_as_expected(mock_log):
     assert d['my_date'] == date_to_timestamp(expected_date)
     assert isinstance(d['my_dt'], int)
     assert d['my_dt'] == round(expected_dt.timestamp())
+
+
+def test_json_key_to_field_when_add_is_a_falsy_value(mock_log):
+    """
+    The `json_key_to_field` attribute is specified when subclassing
+    :class:`JSONSerializable.Meta`, but the `__all__` field a falsy value.
+
+    Added for code coverage.
+    """
+
+    @dataclass
+    class MyClass(JSONSerializable):
+
+        class Meta(JSONSerializable.Meta):
+            debug_enabled = True
+            json_key_to_field = {
+                '__all__': False,
+                'my_json_str': 'myCustomStr',
+                'anotherJSONField': 'myCustomStr'
+            }
+            key_transform_with_dump = LetterCase.SNAKE
+
+        myCustomStr: str
+
+    mock_log.info.assert_called_once_with('DEBUG Mode is enabled')
+
+    string = """
+    {
+        "my_json_str": "test that this is mapped to 'myCustomStr'"
+    }
+    """
+    c = MyClass.from_json(string)
+
+    log.debug(repr(c))
+    log.debug('Prettified JSON: %s', c)
+
+    assert c.myCustomStr == "test that this is mapped to 'myCustomStr'"
+
+    d = c.to_dict()
+
+    # Assert that the default key transform is used when converting the
+    # dataclass to JSON.
+    assert 'my_json_str' not in d
+    assert 'my_custom_str' in d
+    assert d['my_custom_str'] == "test that this is mapped to 'myCustomStr'"
 
 
 def test_meta_config_is_not_implicitly_shared_between_dataclasses(mock_log):

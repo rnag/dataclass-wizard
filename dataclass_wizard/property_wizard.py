@@ -10,6 +10,7 @@ from .utils.type_check import (
 
 
 AnnotationType = Dict[str, Type[T]]
+AnnotationReplType = Dict[str, str]
 
 
 def property_wizard(*args, **kwargs):
@@ -31,7 +32,7 @@ def property_wizard(*args, **kwargs):
     # For each property, we want to replace the annotation for the underscore-
     # leading field associated with that property with the 'public' field
     # name, and this mapping helps us keep a track of that.
-    annotation_repls: Dict[str, str] = {}
+    annotation_repls: AnnotationReplType = {}
 
     for f, val in cls_dict.items():
 
@@ -63,7 +64,7 @@ def property_wizard(*args, **kwargs):
 
 def _process_public_property(cls: Type, public_f: str, val: property,
                              annotations: AnnotationType,
-                             annotation_repls: Dict[str, str]):
+                             annotation_repls: AnnotationReplType):
     """
     Handles the case when the property is marked as 'public' (i.e. no leading
     underscore)
@@ -123,7 +124,7 @@ def _process_public_property(cls: Type, public_f: str, val: property,
 
 def _process_underscored_property(cls: Type, under_f: str, val: property,
                                   annotations: AnnotationType,
-                                  annotation_repls: Dict[str, str]):
+                                  annotation_repls: AnnotationReplType):
     """
     Handles the case when the property is marked as 'private' (i.e. leads with
     an underscore)
@@ -154,8 +155,8 @@ def _process_underscored_property(cls: Type, under_f: str, val: property,
         if hasattr(cls, public_f):
             # Get the value of the field without a leading underscore
             v = getattr(cls, public_f)
-            # Check if the value of the public field is a dataclass Field.
-            # If so, we can use the `default` if one is set.
+            # Check if the value of public field is a dataclass Field. If so,
+            # we can use the `default` or `default_factory` if one is set.
             if isinstance(v, Field):
                 fval = _process_field(annotations, public_f, v)[0]
             else:

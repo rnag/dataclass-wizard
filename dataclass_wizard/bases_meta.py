@@ -5,11 +5,12 @@ both import directly from `bases`.
 
 """
 from datetime import datetime, date
-from typing import ClassVar, Type, Union, Optional
+from typing import ClassVar, Type, Union, Optional, Dict
 
 from .abstractions import W, AbstractJSONWizard
 from .class_helper import (
-    _META_INITIALIZER, get_outer_class_name, get_class_name, create_new_class
+    _META_INITIALIZER, get_outer_class_name, get_class_name, create_new_class,
+    json_field_to_dataclass_field, dataclass_field_to_json_field
 )
 from .decorators import try_with_load
 from .dumpers import get_dumper
@@ -23,13 +24,25 @@ from .utils.type_conv import date_to_timestamp, as_enum
 
 class BaseJSONWizardMeta:
 
-    # How should :class:`time` and :class:`datetime` objects be serialized
-    # when converted to a Python dictionary object or a JSON string.
-    marshal_date_time_as: ClassVar[Union[DateTimeTo, str]] = None
-
     # True to enable Debug mode for additional debug log output and more
     # helpful messages during error handling.
     debug_enabled: ClassVar[bool] = False
+
+    # A customized mapping of JSON keys to dataclass fields, that is used
+    # whenever `from_dict` or `from_json` is called.
+    #
+    # Note: this is in addition to the implicit field transformations, like
+    #   "myStr" -> "my_str"
+    #
+    # If the reverse mapping is also desired (i.e. dataclass field to JSON
+    # key), then specify the "__all__" key as a truthy value. If multiple JSON
+    # keys are specified for a dataclass field, only the first one provided is
+    # used in this case.
+    json_key_to_field: Dict[str, str] = None
+
+    # How should :class:`time` and :class:`datetime` objects be serialized
+    # when converted to a Python dictionary object or a JSON string.
+    marshal_date_time_as: ClassVar[Union[DateTimeTo, str]] = None
 
     # How JSON keys should be transformed to dataclass fields.
     #
@@ -91,6 +104,35 @@ class BaseJSONWizardMeta:
         cls_loader = get_loader(outer_cls, create=create)
         cls_dumper = get_dumper(outer_cls, create=create)
 
+        if cls.debug_enabled:
+
+            LOG.setLevel('DEBUG')
+            LOG.info('DEBUG Mode is enabled')
+            # Decorate all hooks so they format more helpful messages
+            # on error.
+            load_hooks = cls_loader.__LOAD_HOOKS__
+            for typ in load_hooks:
+                load_hooks[typ] = try_with_load(load_hooks[typ])
+
+        if cls.json_key_to_field:
+            add_for_both = cls.json_key_to_field.pop('__all__', None)
+
+            json_field_to_dataclass_field(outer_cls).update(
+                cls.json_key_to_field
+            )
+
+            if add_for_both:
+                dataclass_to_json_field = dataclass_field_to_json_field(
+                    outer_cls)
+
+                # We unfortunately can't use a dict comprehension approach, as
+                # we don't know if there are multiple JSON keys mapped to a
+                # single dataclass field. So to be safe, we should only set
+                # the first JSON key mapped to each dataclass field.
+                for json_key, field in cls.json_key_to_field.items():
+                    if field not in dataclass_to_json_field:
+                        dataclass_to_json_field[field] = json_key
+
         if cls.marshal_date_time_as:
             enum_val = cls._safe_as_enum('marshal_date_time_as', DateTimeTo)
 
@@ -105,16 +147,6 @@ class BaseJSONWizardMeta:
                 # noop; the default dump hook for `datetime` and `date` already
                 # serializes using this approach.
                 pass
-
-        if cls.debug_enabled:
-
-            LOG.setLevel('DEBUG')
-            LOG.info('DEBUG Mode is enabled')
-            # Decorate all hooks so they format more helpful messages
-            # on error.
-            load_hooks = cls_loader.__LOAD_HOOKS__
-            for typ in load_hooks:
-                load_hooks[typ] = try_with_load(load_hooks[typ])
 
         if cls.key_transform_with_load:
 

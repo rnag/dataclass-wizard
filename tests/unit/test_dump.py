@@ -1,15 +1,134 @@
 import logging
 from dataclasses import dataclass
+from typing import Set, FrozenSet
 from uuid import UUID
 
 import pytest
 
-from dataclass_wizard import JSONSerializable
+from dataclass_wizard import JSONSerializable, json_field, json_key
 from dataclass_wizard.errors import ParseError
 from ..conftest import *
 
 
 log = logging.getLogger(__name__)
+
+
+def test_to_dict_key_transform_with_json_field():
+    """
+    Specifying a custom mapping of JSON key to dataclass field, via the
+    `json_field` helper function.
+    """
+
+    @dataclass
+    class MyClass(JSONSerializable):
+        my_str: str = json_field('myCustomStr', all=True)
+        my_bool: bool = json_field(('my_json_bool', 'myTestBool'), all=True)
+
+    value = 'Testing'
+    expected = {'myCustomStr': value, 'my_json_bool': True}
+
+    c = MyClass(my_str=value, my_bool=True)
+
+    result = c.to_dict()
+    log.info('Parsed object: %r', result)
+
+    assert result == expected
+
+
+def test_to_dict_key_transform_with_json_key():
+    """
+    Specifying a custom mapping of JSON key to dataclass field, via the
+    `json_key` helper function.
+    """
+
+    @dataclass
+    class MyClass(JSONSerializable):
+        my_str: Annotated[str, json_key('myCustomStr', all=True)]
+        my_bool: Annotated[bool, json_key(
+            'my_json_bool', 'myTestBool', all=True)]
+
+    value = 'Testing'
+    expected = {'myCustomStr': value, 'my_json_bool': True}
+
+    c = MyClass(my_str=value, my_bool=True)
+
+    result = c.to_dict()
+    log.info('Parsed object: %r', result)
+
+    result = c.to_dict()
+    log.info('Parsed object: %r', result)
+
+    assert result == expected
+
+
+@pytest.mark.parametrize(
+    'input,expected,expectation',
+    [
+        ({1, 2, 3}, [1, 2, 3], does_not_raise()),
+        ((3.22, 2.11, 1.22), [3.22, 2.11, 1.22], does_not_raise()),
+    ]
+)
+def test_set(input, expected, expectation):
+
+    @dataclass
+    class MyClass(JSONSerializable):
+        num_set: Set[int]
+        any_set: set
+
+    # Sort expected so the assertions succeed
+    expected = sorted(expected)
+
+    input_set = set(input)
+    c = MyClass(num_set=input_set, any_set=input_set)
+
+    with expectation:
+        result = c.to_dict()
+        log.info('Parsed object: %r', result)
+
+        assert all(key in result for key in ('numSet', 'anySet'))
+
+        # Set should be converted to list or tuple, as only those are JSON
+        # serializable.
+        assert isinstance(result['numSet'], (list, tuple))
+        assert isinstance(result['anySet'], (list, tuple))
+
+        assert sorted(result['numSet']) == expected
+        assert sorted(result['anySet']) == expected
+
+
+@pytest.mark.parametrize(
+    'input,expected,expectation',
+    [
+        ({1, 2, 3}, [1, 2, 3], does_not_raise()),
+        ((3.22, 2.11, 1.22), [3.22, 2.11, 1.22], does_not_raise()),
+    ]
+)
+def test_frozenset(input, expected, expectation):
+
+    @dataclass
+    class MyClass(JSONSerializable):
+        num_set: FrozenSet[int]
+        any_set: frozenset
+
+    # Sort expected so the assertions succeed
+    expected = sorted(expected)
+
+    input_set = frozenset(input)
+    c = MyClass(num_set=input_set, any_set=input_set)
+
+    with expectation:
+        result = c.to_dict()
+        log.info('Parsed object: %r', result)
+
+        assert all(key in result for key in ('numSet', 'anySet'))
+
+        # Set should be converted to list or tuple, as only those are JSON
+        # serializable.
+        assert isinstance(result['numSet'], (list, tuple))
+        assert isinstance(result['anySet'], (list, tuple))
+
+        assert sorted(result['numSet']) == expected
+        assert sorted(result['anySet']) == expected
 
 
 @pytest.mark.parametrize(
