@@ -4,12 +4,52 @@ from uuid import UUID
 
 import pytest
 
-from dataclass_wizard import JSONSerializable
+from dataclass_wizard import JSONSerializable, json_field, json_key
 from dataclass_wizard.errors import ParseError
 from ..conftest import *
 
 
 log = logging.getLogger(__name__)
+
+
+def test_to_dict_key_transform_with_json_field():
+
+    @dataclass
+    class MyClass(JSONSerializable):
+        my_str: str = json_field('myCustomStr', all=True)
+        my_bool: bool = json_field(('my_json_bool', 'myTestBool'), all=True)
+
+    value = 'Testing'
+    expected = {'myCustomStr': value, 'my_json_bool': True}
+
+    c = MyClass(my_str=value, my_bool=True)
+
+    result = c.to_dict()
+    log.info('Parsed object: %r', result)
+
+    assert result == expected
+
+
+def test_to_dict_key_transform_with_json_key():
+
+    @dataclass
+    class MyClass(JSONSerializable):
+        my_str: Annotated[str, json_key('myCustomStr', all=True)]
+        my_bool: Annotated[bool, json_key(
+            'my_json_bool', 'myTestBool', all=True)]
+
+    value = 'Testing'
+    expected = {'myCustomStr': value, 'my_json_bool': True}
+
+    c = MyClass(my_str=value, my_bool=True)
+
+    result = c.to_dict()
+    log.info('Parsed object: %r', result)
+
+    result = c.to_dict()
+    log.info('Parsed object: %r', result)
+
+    assert result == expected
 
 
 @pytest.mark.parametrize(

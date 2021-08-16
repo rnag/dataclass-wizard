@@ -22,7 +22,7 @@ from .bases import BaseDumpHook
 from .class_helper import (
     create_new_class,
     dataclass_fields, dataclass_field_to_json_field,
-    dataclass_to_dumper, set_class_dumper,
+    dataclass_to_dumper, set_class_dumper, setup_dump_config_for_cls_if_needed,
 )
 from .constants import _DUMP_HOOKS
 from .log import LOG
@@ -214,6 +214,10 @@ def asdict(obj, *, dict_factory=dict) -> Dict[str, Any]:
     # -- The following lines are added, and are not present in original implementation. --
     cls_dumper = get_dumper(obj)
     hooks = cls_dumper.__DUMP_HOOKS__
+
+    # Pass the class reference itself, since we know we have an instance of
+    # the class.
+    setup_dump_config_for_cls_if_needed(type(obj))
 
     # Call the optional hook that runs before we process the dataclass
     cls_dumper.__pre_as_dict__(obj)

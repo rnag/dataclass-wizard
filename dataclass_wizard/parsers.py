@@ -38,11 +38,14 @@ class Parser(AbstractParser):
             return self.hook(o, self.base_type)
 
         except TypeError:
-            err = TypeError('Provided type is not currently supported.')
-            raise ParseError(
-                err, o, self.base_type,
-                unsupported_type=self.base_type
-            )
+            if self.hook is None:
+                err = TypeError('Provided type is not currently supported.')
+                raise ParseError(
+                    err, o, self.base_type,
+                    unsupported_type=self.base_type
+                )
+            # Else, raise the original error.
+            raise
 
 
 @dataclass

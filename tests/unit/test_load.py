@@ -11,7 +11,7 @@ from typing import List, Optional, Union, Tuple, Dict, NamedTuple, Type, Default
 
 import pytest
 
-from dataclass_wizard import JSONSerializable
+from dataclass_wizard import JSONSerializable, json_field, json_key
 from dataclass_wizard.errors import ParseError
 from dataclass_wizard.parsers import OptionalParser, Parser
 from dataclass_wizard.type_def import NoneType, T
@@ -48,6 +48,40 @@ def test_bool(input, expected):
     log.debug('Parsed object: %r', result)
 
     assert result.my_bool == expected
+
+
+def test_from_dict_key_transform_with_json_field():
+
+    @dataclass
+    class MyClass(JSONSerializable):
+        my_str: str = json_field('myCustomStr')
+        my_bool: bool = json_field(('my_json_bool', 'myTestBool'))
+
+    value = 'Testing'
+    d = {'myCustomStr': value, 'myTestBool': 'true'}
+
+    result = MyClass.from_dict(d)
+    log.debug('Parsed object: %r', result)
+
+    assert result.my_str == value
+    assert result.my_bool is True
+
+
+def test_from_dict_key_transform_with_json_key():
+
+    @dataclass
+    class MyClass(JSONSerializable):
+        my_str: Annotated[str, json_key('myCustomStr')]
+        my_bool: Annotated[bool, json_key('my_json_bool', 'myTestBool')]
+
+    value = 'Testing'
+    d = {'myCustomStr': value, 'myTestBool': 'true'}
+
+    result = MyClass.from_dict(d)
+    log.debug('Parsed object: %r', result)
+
+    assert result.my_str == value
+    assert result.my_bool is True
 
 
 @pytest.mark.parametrize(
