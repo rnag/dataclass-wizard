@@ -36,6 +36,14 @@ dataclass\_wizard.bases\_meta module
    :undoc-members:
    :show-inheritance:
 
+dataclass\_wizard.bloi module
+-----------------------------
+
+.. automodule:: dataclass_wizard.bloi
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 dataclass\_wizard.class\_helper module
 --------------------------------------
 

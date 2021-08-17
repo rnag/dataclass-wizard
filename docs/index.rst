@@ -10,7 +10,8 @@ Welcome to Dataclass Wizard's documentation!
    quickstart
    using_field_properties
    python_compatibility
-   advanced/index
+   common_use_cases/index
+   advanced_usage/index
    modules
    contributing
    history
