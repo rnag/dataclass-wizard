@@ -248,7 +248,7 @@ def create_new_class(
     return type(
         new_cls_name,
         bases,
-        attr_dict or {}
+        attr_dict or {'__slots__': ()}
     )
 
 

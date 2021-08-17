@@ -2,6 +2,8 @@ __all__ = [
     'PyForwardRef',
     'PyLiteral',
     'PyTypedDicts',
+    'FrozenKeys',
+    'DefFactory',
     'NoneType',
     'ExplicitNullType',
     'ExplicitNull',
@@ -10,14 +12,20 @@ __all__ = [
     'E',
     'U',
     'M',
+    'NT',
     'DD',
     'N',
     'S',
-    'LS'
+    'LT',
+    'LSQ'
 ]
 
+from collections import deque
 from enum import Enum
-from typing import TypeVar, Mapping, Sequence, DefaultDict, List, Type
+from typing import (
+    Type, TypeVar, Sequence, Mapping,
+    List, DefaultDict, FrozenSet, NamedTuple, Callable
+)
 from uuid import UUID
 
 from .constants import PY36, PY38_OR_ABOVE
@@ -40,6 +48,9 @@ U = TypeVar('U', bound=UUID)
 # Mapping type
 M = TypeVar('M', bound=Mapping)
 
+# NamedTuple type
+NT = TypeVar('NT', bound=NamedTuple)
+
 # DefaultDict type
 DD = TypeVar('DD', bound=DefaultDict)
 
@@ -49,8 +60,17 @@ N = TypeVar('N', int, float, complex)
 # Sequence type
 S = TypeVar('S', bound=Sequence)
 
-# List or Set type
-LS = TypeVar('LS', list, set, frozenset)
+# List or Tuple type
+LT = TypeVar('LT', list, tuple)
+
+# List, Set, or Deque (Double ended queue) type
+LSQ = TypeVar('LSQ', list, set, frozenset, deque)
+
+# A fixed set of key names
+FrozenKeys = FrozenSet[str]
+
+# Default factory type, assuming a no-args constructor
+DefFactory = Callable[[], T]
 
 # The class of the `None` singleton, cached for re-usability
 NoneType = type(None)
@@ -94,6 +114,7 @@ else:
 
 # Create our own "nullish" type for explicit type assertions
 class ExplicitNullType:
+    __slots__ = ()
 
     def __bool__(self):
         return False

@@ -1,6 +1,7 @@
 import logging
+from collections import deque
 from dataclasses import dataclass
-from typing import Set, FrozenSet
+from typing import Set, FrozenSet, Deque
 from uuid import UUID
 
 import pytest
@@ -129,6 +130,38 @@ def test_frozenset(input, expected, expectation):
 
         assert sorted(result['numSet']) == expected
         assert sorted(result['anySet']) == expected
+
+
+@pytest.mark.parametrize(
+    'input,expected,expectation',
+    [
+        ({1, 2, 3}, [1, 2, 3], does_not_raise()),
+        ((3.22, 2.11, 1.22), [3.22, 2.11, 1.22], does_not_raise()),
+    ]
+)
+def test_deque(input, expected, expectation):
+
+    @dataclass
+    class MyQClass(JSONSerializable):
+        num_deque: Deque[int]
+        any_deque: deque
+
+    input_deque = deque(input)
+    c = MyQClass(num_deque=input_deque, any_deque=input_deque)
+
+    with expectation:
+        result = c.to_dict()
+        log.info('Parsed object: %r', result)
+
+        assert all(key in result for key in ('numDeque', 'anyDeque'))
+
+        # Set should be converted to list or tuple, as only those are JSON
+        # serializable.
+        assert isinstance(result['numDeque'], list)
+        assert isinstance(result['anyDeque'], list)
+
+        assert result['numDeque'] == expected
+        assert result['anyDeque'] == expected
 
 
 @pytest.mark.parametrize(

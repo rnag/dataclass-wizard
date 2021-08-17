@@ -6,14 +6,17 @@ from dataclasses import dataclass, InitVar
 from datetime import datetime, time, date
 from decimal import Decimal
 from typing import (
-    Any, Type, Union, List, Tuple, NamedTupleMeta, Dict, SupportsFloat,
-    Optional, SupportsInt, FrozenSet, Sequence, AnyStr, TypeVar, Text, Callable, Set
+    Any, Type, TypeVar, Union, List, Tuple, Dict, SupportsFloat, AnyStr, Text,
+    Optional, SupportsInt, Sequence, Iterable
 )
 
-from .type_def import M, N, T, E, U, DD, LS
+from .type_def import DefFactory, FrozenKeys, M, N, T, NT, E, U, DD, LSQ
+
 
 # Create a generic variable that can be 'AbstractJSONWizard', or any subclass.
 W = TypeVar('W', bound='AbstractJSONWizard')
+
+FieldToParser = Dict[str, 'AbstractParser']
 
 
 class AbstractJSONWizard(ABC):
@@ -26,6 +29,8 @@ class AbstractJSONWizard(ABC):
     be properly loaded from, and serialized to, JSON.
 
     """
+    __slots__ = ()
+
     @classmethod
     @abstractmethod
     def from_json(cls: Type[W], string: str) -> Union[W, List[W]]:
@@ -77,6 +82,7 @@ class AbstractParser(ABC):
     collection and sequence types.
 
     """
+    __slots__ = ('base_type', )
 
     # This represents the class that contains the field that has an annotated
     # type `base_type`. This is primarily useful for resolving `ForwardRef`
@@ -110,6 +116,8 @@ class AbstractLoader(ABC):
     an object `o` into an object of annotated (or concrete) type `base_type`.
 
     """
+    __slots__ = ()
+
     @staticmethod
     @abstractmethod
     def transform_json_field(string: str) -> str:
@@ -187,12 +195,13 @@ class AbstractLoader(ABC):
 
     @staticmethod
     @abstractmethod
-    def load_to_list_or_set(
-            o: Union[List, Set, Tuple], base_type: Type[LS],
-            elem_parser: AbstractParser) -> LS:
+    def load_to_iterable(
+            o: Iterable, base_type: Type[LSQ],
+            elem_parser: AbstractParser) -> LSQ:
         """
-        Load a list, set or tuple into a new object of type `base_type`
-        (generally a list, set, or a sub-class of one)
+        Load a list, set, frozenset or deque into a new object of type
+        `base_type` (generally a list, set, frozenset, deque, or a sub-class
+        of one)
         """
 
     @classmethod
@@ -208,9 +217,8 @@ class AbstractLoader(ABC):
     @classmethod
     @abstractmethod
     def load_to_named_tuple(
-            cls, o: Union[Dict, List, Tuple], base_type: Type[NamedTupleMeta],
-            field_to_parser: Optional[Dict[str, AbstractParser]]
-    ) -> NamedTupleMeta:
+            cls, o: Union[Dict, List, Tuple], base_type: Type[NT],
+            field_to_parser: Optional[FieldToParser]) -> NT:
         """
         Load a dictionary, list, or tuple to a `NamedTuple` sub-class (or an
         un-annotated `namedtuple`)
@@ -221,7 +229,7 @@ class AbstractLoader(ABC):
     def load_to_dict(
             o: Dict, base_type: Type[M],
             key_parser: AbstractParser,
-            val_parser: AbstractParser) -> Dict:
+            val_parser: AbstractParser) -> M:
         """
         Load an object `o` into a new object of type `base_type` (generally a
         :class:`dict` or a sub-class of one)
@@ -231,7 +239,7 @@ class AbstractLoader(ABC):
     @abstractmethod
     def load_to_defaultdict(
             o: Dict, base_type: Type[DD],
-            default_factory: Callable[[], T],
+            default_factory: DefFactory,
             key_parser: AbstractParser,
             val_parser: AbstractParser) -> DD:
         """
@@ -243,9 +251,9 @@ class AbstractLoader(ABC):
     @abstractmethod
     def load_to_typed_dict(
             o: Dict, base_type: Type[M],
-            key_to_parser: Dict[str, AbstractParser],
-            required_keys: FrozenSet[str],
-            optional_keys: FrozenSet[str]) -> Dict:
+            key_to_parser: FieldToParser,
+            required_keys: FrozenKeys,
+            optional_keys: FrozenKeys) -> M:
         """
         Load an object `o` annotated as a ``TypedDict`` sub-class into a new
         object of type `base_type` (generally a :class:`dict` or a sub-class
@@ -298,6 +306,7 @@ class AbstractLoader(ABC):
 
 
 class AbstractDumper(ABC):
+    __slots__ = ()
 
     def __pre_as_dict__(self):
         """

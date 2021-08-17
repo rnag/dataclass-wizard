@@ -9,7 +9,6 @@ __all__ = ['as_bool',
            'date_to_timestamp']
 
 from datetime import datetime, time, date
-from enum import Enum
 from numbers import Number
 from typing import Union, List, Type, AnyStr, Optional
 

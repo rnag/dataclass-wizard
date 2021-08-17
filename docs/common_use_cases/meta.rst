@@ -1,5 +1,5 @@
-Extending from ``Meta``
-=======================
+Extending from :class:`Meta`
+============================
 
 There are a couple well-known use cases where we might want to customize
 behavior of how fields are transformed during the JSON load and dump
@@ -68,8 +68,8 @@ transformed. If you need similar behavior for any of the ``typing``
 sub-classes mentioned, simply convert them to dataclasses and the key
 transform should then apply for those fields.
 
-Any ``Meta`` settings only affect the Outer Class
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Any :class:`Meta` settings only affect the Outer Class
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 All attributes set in the ``Meta`` class will only apply to the
 outer dataclass, and should not affect the load/dump process for
@@ -145,8 +145,8 @@ Here's a quick example to confirm this behavior:
 
 .. _Global Meta:
 
-Global ``Meta`` settings
-~~~~~~~~~~~~~~~~~~~~~~~~
+Global :class:`Meta` settings
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 In case you want global ``Meta`` settings that will apply to
 all dataclasses which sub-class from ``JSONSerializable``, you

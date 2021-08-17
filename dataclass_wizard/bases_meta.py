@@ -23,6 +23,7 @@ from .utils.type_conv import date_to_timestamp, as_enum
 
 
 class BaseJSONWizardMeta:
+    __slots__ = ()
 
     # True to enable Debug mode for additional debug log output and more
     # helpful messages during error handling.
@@ -38,7 +39,7 @@ class BaseJSONWizardMeta:
     # key), then specify the "__all__" key as a truthy value. If multiple JSON
     # keys are specified for a dataclass field, only the first one provided is
     # used in this case.
-    json_key_to_field: Dict[str, str] = None
+    json_key_to_field: ClassVar[Dict[str, str]] = None
 
     # How should :class:`time` and :class:`datetime` objects be serialized
     # when converted to a Python dictionary object or a JSON string.
@@ -134,7 +135,7 @@ class BaseJSONWizardMeta:
                         dataclass_to_json_field[field] = json_key
 
         if cls.marshal_date_time_as:
-            enum_val = cls._safe_as_enum('marshal_date_time_as', DateTimeTo)
+            enum_val = cls._as_enum_safe('marshal_date_time_as', DateTimeTo)
 
             if enum_val is DateTimeTo.TIMESTAMP:
                 # Update dump hooks for the `datetime` and `date` types
@@ -150,16 +151,16 @@ class BaseJSONWizardMeta:
 
         if cls.key_transform_with_load:
 
-            cls_loader.transform_json_field = cls._safe_as_enum(
+            cls_loader.transform_json_field = cls._as_enum_safe(
                 'key_transform_with_load', LetterCase)
 
         if cls.key_transform_with_dump:
 
-            cls_dumper.transform_dataclass_field = cls._safe_as_enum(
+            cls_dumper.transform_dataclass_field = cls._as_enum_safe(
                 'key_transform_with_dump', LetterCase)
 
     @classmethod
-    def _safe_as_enum(cls, name: str, base_type: Type[E]) -> Optional[E]:
+    def _as_enum_safe(cls, name: str, base_type: Type[E]) -> Optional[E]:
         """
         Attempt to return the value for class attribute :attr:`attr_name` as
         a :type:`base_type`.

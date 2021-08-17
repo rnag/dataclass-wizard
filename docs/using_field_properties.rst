@@ -268,8 +268,8 @@ For now, please check out the test cases `here <https://github.com/rnag/dataclas
 for additional examples.
 
 
-Mutable Types
--------------
+Properties with Mutable Types
+-----------------------------
 
 Field properties annotated with any of the known
 mutable types (``list``, ``dict``, and ``set``) should have

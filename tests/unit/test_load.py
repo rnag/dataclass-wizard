@@ -4,12 +4,12 @@ Tests for the `loaders` module, but more importantly for the `parsers` module.
 Note: I might refactor this into a separate `test_parsers.py` as time permits.
 """
 import logging
-from collections import namedtuple, defaultdict
+from collections import namedtuple, defaultdict, deque
 from dataclasses import dataclass
 from datetime import datetime, date, time
 from typing import (
     List, Optional, Union, Tuple, Dict, NamedTuple, Type, DefaultDict,
-    Set, FrozenSet
+    Set, FrozenSet, Deque
 )
 
 import pytest
@@ -435,6 +435,34 @@ def test_list(input, expectation, expected):
 
         log.debug('Parsed object: %r', result)
         assert result.my_list == expected
+
+
+@pytest.mark.parametrize(
+    'input,expectation,expected',
+    [
+        (
+            ['hello', 'world'], pytest.raises(ParseError), None
+        ),
+        (
+            [1, '2', 3], does_not_raise(), [1, 2, 3]
+        ),
+    ]
+)
+def test_deque(input, expectation, expected):
+
+    @dataclass
+    class MyClass(JSONSerializable):
+        my_deque: Deque[int]
+
+    d = {'My_Deque': input}
+
+    with expectation:
+        result = MyClass.from_dict(d)
+
+        log.debug('Parsed object: %r', result)
+
+        assert isinstance(result.my_deque, deque)
+        assert list(result.my_deque) == expected
 
 
 @pytest.mark.parametrize(
