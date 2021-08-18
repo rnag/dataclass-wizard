@@ -3,7 +3,7 @@ from functools import wraps
 from typing import Dict, Any, Type, Union, Tuple, Optional
 
 from .type_def import T, NoneType
-from .utils.type_check import (
+from .utils.typing_compat import (
     get_type_hints_with_extras, get_origin, get_args,
     is_generic, is_literal, is_annotated
 )

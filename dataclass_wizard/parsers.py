@@ -20,7 +20,7 @@ from typing import (
 from .abstractions import AbstractParser, FieldToParser
 from .errors import ParseError
 from .type_def import FrozenKeys, NoneType, PyForwardRef, T, M, S, DD, LSQ, N, DefFactory, NT
-from .utils.type_check import (
+from .utils.typing_compat import (
     get_origin, get_args, get_named_tuple_field_types,
     get_keys_for_typed_dict)
 

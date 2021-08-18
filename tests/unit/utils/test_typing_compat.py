@@ -3,7 +3,7 @@ from typing import ClassVar, Generic, Union, List, Tuple, Dict, Callable
 import pytest
 
 from dataclass_wizard.type_def import T
-from dataclass_wizard.utils.type_check import get_origin, get_args
+from dataclass_wizard.utils.typing_compat import get_origin, get_args
 from ...conftest import *
 
 

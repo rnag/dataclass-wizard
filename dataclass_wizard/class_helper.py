@@ -7,7 +7,7 @@ from .models import JSONField, JSON
 from .parsers import Parser
 from .type_def import ExplicitNullType, T
 from .utils.dict_helper import CaseInsensitiveDict
-from .utils.type_check import is_annotated, get_args
+from .utils.typing_compat import is_annotated, get_args
 
 
 # A cached mapping of fully qualified class name to the list of fields, as

@@ -12,8 +12,8 @@ def json_key(*keys: str, all=False):
 
     This is only in *addition* to the default key transform; for example, a
     JSON key appearing as "myField", "MyField" or "my-field" will already map
-    to a dataclass field "my_test_field" by default (assuming the key
-    transform converts to snake case).
+    to a dataclass field "my_field" by default (assuming the key transform
+    converts to snake case).
 
     The mapping to each JSON key name is case-sensitive, so passing "myfield"
     will not match a "myField" key in a JSON string or a Python dict object.
@@ -42,8 +42,8 @@ def json_field(keys: _STR_COLLECTION, *,
 
     This is only in *addition* to the default key transform; for example, a
     JSON key appearing as "myField", "MyField" or "my-field" will already map
-    to a dataclass field "my_test_field" by default (assuming the key
-    transform converts to snake case).
+    to a dataclass field "my_field" by default (assuming the key transform
+    converts to snake case).
 
     The mapping to each JSON key name is case-sensitive, so passing "myfield"
     will not match a "myField" key in a JSON string or a Python dict object.

@@ -25,7 +25,7 @@ from .type_def import (
     M, N, T, E, U, DD, LSQ, NT
 )
 from .utils.string_conv import to_snake_case
-from .utils.type_check import (
+from .utils.typing_compat import (
     is_literal, is_typed_dict, get_origin, get_args, is_annotated
 )
 from .utils.type_conv import (
