@@ -8,13 +8,13 @@ obtained from http://www.apache.org/licenses/LICENSE-2.0.
 
 See the end of this file for the original Apache license from this library.
 """
-from collections import defaultdict
+from collections import defaultdict, deque
 # noinspection PyProtectedMember
 from dataclasses import _is_dataclass_instance
 from datetime import datetime, time, date
 from decimal import Decimal
 from enum import Enum
-from typing import Type, Dict, Any, List, Union, Tuple, NamedTupleMeta
+from typing import Type, Dict, Any, NamedTupleMeta
 from uuid import UUID
 
 from .abstractions import AbstractDumper
@@ -27,7 +27,7 @@ from .class_helper import (
 )
 from .constants import _DUMP_HOOKS
 from .log import LOG
-from .type_def import NoneType, DD, LS
+from .type_def import NoneType, DD, LSQ, E, U, LT, NT
 from .utils.string_conv import to_camel_case
 
 
@@ -38,6 +38,8 @@ class DumpMixin(AbstractDumper, BaseDumpHook):
     built-in types to a more 'JSON-friendly' version.
 
     """
+    __slots__ = ()
+
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__()
         setup_default_dumper(cls)
@@ -71,31 +73,28 @@ class DumpMixin(AbstractDumper, BaseDumpHook):
         return o
 
     @staticmethod
-    def dump_with_enum(o: Enum, *_):
+    def dump_with_enum(o: E, *_):
         return o.value
 
     @staticmethod
-    def dump_with_uuid(o: UUID, *_):
+    def dump_with_uuid(o: U, *_):
         return o.hex
 
     @staticmethod
     def dump_with_list_or_tuple(
-            o: Union[List, Tuple], typ: Type[Union[List, Tuple]],
-            dict_factory, hooks):
+            o: LT, typ: Type[LT], dict_factory, hooks):
 
         return typ(_asdict_inner(v, dict_factory, hooks) for v in o)
 
     @staticmethod
-    def dump_with_set(
-            o: Union[LS], _typ: Type[LS],
-            dict_factory, hooks):
+    def dump_with_iterable(
+            o: LSQ, _typ: Type[LSQ], dict_factory, hooks):
 
         return list(_asdict_inner(v, dict_factory, hooks) for v in o)
 
     @staticmethod
     def dump_with_named_tuple(
-            o: NamedTupleMeta, typ: Type[NamedTupleMeta],
-            dict_factory, hooks):
+            o: NT, typ: Type[NT], dict_factory, hooks):
 
         return typ(*[_asdict_inner(v, dict_factory, hooks) for v in o])
 
@@ -109,7 +108,7 @@ class DumpMixin(AbstractDumper, BaseDumpHook):
 
     @staticmethod
     def dump_with_defaultdict(
-            o: Dict, _typ: Type[DD], dict_factory, hooks):
+            o: DD, _typ: Type[DD], dict_factory, hooks):
 
         return {_asdict_inner(k, dict_factory, hooks):
                 _asdict_inner(v, dict_factory, hooks)
@@ -150,8 +149,9 @@ def setup_default_dumper(cls=DumpMixin):
     # Complex types
     cls.register_dump_hook(Enum, cls.dump_with_enum)
     cls.register_dump_hook(UUID, cls.dump_with_uuid)
-    cls.register_dump_hook(set, cls.dump_with_set)
-    cls.register_dump_hook(frozenset, cls.dump_with_set)
+    cls.register_dump_hook(set, cls.dump_with_iterable)
+    cls.register_dump_hook(frozenset, cls.dump_with_iterable)
+    cls.register_dump_hook(deque, cls.dump_with_iterable)
     cls.register_dump_hook(list, cls.dump_with_list_or_tuple)
     cls.register_dump_hook(tuple, cls.dump_with_list_or_tuple)
     cls.register_dump_hook(NamedTupleMeta, cls.dump_with_named_tuple)

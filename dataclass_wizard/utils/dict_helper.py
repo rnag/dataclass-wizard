@@ -45,6 +45,7 @@ class CaseInsensitiveDict(MutableMapping):
     operations are given keys that have equal ``.lower()``s, the
     behavior is undefined.
     """
+    __slots__ = ('_store', )
 
     def __init__(self, data=None, **kwargs):
         self._store = OrderedDict()

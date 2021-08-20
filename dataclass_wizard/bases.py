@@ -5,6 +5,8 @@ class BaseLoadHook:
     """
     Container class for type hooks.
     """
+    __slots__ = ()
+
     __LOAD_HOOKS__: ClassVar[Dict[Type, Callable]] = None
 
     def __init_subclass__(cls):
@@ -27,6 +29,8 @@ class BaseDumpHook:
     """
     Container class for type hooks.
     """
+    __slots__ = ()
+
     __DUMP_HOOKS__: ClassVar[Dict[Type, Callable]] = None
 
     def __init_subclass__(cls):

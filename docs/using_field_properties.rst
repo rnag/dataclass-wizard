@@ -268,8 +268,8 @@ For now, please check out the test cases `here <https://github.com/rnag/dataclas
 for additional examples.
 
 
-Mutable Types
--------------
+Working with Mutable Types
+--------------------------
 
 Field properties annotated with any of the known
 mutable types (``list``, ``dict``, and ``set``) should have
@@ -284,7 +284,7 @@ as expected.
 
 For field properties that are annotated as any mutable types,
 the recommended approach is to pass in the ``default_factory``
-argument so that a initial value can be set as expected, in the
+argument so that an initial value can be set as expected, in the
 case that no value is passed in via the constructor method.
 
 The following example confirms that field properties with mutable
@@ -312,7 +312,7 @@ types are now set with initial values as expected:
 
         # We need to use the `field(default_factory=...)` syntax here, because
         # otherwise the value is initialized from the no-args constructor,
-        # i.e. defaultdict()`, which is not what we want.
+        # i.e. `defaultdict()`, which is not what we want.
         inventory: Annotated[
             DefaultDict[str, List[Union[int, str]]],
             field(default_factory=lambda: defaultdict(list))

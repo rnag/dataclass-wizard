@@ -16,11 +16,15 @@ class JSONSerializable(AbstractJSONWizard):
     to and from JSON.
 
     """
+    __slots__ = ()
+
     class Meta(BaseJSONWizardMeta):
         """
         Inner meta class that can be extended by sub-classes for additional
         customization with the JSON load / dump process.
         """
+        __slots__ = ()
+
         def __init_subclass__(cls):
             # Set the `__init_subclass__` method here, so we can ensure it
             # doesn't run for the `JSONSerializable.Meta` class.

@@ -1,7 +1,7 @@
 Map a JSON Key to a Field
 =========================
 
-The ``dataclass-wizard`` library has a set of built-in *key transform* helper
+The ``dataclass-wizard`` library provides a set of built-in *key transform* helper
 functions that automatically transform the casing of keys in a JSON or Python
 ``dict`` object to and from dataclass field names. As mentioned in the
 :doc:`Meta <meta>` section, this key transform only applies to dataclasses
@@ -23,7 +23,7 @@ dataclass field name. For example, a key appears in the JSON object as
 ``myJSONKey`` (case-sensitive), and you want to map it to a dataclass
 field that is declared as ``my_str``.
 
-The below example demonstrates how to setup a custom mapping of a JSON key name
+The below example demonstrates how to set up a custom mapping of a JSON key name
 to a dataclass field. There a few different options available, so feel free to
 choose whichever approach is most preferable. I am myself partial to the last
 approach, as I find it to be the most explicit, and also one that plays well

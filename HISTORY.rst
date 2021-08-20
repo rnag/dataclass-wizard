@@ -2,6 +2,20 @@
 History
 =======
 
+0.7.0 (2021-08-19)
+------------------
+
+* Support the ``deque`` type in the JSON load and dump process,
+  as well as its equivalent in the ``typing`` module.
+* Add ``__slots__`` where possible to classes, to help reduce the overall memory
+  footprint.
+* Slightly changed the order of constructor arguments to most ``Parser`` implementations.
+* Rename the ``type_check`` utils module to ``typing_compat``, as I think this name
+  makes it clearer as to its purpose.
+* Rename a few internal functions, such as ``BaseJSONWizardMeta._safe_as_enum``
+  -> ``BaseJSONWizardMeta._as_enum_safe``
+* Add benchmark tests against a few other libraries
+
 0.6.0 (2021-08-16)
 ------------------
 

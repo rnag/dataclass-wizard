@@ -1,5 +1,5 @@
-Skip the ``__str__``
-====================
+Skip the :meth:`__str__`
+========================
 
 The ``JSONSerializable`` class implements a default
 ``__str__`` method if a sub-class doesn't already define

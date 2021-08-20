@@ -12,8 +12,8 @@ def json_key(*keys: str, all=False):
 
     This is only in *addition* to the default key transform; for example, a
     JSON key appearing as "myField", "MyField" or "my-field" will already map
-    to a dataclass field "my_test_field" by default (assuming the key
-    transform converts to snake case).
+    to a dataclass field "my_field" by default (assuming the key transform
+    converts to snake case).
 
     The mapping to each JSON key name is case-sensitive, so passing "myfield"
     will not match a "myField" key in a JSON string or a Python dict object.
@@ -42,8 +42,8 @@ def json_field(keys: _STR_COLLECTION, *,
 
     This is only in *addition* to the default key transform; for example, a
     JSON key appearing as "myField", "MyField" or "my-field" will already map
-    to a dataclass field "my_test_field" by default (assuming the key
-    transform converts to snake case).
+    to a dataclass field "my_field" by default (assuming the key transform
+    converts to snake case).
 
     The mapping to each JSON key name is case-sensitive, so passing "myfield"
     will not match a "myField" key in a JSON string or a Python dict object.
@@ -86,22 +86,16 @@ class JSONField(Field):
 
     See the docs on the :func:`json_field` function for more info.
     """
-    __slots__ = ('json_key', )
+    __slots__ = ('json', )
 
-    def __init__(self,
-                 keys: _STR_COLLECTION,
-                 all=False,
-                 default=MISSING,
-                 default_factory=MISSING,
-                 init=True,
-                 repr=True,
-                 hash=None,
-                 compare=True,
-                 metadata=None):
-        super().__init__(
-            default, default_factory, init, repr, hash, compare, metadata)
+    def __init__(self, keys: _STR_COLLECTION, all: bool,
+                 default, default_factory, init, repr, hash, compare,
+                 metadata):
+
+        super().__init__(default, default_factory, init, repr, hash, compare,
+                         metadata)
 
         if isinstance(keys, str):
-            keys = (keys,)
+            keys = (keys, )
 
-        self.json_key = JSON(*keys, all=all)
+        self.json = JSON(*keys, all=all)
