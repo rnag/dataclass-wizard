@@ -31,7 +31,7 @@ Benefits
 - Automatic key transform to / from JSON (ex. camel to snake).
   :doc:`Custom key mappings <common_use_cases/custom_key_mappings>` is also supported.
 - Automatic type conversion when loading from JSON or a ``dict`` object.
-  For instances, strings are converted to boolean if a type annotation is ``List[bool]``.
+  For instance, strings are converted to boolean if a type annotation is ``List[bool]``.
 - Latest Python features such as
   `parameterized standard collections <python_compatibility.html#the-latest-and-greatest>`__
   can be used.
