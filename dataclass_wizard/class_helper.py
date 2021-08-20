@@ -146,7 +146,7 @@ def _setup_load_config_for_cls(cls_loader, cls, name: str):
         # Check if the field is a `JSONField` object. If so, update the
         # class-specific mapping of JSON key to dataclass field name.
         if isinstance(f, JSONField):
-            for key in f.json_key.keys:
+            for key in f.json.keys:
                 json_to_dataclass_field[key] = f.name
 
         # Check if the field annotation is an `Annotated` type. If so,
@@ -193,8 +193,8 @@ def setup_dump_config_for_cls_if_needed(cls):
 
         # Check if the field is a `JSONField` object. If so, update the
         # class-specific mapping of dataclass field name to JSON key.
-        if isinstance(f, JSONField) and f.json_key.all:
-            dataclass_to_json_field[f.name] = f.json_key.keys[0]
+        if isinstance(f, JSONField) and f.json.all:
+            dataclass_to_json_field[f.name] = f.json.keys[0]
 
         # Check if the field annotation is an `Annotated` type. If so,
         # look for any `JSON` objects in the arguments; for each object,

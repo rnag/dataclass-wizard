@@ -6,8 +6,10 @@ Welcome to Dataclass Wizard's documentation!
    :caption: Contents:
 
    readme
+   overview
    installation
    quickstart
+   examples
    using_field_properties
    python_compatibility
    common_use_cases/index

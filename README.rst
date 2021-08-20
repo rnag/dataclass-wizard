@@ -49,12 +49,11 @@ Using the built-in JSON marshalling support for dataclasses:
     from dataclasses import dataclass, field
     from typing import Optional, List, Tuple
 
-    from dataclass_wizard import JSONSerializable
+    from dataclass_wizard import JSONWizard
 
 
     @dataclass
-    class MyClass(JSONSerializable):
-
+    class MyClass(JSONWizard):
         my_str: Optional[str]
         is_active_tuple: Tuple[bool, ...]
         list_of_int: List[int] = field(default_factory=list)
@@ -77,8 +76,8 @@ Using the built-in JSON marshalling support for dataclasses:
     # prints:
     #   {"myStr": "20", "isActiveTuple": [true, false, true, false], "listOfInt": [1, 2, 3]}
 
-... and with the ``property_wizard``, which provides supports for
-field properties with default values in dataclasses:
+... and with the ``property_wizard``, which provides support for
+`field properties`_ with default values in dataclasses:
 
 .. code:: python3
 
@@ -146,9 +145,10 @@ The ``dataclass-wizard`` library officially supports **Python 3.6** or higher.
 JSON Marshalling
 ----------------
 
-``JSONSerializable`` is a Mixin_ class which provides the following helper
-methods that are useful for serializing (and loading) a dataclass instance
-to/from JSON, as defined by the ``AbstractJSONWizard`` interface.
+``JSONSerializable`` (aliased to ``JSONWizard``) is a Mixin_ class which
+provides the following helper methods that are useful for serializing (and loading)
+a dataclass instance to/from JSON, as defined by the ``AbstractJSONWizard``
+interface.
 
 .. list-table::
    :widths: 10 40 35
@@ -228,5 +228,6 @@ This package was created with Cookiecutter_ and the `rnag/cookiecutter-pypackage
 .. _`rnag/cookiecutter-pypackage`: https://github.com/rnag/cookiecutter-pypackage
 .. _`Mixin`: https://stackoverflow.com/a/547714/10237506
 .. _`Using Field Properties`: https://dataclass-wizard.readthedocs.io/en/latest/using_field_properties.html
+.. _`field properties`: https://dataclass-wizard.readthedocs.io/en/latest/using_field_properties.html
 .. _`key limitations`: https://florimond.dev/en/posts/2018/10/reconciling-dataclasses-and-properties-in-python/
 .. _`more complete example`: https://dataclass-wizard.readthedocs.io/en/latest/examples.html#a-more-complete-example
