@@ -1,12 +1,12 @@
 from collections import defaultdict
-from dataclasses import Field, fields
-from typing import Dict, Tuple, Type, Union, Callable, Optional
+from dataclasses import Field, fields, is_dataclass
+from typing import Dict, Tuple, Type, Union, Callable, Optional, Any
 
 from .abstractions import W, AbstractLoader, AbstractDumper
 from .models import JSONField, JSON
 from .parsers import Parser
 from .type_def import ExplicitNullType, T
-from .utils.dict_helper import CaseInsensitiveDict
+from .utils.dict_helper import DictWithLowerStore
 from .utils.typing_compat import is_annotated, get_args
 
 
@@ -14,17 +14,17 @@ from .utils.typing_compat import is_annotated, get_args
 # returned by `dataclasses.fields()`.
 _FIELDS: Dict[str, Tuple[Field]] = {}
 
+_CLASS_TO_LOAD_FUNC: Dict[Type, Any] = {}
+
 # A mapping of dataclass name to its loader.
-_CLASS_TO_LOADER: Dict[str, Type[AbstractLoader]] = {}
+_CLASS_TO_LOADER: Dict[Type, Type[AbstractLoader]] = {}
 
 # A mapping of dataclass name to its dumper.
 _CLASS_TO_DUMPER: Dict[str, Type[AbstractDumper]] = {}
 
 # A cached mapping of a dataclass to each of its case-insensitive field names
 # and load hook.
-#
-# Note: need to create a `ForwardRef` here, because Python 3.6 complains.
-_FIELD_NAME_TO_LOAD_PARSER: Dict[str, 'CaseInsensitiveDict[str, Parser]'] = {}
+_FIELD_NAME_TO_LOAD_PARSER: Dict[str, DictWithLowerStore[str, Parser]] = {}
 
 # Since the dump process doesn't use Parsers currently, we use a sentinel
 # mapping to confirm if we need to setup the dump config for a dataclass
@@ -45,12 +45,12 @@ _META_INITIALIZER: Dict[
     str, Callable[[Type[W]], None]] = {}
 
 
-def dataclass_to_loader(class_or_instance):
+def dataclass_to_loader(cls):
     """
     Returns the loader for a dataclass.
     """
-    name = get_class_name(class_or_instance)
-    return _CLASS_TO_LOADER[name]
+    # name = get_class(class_or_instance)
+    return _CLASS_TO_LOADER[cls]
 
 
 def dataclass_to_dumper(class_or_instance):
@@ -65,10 +65,12 @@ def set_class_loader(class_or_instance, loader: Type[AbstractLoader]):
     """
     Set (and return) the loader for a dataclass.
     """
-    name = get_class_name(class_or_instance)
-    _CLASS_TO_LOADER[name] = get_class(loader)
+    cls = get_class(class_or_instance)
+    loader_cls = get_class(loader)
 
-    return _CLASS_TO_LOADER[name]
+    _CLASS_TO_LOADER[cls] = get_class(loader_cls)
+
+    return _CLASS_TO_LOADER[cls]
 
 
 def set_class_dumper(class_or_instance, dumper: Type[AbstractDumper]):
@@ -85,8 +87,8 @@ def json_field_to_dataclass_field(class_or_instance):
     """
     Returns a mapping of JSON field to dataclass field.
     """
-    name = get_class_name(class_or_instance)
-    return _JSON_FIELD_TO_DATACLASS_FIELD[name]
+    cls = get_class(class_or_instance)
+    return _JSON_FIELD_TO_DATACLASS_FIELD[cls]
 
 
 def dataclass_field_to_json_field(class_or_instance):
@@ -98,19 +100,19 @@ def dataclass_field_to_json_field(class_or_instance):
 
 
 def dataclass_field_to_load_parser(
-        cls_loader, cls) -> 'CaseInsensitiveDict[str, Parser]':
+        cls_loader, cls) -> DictWithLowerStore[str, Parser]:
     """
     Returns a mapping of each lower-cased field name to its annotated type.
     """
-    name = get_class_name(cls)
+    # name = get_class(cls)
 
-    if name not in _FIELD_NAME_TO_LOAD_PARSER:
-        _setup_load_config_for_cls(cls_loader, cls, name)
+    if cls not in _FIELD_NAME_TO_LOAD_PARSER:
+        _setup_load_config_for_cls(cls_loader, cls)
 
-    return _FIELD_NAME_TO_LOAD_PARSER[name]
+    return _FIELD_NAME_TO_LOAD_PARSER[cls]
 
 
-def _setup_load_config_for_cls(cls_loader, cls, name: str):
+def _setup_load_config_for_cls(cls_loader, cls):
     """
     This function processes a class `cls` on an initial run, and sets up the
     load process for `cls` by iterating over each dataclass field. For each
@@ -132,8 +134,7 @@ def _setup_load_config_for_cls(cls_loader, cls, name: str):
           name is then updated with the input passed in to the :class:`JSON`
           attribute.
     """
-
-    json_to_dataclass_field = _JSON_FIELD_TO_DATACLASS_FIELD[name]
+    json_to_dataclass_field = _JSON_FIELD_TO_DATACLASS_FIELD[cls]
     name_to_parser = {}
 
     for f in dataclass_fields(cls):
@@ -159,7 +160,7 @@ def _setup_load_config_for_cls(cls_loader, cls, name: str):
                     for key in extra.keys:
                         json_to_dataclass_field[key] = f.name
 
-    _FIELD_NAME_TO_LOAD_PARSER[name] = CaseInsensitiveDict(name_to_parser)
+    _FIELD_NAME_TO_LOAD_PARSER[cls] = DictWithLowerStore(name_to_parser)
 
 
 def setup_dump_config_for_cls_if_needed(cls):
@@ -295,3 +296,10 @@ def is_subclass(obj, base_cls: Type) -> bool:
     """Check if `obj` is a sub-class of `base_cls`"""
     cls = obj if isinstance(obj, type) else type(obj)
     return issubclass(cls, base_cls)
+
+
+def assert_is_dataclass(cls):
+    """
+    Assert that `cls` is a dataclass (i.e. it uses the `@dataclass` decorator)
+    """
+    assert is_dataclass(cls), 'must be called with a dataclass type or instance'

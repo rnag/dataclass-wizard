@@ -5,9 +5,10 @@ from typing import Type, Dict, Any, List, Union
 
 from .abstractions import AbstractJSONWizard, W
 from .bases_meta import BaseJSONWizardMeta
-from .class_helper import call_meta_initializer_if_needed
+from .class_helper import call_meta_initializer_if_needed, assert_is_dataclass
 from .dumpers import asdict
-from .loaders import fromdict
+from .loaders import fromdict, fromlist, load_func_for_dataclass
+from .constants import _LOADER
 
 
 class JSONSerializable(AbstractJSONWizard):
@@ -45,14 +46,14 @@ class JSONSerializable(AbstractJSONWizard):
         """
         Converts a Python `list` object to a list of the dataclass instances.
         """
-        return [fromdict(cls, d) for d in o]
+        return fromlist(o, cls)
 
     @classmethod
     def from_dict(cls: Type[W], o: Dict[str, Any]) -> W:
         """
         Converts a Python `dict` object to an instance of the dataclass.
         """
-        return fromdict(cls, o)
+        return fromdict(o, cls)
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -65,7 +66,7 @@ class JSONSerializable(AbstractJSONWizard):
         """
         Converts the dataclass instance to a JSON `string` representation.
         """
-        return json.dumps(self.to_dict(), indent=indent)
+        return json.dumps(asdict(self), indent=indent)
 
     def __init_subclass__(cls, str=True):
         """

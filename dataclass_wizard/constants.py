@@ -20,6 +20,9 @@ PY310_OR_ABOVE = sys.version_info[:2] >= (3, 10)
 # The dictionary key that identifies the default loader / dumper
 _DEFAULT = '__DEFAULT__'
 
+_LOADER = '__WIZARD_LOADER__'
+_MANY_LOADER = '__MANY_WIZARD_LOADER__'
+
 # The name of the dictionary object that contains `load` hooks for each
 # object type. Also used to check if a class is a :class:`BaseLoadHook`
 _LOAD_HOOKS = '__LOAD_HOOKS__'
