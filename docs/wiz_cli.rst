@@ -71,7 +71,7 @@ Generates the following Python code::
 
     from dataclasses import dataclass
     from datetime import datetime
-    from typing import Dict, List, Union
+    from typing import List, Union
 
 
     @dataclass
@@ -89,7 +89,7 @@ Generates the following Python code::
         terrain: str
         surface_water: Union[int, str]
         population: Union[int, str]
-        residents: Dict
+        residents: List
         films: List[str]
         created: datetime
         edited: datetime

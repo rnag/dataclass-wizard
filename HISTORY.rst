@@ -2,6 +2,12 @@
 History
 =======
 
+0.8.2 (2021-08-22)
+------------------
+**Bugfixes**
+
+* ``wiz gs``: Empty lists should appear as ``List`` instead of ``Dict``
+
 0.8.1 (2021-08-22)
 ------------------
 **Bugfixes**

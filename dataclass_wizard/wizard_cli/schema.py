@@ -949,7 +949,7 @@ class PyListGenerator(metaclass=property_wizard):
             # 'Optional' generally means the value can be an explicit "null".
             #
             # return ModuleImporter.wrap_string_with_import('list', Optional)
-            return ModuleImporter.wrap_string_with_import('', Dict)
+            return ModuleImporter.wrap_string_with_import('', List)
 
         return ModuleImporter.wrap_string_with_import(
             str(self.parsed_types), List)
