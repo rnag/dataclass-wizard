@@ -8,6 +8,7 @@ Subpackages
    :maxdepth: 4
 
    dataclass_wizard.utils
+   dataclass_wizard.wizard_cli
 
 Submodules
 ----------

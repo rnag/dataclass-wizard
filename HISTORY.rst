@@ -2,6 +2,12 @@
 History
 =======
 
+0.8.1 (2021-08-22)
+------------------
+**Bugfixes**
+
+* Fix an import issue with the ``wiz`` CLI tool.
+
 0.8.0 (2021-08-22)
 ------------------
 **Features and Improvements**

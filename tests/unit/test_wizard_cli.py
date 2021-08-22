@@ -5,8 +5,7 @@ from unittest.mock import ANY
 import pytest
 from pytest_mock import MockerFixture
 
-from wizard_cli.cli import main
-from wizard_cli.schema import PyCodeGenerator
+from dataclass_wizard.wizard_cli import main, PyCodeGenerator
 from ..conftest import data_file_path
 
 
@@ -49,7 +48,7 @@ def _get_captured_py_code(capfd) -> str:
 
 @pytest.fixture
 def mock_path(mocker: MockerFixture):
-    return mocker.patch('wizard_cli.schema.Path')
+    return mocker.patch('dataclass_wizard.wizard_cli.schema.Path')
 
 
 @pytest.fixture
@@ -59,7 +58,7 @@ def mock_stdin(mocker: MockerFixture):
 
 @pytest.fixture
 def mock_open(mocker: MockerFixture):
-    return mocker.patch('wizard_cli.cli.open')
+    return mocker.patch('dataclass_wizard.wizard_cli.cli.open')
 
 
 def test_call_py_code_generator_with_file_name(mock_path):

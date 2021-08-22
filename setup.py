@@ -40,7 +40,7 @@ setup(
     packages=packages,
     entry_points={
         'console_scripts': [
-            'wiz=wizard_cli.cli:main'
+            f'wiz={package_name}.wizard_cli.cli:main'
         ]
     },
     include_package_data=True,

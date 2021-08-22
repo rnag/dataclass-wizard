@@ -50,6 +50,7 @@ import textwrap
 from collections import defaultdict
 from collections import deque
 from collections.abc import Iterable
+from dataclasses import dataclass, field, InitVar
 from datetime import date, datetime, time
 from enum import Enum
 from pathlib import Path
@@ -59,16 +60,14 @@ from typing import (
     Union, Dict, Sequence
 )
 
-from dataclasses import dataclass, field, InitVar
-
-from dataclass_wizard import property_wizard
-from dataclass_wizard.class_helper import get_class_name
-from dataclass_wizard.type_def import PyDeque
-from dataclass_wizard.type_def import T
-from dataclass_wizard.utils.string_conv import to_snake_case, to_pascal_case
+from .. import property_wizard
+from ..class_helper import get_class_name
+from ..type_def import PyDeque
+from ..type_def import T
+from ..utils.string_conv import to_snake_case, to_pascal_case
 # noinspection PyProtectedMember
-from dataclass_wizard.utils.type_conv import _TRUTHY_VALUES
-from dataclass_wizard.utils.type_conv import as_datetime, as_date, as_time
+from ..utils.type_conv import _TRUTHY_VALUES
+from ..utils.type_conv import as_datetime, as_date, as_time
 
 
 # Some unconstrained type variables.  These are used by the container types.
