@@ -1,6 +1,7 @@
 __all__ = [
     'PyForwardRef',
     'PyLiteral',
+    'PyDeque',
     'PyTypedDicts',
     'FrozenKeys',
     'DefFactory',
@@ -91,6 +92,8 @@ if PY38_OR_ABOVE:
     from typing import ForwardRef as PyForwardRef
     from typing import Literal as PyLiteral
     from typing import TypedDict
+    from typing import Deque as PyDeque
+
     PyTypedDicts.append(TypedDict)
     # Python 3.8+ users might import from either `typing` or
     # `typing_extensions`, so check for both types.
@@ -103,7 +106,13 @@ if PY38_OR_ABOVE:
 else:
     from typing_extensions import Literal as PyLiteral
     from typing_extensions import TypedDict as PyTypedDict
+    # Seems like `Deque` was only introduced to `typing` in 3.6.1, so Python
+    # 3.6.0 won't have it; to be safe, we'll instead import from the
+    # `typing_extensions` module here.
+    from typing_extensions import Deque as PyDeque
+
     PyTypedDicts.append(PyTypedDict)
+
     if PY36:
         from typing import _ForwardRef as PyForwardRef
         # Need to wrap the constructor to discard arguments like `is_argument`

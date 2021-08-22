@@ -2,6 +2,7 @@
 Common test fixtures and utilities.
 """
 
+from pathlib import Path
 from uuid import UUID
 
 

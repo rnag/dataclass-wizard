@@ -1,0 +1,20 @@
+[
+    [
+        [
+            "hello",
+            "world",
+            {"key": 123,
+                "nested_classes": {
+                    "blah": "test",
+                    "another-one": [{"testing":  "world"}]
+                }
+            },
+            {"key": 123,
+                "nested_classes": {"Just something with a space":  0}
+            }
+        ],
+        123,
+        "testing"
+    ],
+    {"key": "value"}
+]

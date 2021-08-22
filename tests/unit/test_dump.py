@@ -31,7 +31,7 @@ def test_to_dict_key_transform_with_json_field():
     c = MyClass(my_str=value, my_bool=True)
 
     result = c.to_dict()
-    log.info('Parsed object: %r', result)
+    log.debug('Parsed object: %r', result)
 
     assert result == expected
 
@@ -54,10 +54,10 @@ def test_to_dict_key_transform_with_json_key():
     c = MyClass(my_str=value, my_bool=True)
 
     result = c.to_dict()
-    log.info('Parsed object: %r', result)
+    log.debug('Parsed object: %r', result)
 
     result = c.to_dict()
-    log.info('Parsed object: %r', result)
+    log.debug('Parsed object: %r', result)
 
     assert result == expected
 
@@ -84,7 +84,7 @@ def test_set(input, expected, expectation):
 
     with expectation:
         result = c.to_dict()
-        log.info('Parsed object: %r', result)
+        log.debug('Parsed object: %r', result)
 
         assert all(key in result for key in ('numSet', 'anySet'))
 
@@ -119,7 +119,7 @@ def test_frozenset(input, expected, expectation):
 
     with expectation:
         result = c.to_dict()
-        log.info('Parsed object: %r', result)
+        log.debug('Parsed object: %r', result)
 
         assert all(key in result for key in ('numSet', 'anySet'))
 
@@ -151,7 +151,7 @@ def test_deque(input, expected, expectation):
 
     with expectation:
         result = c.to_dict()
-        log.info('Parsed object: %r', result)
+        log.debug('Parsed object: %r', result)
 
         assert all(key in result for key in ('numDeque', 'anyDeque'))
 

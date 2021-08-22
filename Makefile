@@ -52,17 +52,17 @@ clean-test: ## remove test and coverage artifacts
 	rm -fr .pytest_cache
 
 lint: ## check style with flake8 and pylint
-	flake8 dataclass_wizard tests
-	pylint dataclass_wizard tests
+	flake8 dataclass_wizard wizard_cli tests
+	pylint dataclass_wizard wizard_cli tests
 
 test: ## run unit tests quickly with the default Python
-	pytest -v --cov=dataclass_wizard --cov-report=term-missing tests/unit
+	pytest -v --cov=dataclass_wizard --cov=wizard_cli --cov-report=term-missing tests/unit
 
 test-all: ## run tests on every Python version with tox
 	tox
 
 coverage: ## check code coverage with unit tests quickly with the default Python
-	coverage run --source dataclass_wizard -m pytest tests/unit
+	coverage run --source dataclass_wizard,wizard_cli -m pytest tests/unit
 	coverage report -m
 	coverage html
 	$(BROWSER) htmlcov/index.html
