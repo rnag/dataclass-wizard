@@ -135,7 +135,7 @@ Using the built-in JSON marshalling support for dataclasses:
 
 .. code:: shell
 
-    $ echo {"myFloat": "1.23", "created_at": "2021-11-17"} | wiz gs - my_file
+    $ echo '{"myFloat": "1.23", "created_at": "2021-11-17"}' | wiz gs - my_file
 
     # Contents of my_file.py
     from dataclasses import dataclass
