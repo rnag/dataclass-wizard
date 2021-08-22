@@ -20,7 +20,8 @@ from dataclass_wizard.utils.string_conv import *
         ('WoRd', 'woRd'),
         ('HIThereHOWIsItGoinG', 'hIThereHOWIsItGoinG'),
         ('How_-Are-_YoUDoing__TeST', 'howAreYoUDoingTeST'),
-        ('thisIsWithANumber42ToTEST', 'thisIsWithANumber42ToTEST')
+        ('thisIsWithANumber42ToTEST', 'thisIsWithANumber42ToTEST'),
+        ('Number 42 With spaces', 'number42WithSpaces')
     ]
 )
 def test_to_camel_case(string, expected):
@@ -45,7 +46,8 @@ def test_to_camel_case(string, expected):
         ('WoRd', 'WoRd'),
         ('HIThereHOWIsItGoinG', 'HIThereHOWIsItGoinG'),
         ('How_-Are-_YoUDoing__TeST', 'HowAreYoUDoingTeST'),
-        ('thisIsWithANumber42ToTEST', 'ThisIsWithANumber42ToTEST')
+        ('thisIsWithANumber42ToTEST', 'ThisIsWithANumber42ToTEST'),
+        ('Number 42 With spaces', 'Number42WithSpaces')
     ]
 )
 def test_to_pascal_case(string, expected):
@@ -69,7 +71,8 @@ def test_to_pascal_case(string, expected):
         ('WoRd', 'wo-rd'),
         ('HIThereHOWIsItGoinG', 'hi-there-how-is-it-goin-g'),
         ('How_-Are-_YoUDoing__TeST', 'how-are-yo-u-doing-te-st'),
-        ('thisIsWithANumber42ToTEST', 'this-is-with-a-number42-to-test')
+        ('thisIsWithANumber42ToTEST', 'this-is-with-a-number42-to-test'),
+        ('Number 42 With spaces', 'number-42-with-spaces')
     ]
 )
 def test_to_lisp_case(string, expected):
@@ -93,7 +96,8 @@ def test_to_lisp_case(string, expected):
         ('WoRd', 'wo_rd'),
         ('HIThereHOWIsItGoinG', 'hi_there_how_is_it_goin_g'),
         ('How_-Are-_YoUDoing__TeST', 'how_are_yo_u_doing_te_st'),
-        ('thisIsWithANumber42ToTEST', 'this_is_with_a_number42_to_test')
+        ('thisIsWithANumber42ToTEST', 'this_is_with_a_number42_to_test'),
+        ('Number 42 With spaces', 'number_42_with_spaces')
     ]
 )
 def test_to_snake_case(string, expected):

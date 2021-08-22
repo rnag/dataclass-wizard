@@ -1,0 +1,8 @@
+{
+    "key": "value",
+    "intKey": 20,
+    "floatKey": 1.23,
+    "my_dict": {
+        "key2": "value!"
+    }
+}

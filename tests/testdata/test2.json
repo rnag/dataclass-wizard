@@ -1,0 +1,9 @@
+[
+    {"key":  "value"},
+    {"key": null, "anotherKey":  "something else", "truth":  4},
+    {"my_list":  {}},
+    {"my_date":  "2021-12-31T04:32:34", "another-key": null},
+    {"another_Key":  32, "my-id":  "testing"},
+    3,
+    "hello!"
+]

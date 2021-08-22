@@ -2,8 +2,8 @@
 Dataclass Wizard
 ~~~~~~~~~~~~~~~~
 
-Marshal dataclasses to/from JSON and Python dict objects, and add support for
-properties with default values.
+Marshal dataclasses to/from JSON and Python dict objects. Support properties
+with initial values. Generate a dataclass schema for JSON input.
 
 Sample Usage:
 

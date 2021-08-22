@@ -38,6 +38,7 @@ Here are the supported features that ``dataclass-wizard`` currently provides:
    ``dict`` objects.
 -  *Field properties*: support for using properties with default
    values in dataclass instances.
+-  *JSON to Dataclass*: generate a dataclass schema for a JSON file or string input.
 
 Usage
 -----
@@ -130,6 +131,26 @@ Using the built-in JSON marshalling support for dataclasses:
         v.wheels = '123'
         assert v.wheels == 123
 
+... or generate a dataclass schema for JSON input, via the `wiz-cli`_ tool:
+
+.. code:: shell
+
+    $ echo '{"myFloat": "1.23", "created_at": "2021-11-17"}' | wiz gs - my_file
+
+    # Contents of my_file.py
+    from dataclasses import dataclass
+    from datetime import date
+    from typing import Union
+
+
+    @dataclass
+    class Data:
+        """
+        Data dataclass
+
+        """
+        my_float: Union[float, str]
+        created_at: date
 
 Installing Dataclass Wizard and Supported Versions
 --------------------------------------------------
@@ -229,5 +250,6 @@ This package was created with Cookiecutter_ and the `rnag/cookiecutter-pypackage
 .. _`Mixin`: https://stackoverflow.com/a/547714/10237506
 .. _`Using Field Properties`: https://dataclass-wizard.readthedocs.io/en/latest/using_field_properties.html
 .. _`field properties`: https://dataclass-wizard.readthedocs.io/en/latest/using_field_properties.html
+.. _`wiz-cli`: https://dataclass-wizard.readthedocs.io/en/latest/wiz_cli.html
 .. _`key limitations`: https://florimond.dev/en/posts/2018/10/reconciling-dataclasses-and-properties-in-python/
 .. _`more complete example`: https://dataclass-wizard.readthedocs.io/en/latest/examples.html#a-more-complete-example

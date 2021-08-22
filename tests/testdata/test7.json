@@ -1,0 +1,30 @@
+[
+    {
+        "MyTestApis": [{"firstApi": "testing."}],
+        "People": [
+            {"name":  "Ricardo", "Age":  "21"},
+            {"name": "Stephan", "age": 23}
+        ],
+        "children": [
+            {"name":  "Alice", "age":  8},
+            {"name":  "Jonas", "age":  12.4}
+        ],
+        "Activities": [{"name":  "fishing"}],
+        "Equipment": [{"count":  12}],
+        "key": 123,
+        "nested_classes": {
+            "blah": "test",
+            "another-one": [
+                {
+                    "testing": "world"
+                }
+            ]
+        }
+    },
+    {
+        "something_else": "test",
+        "nested_classes": {
+            "Just something": 0
+        }
+    }
+]

@@ -2,6 +2,20 @@
 History
 =======
 
+0.8.0 (2021-08-22)
+------------------
+**Features and Improvements**
+
+* Add new ``wiz`` companion CLI utility
+* Add a CLI sub-command ``gs`` to generate the dataclass schema for a JSON
+  file or string input.
+
+**Bugfixes**
+
+* The key transform functions now correctly work when the JSON keys contain
+  spaces. For example, a field named "the number 42" should now be correctly
+  parsed as ``the_number_42`` when the key transformer is :func:`to_snake_case`.
+
 0.7.0 (2021-08-19)
 ------------------
 

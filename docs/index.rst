@@ -2,7 +2,7 @@ Welcome to Dataclass Wizard's documentation!
 ============================================
 
 .. toctree::
-   :maxdepth: 4
+   :maxdepth: 2
    :caption: Contents:
 
    readme
@@ -10,6 +10,7 @@ Welcome to Dataclass Wizard's documentation!
    installation
    quickstart
    examples
+   wiz_cli
    using_field_properties
    python_compatibility
    common_use_cases/index

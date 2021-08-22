@@ -1,14 +1,20 @@
 __all__ = [
     'does_not_raise',
+    'data_file_path',
     'PY36',
     # For compatibility with Python 3.6 and 3.7
     'Literal',
     'TypedDict',
-    'Annotated'
+    'Annotated',
+    'Deque'
 ]
 
 import sys
+from pathlib import Path
 
+
+# Directory for test files
+TEST_DATA_DIR = Path(__file__).resolve().parent / 'testdata'
 
 # Check if we are running Python 3.6
 PY36 = sys.version_info[:2] == (3, 6)
@@ -26,7 +32,14 @@ try:
     from typing import Literal
     from typing import TypedDict
     from typing import Annotated
+    from typing import Deque
 except ImportError:
     from typing_extensions import Literal
     from typing_extensions import TypedDict
     from typing_extensions import Annotated
+    from typing_extensions import Deque
+
+
+def data_file_path(name: str) -> str:
+    """Returns the full path to a test file."""
+    return str((TEST_DATA_DIR / name).absolute())
