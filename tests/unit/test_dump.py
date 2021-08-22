@@ -1,7 +1,7 @@
 import logging
 from collections import deque
 from dataclasses import dataclass
-from typing import Set, FrozenSet, Deque
+from typing import Set, FrozenSet
 from uuid import UUID
 
 import pytest
