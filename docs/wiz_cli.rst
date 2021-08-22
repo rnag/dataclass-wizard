@@ -4,7 +4,7 @@ The CLI Tool
 ============
 
 The ``wiz`` command provides a companion CLI tool for the Dataclass Wizard,
-which further simplifies interaction with the Python `dataclasses` module.
+which further simplifies interaction with the Python ``dataclasses`` module.
 
 Getting help::
 
