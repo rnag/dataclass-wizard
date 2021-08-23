@@ -489,13 +489,13 @@ class TypeContainer(List[TypeContainerElements]):
             self_item = self[0]
             other_item = other[0]
 
-            if isinstance(self_item, PyDataclassGenerator) \
-                    and isinstance(other_item, PyDataclassGenerator):
-                # We need to call  `__or__` on both objects to merge the
-                # dataclasses together
-                self_item |= other_item
+            for typ in PyDataclassGenerator, PyListGenerator:
+                if isinstance(self_item, typ) and isinstance(other_item, typ):
+                    # We call  `__or__` to merge the lists or dataclasses
+                    # together.
+                    self_item |= other_item
 
-                return self
+                    return self
 
         for elem in other:
             self.append(elem)
@@ -747,7 +747,6 @@ class PyDataclassGenerator(metaclass=property_wizard):
 
         for k, v in other.parsed_types.items():
             if k in self.parsed_types:
-                # TODO how we should merge lists?
                 self.parsed_types[k] |= v
 
             else:
@@ -891,7 +890,8 @@ class PyListGenerator(metaclass=property_wizard):
             else:
                 # Nested lists.
                 if typ is PyDataType.LIST:
-                    typ = PyListGenerator(elem, nested_lvl=nested_lvl + 1,
+                    nested_lvl += 1
+                    typ = PyListGenerator(elem, nested_lvl=nested_lvl,
                                           force_strings=force_strings)
 
                 data_list.append(typ)
@@ -915,6 +915,35 @@ class PyListGenerator(metaclass=property_wizard):
                 nested_lvl=nested_lvl
             )
             self.root.name = to_pascal_case(self.container_name)
+
+    def __or__(self, other):
+        """Merge two lists together."""
+        if not isinstance(other, PyListGenerator):
+            raise TypeError(
+                f'{self.__class__.__name__}: Incorrect type for `__or__`. '
+                f'actual_type: {type(other)}, object={other}')
+
+        # To merge lists with equal number of elements, that's easy enough:
+        #   [{"key": "v1"}] | [{"key2": 2}] = [{"key": "v1", "key2": 2}]
+        #
+        # But... what happens when it's something like this?
+        #   [1, {"key": "v1"}] | [{"key2": "2}, "testing", 1, 2, 3]
+        #
+        # Solution is to merge the model in the other list class with our
+        # model -- note that both ours and the other instance end up with only
+        # one model after `__post_init__` runs. However, easiest way is to
+        # iterate over the nested types in the other list and check for the
+        # model explicitly. For the rest of the values/types in the other
+        # list, we just add them to our current list.
+        for t in other.parsed_types:
+            if isinstance(t, PyDataclassGenerator):
+                if self.model:
+                    self.model |= t
+                    continue
+                self.model = t
+            self.parsed_types.append(t)
+
+        return self
 
     def get_lines(self) -> List[str]:
 

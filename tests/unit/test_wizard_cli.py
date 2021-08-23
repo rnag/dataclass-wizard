@@ -655,3 +655,86 @@ def test_input_7(capfd):
     gen_schema('test7.json')
 
     assert_py_code(expected, capfd)
+
+
+def test_input_8(capfd):
+
+    expected = '''
+    from dataclasses import dataclass
+    from typing import List, Optional, Union
+
+
+    @dataclass
+    class Container:
+        """
+        Container dataclass
+
+        """
+        data: 'Data'
+        field_1: List['Data1']
+        field_2: List['Data2']
+        field_3: List['Data3']
+
+
+    @dataclass
+    class Data:
+        """
+        Data dataclass
+
+        """
+        list_of_dictionaries: List['ListOfDictionary']
+
+
+    @dataclass
+    class ListOfDictionary:
+        """
+        ListOfDictionary dataclass
+
+        """
+        my_energies: List[Union['MyEnergy', int, str]]
+        key: Optional[str]
+
+
+    @dataclass
+    class MyEnergy:
+        """
+        MyEnergy dataclass
+
+        """
+        my_test_val: Union[bool, int]
+        another_val: str
+        string_val: str
+        merged_float: float
+
+
+    @dataclass
+    class Data1:
+        """
+        Data1 dataclass
+
+        """
+        key: str
+        another_key: str
+
+
+    @dataclass
+    class Data2:
+        """
+        Data2 dataclass
+
+        """
+        question: str
+
+
+    @dataclass
+    class Data3:
+        """
+        Data3 dataclass
+
+        """
+        explanation: str
+    '''
+
+    gen_schema('test8.json')
+
+    assert_py_code(expected, capfd)

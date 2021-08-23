@@ -1,0 +1,20 @@
+[
+    {
+        "list_of_dictionaries": [
+            {"my-energies":  []},
+            {"Key": "value", "myEnergies":  [{"myTestVal":  true}]},
+            {"key":  null, "myEnergies":  []},
+            {"myEnergies":  [1, {"anotherVal":  "testing", "my_test_val":  123}]},
+            {"MyEnergies":  [
+                {"string_val": "hello world!"},
+                "testing",
+                {"mergedFloat": 1.23},
+                123
+            ]}
+        ]
+    },
+
+    [{"key":  "value"}, {"anotherKey":  "val"}],
+    [{"question":  "how should list of lists be merged (for example in this case with the above)?"}],
+    [{"explanation":  "Because it's not *clear* how the merge should happen in this situation."}]
+]

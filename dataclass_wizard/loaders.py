@@ -444,14 +444,13 @@ def fromdict(d: Dict[str, Any], cls: Type[T]) -> T:
     """
     try:
         return _CLASS_TO_LOAD_FUNC[cls](d)
-        # return getattr(cls, _LOADER)(d)
     except KeyError:
         return load_func_for_dataclass(cls)(d)
 
 
 def fromlist(list_of_dict: List[Dict[str, Any]], cls: Type[T]) -> T:
     """
-    Converts a Python dictionary object to a dataclass instance.
+    Converts a Python list object to a list of dataclass instances.
 
     Iterates over each dataclass field recursively; lists, dicts, and nested
     dataclasses will likewise be initialized as expected.
@@ -518,9 +517,8 @@ def load_func_for_dataclass(cls: Type[T]) -> Callable[[Dict[str, Any]], T]:
             try:
                 # Note: pass the original cased field to the class constructor;
                 # don't use the lowercase result from `transform_json_field`
-                # parser = field_to_parser[field_name]
-                cls_kwargs[field_name] = random_func(o[json_field])
-                # cls_kwargs[field_name] = parser(o[json_field])
+                cls_kwargs[field_name] = field_to_parser[field_name](
+                    o[json_field])
 
             except ParseError as e:
                 # We run into a parsing error while loading the field value; Add
@@ -537,33 +535,4 @@ def load_func_for_dataclass(cls: Type[T]) -> Callable[[Dict[str, Any]], T]:
 
     _CLASS_TO_LOAD_FUNC[cls] = my_load_func
 
-    # setattr(cls, _LOADER, my_load_func)
-
     return my_load_func
-
-
-def random_func(o):
-
-    return my_blah(o)
-
-
-
-def my_blah(o):
-    return o
-
-
-# # noinspection SpellCheckingInspection
-# def fromdict(cls: Type[T], d: Dict[str, Any]) -> T:
-#     """
-#     Converts a Python dictionary object to a dataclass instance.
-#
-#     Iterates over each dataclass field recursively; lists, dicts, and nested
-#     dataclasses will likewise be initialized as expected.
-#
-#     """
-#     # Assert that the sub-class is a dataclass here. If we only need to do
-#     # this once, we don't need to undergo a subclass check on each call to
-#     # `from_dict` and `to_dict`, for example.
-#     # assert_is_dataclass(cls)
-#
-#     return _load_to_dataclass(d, cls)
