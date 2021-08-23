@@ -38,7 +38,8 @@ Here are the supported features that ``dataclass-wizard`` currently provides:
    ``dict`` objects.
 -  *Field properties*: support for using properties with default
    values in dataclass instances.
--  *JSON to Dataclass*: generate a dataclass schema for a JSON file or string input.
+-  *JSON to Dataclass generation*: construct a dataclass schema with a JSON file
+   or string input.
 
 Usage
 -----

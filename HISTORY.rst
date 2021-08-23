@@ -2,6 +2,22 @@
 History
 =======
 
+0.9.0 (2021-08-23)
+------------------
+**Features and Improvements**
+
+* Minor performance improvements so the JSON load process is slightly faster.
+* Replace ``CaseInsensitiveDict`` with a custom ``DictWithLowerStore`` implementation.
+* ``wiz`` CLI: Add a ``--version`` option to check the installed version.
+* Remove :func:`get_class_name` usage wherever possible.
+
+**Bugfixes**
+
+* Fixes for the JSON to dataclass generation tool
+    - Ensure that nested lists with dictionaries are correctly merged, and add a test
+      case to confirm intended behavior.
+    - Change to only singularize model names if nested within a list.
+
 0.8.2 (2021-08-22)
 ------------------
 **Bugfixes**

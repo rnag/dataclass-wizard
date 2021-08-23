@@ -1,5 +1,5 @@
 from collections import defaultdict
-from dataclasses import Field, fields, is_dataclass
+from dataclasses import Field, fields
 from typing import Dict, Tuple, Type, Union, Callable, Optional, Any
 
 from .abstractions import W, AbstractLoader, AbstractDumper, AbstractParser
@@ -50,7 +50,6 @@ def dataclass_to_loader(cls):
     """
     Returns the loader for a dataclass.
     """
-    # name = get_class(class_or_instance)
     return _CLASS_TO_LOADER[cls]
 
 
@@ -101,8 +100,6 @@ def dataclass_field_to_load_parser(
     """
     Returns a mapping of each lower-cased field name to its annotated type.
     """
-    # name = get_class(cls)
-
     if cls not in _FIELD_NAME_TO_LOAD_PARSER:
         _setup_load_config_for_cls(cls_loader, cls)
 
@@ -289,10 +286,3 @@ def is_subclass(obj, base_cls: Type) -> bool:
     """Check if `obj` is a sub-class of `base_cls`"""
     cls = obj if isinstance(obj, type) else type(obj)
     return issubclass(cls, base_cls)
-
-
-def assert_is_dataclass(cls):
-    """
-    Assert that `cls` is a dataclass (i.e. it uses the `@dataclass` decorator)
-    """
-    assert is_dataclass(cls), 'must be called with a dataclass type or instance'

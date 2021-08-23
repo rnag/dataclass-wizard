@@ -209,7 +209,8 @@ def asdict(obj, *, dict_factory=dict) -> Dict[str, Any]:
     dataclass instances. This will also look into built-in containers:
     tuples, lists, and dicts.
     """
-    # -- This won't be needed, as we already have a check in the `JSONWizard` Mixin class. --
+    # This likely won't be needed, as ``dataclasses.fields`` already has this
+    # check.
     # if not _is_dataclass_instance(obj):
     #     raise TypeError("asdict() should be called on dataclass instances")
 
