@@ -14,9 +14,10 @@ from .bases import BaseLoadHook
 from .class_helper import (
     get_class_name, create_new_class,
     dataclass_to_loader, set_class_loader,
-    dataclass_field_to_load_parser, json_field_to_dataclass_field, assert_is_dataclass, _CLASS_TO_LOAD_FUNC,
+    dataclass_field_to_load_parser, json_field_to_dataclass_field,
+    _CLASS_TO_LOAD_FUNC,
 )
-from .constants import _LOAD_HOOKS, _LOADER, _MANY_LOADER
+from .constants import _LOAD_HOOKS
 from .errors import ParseError
 from .log import LOG
 from .parsers import *
@@ -25,11 +26,11 @@ from .type_def import (
     M, N, T, E, U, DD, LSQ, NT
 )
 from .utils.string_conv import to_snake_case
-from .utils.typing_compat import (
-    is_literal, is_typed_dict, get_origin, get_args, is_annotated
-)
 from .utils.type_conv import (
     as_bool, as_str, as_datetime, as_date, as_time, as_int
+)
+from .utils.typing_compat import (
+    is_literal, is_typed_dict, get_origin, get_args, is_annotated
 )
 
 

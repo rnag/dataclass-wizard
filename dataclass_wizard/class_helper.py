@@ -14,12 +14,13 @@ from .utils.typing_compat import is_annotated, get_args
 # returned by `dataclasses.fields()`.
 _FIELDS: Dict[str, Tuple[Field]] = {}
 
+# Mapping of dataclass to its `load` function.
 _CLASS_TO_LOAD_FUNC: Dict[Type, Any] = {}
 
-# A mapping of dataclass name to its loader.
+# A mapping of dataclass to its loader.
 _CLASS_TO_LOADER: Dict[Type, Type[AbstractLoader]] = {}
 
-# A mapping of dataclass name to its dumper.
+# A mapping of dataclass to its dumper.
 _CLASS_TO_DUMPER: Dict[str, Type[AbstractDumper]] = {}
 
 # A cached mapping of a dataclass to each of its case-insensitive field names

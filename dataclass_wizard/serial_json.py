@@ -5,10 +5,9 @@ from typing import Type, Dict, Any, List, Union
 
 from .abstractions import AbstractJSONWizard, W
 from .bases_meta import BaseJSONWizardMeta
-from .class_helper import call_meta_initializer_if_needed, assert_is_dataclass
+from .class_helper import call_meta_initializer_if_needed
 from .dumpers import asdict
-from .loaders import fromdict, fromlist, load_func_for_dataclass
-from .constants import _LOADER
+from .loaders import fromdict, fromlist
 
 
 class JSONSerializable(AbstractJSONWizard):
@@ -39,7 +38,7 @@ class JSONSerializable(AbstractJSONWizard):
         """
         o = json.loads(string)
 
-        return cls.from_dict(o) if isinstance(o, dict) else cls.from_list(o)
+        return fromdict(o, cls) if isinstance(o, dict) else fromlist(o, cls)
 
     @classmethod
     def from_list(cls: Type[W], o: List[Dict[str, Any]]) -> List[W]:
