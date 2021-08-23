@@ -3,6 +3,7 @@ Entry point for the Wizard CLI tool.
 """
 import argparse
 import os
+import platform
 import sys
 import textwrap
 from gettext import gettext as _
@@ -11,6 +12,7 @@ from pathlib import Path
 from typing import TextIO, Optional
 
 from .schema import PyCodeGenerator
+from ..__version__ import __version__
 
 
 # Define the top-level parser
@@ -40,14 +42,20 @@ def setup_parser():
     """Sets up the Wizard CLI parser."""
     global parser
     desc = main.__doc__
+    py_version = sys.version.split(" ", 1)[0]
 
     # create the top-level parser
     parser = argparse.ArgumentParser(description=desc)
 
     # define global flags for the CLI tool
-    parser.add_argument("-v", "--verbose", action="store_true",
+    parser.add_argument('-V', '--version', action='version',
+                        version=f'%(prog)s-cli/{__version__} '
+                                f'Python/{py_version} '
+                                f'{platform.system()}/{platform.release()}',
+                        help='Display the version of this tool.')
+    parser.add_argument('-v', '--verbose', action='store_true',
                         help='Enable verbose output')
-    parser.add_argument("-q", "--quiet", action="store_true")
+    parser.add_argument('-q', '--quiet', action='store_true')
 
     # Add the sub-commands here.
 
