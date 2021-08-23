@@ -462,7 +462,7 @@ def fromlist(list_of_dict: List[Dict[str, Any]], cls: Type[T]) -> T:
     except KeyError:
         load = load_func_for_dataclass(cls)
 
-    return [load(o) for o in list_of_dict]
+    return [load(d) for d in list_of_dict]
 
 
 def load_func_for_dataclass(cls: Type[T]) -> Callable[[Dict[str, Any]], T]:
@@ -479,7 +479,7 @@ def load_func_for_dataclass(cls: Type[T]) -> Callable[[Dict[str, Any]], T]:
     # transformation (via regex) each time.
     json_to_dataclass_field = json_field_to_dataclass_field(cls)
 
-    def my_load_func(o, *_):
+    def cls_fromdict(o, *_):
         # Need to create a separate dictionary to copy over the constructor args,
         # as we don't want to mutate the original dictionary object.
         cls_kwargs = {}
@@ -534,6 +534,8 @@ def load_func_for_dataclass(cls: Type[T]) -> Callable[[Dict[str, Any]], T]:
 
         return cls(**cls_kwargs)
 
-    _CLASS_TO_LOAD_FUNC[cls] = my_load_func
+    # Save the load function for the class, so we don't need to run this logic
+    # each time.
+    _CLASS_TO_LOAD_FUNC[cls] = cls_fromdict
 
-    return my_load_func
+    return cls_fromdict

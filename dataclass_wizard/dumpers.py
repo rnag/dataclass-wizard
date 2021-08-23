@@ -164,7 +164,7 @@ def setup_default_dumper(cls=DumpMixin):
     cls.register_dump_hook(date, cls.dump_with_date)
 
 
-def get_dumper(class_or_instance=None, create=False) -> Type[DumpMixin]:
+def get_dumper(cls=None, create=False) -> Type[DumpMixin]:
     """
     Get the dumper for the class, using the following logic:
 
@@ -176,18 +176,18 @@ def get_dumper(class_or_instance=None, create=False) -> Type[DumpMixin]:
 
     """
     try:
-        return dataclass_to_dumper(class_or_instance)
+        return dataclass_to_dumper(cls)
 
     except KeyError:
 
-        if hasattr(class_or_instance, _DUMP_HOOKS):
-            return set_class_dumper(class_or_instance, class_or_instance)
+        if hasattr(cls, _DUMP_HOOKS):
+            return set_class_dumper(cls, cls)
 
         elif create:
-            cls_dumper = create_new_class(class_or_instance, (DumpMixin, ))
-            return set_class_dumper(class_or_instance, cls_dumper)
+            cls_dumper = create_new_class(cls, (DumpMixin,))
+            return set_class_dumper(cls, cls_dumper)
 
-        return set_class_dumper(class_or_instance, DumpMixin)
+        return set_class_dumper(cls, DumpMixin)
 
 
 def asdict(obj, *, dict_factory=dict) -> Dict[str, Any]:
@@ -214,12 +214,13 @@ def asdict(obj, *, dict_factory=dict) -> Dict[str, Any]:
     #     raise TypeError("asdict() should be called on dataclass instances")
 
     # -- The following lines are added, and are not present in original implementation. --
-    cls_dumper = get_dumper(obj)
+    cls = type(obj)
+    cls_dumper = get_dumper(cls)
     hooks = cls_dumper.__DUMP_HOOKS__
 
     # Pass the class reference itself, since we know we have an instance of
     # the class.
-    setup_dump_config_for_cls_if_needed(type(obj))
+    setup_dump_config_for_cls_if_needed(cls)
 
     # Call the optional hook that runs before we process the dataclass
     cls_dumper.__pre_as_dict__(obj)
@@ -235,9 +236,9 @@ def asdict(obj, *, dict_factory=dict) -> Dict[str, Any]:
 # directly from the original version.
 def _asdict_inner(obj, dict_factory, hooks) -> Any:
 
-    typ = type(obj)
-    dump_hook = hooks.get(typ)
-    hook_args = (obj, typ, dict_factory, hooks)
+    cls = type(obj)
+    dump_hook = hooks.get(cls)
+    hook_args = (obj, cls, dict_factory, hooks)
 
     if dump_hook is not None:
         return dump_hook(*hook_args)
@@ -245,11 +246,11 @@ def _asdict_inner(obj, dict_factory, hooks) -> Any:
     # -- This check is the same as in the original version --
     if _is_dataclass_instance(obj):
 
-        dataclass_to_json_field = dataclass_field_to_json_field(obj)
-        cls_dumper = get_dumper(obj)
+        dataclass_to_json_field = dataclass_field_to_json_field(cls)
+        cls_dumper = get_dumper(cls)
         result = []
 
-        for f in dataclass_fields(obj):
+        for f in dataclass_fields(cls):
             # -- This line is *mostly* the same as in the original version --
             value = _asdict_inner(getattr(obj, f.name), dict_factory, hooks)
 
@@ -282,7 +283,7 @@ def _asdict_inner(obj, dict_factory, hooks) -> Any:
                 if isinstance(obj, t):
                     return hooks[t](*hook_args)
 
-        LOG.warning('Using default dumper, object=%r, type=%r', obj, typ)
+        LOG.warning('Using default dumper, object=%r, type=%r', obj, cls)
 
         return DumpMixin.default_dump_with(*hook_args)
 

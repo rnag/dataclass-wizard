@@ -76,7 +76,8 @@ MyClassWizard: WizType = create_new_class(
 # MyClassDJ: DJType = create_new_class(
 #     MyClass, (MyClass, DataClassJsonMixin), 'DJ')
 MyClassJsons: JsonsType = create_new_class(
-    MyClass, (MyClass, JsonSerializable), 'Jsons')
+    MyClass, (MyClass, JsonSerializable), 'Jsons',
+    attr_dict=vars(MyClass).copy())
 
 
 @pytest.fixture(scope='session')
