@@ -52,7 +52,7 @@ setup(
     license=about['__license__'],
     keywords=['dataclasses', 'dataclass', 'wizard', 'json', 'marshal',
               'property', 'field-property', 'serialization', 'deserialization',
-              'json2dataclass'],
+              'json2dataclass', 'json-to-dataclass'],
     classifiers=[
         # Ref: https://pypi.org/classifiers/
         'Development Status :: 4 - Beta',

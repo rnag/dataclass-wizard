@@ -5,7 +5,7 @@ this module is the `gen-schema` subcommand.
 This JSON to Dataclass conversion tool was inspired by the following projects:
 
     * https://github.com/mischareitsma/json2dataclass
-    * https://russbiggs.github.io/json2dataclass
+    * https://github.com/russbiggs/json2dataclass
     * https://github.com/mholt/json-to-go
 
 The parser supports the full JSON spec, so both `list` and `dict` as the
@@ -17,12 +17,19 @@ A few important notes on the behavior of JSON parsing:
       definitions merged into a single model dataclass, as the dictionary
       objects are considered homogenous in this case.
 
-    * Nested dictionaries will have their Model class name generated with
-      the singular form of the key containing the model definition -- for
-      example, {"Items":{"key":"value"}} will result in a model class named
-      `Item`. In the case a dictionary is nested within a list, it will have
-      the class name auto-incremented with a common prefix -- for example,
-      `Data1`, `Data2`, etc.
+    * Nested lists within the above structure (e.g. list -> dict -> list)
+      should similarly merge all list elements with the list for that same key
+      in each sibling `dict` object. For example, assuming the below input::
+        ... [{"d1": [1, {"k": "v"}]}, {"d1": [{"k": 2}, {"k2": "v2"}, True]}]
+      This should result in a single, merged type definition for "d1"::
+        ... List[Union[int, dataclass(k: Union[str, int], k2: str), bool]]
+
+    * Any nested dictionaries within lists will have their Model class name
+      generated with the singular form of the key containing the model
+      definition -- for example, {"Items":[{"key":"value"}]} will result in a
+      model class named `Item`. In the case a dictionary is nested within a
+      list, it will have the class name auto-incremented with a common
+      prefix -- for example, `Data1`, `Data2`, etc.
 
 
 The implementation below uses regex code in the `rules.english` module from
@@ -489,13 +496,13 @@ class TypeContainer(List[TypeContainerElements]):
             self_item = self[0]
             other_item = other[0]
 
-            if isinstance(self_item, PyDataclassGenerator) \
-                    and isinstance(other_item, PyDataclassGenerator):
-                # We need to call  `__or__` on both objects to merge the
-                # dataclasses together
-                self_item |= other_item
+            for typ in PyDataclassGenerator, PyListGenerator:
+                if isinstance(self_item, typ) and isinstance(other_item, typ):
+                    # We call  `__or__` to merge the lists or dataclasses
+                    # together.
+                    self_item |= other_item
 
-                return self
+                    return self
 
         for elem in other:
             self.append(elem)
@@ -696,9 +703,7 @@ class PyDataclassGenerator(metaclass=property_wizard):
     @name.setter
     def name(self, name: str):
         """Title case the name"""
-        name = English.humanize(name)
-        self._name = English.singularize(
-            name).replace(' ', '')
+        self._name = to_pascal_case(name)
 
     @classmethod
     def load_parsed(
@@ -747,7 +752,6 @@ class PyDataclassGenerator(metaclass=property_wizard):
 
         for k, v in other.parsed_types.items():
             if k in self.parsed_types:
-                # TODO how we should merge lists?
                 self.parsed_types[k] |= v
 
             else:
@@ -821,8 +825,6 @@ class PyListGenerator(metaclass=property_wizard):
       Additionally, if `is_root` is true, then calling ``str()`` will
       effectively ignore any simple types,
 
-    * TODO how should we handle list of lists?
-
     """
 
     # Default name for model class if none is provided.
@@ -856,8 +858,12 @@ class PyListGenerator(metaclass=property_wizard):
 
     @name.setter
     def name(self, name: Optional[str]):
-        """Title case the name"""
-        self._name = to_pascal_case(name) if name else name
+        """Title case and singularize the name."""
+        if name:
+            name = English.humanize(name)
+            name = English.singularize(name).replace(' ', '')
+
+        self._name = name
 
     def __post_init__(self, is_root: bool, nested_lvl: int,
                       force_strings: bool):
@@ -891,7 +897,8 @@ class PyListGenerator(metaclass=property_wizard):
             else:
                 # Nested lists.
                 if typ is PyDataType.LIST:
-                    typ = PyListGenerator(elem, nested_lvl=nested_lvl + 1,
+                    nested_lvl += 1
+                    typ = PyListGenerator(elem, nested_lvl=nested_lvl,
                                           force_strings=force_strings)
 
                 data_list.append(typ)
@@ -914,7 +921,36 @@ class PyListGenerator(metaclass=property_wizard):
                 force_strings=force_strings,
                 nested_lvl=nested_lvl
             )
-            self.root.name = to_pascal_case(self.container_name)
+            self.root.name = self.container_name
+
+    def __or__(self, other):
+        """Merge two lists together."""
+        if not isinstance(other, PyListGenerator):
+            raise TypeError(
+                f'{self.__class__.__name__}: Incorrect type for `__or__`. '
+                f'actual_type: {type(other)}, object={other}')
+
+        # To merge lists with equal number of elements, that's easy enough:
+        #   [{"key": "v1"}] | [{"key2": 2}] = [{"key": "v1", "key2": 2}]
+        #
+        # But... what happens when it's something like this?
+        #   [1, {"key": "v1"}] | [{"key2": "2}, "testing", 1, 2, 3]
+        #
+        # Solution is to merge the model in the other list class with our
+        # model -- note that both ours and the other instance end up with only
+        # one model after `__post_init__` runs. However, easiest way is to
+        # iterate over the nested types in the other list and check for the
+        # model explicitly. For the rest of the types in the other list
+        # (including nested lists), we just add them to our current list.
+        for t in other.parsed_types:
+            if isinstance(t, PyDataclassGenerator):
+                if self.model:
+                    self.model |= t
+                    continue
+                self.model = t
+            self.parsed_types.append(t)
+
+        return self
 
     def get_lines(self) -> List[str]:
 
@@ -962,7 +998,7 @@ class PyListGenerator(metaclass=property_wizard):
 
 
 if __name__ == '__main__':
-    loader = PyCodeGenerator('../tests/testdata/test1.json')
+    loader = PyCodeGenerator('../../tests/testdata/test1.json')
     print(loader.py_code)
 
 

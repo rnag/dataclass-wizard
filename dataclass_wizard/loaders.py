@@ -5,7 +5,7 @@ from decimal import Decimal
 from enum import Enum
 from typing import (
     Any, Type, Dict, List, Tuple, Iterable, Sequence, Optional, Union,
-    NamedTupleMeta, SupportsFloat, SupportsInt, AnyStr, Text
+    NamedTupleMeta, SupportsFloat, SupportsInt, AnyStr, Text, Callable
 )
 from uuid import UUID
 
@@ -15,6 +15,7 @@ from .class_helper import (
     get_class_name, create_new_class,
     dataclass_to_loader, set_class_loader,
     dataclass_field_to_load_parser, json_field_to_dataclass_field,
+    _CLASS_TO_LOAD_FUNC,
 )
 from .constants import _LOAD_HOOKS
 from .errors import ParseError
@@ -25,11 +26,11 @@ from .type_def import (
     M, N, T, E, U, DD, LSQ, NT
 )
 from .utils.string_conv import to_snake_case
-from .utils.typing_compat import (
-    is_literal, is_typed_dict, get_origin, get_args, is_annotated
-)
 from .utils.type_conv import (
     as_bool, as_str, as_datetime, as_date, as_time, as_int
+)
+from .utils.typing_compat import (
+    is_literal, is_typed_dict, get_origin, get_args, is_annotated
 )
 
 
@@ -248,7 +249,8 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
                 if isinstance(base_type, type):
 
                     if is_dataclass(base_type):
-                        load_hook = _load_to_dataclass
+                        base_type: Type[T]
+                        load_hook = load_func_for_dataclass(base_type)
 
                     elif issubclass(base_type, Enum):
                         load_hook = hooks.get(Enum)
@@ -433,7 +435,7 @@ def get_loader(class_or_instance=None, create=False) -> Type[LoadMixin]:
 
 
 # TODO move to :class:`LoadMixin` if possible
-def _load_to_dataclass(d: Dict[str, Any], cls: Type[T]) -> T:
+def fromdict(d: Dict[str, Any], cls: Type[T]) -> T:
     """
     Converts a Python dictionary object to a dataclass instance.
 
@@ -441,77 +443,99 @@ def _load_to_dataclass(d: Dict[str, Any], cls: Type[T]) -> T:
     dataclasses will likewise be initialized as expected.
 
     """
+    try:
+        return _CLASS_TO_LOAD_FUNC[cls](d)
+    except KeyError:
+        return load_func_for_dataclass(cls)(d)
+
+
+def fromlist(list_of_dict: List[Dict[str, Any]], cls: Type[T]) -> T:
+    """
+    Converts a Python list object to a list of dataclass instances.
+
+    Iterates over each dataclass field recursively; lists, dicts, and nested
+    dataclasses will likewise be initialized as expected.
+
+    """
+    try:
+        load = _CLASS_TO_LOAD_FUNC[cls]
+    except KeyError:
+        load = load_func_for_dataclass(cls)
+
+    return [load(d) for d in list_of_dict]
+
+
+def load_func_for_dataclass(cls: Type[T]) -> Callable[[Dict[str, Any]], T]:
+
     # Gets the loader for the class, or the default loader otherwise.
     cls_loader = get_loader(cls)
-    # Need to create a separate dictionary to copy over the constructor args,
-    # as we don't want to mutate the original dictionary object.
-    cls_kwargs = {}
+
     # This contains a mapping of the original field name to the parser for its
     # annotated type; the item lookup will be case-insensitive.
     field_to_parser = dataclass_field_to_load_parser(cls_loader, cls)
+
     # A cached mapping of keys in a JSON or dictionary object to the
     # resolved dataclass field name; useful so we don't need to do a case
     # transformation (via regex) each time.
     json_to_dataclass_field = json_field_to_dataclass_field(cls)
 
-    # Loop over the dictionary object
-    for json_field, json_val in d.items():
+    def cls_fromdict(o, *_):
+        # Need to create a separate dictionary to copy over the constructor args,
+        # as we don't want to mutate the original dictionary object.
+        cls_kwargs = {}
+        # Loop over the dictionary object
+        for json_field in o:
 
-        # Get the resolved dataclass field name
-        field_name = json_to_dataclass_field.get(json_field)
-
-        if not field_name:
-            # On an initial run, or no resolved field name
-
-            if field_name is ExplicitNull:
-                continue
-
-            # Transform JSON field name (typically camel-cased) to the
-            # snake-cased variant which is convention in Python.
-            underscored_field = cls_loader.transform_json_field(json_field)
-
+            # Get the resolved dataclass field name
             try:
-                # Do a case-insensitive lookup of the dataclass field, and
-                # cache the mapping so we have it for next time
-                field_name = field_to_parser.get_key(underscored_field)
-                json_to_dataclass_field[json_field] = field_name
+                field_name = json_to_dataclass_field[json_field]
+                # Exclude JSON keys that don't map to any fields.
+                if field_name is ExplicitNull:
+                    continue
 
             except KeyError:
-                # Else, we see an unknown field in the dictionary object
-                json_to_dataclass_field[json_field] = ExplicitNull
-                LOG.warning(
-                    'JSON field %r missing from dataclass schema, '
-                    'class=%r, parsed field=%r',
-                    json_field, get_class_name(cls), underscored_field)
-                continue
+                # On an initial run, or no resolved field name
 
-        try:
-            # Note: pass the original cased field to the class constructor;
-            # don't use the lowercase result from `transform_json_field`
-            cls_kwargs[field_name] = field_to_parser[field_name](json_val)
+                # Transform JSON field name (typically camel-cased) to the
+                # snake-cased variant which is convention in Python.
+                transformed_field = cls_loader.transform_json_field(json_field)
 
-        except ParseError as e:
-            # We run into a parsing error while loading the field value; Add
-            # additional info on the Exception object before re-raising it
-            #
-            # First confirm these values are not already set by an inner
-            # dataclass. If so, it likely makes it easier to debug the cause.
-            if not e.class_name:
-                e.class_name = cls.__qualname__
-                e.field_name = field_name
-            raise
+                try:
+                    # Do a case-insensitive lookup of the dataclass field, and
+                    # cache the mapping so we have it for next time
+                    field_name = field_to_parser.get_key(transformed_field)
+                    json_to_dataclass_field[json_field] = field_name
 
-    obj = cls(**cls_kwargs)
-    return obj
+                except KeyError:
+                    # Else, we see an unknown field in the dictionary object
+                    json_to_dataclass_field[json_field] = ExplicitNull
+                    LOG.warning(
+                        'JSON field %r missing from dataclass schema, '
+                        'class=%r, parsed field=%r',
+                        json_field, get_class_name(cls), transformed_field)
+                    continue
 
+            try:
+                # Note: pass the original cased field to the class constructor;
+                # don't use the lowercase result from `transform_json_field`
+                cls_kwargs[field_name] = field_to_parser[field_name](
+                    o[json_field])
 
-# noinspection SpellCheckingInspection
-def fromdict(cls: Type[T], d: Dict[str, Any]) -> T:
-    """
-    Converts a Python dictionary object to a dataclass instance.
+            except ParseError as e:
+                # We run into a parsing error while loading the field value; Add
+                # additional info on the Exception object before re-raising it
+                #
+                # First confirm these values are not already set by an inner
+                # dataclass. If so, it likely makes it easier to debug the cause.
+                if not e.class_name:
+                    e.class_name = cls.__qualname__
+                    e.field_name = field_name
+                raise
 
-    Iterates over each dataclass field recursively; lists, dicts, and nested
-    dataclasses will likewise be initialized as expected.
+        return cls(**cls_kwargs)
 
-    """
-    return _load_to_dataclass(d, cls)
+    # Save the load function for the class, so we don't need to run this logic
+    # each time.
+    _CLASS_TO_LOAD_FUNC[cls] = cls_fromdict
+
+    return cls_fromdict

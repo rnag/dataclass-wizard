@@ -1,42 +1,45 @@
 from collections import defaultdict
 from dataclasses import Field, fields
-from typing import Dict, Tuple, Type, Union, Callable, Optional
+from typing import Dict, Tuple, Type, Union, Callable, Optional, Any
 
-from .abstractions import W, AbstractLoader, AbstractDumper
+from .abstractions import W, AbstractLoader, AbstractDumper, AbstractParser
 from .models import JSONField, JSON
-from .parsers import Parser
 from .type_def import ExplicitNullType, T
-from .utils.dict_helper import CaseInsensitiveDict
+from .utils.dict_helper import DictWithLowerStore
 from .utils.typing_compat import is_annotated, get_args
 
 
-# A cached mapping of fully qualified class name to the list of fields, as
-# returned by `dataclasses.fields()`.
-_FIELDS: Dict[str, Tuple[Field]] = {}
+# A cached mapping of dataclass to the list of fields, as returned by
+# `dataclasses.fields()`.
+_FIELDS: Dict[Type, Tuple[Field]] = {}
 
-# A mapping of dataclass name to its loader.
-_CLASS_TO_LOADER: Dict[str, Type[AbstractLoader]] = {}
+# Mapping of dataclass to its `load` function.
+_CLASS_TO_LOAD_FUNC: Dict[Type, Any] = {}
 
-# A mapping of dataclass name to its dumper.
-_CLASS_TO_DUMPER: Dict[str, Type[AbstractDumper]] = {}
+# A mapping of dataclass to its loader.
+_CLASS_TO_LOADER: Dict[Type, Type[AbstractLoader]] = {}
+
+# A mapping of dataclass to its dumper.
+_CLASS_TO_DUMPER: Dict[Type, Type[AbstractDumper]] = {}
 
 # A cached mapping of a dataclass to each of its case-insensitive field names
 # and load hook.
 #
 # Note: need to create a `ForwardRef` here, because Python 3.6 complains.
-_FIELD_NAME_TO_LOAD_PARSER: Dict[str, 'CaseInsensitiveDict[str, Parser]'] = {}
+_FIELD_NAME_TO_LOAD_PARSER: Dict[
+    Type, 'DictWithLowerStore[str, AbstractParser]'] = {}
 
 # Since the dump process doesn't use Parsers currently, we use a sentinel
 # mapping to confirm if we need to setup the dump config for a dataclass
 # on an initial run.
-_IS_DUMP_CONFIG_SETUP: Dict[str, bool] = {}
+_IS_DUMP_CONFIG_SETUP: Dict[Type, bool] = {}
 
 # A cached mapping, per dataclass, of JSON field to instance field name
 _JSON_FIELD_TO_DATACLASS_FIELD: Dict[
-    str, Dict[str, Union[str, ExplicitNullType]]] = defaultdict(dict)
+    Type, Dict[str, Union[str, ExplicitNullType]]] = defaultdict(dict)
 
 # A cached mapping, per dataclass, of instance field name to JSON field
-_DATACLASS_FIELD_TO_JSON_FIELD: Dict[str, Dict[str, str]] = defaultdict(dict)
+_DATACLASS_FIELD_TO_JSON_FIELD: Dict[Type, Dict[str, str]] = defaultdict(dict)
 
 # A mapping of dataclass name to its Meta initializer (defined in
 # :class:`bases.BaseJSONWizardMeta`), which is only set when the
@@ -45,72 +48,67 @@ _META_INITIALIZER: Dict[
     str, Callable[[Type[W]], None]] = {}
 
 
-def dataclass_to_loader(class_or_instance):
+def dataclass_to_loader(cls):
     """
     Returns the loader for a dataclass.
     """
-    name = get_class_name(class_or_instance)
-    return _CLASS_TO_LOADER[name]
+    return _CLASS_TO_LOADER[cls]
 
 
-def dataclass_to_dumper(class_or_instance):
+def dataclass_to_dumper(cls: Type):
     """
     Returns the dumper for a dataclass.
     """
-    name = get_class_name(class_or_instance)
-    return _CLASS_TO_DUMPER[name]
+    return _CLASS_TO_DUMPER[cls]
 
 
 def set_class_loader(class_or_instance, loader: Type[AbstractLoader]):
     """
     Set (and return) the loader for a dataclass.
     """
-    name = get_class_name(class_or_instance)
-    _CLASS_TO_LOADER[name] = get_class(loader)
+    cls = get_class(class_or_instance)
+    loader_cls = get_class(loader)
 
-    return _CLASS_TO_LOADER[name]
+    _CLASS_TO_LOADER[cls] = get_class(loader_cls)
+
+    return _CLASS_TO_LOADER[cls]
 
 
-def set_class_dumper(class_or_instance, dumper: Type[AbstractDumper]):
+def set_class_dumper(cls: Type, dumper: Type[AbstractDumper]):
     """
     Set (and return) the dumper for a dataclass.
     """
-    name = get_class_name(class_or_instance)
-    _CLASS_TO_DUMPER[name] = get_class(dumper)
+    _CLASS_TO_DUMPER[cls] = get_class(dumper)
 
-    return _CLASS_TO_DUMPER[name]
+    return _CLASS_TO_DUMPER[cls]
 
 
-def json_field_to_dataclass_field(class_or_instance):
+def json_field_to_dataclass_field(cls: Type):
     """
     Returns a mapping of JSON field to dataclass field.
     """
-    name = get_class_name(class_or_instance)
-    return _JSON_FIELD_TO_DATACLASS_FIELD[name]
+    return _JSON_FIELD_TO_DATACLASS_FIELD[cls]
 
 
-def dataclass_field_to_json_field(class_or_instance):
+def dataclass_field_to_json_field(cls):
     """
     Returns a mapping of dataclass field to JSON field.
     """
-    name = get_class_name(class_or_instance)
-    return _DATACLASS_FIELD_TO_JSON_FIELD[name]
+    return _DATACLASS_FIELD_TO_JSON_FIELD[cls]
 
 
 def dataclass_field_to_load_parser(
-        cls_loader, cls) -> 'CaseInsensitiveDict[str, Parser]':
+        cls_loader, cls: Type) -> 'DictWithLowerStore[str, AbstractParser]':
     """
     Returns a mapping of each lower-cased field name to its annotated type.
     """
-    name = get_class_name(cls)
+    if cls not in _FIELD_NAME_TO_LOAD_PARSER:
+        _setup_load_config_for_cls(cls_loader, cls)
 
-    if name not in _FIELD_NAME_TO_LOAD_PARSER:
-        _setup_load_config_for_cls(cls_loader, cls, name)
-
-    return _FIELD_NAME_TO_LOAD_PARSER[name]
+    return _FIELD_NAME_TO_LOAD_PARSER[cls]
 
 
-def _setup_load_config_for_cls(cls_loader, cls, name: str):
+def _setup_load_config_for_cls(cls_loader, cls: Type):
     """
     This function processes a class `cls` on an initial run, and sets up the
     load process for `cls` by iterating over each dataclass field. For each
@@ -132,8 +130,7 @@ def _setup_load_config_for_cls(cls_loader, cls, name: str):
           name is then updated with the input passed in to the :class:`JSON`
           attribute.
     """
-
-    json_to_dataclass_field = _JSON_FIELD_TO_DATACLASS_FIELD[name]
+    json_to_dataclass_field = _JSON_FIELD_TO_DATACLASS_FIELD[cls]
     name_to_parser = {}
 
     for f in dataclass_fields(cls):
@@ -159,7 +156,7 @@ def _setup_load_config_for_cls(cls_loader, cls, name: str):
                     for key in extra.keys:
                         json_to_dataclass_field[key] = f.name
 
-    _FIELD_NAME_TO_LOAD_PARSER[name] = CaseInsensitiveDict(name_to_parser)
+    _FIELD_NAME_TO_LOAD_PARSER[cls] = DictWithLowerStore(name_to_parser)
 
 
 def setup_dump_config_for_cls_if_needed(cls):
@@ -182,12 +179,10 @@ def setup_dump_config_for_cls_if_needed(cls):
           attribute.
     """
 
-    name = get_class_name(cls)
-
-    if name in _IS_DUMP_CONFIG_SETUP:
+    if cls in _IS_DUMP_CONFIG_SETUP:
         return
 
-    dataclass_to_json_field = _DATACLASS_FIELD_TO_JSON_FIELD[name]
+    dataclass_to_json_field = _DATACLASS_FIELD_TO_JSON_FIELD[cls]
 
     for f in dataclass_fields(cls):
 
@@ -206,7 +201,7 @@ def setup_dump_config_for_cls_if_needed(cls):
                     dataclass_to_json_field[f.name] = extra.keys[0]
 
     # Mark the dataclass as processed, as the initial dump process is set up.
-    _IS_DUMP_CONFIG_SETUP[name] = True
+    _IS_DUMP_CONFIG_SETUP[cls] = True
 
 
 def call_meta_initializer_if_needed(cls: Type[W]):
@@ -219,18 +214,16 @@ def call_meta_initializer_if_needed(cls: Type[W]):
         _META_INITIALIZER[cls_name](cls)
 
 
-def dataclass_fields(class_or_instance) -> Tuple[Field]:
+def dataclass_fields(cls) -> Tuple[Field]:
     """
     Cache the `dataclasses.fields()` call for each class, as overall that
     ends up around 5x faster than making a fresh call each time.
 
     """
-    name = get_class_name(class_or_instance)
+    if cls not in _FIELDS:
+        _FIELDS[cls] = fields(cls)
 
-    if name not in _FIELDS:
-        _FIELDS[name] = fields(class_or_instance)
-
-    return _FIELDS[name]
+    return _FIELDS[cls]
 
 
 def create_new_class(

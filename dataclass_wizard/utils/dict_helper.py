@@ -1,115 +1,93 @@
 """
-The implementation below uses code in the `structures` module from the library
-Requests (https://github.com/kennethreitz/requests).
-
-This library is available under the Apache 2.0 license, which can be
-obtained from http://www.apache.org/licenses/LICENSE-2.0.
-
-The library Requests contains the following attribution notices:
-
-    Requests
-    Copyright 2019 Kenneth Reitz
-
-
-See the end of this file for the original Apache license from this library.
+Dict helper module
 """
-from collections import OrderedDict
-from collections.abc import MutableMapping, Mapping
+from collections.abc import Mapping
 
 
-# A `CaseInsensitiveDict` implementation, copied from the source below.
-#   - https://github.com/kennethreitz/requests/blob/master/requests/structures.py#L15
-class CaseInsensitiveDict(MutableMapping):
-    """A case-insensitive ``dict``-like object.
-
-    Implements all methods and operations of
-    ``MutableMapping`` as well as dict's ``copy``. Also
-    provides ``lower_items``.
+class DictWithLowerStore(dict):
+    """
+    A ``dict``-like object with a lower-cased key store.
 
     All keys are expected to be strings. The structure remembers the
-    case of the last key to be set, and ``iter(instance)``,
-    ``keys()``, ``items()``, ``iterkeys()``, and ``iteritems()``
-    will contain case-sensitive keys. However, querying and contains
-    testing is case insensitive::
+    case of the lower-cased key to be set, and methods like ``get()``
+    and``get_key()`` will use the lower-cased store. However, querying
+    and contains testing is case sensitive::
 
-        cid = CaseInsensitiveDict()
-        cid['Accept'] = 'application/json'
-        cid['aCCEPT'] == 'application/json'  # True
-        list(cid) == ['Accept']  # True
+        dls = DictWithLowerStore()
+        dls['Accept'] = 'application/json'
+        dls['aCCEPT'] == 'application/json'         # False
+        dls.get('aCCEPT') == 'application/json'     # True
 
-    For example, ``headers['content-encoding']`` will return the
-    value of a ``'Content-Encoding'`` response header, regardless
-    of how the header name was originally stored.
+        list(dls) == ['Accept']                     # True
 
-    If the constructor, ``.update``, or equality comparison
-    operations are given keys that have equal ``.lower()``s, the
-    behavior is undefined.
+    Note: I don't want to use the `CaseInsensitiveDict` from
+    request.structures`, because it turns out the lookup via that dict
+    implementation is rather slow. So this version is somewhat of a trade-off,
+    where I retain the same speed on lookups as a plain `dict`, but I also
+    have a lower-cased key store, in case I ever need to use it.
+
     """
-    __slots__ = ('_store', )
+    __slots__ = ('_lower_store', )
 
     def __init__(self, data=None, **kwargs):
-        self._store = OrderedDict()
+        super().__init__()
+        self._lower_store = {}
         if data is None:
             data = {}
         self.update(data, **kwargs)
 
     def __setitem__(self, key, value):
-        # Use the lowercased key for lookups, but store the actual
-        # key alongside the value.
-        self._store[key.lower()] = (key, value)
+        super().__setitem__(key, value)
+        # Store the lower-cased key for lookups via `get`. Also store the
+        # actual key alongside the value.
+        self._lower_store[key.lower()] = (key, value)
 
-    # NOTE: The following code has been *modified*. This method is
-    #   present only in this implementation.
     def get_key(self, key) -> str:
         """Return the original cased key"""
-        return self._store[key.lower()][0]
+        return self._lower_store[key.lower()][0]
 
-    def __getitem__(self, key):
-        return self._store[key.lower()][1]
+    def get(self, key):
+        """
+        Do a case-insensitive lookup. This lower-cases `key` and looks up
+        from the lower-cased key store.
+        """
+        try:
+            return self.__getitem__(key)
+        except KeyError:
+            return self._lower_store[key.lower()][1]
 
     def __delitem__(self, key):
-        del self._store[key.lower()]
+        lower_key = key.lower()
+        actual_key, _ = self._lower_store[lower_key]
 
-    def __iter__(self):
-        return (casedkey for casedkey, mappedvalue in self._store.values())
-
-    def __len__(self):
-        return len(self._store)
+        del self[actual_key]
+        del self._lower_store[lower_key]
 
     def lower_items(self):
         """Like iteritems(), but with all lowercase keys."""
         return (
             (lowerkey, keyval[1])
             for (lowerkey, keyval)
-            in self._store.items()
+            in self._lower_store.items()
         )
 
     def __eq__(self, other):
-        if isinstance(other, Mapping):
-            other = CaseInsensitiveDict(other)
+        if isinstance(other, dict):
+            other = DictWithLowerStore(other)
         else:
             return NotImplemented
         # Compare insensitively
         return dict(self.lower_items()) == dict(other.lower_items())
 
-    # Copy is required
+    def update(self, *args, **kwargs):
+        if len(args) > 1:
+            raise TypeError("update expected at most 1 arguments, got %d" % len(args))
+        other = dict(*args, **kwargs)
+        for key in other:
+            self[key] = other[key]
+
     def copy(self):
-        return CaseInsensitiveDict(self._store.values())
+        return DictWithLowerStore(self._lower_store.values())
 
     def __repr__(self):
         return str(dict(self.items()))
-
-
-# Copyright 2013 Kenneth Reitz
-#
-#    Licensed under the Apache License, Version 2.0 (the "License");
-#    you may not use this file except in compliance with the License.
-#    You may obtain a copy of the License at
-#
-#        http://www.apache.org/licenses/LICENSE-2.0
-#
-#    Unless required by applicable law or agreed to in writing, software
-#    distributed under the License is distributed on an "AS IS" BASIS,
-#    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#    See the License for the specific language governing permissions and
-#    limitations under the License.

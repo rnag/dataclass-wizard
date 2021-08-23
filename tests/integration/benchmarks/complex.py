@@ -76,7 +76,8 @@ MyClassWizard: WizType = create_new_class(
 # MyClassDJ: DJType = create_new_class(
 #     MyClass, (MyClass, DataClassJsonMixin), 'DJ')
 MyClassJsons: JsonsType = create_new_class(
-    MyClass, (MyClass, JsonSerializable), 'Jsons')
+    MyClass, (MyClass, JsonSerializable), 'Jsons',
+    attr_dict=vars(MyClass).copy())
 
 
 @pytest.fixture(scope='session')
@@ -127,24 +128,27 @@ def test_load(data, n):
     g = globals().copy()
     g.update(locals())
 
-    # Result: 3.728
+    # Result: 2.979
     log.info('dataclass-wizard     %f',
              timeit('MyClassWizard.from_dict(data)', globals=g, number=n))
 
-    # Result: 1.927
+    # Result: 2.028
     log.info('dataclass-factory    %f',
              timeit('factory.load(data, MyClass)', globals=g, number=n))
 
-    # Result: 20.990
+    # Result: 20.951
+    #   NOTE: This likely is not a fair comparison, since the rest load
+    #   `people` as a `List[Person]`, but in this case we just load it as
+    #   a dict.
     log.info('dataclasses-json     %f',
              timeit('MyClassDJ.from_dict(data)', globals=g, number=n))
 
     # these ones took a long time xD
-    # Result: 101.533
+    # Result: 103.574
     log.info('jsons                %f',
              timeit('MyClassJsons.load(data)', globals=g, number=n))
 
-    # Result: 173.349
+    # Result: 173.924
     log.info('jsons (strict)       %f',
              timeit('MyClassJsons.load(data, strict=True)', globals=g, number=n))
 

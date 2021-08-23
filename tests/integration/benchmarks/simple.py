@@ -52,23 +52,23 @@ def test_load(data, n):
     g = globals().copy()
     g.update(locals())
 
-    # Result: 0.491
+    # Result: 0.371
     log.info('dataclass-wizard     %f',
              timeit('MyClassWizard.from_dict(data)', globals=g, number=n))
 
-    # Result: 0.454
+    # Result: 0.504
     log.info('dataclass-factory    %f',
              timeit('factory.load(data, MyClass)', globals=g, number=n))
 
-    # Result: 6.965
+    # Result: 6.810
     log.info('dataclasses-json     %f',
              timeit('MyClassDJ.from_dict(data)', globals=g, number=n))
 
-    # Result: 13.525
+    # Result: 12.795
     log.info('jsons                %f',
              timeit('MyClassJsons.load(data)', globals=g, number=n))
 
-    # Result: 17.678
+    # Result: 17.806
     log.info('jsons (strict)       %f',
              timeit('MyClassJsons.load(data, strict=True)', globals=g, number=n))
 

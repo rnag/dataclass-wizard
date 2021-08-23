@@ -385,15 +385,15 @@ def test_input_4(capfd):
         delivery_line_1: str
         last_line: str
         delivery_point_barcode: Union[int, str]
-        components: 'Component'
-        metadata: 'Metadatum'
+        components: 'Components'
+        metadata: 'Metadata'
         analysis: 'Analysis'
 
 
     @dataclass
-    class Component:
+    class Components:
         """
-        Component dataclass
+        Components dataclass
 
         """
         primary_number: Union[int, str]
@@ -409,9 +409,9 @@ def test_input_4(capfd):
 
 
     @dataclass
-    class Metadatum:
+    class Metadata:
         """
-        Metadatum dataclass
+        Metadata dataclass
 
         """
         record_type: str
@@ -482,13 +482,13 @@ def test_input_5(capfd):
 
         """
         key: int
-        nested_classes: 'NestedClass'
+        nested_classes: 'NestedClasses'
 
 
     @dataclass
-    class NestedClass:
+    class NestedClasses:
         """
-        NestedClass dataclass
+        NestedClasses dataclass
 
         """
         blah: str
@@ -581,7 +581,7 @@ def test_input_7(capfd):
         activities: List['Activity']
         equipment: List['Equipment']
         key: int
-        nested_classes: 'NestedClass'
+        nested_classes: 'NestedClasses'
         something_else: str
 
 
@@ -633,9 +633,9 @@ def test_input_7(capfd):
 
 
     @dataclass
-    class NestedClass:
+    class NestedClasses:
         """
-        NestedClass dataclass
+        NestedClasses dataclass
 
         """
         blah: str
@@ -653,5 +653,88 @@ def test_input_7(capfd):
     '''
 
     gen_schema('test7.json')
+
+    assert_py_code(expected, capfd)
+
+
+def test_input_8(capfd):
+
+    expected = '''
+    from dataclasses import dataclass
+    from typing import List, Optional, Union
+
+
+    @dataclass
+    class Container:
+        """
+        Container dataclass
+
+        """
+        data: 'Data'
+        field_1: List['Data1']
+        field_2: List['Data2']
+        field_3: List['Data3']
+
+
+    @dataclass
+    class Data:
+        """
+        Data dataclass
+
+        """
+        list_of_dictionaries: List['ListOfDictionary']
+
+
+    @dataclass
+    class ListOfDictionary:
+        """
+        ListOfDictionary dataclass
+
+        """
+        my_energies: List[Union['MyEnergy', int, str]]
+        key: Optional[str]
+
+
+    @dataclass
+    class MyEnergy:
+        """
+        MyEnergy dataclass
+
+        """
+        my_test_val: Union[bool, int]
+        another_val: str
+        string_val: str
+        merged_float: float
+
+
+    @dataclass
+    class Data1:
+        """
+        Data1 dataclass
+
+        """
+        key: str
+        another_key: str
+
+
+    @dataclass
+    class Data2:
+        """
+        Data2 dataclass
+
+        """
+        question: str
+
+
+    @dataclass
+    class Data3:
+        """
+        Data3 dataclass
+
+        """
+        explanation: str
+    '''
+
+    gen_schema('test8.json')
 
     assert_py_code(expected, capfd)
