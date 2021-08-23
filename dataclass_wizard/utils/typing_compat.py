@@ -295,11 +295,11 @@ def is_annotated(cls):
     return _is_annotated(cls)
 
 
-def get_type_hints_with_extras(obj):
+def get_type_hints_with_extras(obj, **kwargs):
     """
     Generally the same as :func:`typing.get_type_hints`, but passes
     ``extras=True`` by default, so that we can also retrieve the arguments
     for :class:`typing.Annotated` types.
 
     """
-    return _get_type_hints_with_extras(obj)
+    return _get_type_hints_with_extras(obj, **kwargs)

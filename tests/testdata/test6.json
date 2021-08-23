@@ -1,0 +1,7 @@
+{
+    "my_field": "testing",
+    "anotherField": "2021-01-12",
+    "MyList": [
+        1, 2, 3, {"another_Key":  "value"}, [{"key":  "value", "myTime": "03:20"}]
+    ]
+}

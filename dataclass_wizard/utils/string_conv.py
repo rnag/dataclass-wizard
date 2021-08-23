@@ -17,7 +17,7 @@ def to_camel_case(string: str) -> str:
 
     """
     string = replace_multi_with_single(
-        string.replace('-', '_'))
+        string.replace('-', '_').replace(' ', '_'))
 
     return string[0].lower() + re.sub(
         r"(?:_)(.)", lambda m: m.group(1).upper(), string[1:])
@@ -34,7 +34,7 @@ def to_pascal_case(string):
 
     """
     string = replace_multi_with_single(
-        string.replace('-', '_'))
+        string.replace('-', '_').replace(' ', '_'))
 
     return string[0].upper() + re.sub(
         r"(?:_)(.)", lambda m: m.group(1).upper(), string[1:])
@@ -50,7 +50,7 @@ def to_lisp_case(string: str) -> str:
         'device-type'
 
     """
-    string = string.replace('_', '-')
+    string = string.replace('_', '-').replace(' ', '-')
     # Short path: the field is already lower-cased, so we don't need to handle
     # for camel or title case.
     if string.islower():
@@ -72,7 +72,7 @@ def to_snake_case(string: str) -> str:
         'device_type'
 
     """
-    string = string.replace('-', '_')
+    string = string.replace('-', '_').replace(' ', '_')
     # Short path: the field is already lower-cased, so we don't need to handle
     # for camel or title case.
     if string.islower():

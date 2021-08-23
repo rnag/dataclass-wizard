@@ -1,0 +1,8 @@
+[
+    1,
+    2,
+    "str",
+    true,
+    {"trueStory":  "once upon a time..."},
+    {"trueBool":  true, "true_story": 2, "my_list":  [1, {"hey":  "world"}]}
+]

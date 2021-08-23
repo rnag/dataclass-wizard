@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from datetime import datetime, date, time
 from typing import (
     List, Optional, Union, Tuple, Dict, NamedTuple, Type, DefaultDict,
-    Set, FrozenSet, Deque
+    Set, FrozenSet
 )
 
 import pytest
