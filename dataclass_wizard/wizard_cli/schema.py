@@ -5,7 +5,7 @@ this module is the `gen-schema` subcommand.
 This JSON to Dataclass conversion tool was inspired by the following projects:
 
     * https://github.com/mischareitsma/json2dataclass
-    * https://russbiggs.github.io/json2dataclass
+    * https://github.com/russbiggs/json2dataclass
     * https://github.com/mholt/json-to-go
 
 The parser supports the full JSON spec, so both `list` and `dict` as the
@@ -16,6 +16,13 @@ A few important notes on the behavior of JSON parsing:
     * Lists with multiple dictionaries will have all the keys and type
       definitions merged into a single model dataclass, as the dictionary
       objects are considered homogenous in this case.
+
+    * Nested lists within the above structure (e.g. list -> dict -> list)
+      should similarly merge all list elements with the list for that same key
+      in each sibling `dict` object. For example, assuming the below input::
+        ... [{"d1": [1, {"k": "v"}]}, {"d1": [{"k": 2}, {"k2": "v2"}, True]}]
+      This should result in a single, merged type definition for "d1"::
+        ... List[Union[int, dataclass(k: Union[str, int], k2: str), bool]]
 
     * Nested dictionaries will have their Model class name generated with
       the singular form of the key containing the model definition -- for
@@ -933,8 +940,8 @@ class PyListGenerator(metaclass=property_wizard):
         # model -- note that both ours and the other instance end up with only
         # one model after `__post_init__` runs. However, easiest way is to
         # iterate over the nested types in the other list and check for the
-        # model explicitly. For the rest of the values/types in the other
-        # list, we just add them to our current list.
+        # model explicitly. For the rest of the types in the other list
+        # (including nested lists), we just add them to our current list.
         for t in other.parsed_types:
             if isinstance(t, PyDataclassGenerator):
                 if self.model:
@@ -991,7 +998,7 @@ class PyListGenerator(metaclass=property_wizard):
 
 
 if __name__ == '__main__':
-    loader = PyCodeGenerator('../tests/testdata/test1.json')
+    loader = PyCodeGenerator('../../tests/testdata/test1.json')
     print(loader.py_code)
 
 
