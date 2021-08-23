@@ -24,8 +24,10 @@ _CLASS_TO_DUMPER: Dict[Type, Type[AbstractDumper]] = {}
 
 # A cached mapping of a dataclass to each of its case-insensitive field names
 # and load hook.
+#
+# Note: need to create a `ForwardRef` here, because Python 3.6 complains.
 _FIELD_NAME_TO_LOAD_PARSER: Dict[
-    Type, DictWithLowerStore[str, AbstractParser]] = {}
+    Type, 'DictWithLowerStore[str, AbstractParser]'] = {}
 
 # Since the dump process doesn't use Parsers currently, we use a sentinel
 # mapping to confirm if we need to setup the dump config for a dataclass
@@ -96,7 +98,7 @@ def dataclass_field_to_json_field(cls):
 
 
 def dataclass_field_to_load_parser(
-        cls_loader, cls: Type) -> DictWithLowerStore[str, AbstractParser]:
+        cls_loader, cls: Type) -> 'DictWithLowerStore[str, AbstractParser]':
     """
     Returns a mapping of each lower-cased field name to its annotated type.
     """
