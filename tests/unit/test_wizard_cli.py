@@ -385,15 +385,15 @@ def test_input_4(capfd):
         delivery_line_1: str
         last_line: str
         delivery_point_barcode: Union[int, str]
-        components: 'Component'
-        metadata: 'Metadatum'
+        components: 'Components'
+        metadata: 'Metadata'
         analysis: 'Analysis'
 
 
     @dataclass
-    class Component:
+    class Components:
         """
-        Component dataclass
+        Components dataclass
 
         """
         primary_number: Union[int, str]
@@ -409,9 +409,9 @@ def test_input_4(capfd):
 
 
     @dataclass
-    class Metadatum:
+    class Metadata:
         """
-        Metadatum dataclass
+        Metadata dataclass
 
         """
         record_type: str
@@ -482,13 +482,13 @@ def test_input_5(capfd):
 
         """
         key: int
-        nested_classes: 'NestedClass'
+        nested_classes: 'NestedClasses'
 
 
     @dataclass
-    class NestedClass:
+    class NestedClasses:
         """
-        NestedClass dataclass
+        NestedClasses dataclass
 
         """
         blah: str
@@ -581,7 +581,7 @@ def test_input_7(capfd):
         activities: List['Activity']
         equipment: List['Equipment']
         key: int
-        nested_classes: 'NestedClass'
+        nested_classes: 'NestedClasses'
         something_else: str
 
 
@@ -633,9 +633,9 @@ def test_input_7(capfd):
 
 
     @dataclass
-    class NestedClass:
+    class NestedClasses:
         """
-        NestedClass dataclass
+        NestedClasses dataclass
 
         """
         blah: str

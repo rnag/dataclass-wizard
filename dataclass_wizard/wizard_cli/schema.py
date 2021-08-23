@@ -24,12 +24,12 @@ A few important notes on the behavior of JSON parsing:
       This should result in a single, merged type definition for "d1"::
         ... List[Union[int, dataclass(k: Union[str, int], k2: str), bool]]
 
-    * Nested dictionaries will have their Model class name generated with
-      the singular form of the key containing the model definition -- for
-      example, {"Items":{"key":"value"}} will result in a model class named
-      `Item`. In the case a dictionary is nested within a list, it will have
-      the class name auto-incremented with a common prefix -- for example,
-      `Data1`, `Data2`, etc.
+    * Any nested dictionaries within lists will have their Model class name
+      generated with the singular form of the key containing the model
+      definition -- for example, {"Items":[{"key":"value"}]} will result in a
+      model class named `Item`. In the case a dictionary is nested within a
+      list, it will have the class name auto-incremented with a common
+      prefix -- for example, `Data1`, `Data2`, etc.
 
 
 The implementation below uses regex code in the `rules.english` module from
@@ -703,9 +703,7 @@ class PyDataclassGenerator(metaclass=property_wizard):
     @name.setter
     def name(self, name: str):
         """Title case the name"""
-        name = English.humanize(name)
-        self._name = English.singularize(
-            name).replace(' ', '')
+        self._name = to_pascal_case(name)
 
     @classmethod
     def load_parsed(
@@ -827,8 +825,6 @@ class PyListGenerator(metaclass=property_wizard):
       Additionally, if `is_root` is true, then calling ``str()`` will
       effectively ignore any simple types,
 
-    * TODO how should we handle list of lists?
-
     """
 
     # Default name for model class if none is provided.
@@ -862,8 +858,12 @@ class PyListGenerator(metaclass=property_wizard):
 
     @name.setter
     def name(self, name: Optional[str]):
-        """Title case the name"""
-        self._name = to_pascal_case(name) if name else name
+        """Title case and singularize the name."""
+        if name:
+            name = English.humanize(name)
+            name = English.singularize(name).replace(' ', '')
+
+        self._name = name
 
     def __post_init__(self, is_root: bool, nested_lvl: int,
                       force_strings: bool):
@@ -921,7 +921,7 @@ class PyListGenerator(metaclass=property_wizard):
                 force_strings=force_strings,
                 nested_lvl=nested_lvl
             )
-            self.root.name = to_pascal_case(self.container_name)
+            self.root.name = self.container_name
 
     def __or__(self, other):
         """Merge two lists together."""
