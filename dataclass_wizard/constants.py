@@ -27,3 +27,7 @@ _LOAD_HOOKS = '__LOAD_HOOKS__'
 # The name of the dictionary object that contains `dump` hooks for each
 # object type. Also used to check if a class is a :class:`BaseDumpHook`
 _DUMP_HOOKS = '__DUMP_HOOKS__'
+
+# Attribute name that will be defined for pass-through functions and methods;
+# mainly for internal use.
+PASS_THROUGH = '__pass_through__'

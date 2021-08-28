@@ -92,7 +92,6 @@ Using the built-in JSON marshalling support for dataclasses:
 
     @dataclass
     class Vehicle(metaclass=property_wizard):
-
         # Note: The example below uses the default value from the `field` extra in
         # the `Annotated` definition; if `wheels` were annotated as a `Union` type,
         # it would default to 0, because `int` appears as the first type argument.
@@ -100,6 +99,11 @@ Using the built-in JSON marshalling support for dataclasses:
         # Any right-hand value assigned to `wheels` is ignored as it is simply
         # re-declared by the property; here it is simply omitted for brevity.
         wheels: Annotated[Union[int, str], field(default=4)]
+
+        # This is a shorthand version of the above; here an IDE suggests
+        # `_wheels` as a keyword argument to the constructor method, though
+        # it will actually be named as `wheels`.
+        # _wheels: Union[int, str] = 4
 
         @property
         def wheels(self) -> int:
@@ -118,13 +122,9 @@ Using the built-in JSON marshalling support for dataclasses:
 
         v = Vehicle(wheels=3)
         print(v)
-        # prints:
-        #   Vehicle(wheels=3)
 
         v = Vehicle('6')
         print(v)
-        # prints:
-        #   Vehicle(wheels=6)
 
         assert v.wheels == 6, 'The constructor should use our setter method'
 
@@ -143,15 +143,18 @@ Using the built-in JSON marshalling support for dataclasses:
     from datetime import date
     from typing import Union
 
+    from dataclass_wizard import JSONWizard
+
 
     @dataclass
-    class Data:
+    class Data(JSONWizard):
         """
         Data dataclass
 
         """
         my_float: Union[float, str]
         created_at: date
+
 
 Installing Dataclass Wizard and Supported Versions
 --------------------------------------------------
