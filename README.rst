@@ -268,7 +268,7 @@ Extending from ``Meta``
 Need to change how ``date`` and ``datetime`` objects are serialized to JSON? Or
 prefer that field names appear in *snake case* when a dataclass instance is serialized?
 
-The inner :class:`Meta` class allows easy configuration of such settings, as
+The inner ``Meta`` class allows easy configuration of such settings, as
 shown below; and as a nice bonus, IDEs should be able to assist with code completion
 along the way.
 
