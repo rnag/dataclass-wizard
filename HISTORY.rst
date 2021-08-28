@@ -6,8 +6,8 @@ History
 -------------------
 
 * Minor performance improvements so the JSON load process is slightly faster.
-* ``wiz gs``: The result now includes the``JSONWizard`` import (and usage) by
-  default.
+* ``wiz gs``: The result now includes the :class:`JSONWizard` import and the
+  expected usage by default.
 * Update type annotations slightly for the ``LoadMixin.load_to...`` methods.
 * Add support for sub-classes of common Python types, such as subclasses of
   ``str`` and ``int``, as part of the JSON load process.
