@@ -155,7 +155,7 @@ class AbstractLoader(ABC):
 
     @staticmethod
     @abstractmethod
-    def load_to_int(o: Union[SupportsInt, str], base_type: Type[N]) -> N:
+    def load_to_int(o: Union[str, int, bool, None], base_type: Type[N]) -> N:
         """
         Load a string or int into a new object of type `base_type`
         (generally a sub-class of the :class:`int` type)
@@ -171,10 +171,13 @@ class AbstractLoader(ABC):
 
     @staticmethod
     @abstractmethod
-    def load_to_bool(o: Union[str, bool, N], base_type: Type[bool]) -> bool:
+    def load_to_bool(o: Union[str, bool, N], _: Type[bool]) -> bool:
         """
         Load a bool, string, or an numeric value into a new object of type
-        `base_type` (generally a sub-class of the :class:`bool` type)
+        `bool`.
+
+        *Note*: `bool` cannot be sub-classed, so the `base_type` argument is
+        discarded in this case.
         """
 
     @staticmethod

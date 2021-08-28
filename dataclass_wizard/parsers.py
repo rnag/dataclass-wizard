@@ -1,8 +1,8 @@
-__all__ = ['Parser',
+__all__ = ['PassThroughParser',
+           'Parser',
            'LiteralParser',
            'UnionParser',
            'OptionalParser',
-           'ForwardRefParser',
            'IterableParser',
            'TupleParser',
            'VariadicTupleParser',
@@ -11,16 +11,15 @@ __all__ = ['Parser',
            'DefaultDictParser',
            'TypedDictParser']
 
-import sys
 from dataclasses import dataclass, InitVar
 from typing import (
-    _eval_type, Type, Any, Union, Optional, Tuple, Dict, Iterable, Callable
+    Type, Any, Optional, Tuple, Dict, Iterable, Callable
 )
 
 from .abstractions import AbstractParser, FieldToParser
 from .errors import ParseError
 from .type_def import (
-    FrozenKeys, NoneType, PyForwardRef, DefFactory,
+    FrozenKeys, NoneType, DefFactory,
     T, M, S, DD, LSQ, N, NT
 )
 from .utils.typing_compat import (
@@ -34,24 +33,27 @@ TupleOfParsers = Tuple[AbstractParser, ...]
 
 
 @dataclass
+class PassThroughParser(AbstractParser):
+    __slots__ = ('hook', )
+
+    hook: Callable[[Any], T]
+
+    def __post_init__(self, cls: Type[T]):
+        if not self.hook:
+            self.hook = lambda o: o
+
+    def __call__(self, o: Any) -> T:
+        return self.hook(o)
+
+
+@dataclass
 class Parser(AbstractParser):
     __slots__ = ('hook', )
 
     hook: Callable[[Any, Type[T]], T]
 
     def __call__(self, o: Any) -> T:
-        try:
-            return self.hook(o, self.base_type)
-
-        except TypeError:
-            if self.hook is None:
-                err = TypeError('Provided type is not currently supported.')
-                raise ParseError(
-                    err, o, self.base_type,
-                    unsupported_type=self.base_type
-                )
-            # Else, raise the original error.
-            raise
+        return self.hook(o, self.base_type)
 
 
 @dataclass
@@ -152,26 +154,6 @@ class UnionParser(AbstractParser):
         raise ParseError(
             TypeError('Object was not in any of Union types'),
             o, [p.base_type for p in self.parsers])
-
-
-@dataclass
-class ForwardRefParser(AbstractParser):
-    __slots__ = ('parser', )
-
-    base_type: Union[str, 'PyForwardRef']
-    get_parser: InitVar[GetParserType]
-
-    def __post_init__(self, cls: Type[T], get_parser: GetParserType):
-        if isinstance(self.base_type, str):
-            self.base_type = PyForwardRef(self.base_type, is_argument=False)
-
-        # Evaluate the ForwardRef here
-        base_globals = sys.modules[cls.__module__].__dict__
-        self.base_type = _eval_type(self.base_type, base_globals, None)
-        self.parser = get_parser(self.base_type, cls)
-
-    def __call__(self, o: Any):
-        return self.parser(o)
 
 
 @dataclass

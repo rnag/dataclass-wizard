@@ -72,9 +72,11 @@ def test_call_py_code_generator_with_file_name(mock_path):
     from dataclasses import dataclass
     from typing import Any, Optional
 
+    from dataclass_wizard import JSONWizard
+
 
     @dataclass
-    class Data:
+    class Data(JSONWizard):
         """
         Data dataclass
 
@@ -206,9 +208,11 @@ def test_star_wars(capfd):
     from datetime import datetime
     from typing import List, Union
 
+    from dataclass_wizard import JSONWizard
+
 
     @dataclass
-    class Data:
+    class Data(JSONWizard):
         """
         Data dataclass
 
@@ -239,9 +243,11 @@ def test_input_1(capfd):
     expected = '''
     from dataclasses import dataclass
 
+    from dataclass_wizard import JSONWizard
+
 
     @dataclass
-    class Data:
+    class Data(JSONWizard):
         """
         Data dataclass
 
@@ -273,6 +279,8 @@ def test_input_2(capfd):
     from datetime import datetime
     from typing import Optional, Union
 
+    from dataclass_wizard import JSONWizard
+
 
     @dataclass
     class Container:
@@ -286,7 +294,7 @@ def test_input_2(capfd):
 
 
     @dataclass
-    class Data:
+    class Data(JSONWizard):
         """
         Data dataclass
 
@@ -319,6 +327,8 @@ def test_input_3(capfd):
     from dataclasses import dataclass
     from typing import List, Union
 
+    from dataclass_wizard import JSONWizard
+
 
     @dataclass
     class Container:
@@ -334,7 +344,7 @@ def test_input_3(capfd):
 
 
     @dataclass
-    class Data:
+    class Data(JSONWizard):
         """
         Data dataclass
 
@@ -364,6 +374,8 @@ def test_input_4(capfd):
     from dataclasses import dataclass
     from typing import Union
 
+    from dataclass_wizard import JSONWizard
+
 
     @dataclass
     class Container:
@@ -375,7 +387,7 @@ def test_input_4(capfd):
 
 
     @dataclass
-    class Data:
+    class Data(JSONWizard):
         """
         Data dataclass
 
@@ -455,6 +467,8 @@ def test_input_5(capfd):
     from dataclasses import dataclass
     from typing import List, Union
 
+    from dataclass_wizard import JSONWizard
+
 
     @dataclass
     class Container:
@@ -467,7 +481,7 @@ def test_input_5(capfd):
 
 
     @dataclass
-    class Data:
+    class Data(JSONWizard):
         """
         Data dataclass
 
@@ -517,9 +531,11 @@ def test_input_6(capfd):
     from datetime import date, time
     from typing import List, Union
 
+    from dataclass_wizard import JSONWizard
+
 
     @dataclass
-    class Data:
+    class Data(JSONWizard):
         """
         Data dataclass
 
@@ -559,6 +575,8 @@ def test_input_7(capfd):
     from dataclasses import dataclass
     from typing import List, Union
 
+    from dataclass_wizard import JSONWizard
+
 
     @dataclass
     class Container:
@@ -570,7 +588,7 @@ def test_input_7(capfd):
 
 
     @dataclass
-    class Data:
+    class Data(JSONWizard):
         """
         Data dataclass
 
@@ -663,6 +681,8 @@ def test_input_8(capfd):
     from dataclasses import dataclass
     from typing import List, Optional, Union
 
+    from dataclass_wizard import JSONWizard
+
 
     @dataclass
     class Container:
@@ -677,7 +697,7 @@ def test_input_8(capfd):
 
 
     @dataclass
-    class Data:
+    class Data(JSONWizard):
         """
         Data dataclass
 

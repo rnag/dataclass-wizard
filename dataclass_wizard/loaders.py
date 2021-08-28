@@ -17,7 +17,8 @@ from .class_helper import (
     dataclass_field_to_load_parser, json_field_to_dataclass_field,
     _CLASS_TO_LOAD_FUNC,
 )
-from .constants import _LOAD_HOOKS
+from .constants import _LOAD_HOOKS, PASS_THROUGH
+from .decorators import default_func, pass_through, resolve_load_func
 from .errors import ParseError
 from .log import LOG
 from .parsers import *
@@ -30,7 +31,8 @@ from .utils.type_conv import (
     as_bool, as_str, as_datetime, as_date, as_time, as_int
 )
 from .utils.typing_compat import (
-    is_literal, is_typed_dict, get_origin, get_args, is_annotated
+    is_literal, is_typed_dict, get_origin, get_args, is_annotated,
+    eval_forward_ref
 )
 
 
@@ -53,13 +55,13 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
         setup_default_loader(cls)
 
     @staticmethod
+    @default_func(to_snake_case)
     def transform_json_field(string: str) -> str:
-
-        return to_snake_case(string)
+        # @default_func: to_snake_case
+        ...
 
     @staticmethod
     def default_load_to(o: T, *_) -> T:
-
         return o
 
     @staticmethod
@@ -72,34 +74,40 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
         raise ParseError(e, o, base_type)
 
     @staticmethod
+    @default_func(as_str)
     def load_to_str(o: Union[Text, N, None], base_type: Type[str]) -> str:
-
-        return as_str(o, base_type)
-
-    @staticmethod
-    def load_to_int(o: Union[SupportsInt, str], base_type: Type[N]) -> N:
-
-        return as_int(o, base_type)
+        # @default_func: as_str
+        ...
 
     @staticmethod
+    @default_func(as_int)
+    def load_to_int(o: Union[str, int, bool, None], base_type: Type[N]) -> N:
+        # @default_func: as_int
+        ...
+
+    @staticmethod
+    @pass_through('base_type')
     def load_to_float(o: Union[SupportsFloat, str], base_type: Type[N]) -> N:
-
-        return base_type(o)
-
-    @staticmethod
-    def load_to_bool(o: Union[str, bool, N], base_type: Type[bool]) -> bool:
-
-        return as_bool(o)
+        # @pass_through: base_type(o)
+        ...
 
     @staticmethod
+    @pass_through(as_bool)
+    def load_to_bool(o: Union[str, bool, N], _: Type[bool]) -> bool:
+        # @pass_through: as_bool(o)
+        ...
+
+    @staticmethod
+    @pass_through('base_type')
     def load_to_enum(o: Union[AnyStr, N], base_type: Type[E]) -> E:
-
-        return base_type(o)
+        # @pass_through: base_type(o)
+        ...
 
     @staticmethod
+    @pass_through('base_type')
     def load_to_uuid(o: Union[AnyStr, U], base_type: Type[U]) -> U:
-
-        return base_type(o)
+        # @pass_through: base_type(o)
+        ...
 
     @staticmethod
     def load_to_iterable(
@@ -197,20 +205,23 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
         return base_type(str(o))
 
     @staticmethod
+    @default_func(as_datetime)
     def load_to_datetime(
             o: Union[str, N], base_type: Type[datetime]) -> datetime:
-
-        return as_datetime(o, base_type)
+        # @default_func: as_datetime
+        ...
 
     @staticmethod
+    @default_func(as_time)
     def load_to_time(o: str, base_type: Type[time]) -> time:
-
-        return as_time(o, base_type)
+        # @default_func: as_time
+        ...
 
     @staticmethod
+    @default_func(as_date)
     def load_to_date(o: Union[str, N], base_type: Type[date]) -> date:
-
-        return as_date(o, base_type)
+        # @default_func: as_date
+        ...
 
     @classmethod
     def get_parser_for_annotation(cls, ann_type: Type[T],
@@ -277,9 +288,10 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
                     load_hook = cls.default_load_to
 
                 elif isinstance(base_type, (str, PyForwardRef)):
-                    return ForwardRefParser(
-                        base_cls, base_type, cls.get_parser_for_annotation
-                    )
+                    # Evaluate the forward reference here.
+                    base_type = eval_forward_ref(base_type, base_cls)
+
+                    return cls.get_parser_for_annotation(base_type, base_cls)
 
                 elif base_type is Ellipsis:
                     load_hook = cls.default_load_to
@@ -371,6 +383,24 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
             load_hook = cls.load_to_tuple
             return TupleParser(
                 base_cls, ann_type, load_hook, cls.get_parser_for_annotation)
+
+        if load_hook is None:
+            # If load hook is still not resolved at this point, it's possible
+            # the type is a subclass of a known type.
+            for typ in hooks:
+                if issubclass(base_type, typ):
+                    load_hook = hooks[typ]
+
+        if load_hook is None:
+            err = TypeError('Provided type is not currently supported.')
+            raise ParseError(
+                err, None, base_type,
+                unsupported_type=base_type
+            )
+
+        if hasattr(load_hook, PASS_THROUGH):
+            load_hook = resolve_load_func(load_hook, locals())
+            return PassThroughParser(base_cls, base_type, load_hook)
 
         return Parser(base_cls, base_type, load_hook)
 

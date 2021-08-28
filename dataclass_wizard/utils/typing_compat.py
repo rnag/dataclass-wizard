@@ -12,15 +12,17 @@ __all__ = [
     'is_generic',
     'is_base_generic',
     'is_annotated',
-    'get_type_hints_with_extras'
+    'get_type_hints_with_extras',
+    'eval_forward_ref'
 ]
 
+import sys
 import typing
 from collections.abc import Callable
 from functools import partial
 
 from ..constants import PY36, PY38, PY310_OR_ABOVE
-from ..type_def import PyLiteral, PyTypedDicts
+from ..type_def import PyLiteral, PyTypedDicts, PyForwardRef
 
 
 # TODO maybe move this to `type_def` if it makes sense
@@ -303,3 +305,22 @@ def get_type_hints_with_extras(obj, **kwargs):
 
     """
     return _get_type_hints_with_extras(obj, **kwargs)
+
+
+# Note: need to wrap the annotation for `base_type` with a forward ref,
+# because Python 3.6 complains.
+def eval_forward_ref(base_type: 'typing.Union[str, PyForwardRef]',
+                     cls: typing.Type):
+    """
+    Evaluate a forward reference using the class globals, and return the
+    underlying type reference.
+    """
+
+    if isinstance(base_type, str):
+        base_type = PyForwardRef(base_type, is_argument=False)
+
+    # Evaluate the ForwardRef here
+    base_globals = sys.modules[cls.__module__].__dict__
+
+    # noinspection PyProtectedMember
+    return typing._eval_type(base_type, base_globals, None)

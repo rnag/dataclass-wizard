@@ -9,12 +9,12 @@ from dataclasses import dataclass
 from datetime import datetime, date, time
 from typing import (
     List, Optional, Union, Tuple, Dict, NamedTuple, Type, DefaultDict,
-    Set, FrozenSet
+    Set, FrozenSet, Generic
 )
 
 import pytest
 
-from dataclass_wizard import JSONSerializable, json_field, json_key
+from dataclass_wizard import JSONSerializable, json_field, json_key, LoadMixin
 from dataclass_wizard.errors import ParseError
 from dataclass_wizard.parsers import OptionalParser, Parser
 from dataclass_wizard.type_def import NoneType, T
@@ -1053,12 +1053,16 @@ def test_optional_parser_contains(input, expected):
 
 def test_parser_with_unsupported_type():
     """
-    Test case for :meth:`Parser.__call__` with an unknown or unsupported
-    type, added for code coverage.
+    Test case for :meth:`LoadMixin.get_parser_for_annotation` with an unknown
+    or unsupported type, added for code coverage.
 
     """
-    base_type: Type[T] = str
-    mock_parser = Parser(None, base_type, hook=None)
+    class MyClass(Generic[T]):
+        pass
 
-    with pytest.raises(ParseError):
-        _ = mock_parser('hello world')
+    mock_parser = LoadMixin.get_parser_for_annotation(None, MyClass)
+
+    assert mock_parser.hook == LoadMixin.default_load_to
+
+    # with pytest.raises(ParseError):
+    #     _ = mock_parser('hello world')

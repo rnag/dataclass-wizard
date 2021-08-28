@@ -69,8 +69,7 @@ from typing import (
 
 from .. import property_wizard
 from ..class_helper import get_class_name
-from ..type_def import PyDeque
-from ..type_def import T
+from ..type_def import PyDeque, T
 from ..utils.string_conv import to_snake_case, to_pascal_case
 # noinspection PyProtectedMember
 from ..utils.type_conv import _TRUTHY_VALUES
@@ -125,13 +124,18 @@ class PyCodeGenerator:
 
     def __post_init__(self, file_name: str, file_contents: str,
                       force_strings: bool):
+
+        # Set global flags
+        global Globals
+        Globals = _Globals(force_strings=force_strings)
+
         # https://stackoverflow.com/a/62940588/10237506
         if file_name:
             file_path = Path(file_name)
             file_contents = file_path.read_bytes()
 
         self.data = json.loads(file_contents)
-        self.parser = JSONRootParser(self.data, force_strings=force_strings)
+        self.parser = JSONRootParser(self.data)
 
     @property
     def py_code(self) -> str:
@@ -142,11 +146,34 @@ class PyCodeGenerator:
             # Add any imports used at the top of the code
             self._py_code_lines = ModuleImporter.imports
             if self._py_code_lines:
-                self._py_code_lines.append('\n')
+                self._py_code_lines.append('')
             # Generate final Python code - imports + dataclass(es)
             self._py_code_lines.append(dataclass_code)
 
         return '\n'.join(self._py_code_lines)
+
+
+# Global flags (generally passed in via command-line) which are shared by
+# classes and functions.
+#
+# Note: unfortunately we can't annotate it as below, because Python 3.6
+# complains.
+#   Globals: '_Globals' = None
+Globals = None
+
+
+@dataclass
+class _Globals:
+
+    # Should we force-resolve inferred types for strings? For example, a value
+    # of "TRUE" will appear as a `Union[str, bool]` type by default.
+    force_strings: bool = False
+
+    # Should we insert auto-generated comments under each dataclass.
+    insert_comments: bool = True
+
+    # Should we include a newline after the comments block mentioned above.
+    newline_after_class_def: bool = True
 
 
 # Credits: https://github.com/bermi/Python-Inflector
@@ -313,7 +340,10 @@ class ModuleImporter:
     generated Python code.
     """
 
-    _MOD_IMPORTS: DefaultDict[str, Set[str]] = defaultdict(set)
+    # Import level (e.g. stdlib or 3rd party) -> Module Name -> Module Imports
+    _MOD_IMPORTS: DefaultDict[int, DefaultDict[str, Set[str]]] = defaultdict(
+        lambda: defaultdict(set)
+    )
 
     # noinspection PyMethodParameters
     @classproperty
@@ -325,9 +355,12 @@ class ModuleImporter:
 
         lines = []
 
-        for mod in sorted(cls._MOD_IMPORTS):
-            imported = sorted(cls._MOD_IMPORTS[mod])
-            lines.append(f'from {mod} import {", ".join(imported)}')
+        for lvl in sorted(cls._MOD_IMPORTS):
+            modules = cls._MOD_IMPORTS[lvl]
+            for mod in sorted(modules):
+                imported = sorted(modules[mod])
+                lines.append(f'from {mod} import {", ".join(imported)}')
+            lines.append('')
 
         return lines
 
@@ -335,7 +368,8 @@ class ModuleImporter:
     def wrap_string_with_import(cls, string: str,
                                 imported: object,
                                 wrap_chars='[]',
-                                register_import=True) -> str:
+                                register_import=True,
+                                level=0) -> str:
         """
         Wraps `string` so it is contained within `imported`. The `wrap_chars`
         parameter determines the enclosing characters to use -- defaults to
@@ -357,7 +391,7 @@ class ModuleImporter:
         start, end = wrap_chars
 
         if register_import:
-            cls.register_import_by_name(module, name)
+            cls.register_import_by_name(module, name, level)
 
         return f'{name}{start}{string}{end}'
 
@@ -365,7 +399,8 @@ class ModuleImporter:
     def wrap_with_import(cls, deck: PyDeque[str],
                          imported: object,
                          wrap_chars='[]',
-                         register_import=True) -> None:
+                         register_import=True,
+                         level=0) -> None:
         """
         Same as :meth:`wrap_string_with_import` above, except this accepts
         a list (deque) of strings to be wrapped instead.
@@ -376,14 +411,14 @@ class ModuleImporter:
         start, end = wrap_chars
 
         if register_import:
-            cls.register_import_by_name(module, name)
+            cls.register_import_by_name(module, name, level)
 
         deck.appendleft(start)
         deck.appendleft(name)
         deck.append(end)
 
     @classmethod
-    def register_import(cls, imported: object) -> None:
+    def register_import(cls, imported: object, level=0) -> None:
         """
         Registers a new import for the given object.
 
@@ -396,10 +431,10 @@ class ModuleImporter:
         module = imported.__module__
         name = cls._get_import_name(imported)
 
-        cls.register_import_by_name(module, name)
+        cls.register_import_by_name(module, name, level)
 
     @classmethod
-    def register_import_by_name(cls, module: str, name: str) -> None:
+    def register_import_by_name(cls, module: str, name: str, level: int) -> None:
         """
         Registers a new import for a module and the imported name.
 
@@ -412,7 +447,7 @@ class ModuleImporter:
         if module == 'builtins':
             return
 
-        cls._MOD_IMPORTS[module].add(name)
+        cls._MOD_IMPORTS[level][module].add(name)
 
     @classmethod
     def clear_imports(cls):
@@ -555,14 +590,14 @@ class TypeContainer(List[TypeContainerElements]):
         return ''.join(parts).replace('[]', '')
 
 
-def possible_types_for_string_value(string: str, force_resolve=False
-                                    ) -> PyDataTypeOrSeq:
+def possible_types_for_string_value(string: str) -> PyDataTypeOrSeq:
     """
     Returns possible types for a JSON field with a :class:`string` value,
     depending on what that value appears to be.
 
-    If `force_resolve` is true and there is more than one possible type, we
-    simply return the inferred type, instead of the `Union[T..., str]` syntax.
+    If `Globals.force_strings` is true and there is more than one possible
+    type, we simply return the inferred type, instead of the
+    `Union[T..., str]` syntax.
     """
 
     exc_types = TypeError, ValueError
@@ -590,7 +625,7 @@ def possible_types_for_string_value(string: str, force_resolve=False
 
         # If force-resolve is enabled, just return the inferred type if one
         # was determined.
-        if force_resolve and possible_types:
+        if Globals.force_strings and possible_types:
             return possible_types[0]
 
         possible_types.append(PyDataType.STRING)
@@ -612,8 +647,7 @@ def possible_types_for_string_value(string: str, force_resolve=False
     return PyDataType.STRING
 
 
-def json_to_python_type(o: JSONObjectType,
-                        force_strings=False) -> PyDataTypeOrSeq:
+def json_to_python_type(o: JSONObjectType) -> PyDataTypeOrSeq:
     """
     Convert a JSON object to a Python Data Type, or a Union of Python Data
     Types.
@@ -623,7 +657,7 @@ def json_to_python_type(o: JSONObjectType,
         return PyDataType.NULL
 
     if isinstance(o, str):
-        return possible_types_for_string_value(o, force_resolve=force_strings)
+        return possible_types_for_string_value(o)
 
     # `bool` needs to come before `int`, as it's a subclass of `int`
     if isinstance(o, bool):
@@ -661,12 +695,11 @@ class JSONRootParser:
 
         if isinstance(self.data, list):
             self.model = PyListGenerator(self.data,
-                                         is_root=True,
-                                         force_strings=force_strings)
+                                         is_root=True)
 
         elif isinstance(self.data, dict):
             self.model = PyDataclassGenerator(self.data,
-                                              force_strings=force_strings)
+                                              is_root=True)
 
         else:
             raise TypeError(
@@ -683,13 +716,10 @@ class PyDataclassGenerator(metaclass=property_wizard):
     data: InitVar[JSONMappingType]
 
     _name: str = 'data'
-
     indent: str = ' ' * 4
-    insert_comments = True
-    newline_after_class_def = True
+    is_root: bool = False
 
     nested_lvl: InitVar[int] = 0
-    force_strings: InitVar[bool] = False
 
     parsed_types: DefaultDict[str, TypeContainer] = field(
         init=False,
@@ -721,25 +751,22 @@ class PyDataclassGenerator(metaclass=property_wizard):
 
         return obj
 
-    def __post_init__(self, data: JSONMappingType, nested_lvl: int,
-                      force_strings: bool):
+    def __post_init__(self, data: JSONMappingType, nested_lvl: int):
 
         for k, v in data.items():
             underscored_field = to_snake_case(k)
-            typ = json_to_python_type(v, force_strings)
+            typ = json_to_python_type(v)
 
             if typ is PyDataType.DICT:
                 typ = PyDataclassGenerator(
                     v, k,
                     nested_lvl=nested_lvl,
-                    force_strings=force_strings
                 )
             elif typ is PyDataType.LIST:
                 nested_lvl += 1
                 typ = PyListGenerator(
                     v, k, k,
                     nested_lvl=nested_lvl,
-                    force_strings=force_strings
                 )
 
             self.parsed_types[underscored_field].append(typ)
@@ -760,18 +787,25 @@ class PyDataclassGenerator(metaclass=property_wizard):
         return self
 
     def get_lines(self) -> List[str]:
+        if self.is_root:
+            ModuleImporter.register_import_by_name(
+                'dataclass_wizard', 'JSONWizard', level=1)
+            class_name = f'class {self.name}(JSONWizard):'
+        else:
+            class_name = f'class {self.name}:'
+
         class_parts = ['@dataclass',
-                       f'class {self.name}:']
+                       class_name]
         parts = []
         nested_parts = []
 
-        if self.insert_comments:
+        if Globals.insert_comments:
             class_parts.append(
                 textwrap.indent('"""', self.indent))
             class_parts.append(
                 textwrap.indent(f'{self.name} dataclass', self.indent))
 
-            if self.newline_after_class_def:
+            if Globals.newline_after_class_def:
                 class_parts.append('')
 
             class_parts.append(textwrap.indent(
@@ -836,11 +870,9 @@ class PyListGenerator(metaclass=property_wizard):
     _name: str = None
 
     indent: str = ' ' * 4
-    newline_after_class_def = True
 
     is_root: InitVar[bool] = False
     nested_lvl: InitVar[int] = 0
-    force_strings: InitVar[bool] = False
 
     root: PyDataclassGenerator = field(init=False, default=None)
 
@@ -865,8 +897,7 @@ class PyListGenerator(metaclass=property_wizard):
 
         self._name = name
 
-    def __post_init__(self, is_root: bool, nested_lvl: int,
-                      force_strings: bool):
+    def __post_init__(self, is_root: bool, nested_lvl: int):
 
         if not self.name:
             # Increment the suffix if needed
@@ -880,13 +911,13 @@ class PyListGenerator(metaclass=property_wizard):
 
         for elem in self.data:
 
-            typ = json_to_python_type(elem, force_strings)
+            typ = json_to_python_type(elem)
 
             if typ is PyDataType.DICT:
 
                 typ = PyDataclassGenerator(elem, self.name,
                                            nested_lvl=nested_lvl,
-                                           force_strings=force_strings)
+                                           is_root=is_root)
 
                 if self.model:
                     self.model |= typ
@@ -898,8 +929,7 @@ class PyListGenerator(metaclass=property_wizard):
                 # Nested lists.
                 if typ is PyDataType.LIST:
                     nested_lvl += 1
-                    typ = PyListGenerator(elem, nested_lvl=nested_lvl,
-                                          force_strings=force_strings)
+                    typ = PyListGenerator(elem, nested_lvl=nested_lvl)
 
                 data_list.append(typ)
 
@@ -918,7 +948,6 @@ class PyListGenerator(metaclass=property_wizard):
 
             self.root = PyDataclassGenerator.load_parsed(
                 data_dict,
-                force_strings=force_strings,
                 nested_lvl=nested_lvl
             )
             self.root.name = self.container_name
