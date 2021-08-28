@@ -390,13 +390,14 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
             for typ in hooks:
                 if issubclass(base_type, typ):
                     load_hook = hooks[typ]
-
-        if load_hook is None:
-            err = TypeError('Provided type is not currently supported.')
-            raise ParseError(
-                err, None, base_type,
-                unsupported_type=base_type
-            )
+                    break
+            else:
+                # No matching hook is found for the type.
+                err = TypeError('Provided type is not currently supported.')
+                raise ParseError(
+                    err, None, base_type,
+                    unsupported_type=base_type
+                )
 
         if hasattr(load_hook, PASS_THROUGH):
             load_hook = resolve_load_func(load_hook, locals())
