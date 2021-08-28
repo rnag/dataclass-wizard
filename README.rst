@@ -69,7 +69,9 @@ Using the built-in JSON marshalling support for dataclasses:
     }
     """
 
+    # De-serialize the JSON string into a `MyClass` object.
     c = MyClass.from_json(string)
+
     print(repr(c))
     # prints:
     #   MyClass(my_str='20', is_active_tuple=(True, False, True, False), list_of_int=[1, 2, 3])
@@ -77,6 +79,9 @@ Using the built-in JSON marshalling support for dataclasses:
     print(c.to_json())
     # prints:
     #   {"myStr": "20", "isActiveTuple": [true, false, true, false], "listOfInt": [1, 2, 3]}
+
+    # True
+    assert c == c.from_dict(c.to_dict())
 
 ... and with the ``property_wizard``, which provides support for
 `field properties`_ with default values in dataclasses:
@@ -224,6 +229,82 @@ prefer to use that instead.
 Check out a `more complete example`_ of using the ``JSONSerializable``
 Mixin class.
 
+Custom Key Mappings
+-------------------
+
+If you ever find the need to add a `custom mapping`_ of a JSON key to a dataclass
+field (or vice versa), the helper function ``json_field`` - which can be considered
+an alias to ``dataclasses.field()`` -- is one approach that can resolve this.
+
+Example below:
+
+.. code:: python3
+
+    from dataclasses import dataclass
+
+    from dataclass_wizard import JSONSerializable, json_field
+
+
+    @dataclass
+    class MyClass(JSONSerializable):
+
+        my_str: str = json_field('myString1', all=True)
+
+
+    # De-serialize a dictionary object with the newly mapped JSON key.
+    d = {'myString1': 'Testing'}
+    c = MyClass.from_dict(d)
+
+    print(repr(c))
+    # prints:
+    #   MyClass(my_str='Testing')
+
+    # Assert we get the same dictionary object when serializing the instance.
+    assert c.to_dict() == d
+
+Extending from ``Meta``
+-----------------------
+
+Need to change how ``date`` and ``datetime`` objects are serialized to JSON? Or
+prefer that field names appear in *snake case* when a dataclass instance is serialized?
+
+The inner :class:`Meta` class allows easy configuration of such settings, as
+shown below; and as a nice bonus, IDEs should be able to assist with code completion
+along the way.
+
+.. code:: python3
+
+    from dataclasses import dataclass
+    from datetime import date
+
+    from dataclass_wizard import JSONWizard
+    from dataclass_wizard.enums import DateTimeTo
+
+
+    @dataclass
+    class MyClass(JSONWizard):
+
+        class _(JSONWizard.Meta):
+            marshal_date_time_as = DateTimeTo.TIMESTAMP
+            key_transform_with_dump = 'SNAKE'
+
+        my_str: str
+        my_date: date
+
+
+    data = {'my_str': 'test', 'myDATE': '2010-12-30'}
+
+    c = MyClass.from_dict(data)
+
+    print(repr(c))
+    # prints:
+    #   MyClass(my_str='test', my_date=datetime.date(2010, 12, 30))
+
+    string = c.to_json()
+    print(string)
+    # prints:
+    #   {"my_str": "test", "my_date": 1293685200}
+
 Field Properties
 ----------------
 
@@ -254,6 +335,7 @@ This package was created with Cookiecutter_ and the `rnag/cookiecutter-pypackage
 .. _`Mixin`: https://stackoverflow.com/a/547714/10237506
 .. _`Using Field Properties`: https://dataclass-wizard.readthedocs.io/en/latest/using_field_properties.html
 .. _`field properties`: https://dataclass-wizard.readthedocs.io/en/latest/using_field_properties.html
+.. _`custom mapping`: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/custom_key_mappings.html
 .. _`wiz-cli`: https://dataclass-wizard.readthedocs.io/en/latest/wiz_cli.html
 .. _`key limitations`: https://florimond.dev/en/posts/2018/10/reconciling-dataclasses-and-properties-in-python/
 .. _`more complete example`: https://dataclass-wizard.readthedocs.io/en/latest/examples.html#a-more-complete-example
