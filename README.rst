@@ -100,9 +100,9 @@ Using the built-in JSON marshalling support for dataclasses:
         # re-declared by the property; here it is simply omitted for brevity.
         wheels: Annotated[Union[int, str], field(default=4)]
 
-        # This is a shorthand version of the above; note that an IDE suggests
-        # `_wheels` as a keyword argument to the constructor method in this
-        # case, though it will actually be named as `wheels`.
+        # This is a shorthand version of the above; here an IDE suggests
+        # `_wheels` as a keyword argument to the constructor method, though it
+        # will actually be named as `wheels`.
         # _wheels: Union[int, str] = 4
 
         @property
