@@ -17,8 +17,8 @@ from .class_helper import (
     dataclass_field_to_load_parser, json_field_to_dataclass_field,
     _CLASS_TO_LOAD_FUNC,
 )
-from .constants import _LOAD_HOOKS, PASS_THROUGH
-from .decorators import default_func, pass_through, resolve_load_func
+from .constants import _LOAD_HOOKS, SINGLE_ARG_ALIAS
+from .decorators import _alias, _single_arg_alias, resolve_alias_func
 from .errors import ParseError
 from .log import LOG
 from .parsers import *
@@ -55,9 +55,9 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
         setup_default_loader(cls)
 
     @staticmethod
-    @default_func(to_snake_case)
+    @_alias(to_snake_case)
     def transform_json_field(string: str) -> str:
-        # @default_func: to_snake_case
+        # alias: to_snake_case
         ...
 
     @staticmethod
@@ -74,39 +74,39 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
         raise ParseError(e, o, base_type)
 
     @staticmethod
-    @default_func(as_str)
+    @_alias(as_str)
     def load_to_str(o: Union[Text, N, None], base_type: Type[str]) -> str:
-        # @default_func: as_str
+        # alias: as_str
         ...
 
     @staticmethod
-    @default_func(as_int)
+    @_alias(as_int)
     def load_to_int(o: Union[str, int, bool, None], base_type: Type[N]) -> N:
-        # @default_func: as_int
+        # alias: as_int
         ...
 
     @staticmethod
-    @pass_through('base_type')
+    @_single_arg_alias('base_type')
     def load_to_float(o: Union[SupportsFloat, str], base_type: Type[N]) -> N:
-        # @pass_through: base_type(o)
+        # alias: base_type(o)
         ...
 
     @staticmethod
-    @pass_through(as_bool)
+    @_single_arg_alias(as_bool)
     def load_to_bool(o: Union[str, bool, N], _: Type[bool]) -> bool:
-        # @pass_through: as_bool(o)
+        # alias: as_bool(o)
         ...
 
     @staticmethod
-    @pass_through('base_type')
+    @_single_arg_alias('base_type')
     def load_to_enum(o: Union[AnyStr, N], base_type: Type[E]) -> E:
-        # @pass_through: base_type(o)
+        # alias: base_type(o)
         ...
 
     @staticmethod
-    @pass_through('base_type')
+    @_single_arg_alias('base_type')
     def load_to_uuid(o: Union[AnyStr, U], base_type: Type[U]) -> U:
-        # @pass_through: base_type(o)
+        # alias: base_type(o)
         ...
 
     @staticmethod
@@ -205,22 +205,22 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
         return base_type(str(o))
 
     @staticmethod
-    @default_func(as_datetime)
+    @_alias(as_datetime)
     def load_to_datetime(
             o: Union[str, N], base_type: Type[datetime]) -> datetime:
-        # @default_func: as_datetime
+        # alias: as_datetime
         ...
 
     @staticmethod
-    @default_func(as_time)
+    @_alias(as_time)
     def load_to_time(o: str, base_type: Type[time]) -> time:
-        # @default_func: as_time
+        # alias: as_time
         ...
 
     @staticmethod
-    @default_func(as_date)
+    @_alias(as_date)
     def load_to_date(o: Union[str, N], base_type: Type[date]) -> date:
-        # @default_func: as_date
+        # alias: as_date
         ...
 
     @classmethod
@@ -399,9 +399,9 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
                     unsupported_type=base_type
                 )
 
-        if hasattr(load_hook, PASS_THROUGH):
-            load_hook = resolve_load_func(load_hook, locals())
-            return PassThroughParser(base_cls, base_type, load_hook)
+        if hasattr(load_hook, SINGLE_ARG_ALIAS):
+            load_hook = resolve_alias_func(load_hook, locals())
+            return SingleArgParser(base_cls, base_type, load_hook)
 
         return Parser(base_cls, base_type, load_hook)
 

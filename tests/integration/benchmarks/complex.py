@@ -128,15 +128,15 @@ def test_load(data, n):
     g = globals().copy()
     g.update(locals())
 
-    # Result: 2.979
+    # Result: 1.923
     log.info('dataclass-wizard     %f',
              timeit('MyClassWizard.from_dict(data)', globals=g, number=n))
 
-    # Result: 2.028
+    # Result: 1.372
     log.info('dataclass-factory    %f',
              timeit('factory.load(data, MyClass)', globals=g, number=n))
 
-    # Result: 20.951
+    # Result: 14.789
     #   NOTE: This likely is not a fair comparison, since the rest load
     #   `people` as a `List[Person]`, but in this case we just load it as
     #   a dict.
@@ -144,11 +144,11 @@ def test_load(data, n):
              timeit('MyClassDJ.from_dict(data)', globals=g, number=n))
 
     # these ones took a long time xD
-    # Result: 103.574
+    # Result: 70.852
     log.info('jsons                %f',
              timeit('MyClassJsons.load(data)', globals=g, number=n))
 
-    # Result: 173.924
+    # Result: 120.078
     log.info('jsons (strict)       %f',
              timeit('MyClassJsons.load(data, strict=True)', globals=g, number=n))
 

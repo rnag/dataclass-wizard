@@ -28,6 +28,6 @@ _LOAD_HOOKS = '__LOAD_HOOKS__'
 # object type. Also used to check if a class is a :class:`BaseDumpHook`
 _DUMP_HOOKS = '__DUMP_HOOKS__'
 
-# Attribute name that will be defined for pass-through functions and methods;
-# mainly for internal use.
-PASS_THROUGH = '__pass_through__'
+# Attribute name that will be defined for single-arg alias functions and
+# methods; mainly for internal use.
+SINGLE_ARG_ALIAS = '__SINGLE_ARG_ALIAS__'

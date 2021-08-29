@@ -1,7 +1,7 @@
 from functools import wraps
 from typing import Any, Type, Callable, Union
 
-from .constants import PASS_THROUGH
+from .constants import SINGLE_ARG_ALIAS
 from .errors import ParseError
 
 
@@ -36,7 +36,7 @@ def discard_kwargs(f):
     return new_func
 
 
-def default_func(default: Callable):
+def _alias(default: Callable):
     """
     Decorator which re-assigns a function `_f` to point to `default` instead.
     Since global function calls in Python are somewhat expensive, this is
@@ -53,18 +53,18 @@ def default_func(default: Callable):
     Calling function `f1` will incur some additional overhead, as opposed to
     simply calling `f2`.
 
-    Now assume we wrap `f1` with the `default_func` decorator::
+    Now assume we wrap `f1` with the `_alias` decorator::
 
         def f2(o):
             return o
 
-        @default_func(f2)
+        @_alias(f2)
         def f1(o):
             ...
 
     This will essentially perform the assignment of `f1 = f2`, so calling
-    `f2()` in this case has no additional function overhead, as opposed to
-    just calling `f1()`.
+    `f1()` in this case has no additional function overhead, as opposed to
+    just calling `f2()`.
     """
 
     def new_func(_f):
@@ -73,7 +73,7 @@ def default_func(default: Callable):
     return new_func
 
 
-def pass_through(pass_thru_func: Union[Callable, str] = None):
+def _single_arg_alias(alias_func: Union[Callable, str] = None):
     """
     Decorator which wraps a function to set the :attr:`PASS_THROUGH` on
     a function `f`. This is useful mainly so that other functions can access
@@ -81,23 +81,24 @@ def pass_through(pass_thru_func: Union[Callable, str] = None):
     """
 
     def new_func(f):
-        setattr(f, PASS_THROUGH, pass_thru_func)
+        setattr(f, SINGLE_ARG_ALIAS, alias_func)
         return f
 
     return new_func
 
 
-def resolve_load_func(f: Callable, _locals=None, raise_=False) -> Callable:
+def resolve_alias_func(f: Callable, _locals=None, raise_=False) -> Callable:
     """
-    Resolve the underlying passed-through function for `f`, using the provided
-    function locals (which will be a dict).
+    Resolve the underlying single-arg alias function for `f`, using the
+    provided function locals (which will be a dict). If `f` does not have an
+    associated alias function, we return `f` itself.
 
-    :raises AttributeError: If `raise_` is true and `f` is not a pass-through
-      function.
+    :raises AttributeError: If `raise_` is true and `f` is not a single-arg
+      alias function.
     """
 
     try:
-        pass_through_func = getattr(f, PASS_THROUGH)
+        single_arg_alias_func = getattr(f, SINGLE_ARG_ALIAS)
 
     except AttributeError:
         if raise_:
@@ -105,7 +106,7 @@ def resolve_load_func(f: Callable, _locals=None, raise_=False) -> Callable:
         return f
 
     else:
-        if isinstance(pass_through_func, str) and _locals is not None:
-            return _locals[pass_through_func]
+        if isinstance(single_arg_alias_func, str) and _locals is not None:
+            return _locals[single_arg_alias_func]
 
-        return pass_through_func
+        return single_arg_alias_func
