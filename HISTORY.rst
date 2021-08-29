@@ -2,6 +2,17 @@
 History
 =======
 
+0.10.2 (2021-08-29)
+-------------------
+
+* Rename some internal functions, such as the ``default_func`` decorator (renamed
+  to ``_alias``). I felt that this name was overall more clearer.
+* Similarly rename ``PassThroughParser`` to ``SingleArgParser``, as that's a bit
+  more clear which types it handles.
+* ``wiz`` CLI: comment out the *--verbose* and *--quiet* flags, as those were
+  unused anyway.
+* Update docs/
+
 0.10.0 (2021-08-28)
 -------------------
 

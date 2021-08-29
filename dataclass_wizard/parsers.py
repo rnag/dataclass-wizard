@@ -1,4 +1,4 @@
-__all__ = ['PassThroughParser',
+__all__ = ['SingleArgParser',
            'Parser',
            'LiteralParser',
            'UnionParser',
@@ -33,7 +33,7 @@ TupleOfParsers = Tuple[AbstractParser, ...]
 
 
 @dataclass
-class PassThroughParser(AbstractParser):
+class SingleArgParser(AbstractParser):
     __slots__ = ('hook', )
 
     hook: Callable[[Any], T]

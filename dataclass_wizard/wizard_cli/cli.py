@@ -53,9 +53,10 @@ def setup_parser():
                                 f'Python/{py_version} '
                                 f'{platform.system()}/{platform.release()}',
                         help='Display the version of this tool.')
-    parser.add_argument('-v', '--verbose', action='store_true',
-                        help='Enable verbose output')
-    parser.add_argument('-q', '--quiet', action='store_true')
+    # Commenting these out for now, as they are all currently a "no-op".
+    # parser.add_argument('-v', '--verbose', action='store_true',
+    #                     help='Enable verbose output')
+    # parser.add_argument('-q', '--quiet', action='store_true')
 
     # Add the sub-commands here.
 
@@ -157,7 +158,7 @@ def gen_py_schema(args):
     force_strings: bool = args.force_strings
 
     # Currently these arguments are unused
-    verbose, quiet = args.verbose, args.quiet
+    # verbose, quiet = args.verbose, args.quiet
 
     # Check if input is piped from stdin.
     is_stdin: bool = in_file.name == '<stdin>'
