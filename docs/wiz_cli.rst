@@ -9,10 +9,9 @@ which further simplifies interaction with the Python ``dataclasses`` module.
 Getting help::
 
     $ wiz -h
-    usage: wiz [-h] [-v] [-q] {gen-schema,gs} ...
+    usage: wiz [-h] [-V] {gen-schema,gs} ...
 
-    A companion CLI tool for the Dataclass Wizard, which simplifies interaction with the Python
-    `dataclasses` module.
+    A companion CLI tool for the Dataclass Wizard, which simplifies interaction with the Python `dataclasses` module.
 
     positional arguments:
       {gen-schema,gs}  Supported sub-commands
@@ -21,20 +20,23 @@ Getting help::
 
     optional arguments:
       -h, --help       show this help message and exit
-      -v, --verbose    Enable verbose output
-      -q, --quiet
+      -V, --version    Display the version of this tool.
 
+Checking the version of the CLI tool should display the currently installed
+version of the ``dataclass-wizard`` library::
+
+    $ wiz -V
 
 To get help on a subcommand, simply use ``wiz <subcommand> -h``. For example::
 
     $ wiz gs -h
 
-JSON To Dataclass
-~~~~~~~~~~~~~~~~~
+JSON To Dataclass Generation Tool
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The subcommand ``gen-schema`` (aliased to ``gs``) provides a JSON to Python
 schema generation tool. This utility takes a JSON file or string as an input,
-and generates the corresponding dataclass schema. The main purpose is to easily
+and outputs the corresponding dataclass schema. The main purpose is to easily
 create dataclasses that can be used with API output, without resorting to
 ``dict``'s or ``NamedTuple``'s.
 
@@ -45,6 +47,17 @@ This scheme generation tool is inspired by the following projects:
 -  https://github.com/mholt/json-to-go
 -  https://github.com/bermi/Python-Inflector
 
+.. note:: A few things to consider:
+
+  - The script sometimes has to make some assumptions, so give the output a once-over.
+  - In an array of objects (i.e. dictionaries), all key names and type definitions get merged into a single
+    model ``dataclass``, as the objects are considered homogenous in this case.
+  - Deeply nested lists within objects (e.g. *list* -> *dict* -> *list*) should
+    similarly merge all list elements with the other lists under that key in
+    each sibling `dict` object.
+  - The output is properly formatted, including additional spacing where needed.
+    Please do consider `opening an issue`_ if there are further improvements
+    to be made.
 
 Example usage::
 
@@ -105,3 +118,6 @@ For example::
     # Note: the following command writes to a new file 'out.py'
 
     echo '<json string>' | wiz gs - out
+
+
+.. _`opening an issue`: https://github.com/rnag/dataclass-wizard/issues

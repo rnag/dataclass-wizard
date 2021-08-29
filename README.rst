@@ -229,12 +229,26 @@ prefer to use that instead.
 Check out a `more complete example`_ of using the ``JSONSerializable``
 Mixin class.
 
+Supported Types
+---------------
+
+The Dataclass Wizard library provides inherent support for standard Python collections
+such as ``list``, ``dict`` and ``set``, as well as most Generics from the typing
+module, such as ``Union`` and ``Any``. Other commonly used types such as ``Enum``,
+``defaultdict``, and date and time objects such as ``datetime`` are also natively
+supported.
+
+For a complete list of the supported Python types, including info on the
+load/dump process for special types, check out the `Supported Types`_ section
+in the docs.
+
 Custom Key Mappings
 -------------------
 
 If you ever find the need to add a `custom mapping`_ of a JSON key to a dataclass
-field (or vice versa), the helper function ``json_field`` - which can be considered
-an alias to ``dataclasses.field()`` -- is one approach that can resolve this.
+field (or vice versa), the helper function ``json_field`` -- which can be
+considered an alias to ``dataclasses.field()`` -- is one approach that can
+resolve this.
 
 Example below:
 
@@ -265,7 +279,7 @@ Example below:
 Extending from ``Meta``
 -----------------------
 
-Need to change how ``date`` and ``datetime`` objects are serialized to JSON? Or
+Looking to change how ``date`` and ``datetime`` objects are serialized to JSON? Or
 prefer that field names appear in *snake case* when a dataclass instance is serialized?
 
 The inner ``Meta`` class allows easy configuration of such settings, as
@@ -325,6 +339,14 @@ mixin class.
 For more examples and important how-to's on properties with default values,
 refer to the `Using Field Properties`_ section in the documentation.
 
+Contributing
+------------
+
+Contributions are welcome! Open a pull request to fix a bug, or `open an issue`_
+to discuss a new feature or change.
+
+Check out the `Contributing`_ section in the docs for more info.
+
 Credits
 -------
 
@@ -332,6 +354,9 @@ This package was created with Cookiecutter_ and the `rnag/cookiecutter-pypackage
 
 .. _Cookiecutter: https://github.com/cookiecutter/cookiecutter
 .. _`rnag/cookiecutter-pypackage`: https://github.com/rnag/cookiecutter-pypackage
+.. _`Contributing`: https://dataclass-wizard.readthedocs.io/en/latest/contributing.html
+.. _`open an issue`: https://github.com/rnag/dataclass-wizard/issues
+.. _`Supported Types`: https://dataclass-wizard.readthedocs.io/en/latest/overview.html#supported-types
 .. _`Mixin`: https://stackoverflow.com/a/547714/10237506
 .. _`Using Field Properties`: https://dataclass-wizard.readthedocs.io/en/latest/using_field_properties.html
 .. _`field properties`: https://dataclass-wizard.readthedocs.io/en/latest/using_field_properties.html

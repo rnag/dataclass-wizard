@@ -1,16 +1,13 @@
 Overview
 ========
 
-Dataclass Wizard is a library that provides a set of simple, yet elegant
-*wizarding* tools for interacting with the Python ``dataclasses`` module.
-
 Requirements
 ~~~~~~~~~~~~
 
-The dataclass-wizard library officially supports **Python 3.6+**
+The ``dataclass-wizard`` library officially supports **Python 3.6+**
 
 There are no core requirements outside of the Python standard library. That being
-said, this library *does*  require a few conditional dependencies:
+said, this library *does* utilize a few conditional dependencies:
 
 * `typing-extensions` - this is a lightweight and highly useful library that backports
   the most recently added features to the ``typing`` module. For more info,
@@ -18,13 +15,13 @@ said, this library *does*  require a few conditional dependencies:
 * `dataclasses` - a backport of the ``dataclasses`` module for Python 3.6
 * `backports-datetime-fromisoformat` - a backport of `fromisoformat()`_ for Python 3.6
 
-Benefits
-~~~~~~~~
+Advantages
+~~~~~~~~~~
 
 - Minimal setup required. In most cases, all you need is a dataclass that sub-classes
   from ``JSONWizard``.
-- Speed. It is up to 5 times faster than libraries such as `dataclasses-json`_
-  that use ``marshmellow``, and about 30 x faster than libraries such as `jsons`_
+- Speed. It is up to 7 times faster than libraries such as `dataclasses-json`_
+  that use ``marshmellow``, and about 40 x faster than libraries such as `jsons`_
   which don't seem to handle dataclasses as well as you'd expect.
 - Adds the ability to use field properties (with default values) in dataclasses.
 - Automatic key transform to/from JSON (ex. *camel* to *snake*).
@@ -37,17 +34,22 @@ Benefits
 - Latest Python features such as
   `parameterized standard collections <python_compatibility.html#the-latest-and-greatest>`__
   can be used.
-- Support for recently introduced type Generics such as ``Literal``.
+- Ability to construct *ad-hoc* dataclass schemas using JSON input (either as a
+  file or string) using the included `wiz-cli`_ utility.
 
 
 .. _here: https://pypi.org/project/typing-extensions/
 .. _fromisoformat(): https://docs.python.org/3/library/datetime.html#datetime.date.fromisoformat
 .. _defaultdict: https://docs.python.org/3/library/collections.html#collections.defaultdict
 .. _jsons: https://pypi.org/project/jsons/
+.. _`wiz-cli`: https://dataclass-wizard.readthedocs.io/en/latest/wiz_cli.html
 .. _dataclasses-json: https://pypi.org/project/dataclasses-json/
 
 Supported Types
 ~~~~~~~~~~~~~~~
+
+.. note:: See the below section on `Special Cases`_ for additional info
+   on the JSON load/dump process for special Python types.
 
 * Strings
     - ``str``
@@ -90,3 +92,51 @@ Supported Types
   module)
     - ``Annotated``
     - ``Literal``
+
+Special Cases
+-------------
+
+With most annotated Python types, it is clear and unambiguous how they are to be
+loaded from JSON, or dumped when they are de-serialized back to JSON. However,
+here a few special cases that are worth going over:
+
+* ``bool`` - JSON values that appear as strings or integers will be de-serialized
+  to a ``bool`` using a case-insensitive search that matches against the following
+  "truthy" values:
+      *TRUE, T, YES, Y, 1*
+
+* ``Enum`` - JSON values (ideally strings) are de-serialized to ``Enum``
+  subclasses via the ``value`` attribute, and are serialized back to JSON
+  using the same ``value`` attribute.
+
+* ``UUID`` types are de-serialized from JSON strings using the constructor
+  method -- i.e. ``UUID(string)``, and by default are serialized back to JSON
+  using the ``hex`` attribute -- i.e. :attr:`my_uuid.hex`.
+
+* ``Decimal`` types are de-serialized using the ``Decimal(str(o))`` syntax
+  (or with an annotated subclass of *Decimal*), and are serialized via the
+  builtin :func:`str` function.
+
+* ``NamedTuple`` sub-types are de-serialized from a ``list``, ``tuple``, or any
+  iterable type into the annotated sub-type. They are serialized back as the
+  the annotated ``NamedTuple`` sub-type; this is mainly because *named tuples*
+  are essentially just tuples, so they are inherently JSON serializable
+  to begin with.
+
+* For ``date``, ``time``, and ``datetime`` types, string values are de-serialized
+  using the builtin :meth:`fromisoformat` method; for ``datetime`` and ``time`` types,
+  a suffix of "Z" appearing in the string is first replaced with "+00:00",
+  which represents UTC time. JSON values for ``datetime`` and ``date`` annotated
+  types appearing as numbers will be de-serialized using the
+  builtin :meth:`fromtimestamp` method.
+
+  All these types are serialized back to JSON using the builtin :meth:`isoformat` method.
+  For ``datetime`` and ``time`` types, there is one noteworthy addition: the
+  suffix "+00:00" is replaced with "Z", which is a common abbreviation for UTC time.
+
+* ``set``, ``frozenset``, and ``deque`` types will be de-serialized using their
+  annotated base types, and serialized as ``list``'s.
+
+* Commonly used ``dict`` sub-types (such as ``defaultdict``) will be de-serialized
+  from JSON objects using the annotated base type, and serialized back as
+  plain ``dict`` objects.
