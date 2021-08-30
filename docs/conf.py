@@ -89,7 +89,11 @@ html_theme = 'alabaster'
 # theme further.  For a list of options available for each theme, see the
 # documentation.
 #
-# html_theme_options = {}
+html_theme_options = {
+    "note_bg": "#fff9bf",
+    "description": 'A set of simple, yet elegant <i>wizarding</i> tools for '
+                   'interacting with the Python <code>dataclasses</code> module.'
+}
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,

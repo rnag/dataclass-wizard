@@ -56,7 +56,7 @@ This scheme generation tool is inspired by the following projects:
     similarly merge all list elements with the other lists under that key in
     each sibling `dict` object.
   - The output is properly formatted, including additional spacing where needed.
-    Please do consider `opening an issue`_ if there are further improvements
+    Please consider `opening an issue`_ if there are any potential improvements
     to be made.
 
 Example usage::

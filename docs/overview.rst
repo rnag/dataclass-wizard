@@ -89,7 +89,7 @@ Supported Types
     - ``time``
     - ``date``
 
-* Special `typing primitives`_ from the *typing* module
+* Special `typing primitives`_ from the ``typing`` module
     - ``Any``
     - ``Union``
     - ``Optional``
@@ -105,7 +105,7 @@ Supported Types
 Special Cases
 -------------
 
-.. attention::
+.. note::
    With most annotated Python types, it is clear and unambiguous how they are to
    be loaded from JSON, or dumped when they are serialized back to JSON.
 
