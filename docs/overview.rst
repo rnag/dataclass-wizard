@@ -48,7 +48,8 @@ Advantages
 Supported Types
 ~~~~~~~~~~~~~~~
 
-.. note:: See the below section on `Special Cases`_ for additional info
+.. tip::
+   See the below section on `Special Cases`_ for additional info
    on the JSON load/dump process for special Python types.
 
 * Strings
@@ -69,7 +70,7 @@ Supported Types
     - ``tuple``
     - ``NamedTuple``
 
-* Sets
+* Sets (and their equivalents in the ``typing`` module)
     - ``set``
     - ``frozenset``
 
@@ -88,17 +89,27 @@ Supported Types
     - ``time``
     - ``date``
 
+* Special `typing primitives`_ from the *typing* module
+    - ``Any``
+    - ``Union``
+    - ``Optional``
+
 * Recently introduced Generic types (available in Python 3.6+ via the ``typing-extensions``
   module)
     - ``Annotated``
     - ``Literal``
 
+
+.. _typing primitives: https://docs.python.org/3/library/typing.html#special-typing-primitives
+
 Special Cases
 -------------
 
-With most annotated Python types, it is clear and unambiguous how they are to be
-loaded from JSON, or dumped when they are de-serialized back to JSON. However,
-here a few special cases that are worth going over:
+.. attention::
+   With most annotated Python types, it is clear and unambiguous how they are to
+   be loaded from JSON, or dumped when they are serialized back to JSON.
+
+   However, here a few special cases that are worth going over.
 
 * ``bool`` - JSON values that appear as strings or integers will be de-serialized
   to a ``bool`` using a case-insensitive search that matches against the following
