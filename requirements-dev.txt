@@ -15,4 +15,4 @@ pytest-runner==5.3.1
 # Benchmark tests
 dataclasses-json==0.5.5
 jsons==1.5.1
-dataclass-factory
+dataclass-factory==2.11
