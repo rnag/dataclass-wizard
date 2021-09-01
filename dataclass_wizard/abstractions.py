@@ -207,20 +207,20 @@ class AbstractLoader(ABC):
         of one)
         """
 
-    @classmethod
+    @staticmethod
     @abstractmethod
     def load_to_tuple(
-            cls, o: Union[List, Tuple], base_type: Type[Tuple],
+            o: Union[List, Tuple], base_type: Type[Tuple],
             elem_parsers: Sequence[AbstractParser]) -> Tuple:
         """
         Load a list or tuple into a new object of type `base_type` (generally
         a :class:`tuple` or a sub-class of one)
         """
 
-    @classmethod
+    @staticmethod
     @abstractmethod
     def load_to_named_tuple(
-            cls, o: Union[Dict, List, Tuple], base_type: Type[NT],
+            o: Union[Dict, List, Tuple], base_type: Type[NT],
             field_to_parser: FieldToParser,
             field_parsers: List[AbstractParser]) -> NT:
         """

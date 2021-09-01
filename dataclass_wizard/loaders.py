@@ -118,9 +118,9 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
 
         return base_type([elem_parser(elem) for elem in o])
 
-    @classmethod
+    @staticmethod
     def load_to_tuple(
-            cls, o: Union[List, Tuple], base_type: Type[Tuple],
+            o: Union[List, Tuple], base_type: Type[Tuple],
             elem_parsers: Sequence[AbstractParser]) -> Tuple:
 
         try:
@@ -130,9 +130,9 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
         else:
             return base_type([parser(e) for parser, e in zipped])
 
-    @classmethod
+    @staticmethod
     def load_to_named_tuple(
-            cls, o: Union[Dict, List, Tuple], base_type: Type[NT],
+            o: Union[Dict, List, Tuple], base_type: Type[NT],
             field_to_parser: FieldToParser,
             field_parsers: List[AbstractParser]) -> NT:
 
