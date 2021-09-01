@@ -1,4 +1,4 @@
-from collections import defaultdict, deque
+from collections import defaultdict, deque, namedtuple
 from dataclasses import is_dataclass
 from datetime import datetime, time, date
 from decimal import Decimal
@@ -15,11 +15,11 @@ from .class_helper import (
     get_class_name, create_new_class,
     dataclass_to_loader, set_class_loader,
     dataclass_field_to_load_parser, json_field_to_dataclass_field,
-    _CLASS_TO_LOAD_FUNC,
+    _CLASS_TO_LOAD_FUNC, dataclass_fields,
 )
-from .constants import _LOAD_HOOKS, SINGLE_ARG_ALIAS
-from .decorators import _alias, _single_arg_alias, resolve_alias_func
-from .errors import ParseError
+from .constants import _LOAD_HOOKS, SINGLE_ARG_ALIAS, IDENTITY
+from .decorators import _alias, _single_arg_alias, resolve_alias_func, _identity
+from .errors import ParseError, MissingFields
 from .log import LOG
 from .parsers import *
 from .type_def import (
@@ -61,8 +61,10 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
         ...
 
     @staticmethod
-    def default_load_to(o: T, *_) -> T:
-        return o
+    @_identity
+    def default_load_to(o: T, _: Any) -> T:
+        # identity: o
+        ...
 
     @staticmethod
     def load_after_type_check(o: Any, base_type: Type[T]) -> T:
@@ -114,46 +116,46 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
             o: Iterable, base_type: Type[LSQ],
             elem_parser: AbstractParser) -> LSQ:
 
-        return base_type(elem_parser(elem) for elem in o)
+        return base_type([elem_parser(elem) for elem in o])
 
     @classmethod
     def load_to_tuple(
             cls, o: Union[List, Tuple], base_type: Type[Tuple],
             elem_parsers: Sequence[AbstractParser]) -> Tuple:
 
-        if elem_parsers:
-            return base_type(parser(e) for parser, e in zip(elem_parsers, o))
+        try:
+            zipped = zip(elem_parsers, o)
+        except TypeError:
+            return base_type([e for e in o])
         else:
-            any_parser: AbstractParser = cls.get_parser_for_annotation(Any)
-            return base_type(any_parser(e) for e in o)
+            return base_type([parser(e) for parser, e in zipped])
 
     @classmethod
     def load_to_named_tuple(
             cls, o: Union[Dict, List, Tuple], base_type: Type[NT],
-            field_to_parser: Optional[FieldToParser]) -> NT:
+            field_to_parser: FieldToParser,
+            field_parsers: List[AbstractParser]) -> NT:
 
-        if field_to_parser is not None:
-            # Annotated as a sub-type of `typing.NamedTuple`
-            if isinstance(o, dict):
-                # Convert the values of all fields in the NamedTuple, using
-                # their type annotations. The keys in a dictionary object
-                # (assuming it was loaded from JSON) are required to be
-                # strings, so we don't need to convert them.
-                return base_type(**{k: field_to_parser[k](v)
-                                    for k, v in o.items()})
-            # We're passed in a list or a tuple.
-            field_parsers = list(field_to_parser.values())
-            return base_type(*[
-                parser(elem) for parser, elem in zip(field_parsers, o)])
+        if isinstance(o, dict):
+            # Convert the values of all fields in the NamedTuple, using
+            # their type annotations. The keys in a dictionary object
+            # (assuming it was loaded from JSON) are required to be
+            # strings, so we don't need to convert them.
+            return base_type(
+                **{k: field_to_parser[k](o[k]) for k in o})
+        # We're passed in a list or a tuple.
+        return base_type(
+            *[parser(elem) for parser, elem in zip(field_parsers, o)])
 
-        else:
-            # Annotated as just a regular `collections.namedtuple`
-            if isinstance(o, dict):
-                dict_parser = cls.get_parser_for_annotation(dict)
-                return base_type(**dict_parser(o))
-            # We're passed in a list or a tuple.
-            list_parser = cls.get_parser_for_annotation(list)
-            return base_type(*list_parser(o))
+    @staticmethod
+    def load_to_named_tuple_untyped(
+            o: Union[Dict, List, Tuple], base_type: Type[NT],
+            dict_parser: AbstractParser, list_parser: AbstractParser) -> NT:
+
+        if isinstance(o, dict):
+            return base_type(**dict_parser(o))
+        # We're passed in a list or a tuple.
+        return base_type(*list_parser(o))
 
     @staticmethod
     def load_to_dict(
@@ -271,11 +273,21 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
 
                     elif issubclass(base_type, tuple) \
                             and hasattr(base_type, '_fields'):
-                        load_hook = hooks.get(NamedTupleMeta)
-                        return NamedTupleParser(
-                            base_cls, base_type, load_hook,
-                            cls.get_parser_for_annotation
-                        )
+
+                        if hasattr(base_type, '__annotations__'):
+                            # Annotated as a `typing.NamedTuple` subtype
+                            load_hook = hooks.get(NamedTupleMeta)
+                            return NamedTupleParser(
+                                base_cls, base_type, load_hook,
+                                cls.get_parser_for_annotation
+                            )
+                        else:
+                            # Annotated as a `collections.namedtuple` subtype
+                            load_hook = hooks.get(namedtuple)
+                            return NamedTupleUntypedParser(
+                                base_cls, base_type, load_hook,
+                                cls.get_parser_for_annotation
+                            )
 
                     elif is_typed_dict(base_type):
                         load_hook = cls.load_to_typed_dict
@@ -403,6 +415,9 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
             load_hook = resolve_alias_func(load_hook, locals())
             return SingleArgParser(base_cls, base_type, load_hook)
 
+        if hasattr(load_hook, IDENTITY):
+            return IdentityParser(base_type, base_type)
+
         return Parser(base_cls, base_type, load_hook)
 
 
@@ -429,6 +444,8 @@ def setup_default_loader(cls=LoadMixin):
     cls.register_load_hook(deque, cls.load_to_iterable)
     cls.register_load_hook(list, cls.load_to_iterable)
     cls.register_load_hook(tuple, cls.load_to_tuple)
+    # noinspection PyTypeChecker
+    cls.register_load_hook(namedtuple, cls.load_to_named_tuple_untyped)
     cls.register_load_hook(NamedTupleMeta, cls.load_to_named_tuple)
     cls.register_load_hook(defaultdict, cls.load_to_defaultdict)
     cls.register_load_hook(dict, cls.load_to_dict)
@@ -563,7 +580,11 @@ def load_func_for_dataclass(cls: Type[T]) -> Callable[[Dict[str, Any]], T]:
                     e.field_name = field_name
                 raise
 
-        return cls(**cls_kwargs)
+        try:
+            return cls(**cls_kwargs)
+
+        except TypeError as e:
+            raise MissingFields(e, o, cls, cls_kwargs, dataclass_fields(cls))
 
     # Save the load function for the class, so we don't need to run this logic
     # each time.
