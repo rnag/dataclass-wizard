@@ -14,5 +14,5 @@ pytest-cov==2.12.1
 pytest-runner==5.3.1
 # Benchmark tests
 dataclasses-json==0.5.5
-jsons
+jsons==1.5.1
 dataclass-factory
