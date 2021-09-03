@@ -10,9 +10,9 @@ objects to their ISO 8601 string representation via
 `isoformat <https://docs.python.org/3/library/datetime.html#datetime.datetime.isoformat>`__.
 
 Such common behaviors can be easily specified on a per-class basis by
-defining an inner class which extends from ``JSONSerializable.Meta``, as
-shown below. The name of the inner class does not matter, but for demo
-purposes it's named the same as the base class here.
+defining an inner class which extends from ``JSONSerializable.Meta`` (or the
+aliased name ``JSONWizard.Meta``), as shown below. The name of the inner class
+does not matter, but for demo purposes it's named the same as the base class here.
 
 .. code:: python3
 
@@ -84,19 +84,19 @@ Here's a quick example to confirm this behavior:
     from dataclasses import dataclass
     from datetime import date
 
-    from dataclass_wizard import JSONSerializable
+    from dataclass_wizard import JSONWizard
 
     # Sets up logging, so that library logs are visible in the console.
     logging.basicConfig(level='INFO')
 
 
     @dataclass
-    class FirstClass(JSONSerializable):
+    class FirstClass(JSONWizard):
 
-        class _(JSONSerializable.Meta):
+        class _(JSONWizard.Meta):
             debug_enabled = True
             marshal_date_time_as = 'Timestamp'
-            key_transform_with_load = 'Pascal'
+            key_transform_with_load = 'PASCAL'
             key_transform_with_dump = 'SNAKE'
 
         MyStr: str
@@ -104,11 +104,11 @@ Here's a quick example to confirm this behavior:
 
 
     @dataclass
-    class SecondClass(JSONSerializable):
+    class SecondClass(JSONWizard):
 
         # If `SecondClass` were to define it's own `Meta` class, those changes
         # would only be applied to `SecondClass`, and no other dataclass.
-        # class _(JSONSerializable.Meta):
+        # class _(JSONWizard.Meta):
         #     key_transform_with_dump = 'PASCAL'
 
         my_str: str
@@ -149,8 +149,8 @@ Global :class:`Meta` settings
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 In case you want global ``Meta`` settings that will apply to
-all dataclasses which sub-class from ``JSONSerializable``, you
-can simply define ``JSONSerializable.Meta`` as an outer class
+all dataclasses which sub-class from ``JSONWizard``, you
+can simply define ``JSONWizard.Meta`` as an outer class
 as shown in the example below.
 
 .. attention::
@@ -168,45 +168,47 @@ as shown in the example below.
     from dataclasses import dataclass
     from datetime import date
 
-    from dataclass_wizard import JSONSerializable
+    from dataclass_wizard import JSONWizard
+    from dataclass_wizard.enums import DateTimeTo
+
 
     # Sets up logging, so that library logs are visible in the console.
     logging.basicConfig(level='INFO')
 
 
+    class GlobalJSONMeta(JSONWizard.Meta):
+        """
+        Global settings for the JSON load/dump process, that should apply to
+        *all* subclasses of `JSONWizard`.
+
+        Note: it does not matter where this class is defined, as long as it's
+        declared before any methods in `JSONWizard` are called.
+        """
+
+        debug_enabled = True
+        marshal_date_time_as = DateTimeTo.TIMESTAMP
+        key_transform_with_load = 'PASCAL'
+        key_transform_with_dump = 'SNAKE'
+
+
     @dataclass
-    class FirstClass(JSONSerializable):
+    class FirstClass(JSONWizard):
 
         MyStr: str
         MyDate: date
 
 
     @dataclass
-    class SecondClass(JSONSerializable):
+    class SecondClass(JSONWizard):
 
         # If `SecondClass` were to define it's own `Meta` class, those changes
         # will effectively override the global `Meta` settings below, but only
         # for `SecondClass` itself and no other dataclass.
-        # class _(JSONSerializable.Meta):
+        # class _(JSONWizard.Meta):
         #     key_transform_with_dump = 'CAMEL'
 
         AnotherStr: str
         OtherDate: date
-
-
-    class GlobalJSONMeta(JSONSerializable.Meta):
-        """
-        Global settings for the JSON load/dump process, that should apply to
-        *all* subclasses of `JSONSerializable`.
-
-        Note: it does not matter where this class is defined, as long as it's
-        declared before any methods in `JSONSerializable` are called.
-        """
-
-        debug_enabled = True
-        marshal_date_time_as = 'Timestamp'
-        key_transform_with_load = 'Pascal'
-        key_transform_with_dump = 'SNAKE'
 
 
     def main():
