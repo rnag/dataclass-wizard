@@ -141,12 +141,12 @@ Using the built-in JSON marshalling support for dataclasses:
 
 .. code:: shell
 
-    $ echo '{"myFloat": "1.23", "created_at": "2021-11-17"}' | wiz gs - my_file
+    $ echo '{"myFloat": "1.23", "Products": [{"created_at": "2021-11-17"}]}' | wiz gs - my_file
 
     # Contents of my_file.py
     from dataclasses import dataclass
     from datetime import date
-    from typing import Union
+    from typing import List, Union
 
     from dataclass_wizard import JSONWizard
 
@@ -158,6 +158,15 @@ Using the built-in JSON marshalling support for dataclasses:
 
         """
         my_float: Union[float, str]
+        products: List['Product']
+
+
+    @dataclass
+    class Product:
+        """
+        Product dataclass
+
+        """
         created_at: date
 
 

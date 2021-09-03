@@ -153,6 +153,15 @@ all dataclasses which sub-class from ``JSONSerializable``, you
 can simply define ``JSONSerializable.Meta`` as an outer class
 as shown in the example below.
 
+.. attention::
+   Although not recommended, a global ``Meta`` class should resolve the issue.
+   Note that this is a specialized use case and should be considered carefully.
+
+   This may also have unforeseen consequences - for example, if your application
+   depends on another library that uses the ``JSONWizard`` Mixin class from the
+   Dataclass Wizard library, then that library will be likewise affected by any
+   global ``Meta`` values that are set.
+
 .. code:: python3
 
     import logging
