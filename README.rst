@@ -328,6 +328,82 @@ along the way.
     # prints:
     #   {"my_str": "test", "my_date": 1293685200}
 
+Other Uses for ``Meta``
+~~~~~~~~~~~~~~~~~~~~~~~
+
+Here are a few additional use cases for the inner ``Meta`` class. Note that
+a full list of available settings can be found in the `Meta`_ section in the docs.
+
+Debug Mode
+##########
+
+Enables additional (more verbose) log output. For example, a message can be
+logged whenever an unknown JSON key is encountered when
+``from_dict`` or ``from_json`` is called.
+
+This also results in more helpful error messages during the JSON load
+(de-serialization) process, such as when values are an invalid type --
+i.e. they don't match the annotation for the field. This can be particularly
+useful for debugging purposes.
+
+Handle Unknown JSON Keys
+########################
+
+The default behavior is to ignore any unknown or extraneous JSON keys that are
+encountered when when ``from_dict`` or ``from_json`` is called, and emit a "warning"
+which is visible when *debug* mode is enabled (and logging is properly configured).
+An unknown key is one that does not have a known mapping to a dataclass field.
+
+However, we can also raise an error in such cases if desired. The below
+example demonstrates a use case where we want to raise an error when
+an unknown JSON key is encountered in the  *load* (de-serialization) process.
+
+.. code:: python3
+
+    import logging
+    from dataclasses import dataclass
+
+    from dataclass_wizard import JSONWizard
+    from dataclass_wizard.errors import UnknownJSONKey
+
+
+    # Sets up application logging if we haven't already done so
+    logging.basicConfig(level='INFO')
+
+
+    @dataclass
+    class MyClass(JSONWizard):
+
+        class _(JSONWizard.Meta):
+            # True to enable Debug mode for additional (more verbose) log output.
+            debug_enabled = True
+            # True to raise an class:`UnknownJSONKey` when an unmapped JSON key is
+            # encountered when `from_dict` or `from_json` is called.
+            raise_on_unknown_json_key = True
+
+        my_str: str
+        my_float: float
+
+
+    d = {
+        'myStr': 'string',
+        'my_float': '1.23',
+        # Notice how this key is not mapped to a known dataclass field!
+        'my_bool': 'Testing'
+    }
+
+    # Try to de-serialize the dictionary object into a `MyClass` object.
+    try:
+        c = MyClass.from_dict(d)
+    except UnknownJSONKey as e:
+        print('Received error:', type(e).__name__)
+        print('Unknown JSON key:', e.json_key)
+        print('JSON object:', e.obj)
+        print('Known Fields:', e.fields)
+    else:
+        print('Successfully de-serialized the JSON object.')
+        print(repr(c))
+
 Field Properties
 ----------------
 
@@ -367,6 +443,7 @@ This package was created with Cookiecutter_ and the `rnag/cookiecutter-pypackage
 .. _`open an issue`: https://github.com/rnag/dataclass-wizard/issues
 .. _`Supported Types`: https://dataclass-wizard.readthedocs.io/en/latest/overview.html#supported-types
 .. _`Mixin`: https://stackoverflow.com/a/547714/10237506
+.. _`Meta`: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/meta.html
 .. _`Using Field Properties`: https://dataclass-wizard.readthedocs.io/en/latest/using_field_properties.html
 .. _`field properties`: https://dataclass-wizard.readthedocs.io/en/latest/using_field_properties.html
 .. _`custom mapping`: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/custom_key_mappings.html
