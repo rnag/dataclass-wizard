@@ -21,6 +21,7 @@ log = logging.getLogger(__name__)
 
 @dataclass
 class MyClass:
+
     my_ledger: Dict[str, Any]
     the_answer_to_life: Optional[int]
     people: List['Person']
@@ -128,7 +129,7 @@ def test_load(data, n):
     g = globals().copy()
     g.update(locals())
 
-    # Result: 1.923
+    # Result: 1.780
     log.info('dataclass-wizard     %f',
              timeit('MyClassWizard.from_dict(data)', globals=g, number=n))
 

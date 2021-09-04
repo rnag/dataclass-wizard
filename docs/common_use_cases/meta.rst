@@ -10,9 +10,9 @@ objects to their ISO 8601 string representation via
 `isoformat <https://docs.python.org/3/library/datetime.html#datetime.datetime.isoformat>`__.
 
 Such common behaviors can be easily specified on a per-class basis by
-defining an inner class which extends from ``JSONSerializable.Meta``, as
-shown below. The name of the inner class does not matter, but for demo
-purposes it's named the same as the base class here.
+defining an inner class which extends from ``JSONSerializable.Meta`` (or the
+aliased name ``JSONWizard.Meta``), as shown below. The name of the inner class
+does not matter, but for demo purposes it's named the same as the base class here.
 
 .. code:: python3
 
@@ -31,16 +31,47 @@ purposes it's named the same as the base class here.
     class MyClass(JSONSerializable):
 
         class Meta(JSONSerializable.Meta):
-            # Enable better, more detailed error messages that may be helpful for
-            # debugging when values are an invalid type (i.e. they don't match
-            # the annotation for the field) when marshaling dataclass objects.
+
+            # True to enable Debug mode for additional (more verbose) log output.
+            #
+            # For example, a message is logged whenever an unknown JSON key is
+            # encountered when `from_dict` or `from_json` is called.
+            #
+            # This also results in more helpful messages during error handling, which
+            # can be useful when debugging the cause when values are an invalid type
+            # (i.e. they don't match the annotation for the field) when unmarshalling
+            # a JSON object to a dataclass instance.
+            #
             # Note there is a minor performance impact when DEBUG mode is enabled.
             debug_enabled = True
+
+            # True to raise an class:`UnknownJSONKey` when an unmapped JSON key is
+            # encountered when `from_dict` or `from_json` is called; an unknown key is
+            # one that does not have a known mapping to a dataclass field.
+            #
+            # The default is to only log a "warning" for such cases, which is visible
+            # when `debug_enabled` is true and logging is properly configured.
+            raise_on_unknown_json_key = False
+
+            # A customized mapping of JSON keys to dataclass fields, that is used
+            # whenever `from_dict` or `from_json` is called.
+            #
+            # Note: this is in addition to the implicit field transformations, like
+            #   "myStr" -> "my_str"
+            #
+            # If the reverse mapping is also desired (i.e. dataclass field to JSON
+            # key), then specify the "__all__" key as a truthy value. If multiple JSON
+            # keys are specified for a dataclass field, only the first one provided is
+            # used in this case.
+            json_key_to_field = {}
+
             # How should :class:`date` and :class:`datetime` objects be serialized
             # when converted to a Python dictionary object or a JSON string.
             marshal_date_time_as = DateTimeTo.TIMESTAMP
+
             # How JSON keys should be transformed to dataclass fields.
             key_transform_with_load = LetterCase.PASCAL
+
             # How dataclass fields should be transformed to JSON keys.
             key_transform_with_dump = LetterCase.SNAKE
 
@@ -84,19 +115,19 @@ Here's a quick example to confirm this behavior:
     from dataclasses import dataclass
     from datetime import date
 
-    from dataclass_wizard import JSONSerializable
+    from dataclass_wizard import JSONWizard
 
     # Sets up logging, so that library logs are visible in the console.
     logging.basicConfig(level='INFO')
 
 
     @dataclass
-    class FirstClass(JSONSerializable):
+    class FirstClass(JSONWizard):
 
-        class _(JSONSerializable.Meta):
+        class _(JSONWizard.Meta):
             debug_enabled = True
             marshal_date_time_as = 'Timestamp'
-            key_transform_with_load = 'Pascal'
+            key_transform_with_load = 'PASCAL'
             key_transform_with_dump = 'SNAKE'
 
         MyStr: str
@@ -104,11 +135,11 @@ Here's a quick example to confirm this behavior:
 
 
     @dataclass
-    class SecondClass(JSONSerializable):
+    class SecondClass(JSONWizard):
 
         # If `SecondClass` were to define it's own `Meta` class, those changes
         # would only be applied to `SecondClass`, and no other dataclass.
-        # class _(JSONSerializable.Meta):
+        # class _(JSONWizard.Meta):
         #     key_transform_with_dump = 'PASCAL'
 
         my_str: str
@@ -149,9 +180,18 @@ Global :class:`Meta` settings
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 In case you want global ``Meta`` settings that will apply to
-all dataclasses which sub-class from ``JSONSerializable``, you
-can simply define ``JSONSerializable.Meta`` as an outer class
+all dataclasses which sub-class from ``JSONWizard``, you
+can simply define ``JSONWizard.Meta`` as an outer class
 as shown in the example below.
+
+.. attention::
+   Although not recommended, a global ``Meta`` class should resolve the issue.
+   Note that this is a specialized use case and should be considered carefully.
+
+   This may also have unforeseen consequences - for example, if your application
+   depends on another library that uses the ``JSONWizard`` Mixin class from the
+   Dataclass Wizard library, then that library will be likewise affected by any
+   global ``Meta`` values that are set.
 
 .. code:: python3
 
@@ -159,45 +199,47 @@ as shown in the example below.
     from dataclasses import dataclass
     from datetime import date
 
-    from dataclass_wizard import JSONSerializable
+    from dataclass_wizard import JSONWizard
+    from dataclass_wizard.enums import DateTimeTo
+
 
     # Sets up logging, so that library logs are visible in the console.
     logging.basicConfig(level='INFO')
 
 
+    class GlobalJSONMeta(JSONWizard.Meta):
+        """
+        Global settings for the JSON load/dump process, that should apply to
+        *all* subclasses of `JSONWizard`.
+
+        Note: it does not matter where this class is defined, as long as it's
+        declared before any methods in `JSONWizard` are called.
+        """
+
+        debug_enabled = True
+        marshal_date_time_as = DateTimeTo.TIMESTAMP
+        key_transform_with_load = 'PASCAL'
+        key_transform_with_dump = 'SNAKE'
+
+
     @dataclass
-    class FirstClass(JSONSerializable):
+    class FirstClass(JSONWizard):
 
         MyStr: str
         MyDate: date
 
 
     @dataclass
-    class SecondClass(JSONSerializable):
+    class SecondClass(JSONWizard):
 
         # If `SecondClass` were to define it's own `Meta` class, those changes
         # will effectively override the global `Meta` settings below, but only
         # for `SecondClass` itself and no other dataclass.
-        # class _(JSONSerializable.Meta):
+        # class _(JSONWizard.Meta):
         #     key_transform_with_dump = 'CAMEL'
 
         AnotherStr: str
         OtherDate: date
-
-
-    class GlobalJSONMeta(JSONSerializable.Meta):
-        """
-        Global settings for the JSON load/dump process, that should apply to
-        *all* subclasses of `JSONSerializable`.
-
-        Note: it does not matter where this class is defined, as long as it's
-        declared before any methods in `JSONSerializable` are called.
-        """
-
-        debug_enabled = True
-        marshal_date_time_as = 'Timestamp'
-        key_transform_with_load = 'Pascal'
-        key_transform_with_dump = 'SNAKE'
 
 
     def main():

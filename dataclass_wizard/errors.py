@@ -1,10 +1,30 @@
-from typing import Any, Type
+import json
+from abc import ABC, abstractmethod
+from dataclasses import Field, MISSING
+from typing import Any, Type, Dict, Tuple
 
 
-class ParseError(Exception):
+class JSONWizardError(ABC, Exception):
     """
-    Base error class raised by this library.
+    Base error class, for errors raised by this library.
     """
+
+    @property
+    @abstractmethod
+    def message(self) -> str:
+        """
+        Format and return an error message.
+        """
+
+    def __str__(self):
+        return self.message
+
+
+class ParseError(JSONWizardError):
+    """
+    Base error when an error occurs during the JSON load process.
+    """
+
     _TEMPLATE = ('Failure parsing field `{field}` in class `{cls}`. Expected '
                  'a type {ann_type}, got {obj_type}.\n'
                  '  value: {o!r}\n'
@@ -28,7 +48,7 @@ class ParseError(Exception):
         return getattr(obj, '__qualname__', getattr(obj, '__name__', obj))
 
     @property
-    def message(self):
+    def message(self) -> str:
         msg = self._TEMPLATE.format(
             cls=self.class_name, field=self.field_name,
             e=self.base_error, o=self.obj,
@@ -42,5 +62,104 @@ class ParseError(Exception):
 
         return msg
 
-    def __str__(self):
-        return self.message
+
+class MissingFields(JSONWizardError):
+    """
+    Error raised when unable to create a class instance (most likely due to
+    missing arguments)
+    """
+
+    _TEMPLATE = ('Failure calling constructor method of class `{cls}`. '
+                 'Missing values for required dataclass fields.\n'
+                 '  have fields: {fields!r}\n'
+                 '  missing fields: {missing_fields!r}\n'
+                 '  input JSON object: {json_string}\n'
+                 '  error: {e!s}')
+
+    def __init__(self, base_err: Exception,
+                 obj: Dict[str, Any],
+                 cls: Type,
+                 cls_kwargs: Dict[str, Any],
+                 cls_fields: Tuple[Field], **kwargs):
+
+        super().__init__()
+
+        self.obj = obj
+        self.fields = list(cls_kwargs.keys())
+
+        self.missing_fields = [f.name for f in cls_fields
+                               if f.name not in self.fields
+                               and f.default is MISSING
+                               and f.default_factory is MISSING]
+        self.base_error = base_err
+        self.kwargs = kwargs
+        self.class_name: str = self.name(cls)
+
+    @staticmethod
+    def name(obj) -> str:
+        """Return the type or class name of an object"""
+        return getattr(obj, '__qualname__', getattr(obj, '__name__', obj))
+
+    @property
+    def message(self) -> str:
+        msg = self._TEMPLATE.format(
+            cls=self.class_name,
+            json_string=json.dumps(self.obj),
+            e=self.base_error,
+            fields=self.fields,
+            missing_fields=self.missing_fields)
+
+        if self.kwargs:
+            sep = '\n  '
+            parts = sep.join(f'{k}: {v!r}' for k, v in self.kwargs.items())
+            msg = f'{msg}{sep}{parts}'
+
+        return msg
+
+
+class UnknownJSONKey(JSONWizardError):
+    """
+    Error raised when an unknown JSON key is encountered in the JSON load
+    process.
+
+    Note that this error class is only raised when the
+    `raise_on_unknown_json_key` flag is enabled in the :class:`Meta` class.
+    """
+
+    _TEMPLATE = ('A JSON key is missing from the dataclass schema for class `{cls}`.\n'
+                 '  unknown key: {json_key!r}\n'
+                 '  dataclass fields: {fields!r}\n'
+                 '  input JSON object: {json_string}')
+
+    def __init__(self,
+                 json_key: str,
+                 obj: Dict[str, Any],
+                 cls: Type,
+                 cls_fields: Tuple[Field], **kwargs):
+        super().__init__()
+
+        self.json_key = json_key
+        self.obj = obj
+        self.fields = [f.name for f in cls_fields]
+        self.kwargs = kwargs
+        self.class_name: str = self.name(cls)
+
+    @staticmethod
+    def name(obj) -> str:
+        """Return the type or class name of an object"""
+        return getattr(obj, '__qualname__', getattr(obj, '__name__', obj))
+
+    @property
+    def message(self) -> str:
+        msg = self._TEMPLATE.format(
+            cls=self.class_name,
+            json_string=json.dumps(self.obj),
+            fields=self.fields,
+            json_key=self.json_key)
+
+        if self.kwargs:
+            sep = '\n  '
+            parts = sep.join(f'{k}: {v!r}' for k, v in self.kwargs.items())
+            msg = f'{msg}{sep}{parts}'
+
+        return msg

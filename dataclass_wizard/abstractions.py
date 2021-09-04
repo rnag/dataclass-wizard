@@ -129,7 +129,7 @@ class AbstractLoader(ABC):
 
     @staticmethod
     @abstractmethod
-    def default_load_to(o: T, *_) -> T:
+    def default_load_to(o: T, _: Any) -> T:
         """
         Default load function if no other paths match. Generally, this will
         be a stub load method.
@@ -207,24 +207,34 @@ class AbstractLoader(ABC):
         of one)
         """
 
-    @classmethod
+    @staticmethod
     @abstractmethod
     def load_to_tuple(
-            cls, o: Union[List, Tuple], base_type: Type[Tuple],
+            o: Union[List, Tuple], base_type: Type[Tuple],
             elem_parsers: Sequence[AbstractParser]) -> Tuple:
         """
         Load a list or tuple into a new object of type `base_type` (generally
         a :class:`tuple` or a sub-class of one)
         """
 
-    @classmethod
+    @staticmethod
     @abstractmethod
     def load_to_named_tuple(
-            cls, o: Union[Dict, List, Tuple], base_type: Type[NT],
-            field_to_parser: Optional[FieldToParser]) -> NT:
+            o: Union[Dict, List, Tuple], base_type: Type[NT],
+            field_to_parser: FieldToParser,
+            field_parsers: List[AbstractParser]) -> NT:
         """
-        Load a dictionary, list, or tuple to a `NamedTuple` sub-class (or an
-        un-annotated `namedtuple`)
+        Load a dictionary, list, or tuple to a `NamedTuple` sub-class
+        """
+
+    @staticmethod
+    @abstractmethod
+    def load_to_named_tuple_untyped(
+            o: Union[Dict, List, Tuple], base_type: Type[NT],
+            dict_parser: AbstractParser, list_parser: AbstractParser) -> NT:
+        """
+        Load a dictionary, list, or tuple to a (generally) un-typed
+        `collections.namedtuple`
         """
 
     @staticmethod

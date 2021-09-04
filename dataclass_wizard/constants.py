@@ -31,3 +31,7 @@ _DUMP_HOOKS = '__DUMP_HOOKS__'
 # Attribute name that will be defined for single-arg alias functions and
 # methods; mainly for internal use.
 SINGLE_ARG_ALIAS = '__SINGLE_ARG_ALIAS__'
+
+# Attribute name that will be defined for identity functions and methods;
+# mainly for internal use.
+IDENTITY = '__IDENTITY__'

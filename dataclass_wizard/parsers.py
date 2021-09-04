@@ -1,4 +1,5 @@
-__all__ = ['SingleArgParser',
+__all__ = ['IdentityParser',
+           'SingleArgParser',
            'Parser',
            'LiteralParser',
            'UnionParser',
@@ -7,13 +8,14 @@ __all__ = ['SingleArgParser',
            'TupleParser',
            'VariadicTupleParser',
            'NamedTupleParser',
+           'NamedTupleUntypedParser',
            'MappingParser',
            'DefaultDictParser',
            'TypedDictParser']
 
 from dataclasses import dataclass, InitVar
 from typing import (
-    Type, Any, Optional, Tuple, Dict, Iterable, Callable
+    Type, Any, Optional, Tuple, Dict, Iterable, Callable, List
 )
 
 from .abstractions import AbstractParser, FieldToParser
@@ -30,6 +32,14 @@ from .utils.typing_compat import (
 # Type defs
 GetParserType = Callable[[Type[T], Type[T]], AbstractParser]
 TupleOfParsers = Tuple[AbstractParser, ...]
+
+
+@dataclass
+class IdentityParser(AbstractParser):
+    __slots__ = ()
+
+    def __call__(self, o: Any) -> T:
+        return o
 
 
 @dataclass
@@ -239,6 +249,8 @@ class TupleParser(AbstractParser):
         #   that have `None` in the list of args.
         self.required_count: int = len(tuple(p for p in self.elem_parsers
                                              if None not in p))
+        if not self.elem_parsers:
+            self.elem_parsers = None
 
     def __call__(self, o: M) -> M:
         """
@@ -311,35 +323,61 @@ class VariadicTupleParser(TupleParser):
 @dataclass
 class NamedTupleParser(AbstractParser):
     __slots__ = ('hook',
-                 'field_to_parser')
+                 'field_to_parser',
+                 'field_parsers')
 
     base_type: Type[S]
-    hook: Callable[[Any, Type[NT], Optional[FieldToParser]], NT]
+    hook: Callable[
+        [Any, Type[NT], Optional[FieldToParser], List[AbstractParser]],
+        NT
+    ]
     get_parser: InitVar[GetParserType]
 
     def __post_init__(self, cls: Type[T], get_parser: GetParserType):
 
-        try:
-            # Get the field annotations for the `NamedTuple` type
-            type_anns: Dict[str, Type[T]] = get_named_tuple_field_types(
-                self.base_type
-            )
+        # Get the field annotations for the `NamedTuple` type
+        type_anns: Dict[str, Type[T]] = get_named_tuple_field_types(
+            self.base_type
+        )
 
-        except AttributeError:
-            self.field_to_parser: Optional[FieldToParser] = None
+        self.field_to_parser: Optional[FieldToParser] = {
+            f: get_parser(ftype, cls)
+            for f, ftype in type_anns.items()
+        }
 
-        else:
-            self.field_to_parser: Optional[FieldToParser] = {
-                f: get_parser(ftype, cls)
-                for f, ftype in type_anns.items()
-            }
+        self.field_parsers = list(self.field_to_parser.values())
 
     def __call__(self, o: Any):
         """
         Load a dictionary or list to a `NamedTuple` sub-class (or an
         un-annotated `namedtuple`)
         """
-        return self.hook(o, self.base_type, self.field_to_parser)
+        return self.hook(o, self.base_type,
+                         self.field_to_parser, self.field_parsers)
+
+
+@dataclass
+class NamedTupleUntypedParser(AbstractParser):
+    __slots__ = ('hook',
+                 'dict_parser',
+                 'list_parser')
+
+    base_type: Type[S]
+    hook: Callable[[Any, Type[NT], AbstractParser, AbstractParser], NT]
+    get_parser: InitVar[GetParserType]
+
+    def __post_init__(self, cls: Type[T], get_parser: GetParserType):
+
+        self.dict_parser = get_parser(dict, cls)
+        self.list_parser = get_parser(list, cls)
+
+    def __call__(self, o: Any):
+        """
+        Load a dictionary or list to a `NamedTuple` sub-class (or an
+        un-annotated `namedtuple`)
+        """
+        return self.hook(o, self.base_type,
+                         self.dict_parser, self.list_parser)
 
 
 @dataclass

@@ -1,7 +1,7 @@
 from functools import wraps
 from typing import Any, Type, Callable, Union
 
-from .constants import SINGLE_ARG_ALIAS
+from .constants import SINGLE_ARG_ALIAS, IDENTITY
 from .errors import ParseError
 
 
@@ -86,6 +86,21 @@ def _single_arg_alias(alias_func: Union[Callable, str] = None):
         return f
 
     return new_func
+
+
+def _identity(_f: Callable = None, id: Union[object, str] = None):
+    """
+    Decorator which wraps a function to set the :attr:`IDENTITY` on a function
+    `f`, indicating that this is an identity function that returns its first
+    argument. This is useful mainly so that other functions can access this
+    attribute, and can opt to call it instead of function `f`.
+    """
+
+    def new_func(f):
+        setattr(f, IDENTITY, id)
+        return f
+
+    return new_func(_f) if _f else new_func
 
 
 def resolve_alias_func(f: Callable, _locals=None, raise_=False) -> Callable:

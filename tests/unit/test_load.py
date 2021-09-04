@@ -15,8 +15,8 @@ from typing import (
 import pytest
 
 from dataclass_wizard import JSONSerializable, json_field, json_key, LoadMixin
-from dataclass_wizard.errors import ParseError
-from dataclass_wizard.parsers import OptionalParser, Parser
+from dataclass_wizard.errors import ParseError, MissingFields
+from dataclass_wizard.parsers import OptionalParser, Parser, IdentityParser, SingleArgParser
 from dataclass_wizard.type_def import NoneType, T
 from .conftest import MyUUIDSubclass
 from ..conftest import *
@@ -51,6 +51,28 @@ def test_bool(input, expected):
     log.debug('Parsed object: %r', result)
 
     assert result.my_bool == expected
+
+
+def test_from_dict_with_missing_fields():
+    """
+    Calling `from_dict` when required dataclass field(s) are missing in the
+    JSON object.
+    """
+
+    @dataclass
+    class MyClass(JSONSerializable):
+        my_str: str
+        MyBool: bool
+        my_int: int
+
+    value = 'Testing'
+    d = {'my_str': value, 'myBool': 'true'}
+
+    with pytest.raises(MissingFields) as e:
+        _ = MyClass.from_dict(d)
+
+    assert e.value.fields == ['my_str']
+    assert e.value.missing_fields == ['MyBool', 'my_int']
 
 
 def test_from_dict_key_transform_with_json_field():
@@ -1051,6 +1073,21 @@ def test_optional_parser_contains(input, expected):
     assert actual == expected
 
 
+def test_single_arg_parser_without_hook():
+    """
+    Test case for `SingleArgParser` when the hook function is missing or None,
+    added for code coverage.
+
+    """
+    class MyClass(Generic[T]):
+        pass
+
+    parser = SingleArgParser(None, MyClass, None)
+
+    c = MyClass()
+    assert parser(c) == c
+
+
 def test_parser_with_unsupported_type():
     """
     Test case for :meth:`LoadMixin.get_parser_for_annotation` with an unknown
@@ -1062,7 +1099,10 @@ def test_parser_with_unsupported_type():
 
     mock_parser = LoadMixin.get_parser_for_annotation(None, MyClass)
 
-    assert mock_parser.hook == LoadMixin.default_load_to
+    assert type(mock_parser) is IdentityParser
+
+    c = MyClass()
+    assert mock_parser(c) == c
 
     # with pytest.raises(ParseError):
     #     _ = mock_parser('hello world')

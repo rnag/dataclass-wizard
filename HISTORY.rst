@@ -2,6 +2,34 @@
 History
 =======
 
+0.11.0 (2021-09-04)
+-------------------
+
+* Add the ability to handle unknown or extraneous JSON keys in the *load* (de-serialization)
+  process. A new attribute ``raise_on_unknown_json_key`` to the ``Meta`` class
+  determines if we should raise an error in such cases.
+
+* Move attribute definition for the ``JSONWizard.Meta`` class into a new
+  :class:`BaseMeta` definition, so that the model can be re-used in
+  `loaders` and `dumpers` module for example.
+
+* Ensure all errors raised by this library extend from a new base error class,
+  :class:`JSONWizardError`.
+
+* Add new error classes
+
+  * :class:`MissingFields` - raised when JSON object is missing a required
+    dataclass field.
+  * :class:`UnknownJSONKey` - raised when an unknown or extraneous JSON key is
+    encountered in the JSON load process.
+
+* Split up the load (de-serialization) process for *named tuples* into two
+  helper load hooks. The new hook :meth:`load_to_named_tuple_untyped` is used
+  for the ``collections.namedtuple`` variant.
+
+* Minor performance improvements so the JSON load process is slightly faster.
+
+
 0.10.2 (2021-08-29)
 -------------------
 

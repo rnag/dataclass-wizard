@@ -117,6 +117,23 @@ def test_call_wiz_cli_with_invalid_json_input(capsys, mock_stdin):
         assert 'JSONDecodeError' in e.value.code
 
 
+def test_call_wiz_cli_with_invalid_json_type(capsys, mock_stdin):
+    """
+    Calling wiz-cli when input is valid JSON, but not a valid JSON object
+    (list or dictionary type). Added for code coverage.
+    """
+    invalid_json = '"my string value"'
+
+    mock_stdin.name = '<stdin>'
+    mock_stdin.read.return_value = invalid_json
+
+    with capsys.disabled():
+        with pytest.raises(SystemExit) as e:
+            main(['gs', '-', '-'])
+
+        assert 'TypeError' in e.value.code
+
+
 def test_call_wiz_cli_when_double_quotes_are_used_to_wrap_input(
         capsys, mock_stdin):
     """
