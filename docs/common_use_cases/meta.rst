@@ -31,16 +31,47 @@ purposes it's named the same as the base class here.
     class MyClass(JSONSerializable):
 
         class Meta(JSONSerializable.Meta):
-            # Enable better, more detailed error messages that may be helpful for
-            # debugging when values are an invalid type (i.e. they don't match
-            # the annotation for the field) when marshaling dataclass objects.
+
+            # True to enable Debug mode for additional (more verbose) log output.
+            #
+            # For example, a message is logged whenever an unknown JSON key is
+            # encountered when `from_dict` or `from_json` is called.
+            #
+            # This also results in more helpful messages during error handling, which
+            # can be useful when debugging the cause when values are an invalid type
+            # (i.e. they don't match the annotation for the field) when unmarshalling
+            # a JSON object to a dataclass instance.
+            #
             # Note there is a minor performance impact when DEBUG mode is enabled.
             debug_enabled = True
+
+            # True to raise an class:`UnknownJSONKey` when an unmapped JSON key is
+            # encountered when `from_dict` or `from_json` is called; an unknown key is
+            # one that does not have a known mapping to a dataclass field.
+            #
+            # The default is to only log a "warning" for such cases, which is visible
+            # when `debug_enabled` is true and logging is properly configured.
+            raise_on_unknown_json_key = False
+
+            # A customized mapping of JSON keys to dataclass fields, that is used
+            # whenever `from_dict` or `from_json` is called.
+            #
+            # Note: this is in addition to the implicit field transformations, like
+            #   "myStr" -> "my_str"
+            #
+            # If the reverse mapping is also desired (i.e. dataclass field to JSON
+            # key), then specify the "__all__" key as a truthy value. If multiple JSON
+            # keys are specified for a dataclass field, only the first one provided is
+            # used in this case.
+            json_key_to_field = {}
+
             # How should :class:`date` and :class:`datetime` objects be serialized
             # when converted to a Python dictionary object or a JSON string.
             marshal_date_time_as = DateTimeTo.TIMESTAMP
+
             # How JSON keys should be transformed to dataclass fields.
             key_transform_with_load = LetterCase.PASCAL
+
             # How dataclass fields should be transformed to JSON keys.
             key_transform_with_dump = LetterCase.SNAKE
 

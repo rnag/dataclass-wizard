@@ -5,11 +5,13 @@ both import directly from `bases`.
 
 """
 from datetime import datetime, date
-from typing import ClassVar, Type, Union, Optional, Dict
+from typing import Type, Optional
 
 from .abstractions import W, AbstractJSONWizard
+from .bases import BaseMeta
 from .class_helper import (
-    _META_INITIALIZER, get_outer_class_name, get_class_name, create_new_class,
+    _META_INITIALIZER, _META,
+    get_outer_class_name, get_class_name, create_new_class,
     json_field_to_dataclass_field, dataclass_field_to_json_field
 )
 from .decorators import try_with_load
@@ -22,42 +24,15 @@ from .type_def import E
 from .utils.type_conv import date_to_timestamp, as_enum
 
 
-class BaseJSONWizardMeta:
+class BaseJSONWizardMeta(BaseMeta):
+    """
+    Superclass definition for the `JSONWizard.Meta` inner class.
+
+    See the implementation of the :class:`BaseMeta` class for the
+    available config that can be set.
+    """
+
     __slots__ = ()
-
-    # True to enable Debug mode for additional debug log output and more
-    # helpful messages during error handling.
-    debug_enabled: ClassVar[bool] = False
-
-    # A customized mapping of JSON keys to dataclass fields, that is used
-    # whenever `from_dict` or `from_json` is called.
-    #
-    # Note: this is in addition to the implicit field transformations, like
-    #   "myStr" -> "my_str"
-    #
-    # If the reverse mapping is also desired (i.e. dataclass field to JSON
-    # key), then specify the "__all__" key as a truthy value. If multiple JSON
-    # keys are specified for a dataclass field, only the first one provided is
-    # used in this case.
-    json_key_to_field: ClassVar[Dict[str, str]] = None
-
-    # How should :class:`time` and :class:`datetime` objects be serialized
-    # when converted to a Python dictionary object or a JSON string.
-    marshal_date_time_as: ClassVar[Union[DateTimeTo, str]] = None
-
-    # How JSON keys should be transformed to dataclass fields.
-    #
-    # Note that this only applies to keys which are to be set on dataclass
-    # fields; other fields such as the ones for `TypedDict` or `NamedTuple`
-    # sub-classes won't be similarly transformed.
-    key_transform_with_load: ClassVar[Union[LetterCase, str]] = None
-
-    # How dataclass fields should be transformed to JSON keys.
-    #
-    # Note that this only applies to dataclass fields; other fields such as
-    # the ones for `TypedDict` or `NamedTuple` sub-classes won't be similarly
-    # transformed.
-    key_transform_with_dump: ClassVar[Union[LetterCase, str]] = None
 
     @classmethod
     def _init_subclass(cls):
@@ -84,6 +59,12 @@ class BaseJSONWizardMeta:
             LOG.warning('The %r class is not declared as an Inner Class, so '
                         'these are global settings that will apply to all '
                         'JSONSerializable sub-classes.', get_class_name(cls))
+
+            # Copy over global defaults to the :class:`BaseMeta`
+            exclude_attrs = ('debug_enabled', )
+            for attr in BaseMeta.__annotations__:
+                if attr not in exclude_attrs:
+                    setattr(BaseMeta, attr, getattr(cls, attr, None))
 
             # Create a new class of `Type[W]`, and then pass `create=False` so
             # that we don't create new loader / dumper for the class.
@@ -158,6 +139,11 @@ class BaseJSONWizardMeta:
 
             cls_dumper.transform_dataclass_field = cls._as_enum_safe(
                 'key_transform_with_dump', LetterCase)
+
+        # Finally, save the meta config for the outer class. This will allow
+        # us to access this config as part of the JSON load/dump process if
+        # needed.
+        _META[outer_cls] = cls
 
     @classmethod
     def _as_enum_safe(cls, name: str, base_type: Type[E]) -> Optional[E]:

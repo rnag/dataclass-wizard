@@ -90,10 +90,10 @@ def _single_arg_alias(alias_func: Union[Callable, str] = None):
 
 def _identity(_f: Callable = None, id: Union[object, str] = None):
     """
-    Decorator which wraps a function to set the :attr:`SINGLE_ARG_ALIAS` on
-    a function `f`, which is an alias function that takes only one argument.
-    This is useful mainly so that other functions can access this attribute,
-    and can opt to call it instead of function `f`.
+    Decorator which wraps a function to set the :attr:`IDENTITY` on a function
+    `f`, indicating that this is an identity function that returns its first
+    argument. This is useful mainly so that other functions can access this
+    attribute, and can opt to call it instead of function `f`.
     """
 
     def new_func(f):

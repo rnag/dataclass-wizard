@@ -10,16 +10,16 @@ from typing import (
 from uuid import UUID
 
 from .abstractions import AbstractLoader, AbstractParser, FieldToParser
-from .bases import BaseLoadHook
+from .bases import BaseLoadHook, BaseMeta
 from .class_helper import (
     get_class_name, create_new_class,
     dataclass_to_loader, set_class_loader,
     dataclass_field_to_load_parser, json_field_to_dataclass_field,
-    _CLASS_TO_LOAD_FUNC, dataclass_fields,
+    _CLASS_TO_LOAD_FUNC, dataclass_fields, _META, get_meta,
 )
 from .constants import _LOAD_HOOKS, SINGLE_ARG_ALIAS, IDENTITY
 from .decorators import _alias, _single_arg_alias, resolve_alias_func, _identity
-from .errors import ParseError, MissingFields
+from .errors import ParseError, MissingFields, UnknownJSONKey
 from .log import LOG
 from .parsers import *
 from .type_def import (
@@ -518,6 +518,9 @@ def load_func_for_dataclass(cls: Type[T]) -> Callable[[Dict[str, Any]], T]:
     # Gets the loader for the class, or the default loader otherwise.
     cls_loader = get_loader(cls)
 
+    # Get the meta config for the class, or the default config otherwise.
+    meta = get_meta(cls)
+
     # This contains a mapping of the original field name to the parser for its
     # annotated type; the item lookup will be case-insensitive.
     field_to_parser = dataclass_field_to_load_parser(cls_loader, cls)
@@ -561,6 +564,13 @@ def load_func_for_dataclass(cls: Type[T]) -> Callable[[Dict[str, Any]], T]:
                         'JSON field %r missing from dataclass schema, '
                         'class=%r, parsed field=%r',
                         json_field, get_class_name(cls), transformed_field)
+
+                    # Raise an error here (if needed)
+                    if meta.raise_on_unknown_json_key:
+                        cls_fields = dataclass_fields(cls)
+                        e = UnknownJSONKey(json_field, o, cls, cls_fields)
+                        raise e from None
+
                     continue
 
             try:

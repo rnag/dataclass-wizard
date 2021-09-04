@@ -3,6 +3,7 @@ from dataclasses import Field, fields
 from typing import Dict, Tuple, Type, Union, Callable, Optional, Any
 
 from .abstractions import W, AbstractLoader, AbstractDumper, AbstractParser
+from .bases import M, BaseMeta
 from .models import JSONField, JSON
 from .type_def import ExplicitNullType, T
 from .utils.dict_helper import DictWithLowerStore
@@ -46,6 +47,11 @@ _DATACLASS_FIELD_TO_JSON_FIELD: Dict[Type, Dict[str, str]] = defaultdict(dict)
 # :class:`JSONSerializable.Meta` is sub-classed.
 _META_INITIALIZER: Dict[
     str, Callable[[Type[W]], None]] = {}
+
+
+# Mapping of dataclass to its Meta inner class, which will only be set when
+# the :class:`JSONSerializable.Meta` is sub-classed.
+_META: Dict[Type, Type[M]] = {}
 
 
 def dataclass_to_loader(cls):
@@ -212,6 +218,15 @@ def call_meta_initializer_if_needed(cls: Type[W]):
 
     if cls_name in _META_INITIALIZER:
         _META_INITIALIZER[cls_name](cls)
+
+
+def get_meta(cls: Type[W]):
+    """
+    Retrieves the Meta config for the :class:`AbstractJSONWizard` subclass.
+
+    This config is set when the inner :class:`Meta` is sub-classed.
+    """
+    return _META.get(cls, BaseMeta)
 
 
 def dataclass_fields(cls) -> Tuple[Field]:
