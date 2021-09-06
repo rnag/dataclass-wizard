@@ -1,7 +1,6 @@
 """
 Dict helper module
 """
-from collections.abc import Mapping
 
 
 class DictWithLowerStore(dict):
@@ -10,21 +9,24 @@ class DictWithLowerStore(dict):
 
     All keys are expected to be strings. The structure remembers the
     case of the lower-cased key to be set, and methods like ``get()``
-    and``get_key()`` will use the lower-cased store. However, querying
+    and ``get_key()`` will use the lower-cased store. However, querying
     and contains testing is case sensitive::
 
         dls = DictWithLowerStore()
         dls['Accept'] = 'application/json'
-        dls['aCCEPT'] == 'application/json'         # False
+        dls['aCCEPT'] == 'application/json'         # False (raises KeyError)
+        dls['Accept'] == 'application/json'         # True
         dls.get('aCCEPT') == 'application/json'     # True
 
+        dls.get_key('aCCEPT') == 'Accept'           # True
         list(dls) == ['Accept']                     # True
 
-    Note: I don't want to use the `CaseInsensitiveDict` from
-    request.structures`, because it turns out the lookup via that dict
-    implementation is rather slow. So this version is somewhat of a trade-off,
-    where I retain the same speed on lookups as a plain `dict`, but I also
-    have a lower-cased key store, in case I ever need to use it.
+    .. NOTE::
+       I don't want to use the `CaseInsensitiveDict` from
+       `request.structures`, because it turns out the lookup via that dict
+       implementation is rather slow. So this version is somewhat of a
+       trade-off, where I retain the same speed on lookups as a plain `dict`,
+       but I also have a lower-cased key store, in case I ever need to use it.
 
     """
     __slots__ = ('_lower_store', )

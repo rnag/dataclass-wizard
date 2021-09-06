@@ -38,21 +38,21 @@ class JSONSerializable(AbstractJSONWizard):
         """
         o = json.loads(string)
 
-        return fromdict(o, cls) if isinstance(o, dict) else fromlist(o, cls)
+        return fromdict(cls, o) if isinstance(o, dict) else fromlist(cls, o)
 
     @classmethod
     def from_list(cls: Type[W], o: List[Dict[str, Any]]) -> List[W]:
         """
         Converts a Python `list` object to a list of the dataclass instances.
         """
-        return fromlist(o, cls)
+        return fromlist(cls, o)
 
     @classmethod
     def from_dict(cls: Type[W], o: Dict[str, Any]) -> W:
         """
         Converts a Python `dict` object to an instance of the dataclass.
         """
-        return fromdict(o, cls)
+        return fromdict(cls, o)
 
     def to_dict(self) -> Dict[str, Any]:
         """

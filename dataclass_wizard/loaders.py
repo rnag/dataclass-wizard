@@ -4,8 +4,8 @@ from datetime import datetime, time, date
 from decimal import Decimal
 from enum import Enum
 from typing import (
-    Any, Type, Dict, List, Tuple, Iterable, Sequence, Optional, Union,
-    NamedTupleMeta, SupportsFloat, SupportsInt, AnyStr, Text, Callable
+    Any, Type, Dict, List, Tuple, Iterable, Sequence, Union,
+    NamedTupleMeta, SupportsFloat, AnyStr, Text, Callable, Optional
 )
 from uuid import UUID
 
@@ -15,7 +15,7 @@ from .class_helper import (
     get_class_name, create_new_class,
     dataclass_to_loader, set_class_loader,
     dataclass_field_to_load_parser, json_field_to_dataclass_field,
-    _CLASS_TO_LOAD_FUNC, dataclass_fields, _META, get_meta,
+    _CLASS_TO_LOAD_FUNC, dataclass_fields, get_meta,
 )
 from .constants import _LOAD_HOOKS, SINGLE_ARG_ALIAS, IDENTITY
 from .decorators import _alias, _single_arg_alias, resolve_alias_func, _identity
@@ -482,13 +482,20 @@ def get_loader(class_or_instance=None, create=False) -> Type[LoadMixin]:
         return set_class_loader(class_or_instance, LoadMixin)
 
 
-# TODO move to :class:`LoadMixin` if possible
-def fromdict(d: Dict[str, Any], cls: Type[T]) -> T:
+def fromdict(cls: Type[T],
+             d: Dict[str, Any],
+             config: Optional[BaseMeta] = None) -> T:
     """
     Converts a Python dictionary object to a dataclass instance.
 
     Iterates over each dataclass field recursively; lists, dicts, and nested
     dataclasses will likewise be initialized as expected.
+
+    `config` is an optional ``LoadMeta`` configuration to set up for the
+    dataclass. Here's a sample usage of this below::
+
+        >>> load_cfg = LoadMeta(MyClass, key_transform='CAMEL')
+        >>> fromdict(MyClass, {"myStr": "value"}, load_cfg)
 
     """
     try:
@@ -497,7 +504,7 @@ def fromdict(d: Dict[str, Any], cls: Type[T]) -> T:
         return load_func_for_dataclass(cls)(d)
 
 
-def fromlist(list_of_dict: List[Dict[str, Any]], cls: Type[T]) -> T:
+def fromlist(cls: Type[T], list_of_dict: List[Dict[str, Any]]) -> List[T]:
     """
     Converts a Python list object to a list of dataclass instances.
 

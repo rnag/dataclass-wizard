@@ -146,11 +146,19 @@ def _setup_load_config_for_cls(cls_loader, cls: Type):
         name_to_parser[f.name] = cls_loader.get_parser_for_annotation(
             f.type, cls)
 
-        # Check if the field is a `JSONField` object. If so, update the
-        # class-specific mapping of JSON key to dataclass field name.
-        if isinstance(f, JSONField):
-            for key in f.json.keys:
-                json_to_dataclass_field[key] = f.name
+        # Check if the field is a `Field` type or a subclass. If so, update
+        # the class-specific mapping of JSON key to dataclass field name.
+        if isinstance(f, Field):
+
+            if isinstance(f, JSONField):
+                for key in f.json.keys:
+                    json_to_dataclass_field[key] = f.name
+
+            else:
+                value = f.metadata.get('__remapping__')
+                if value and isinstance(value, JSON):
+                    for key in value.keys:
+                        json_to_dataclass_field[key] = f.name
 
         # Check if the field annotation is an `Annotated` type. If so,
         # look for any `JSON` objects in the arguments; for each object,
@@ -192,10 +200,17 @@ def setup_dump_config_for_cls_if_needed(cls):
 
     for f in dataclass_fields(cls):
 
-        # Check if the field is a `JSONField` object. If so, update the
-        # class-specific mapping of dataclass field name to JSON key.
-        if isinstance(f, JSONField) and f.json.all:
-            dataclass_to_json_field[f.name] = f.json.keys[0]
+        # Check if the field is a `Field` type or a subclass. If so, update
+        # the class-specific mapping of dataclass field name to JSON key.
+        if isinstance(f, Field):
+
+            if isinstance(f, JSONField) and f.json.all:
+                dataclass_to_json_field[f.name] = f.json.keys[0]
+
+            else:
+                value = f.metadata.get('__remapping__')
+                if value and isinstance(value, JSON) and value.all:
+                    dataclass_to_json_field[f.name] = value.keys[0]
 
         # Check if the field annotation is an `Annotated` type. If so,
         # look for any `JSON` objects in the arguments; for each object,

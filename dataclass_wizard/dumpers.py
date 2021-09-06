@@ -14,11 +14,11 @@ from dataclasses import _is_dataclass_instance
 from datetime import datetime, time, date
 from decimal import Decimal
 from enum import Enum
-from typing import Type, Dict, Any, NamedTupleMeta
+from typing import Type, Dict, Any, NamedTupleMeta, Optional
 from uuid import UUID
 
 from .abstractions import AbstractDumper
-from .bases import BaseDumpHook
+from .bases import BaseDumpHook, BaseMeta
 from .class_helper import (
     create_new_class,
     dataclass_fields, dataclass_field_to_json_field,
@@ -27,7 +27,7 @@ from .class_helper import (
 )
 from .constants import _DUMP_HOOKS
 from .log import LOG
-from .type_def import NoneType, DD, LSQ, E, U, LT, NT
+from .type_def import NoneType, DD, LSQ, E, U, LT, NT, T
 from .utils.string_conv import to_camel_case
 
 
@@ -190,7 +190,9 @@ def get_dumper(cls=None, create=False) -> Type[DumpMixin]:
         return set_class_dumper(cls, DumpMixin)
 
 
-def asdict(obj, *, dict_factory=dict) -> Dict[str, Any]:
+def asdict(obj: T,
+           config: Optional[BaseMeta] = None,
+           *, dict_factory=dict) -> Dict[str, Any]:
     """Return the fields of a dataclass instance as a new dictionary mapping
     field names to field values.
 
@@ -203,6 +205,12 @@ def asdict(obj, *, dict_factory=dict) -> Dict[str, Any]:
 
       c = C(1, 2)
       assert asdict(c) == {'x': 1, 'y': 2}
+
+    `config` is an optional ``DumpMeta`` configuration to set up for the
+    dataclass. Here's a sample usage of this below::
+
+        >>> dump_cfg = DumpMeta(MyClass, key_transform='CAMEL')
+        >>> asdict(MyClass, {"myStr": "value"}, dump_cfg)
 
     If given, 'dict_factory' will be used instead of built-in dict.
     The function applies recursively to field values that are

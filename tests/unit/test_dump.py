@@ -1,17 +1,84 @@
 import logging
 from collections import deque
 from dataclasses import dataclass
-from typing import Set, FrozenSet
+from datetime import datetime
+from typing import Set, FrozenSet, Optional, Union, List
 from uuid import UUID
 
 import pytest
 
-from dataclass_wizard import JSONSerializable, json_field, json_key
+from dataclass_wizard import *
 from dataclass_wizard.errors import ParseError
 from ..conftest import *
 
 
 log = logging.getLogger(__name__)
+
+
+def test_asdict_and_fromdict():
+    """
+    Confirm that Meta settings for both `fromdict` and `asdict` are merged
+    as expected.
+    """
+
+    @dataclass
+    class MyClass:
+        my_bool: Optional[bool]
+        myStrOrInt: Union[str, int]
+
+    d = {'myBoolean': 'tRuE', 'my_str_or_int': 123}
+
+    c = fromdict(MyClass, d, LoadMeta(
+        MyClass,
+        key_transform='CAMEL',
+        json_key_to_field={'myBoolean': 'my_bool', '__all__': True}
+    ))
+
+    assert c.my_bool is True
+    assert isinstance(c.myStrOrInt, int)
+    assert c.myStrOrInt == 123
+
+    new_dict = asdict(c, DumpMeta(MyClass, key_transform='SNAKE'))
+
+    assert new_dict == {'myBoolean': True, 'my_str_or_int': 123}
+
+
+def test_asdict_with_nested_dataclass():
+    """Confirm that `asdict` works for nested dataclasses as well."""
+
+    @dataclass
+    class Container:
+        id: int
+        submittedDt: datetime
+        myElements: List['MyElement']
+
+    @dataclass
+    class MyElement:
+        order_index: Optional[int]
+        status_code: Union[int, str]
+
+    submitted_dt = datetime(2021, 1, 1, 5)
+    elements = [MyElement(111, '200'), MyElement(222, 404)]
+
+    c = Container(123, submitted_dt, myElements=elements)
+
+    d = asdict(c, DumpMeta(Container,
+                           key_transform='SNAKE',
+                           marshal_date_time_as='TIMESTAMP'))
+
+    expected = {
+        'id': 123,
+        'submitted_dt': round(submitted_dt.timestamp()),
+        'my_elements': [
+            # Key transform only applies to top-level dataclass
+            # unfortunately. Need to setup `DumpMeta` for `MyElement`
+            # if we need different key transform.
+            {'orderIndex': 111, 'statusCode': '200'},
+            {'orderIndex': 222, 'statusCode': 404}
+        ]
+    }
+
+    assert d == expected
 
 
 def test_to_dict_key_transform_with_json_field():
