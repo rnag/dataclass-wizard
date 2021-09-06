@@ -429,7 +429,7 @@ Handle Unknown JSON Keys
 ########################
 
 The default behavior is to ignore any unknown or extraneous JSON keys that are
-encountered when when ``from_dict`` or ``from_json`` is called, and emit a "warning"
+encountered when ``from_dict`` or ``from_json`` is called, and emit a "warning"
 which is visible when *debug* mode is enabled (and logging is properly configured).
 An unknown key is one that does not have a known mapping to a dataclass field.
 
