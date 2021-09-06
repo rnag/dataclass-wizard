@@ -74,6 +74,11 @@ __all__ = [
     'LoadMixin',
     'DumpMixin',
     'property_wizard',
+    # Helper serializer functions + meta config
+    'fromdict',
+    'asdict',
+    'LoadMeta',
+    'DumpMeta',
     # Models
     'json_field',
     'json_key'
@@ -81,9 +86,10 @@ __all__ = [
 
 import logging
 
+from .bases_meta import LoadMeta, DumpMeta
 from .constants import PY36
-from .dumpers import DumpMixin, setup_default_dumper
-from .loaders import LoadMixin, setup_default_loader
+from .dumpers import DumpMixin, setup_default_dumper, asdict
+from .loaders import LoadMixin, setup_default_loader, fromdict
 from .models import json_field, json_key
 from .property_wizard import property_wizard
 from .serial_json import JSONSerializable

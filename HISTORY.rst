@@ -2,6 +2,24 @@
 History
 =======
 
+0.12.0 (2021-09-06)
+-------------------
+
+* Change the order of arguments for :func:`fromdict` and :func:`fromlist`
+  functions, since it's more intuitive to pass the name of the data class
+  as the first argument.
+
+* Add :func:`fromlist`, :func:`fromdict`, and :func:`asdict` to the public API,
+  and ensure that we export these helper functions.
+
+* Add new helper functions :func:`LoadMeta` and :func:`DumpMeta` to specify
+  the meta config for a dataclass, which can be used with the new functions
+  like ``fromdict`` above.
+
+* *Custom key mappings*: support a use case where we want to specify a new
+  mapping via the ``__remapping__`` key in the ``metadata`` argument to
+  :func:`dataclasses.field`.
+
 0.11.0 (2021-09-04)
 -------------------
 

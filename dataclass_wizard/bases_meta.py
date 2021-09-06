@@ -5,10 +5,10 @@ both import directly from `bases`.
 
 """
 from datetime import datetime, date
-from typing import Type, Optional
+from typing import Type, Optional, Dict, Union
 
 from .abstractions import W, AbstractJSONWizard
-from .bases import BaseMeta
+from .bases import BaseMeta, M
 from .class_helper import (
     _META_INITIALIZER, _META,
     get_outer_class_name, get_class_name, create_new_class,
@@ -20,8 +20,17 @@ from .enums import LetterCase, DateTimeTo
 from .errors import ParseError
 from .loaders import get_loader
 from .log import LOG
-from .type_def import E
+from .type_def import E, T
 from .utils.type_conv import date_to_timestamp, as_enum
+
+
+# Internal mappings which help us keep a track of whether the `Meta`
+# config is already setup for a dataclass.
+#
+# Note: These are *only* for use with the ``fromdict`` and ``asdict``
+# helper functions.
+_LOAD_META: Dict[Type, Type[M]] = {}
+_DUMP_META: Dict[Type, Type[M]] = {}
 
 
 class BaseJSONWizardMeta(BaseMeta):
@@ -163,3 +172,105 @@ class BaseJSONWizardMeta(BaseMeta):
             e.class_name = get_class_name(cls)
             e.field_name = name
             raise
+
+
+# noinspection PyPep8Naming
+def LoadMeta(data_class: Type[T],
+             debug_enabled: bool = False,
+             raise_on_unknown_json_key: bool = False,
+             json_key_to_field: Dict[str, str] = None,
+             key_transform: Union[LetterCase, str] = None) -> M:
+    """
+    Helper function to setup the ``Meta`` Config for the JSON load
+    (de-serialization) process, which is intended for use alongside the
+    ``fromdict`` helper function.
+
+    For descriptions on what each of these params does, refer to the `Docs`_
+    below, or check out the :class:`BaseMeta` definition (I want to avoid
+    duplicating the descriptions for params here).
+
+    Examples::
+
+        >>> fromdict(MyClass, {"myStr": "value"}, \
+                     LoadMeta(MyClass, key_transform='CAMEL'))
+
+    .. _Docs: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/meta.html
+    """
+    try:
+        return _LOAD_META[data_class]
+
+    except KeyError:
+        # Initial run - we have not set up the load config for the class yet
+
+        try:
+            cls_meta = _META[data_class]
+        except KeyError:
+            # Meta does not exist for the class. Create a new subclass of
+            # :class:`BaseMeta`, and cache it so we have it for next time
+            # (for example for the dump or serialization process).
+            cls_meta = create_new_class(
+                data_class, (BaseJSONWizardMeta, ), suffix='Meta')
+
+        # Set meta attributes here.
+        cls_meta.debug_enabled |= debug_enabled
+        cls_meta.raise_on_unknown_json_key = raise_on_unknown_json_key
+        cls_meta.json_key_to_field = json_key_to_field
+        cls_meta.key_transform_with_load = key_transform
+
+        # Run the meta initialization for the dataclass, and also save the
+        # mapping to `_META` so we have it for next time.
+        # noinspection PyProtectedMember
+        cls_meta._meta_initialize(data_class)
+
+        # Save the load config, so we don't have to run this logic each time.
+        _LOAD_META[data_class] = cls_meta
+
+
+# noinspection PyPep8Naming
+def DumpMeta(data_class: Type[T],
+             debug_enabled: bool = False,
+             marshal_date_time_as: Union[DateTimeTo, str] = None,
+             key_transform: Union[LetterCase, str] = None) -> M:
+    """
+    Helper function to setup the ``Meta`` Config for the JSON dump
+    (serialization) process, which is intended for use alongside the
+    ``asdict`` helper function.
+
+    For descriptions on what each of these params does, refer to the `Docs`_
+    below, or check out the :class:`BaseMeta` definition (I want to avoid
+    duplicating the descriptions for params here).
+
+    Examples::
+
+        >>> asdict(MyClass, {"myStr": "value"}, \
+                   DumpMeta(MyClass, key_transform='CAMEL'))
+
+    .. _Docs: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/meta.html
+    """
+    try:
+        return _DUMP_META[data_class]
+
+    except KeyError:
+        # Initial run - we have not set up the dump config for the class yet
+
+        try:
+            cls_meta = _META[data_class]
+        except KeyError:
+            # Meta does not exist for the class. Create a new subclass of
+            # :class:`BaseMeta`, and cache it so we have it for next time
+            # (for example for the dump or serialization process).
+            cls_meta = create_new_class(
+                data_class, (BaseJSONWizardMeta, ), suffix='Meta')
+
+        # Set meta attributes here.
+        cls_meta.debug_enabled |= debug_enabled
+        cls_meta.marshal_date_time_as = marshal_date_time_as
+        cls_meta.key_transform_with_dump = key_transform
+
+        # Run the meta initialization for the dataclass, and also save the
+        # mapping to `_META` so we have it for next time.
+        # noinspection PyProtectedMember
+        cls_meta._meta_initialize(data_class)
+
+        # Save the dump config, so we don't have to run this logic each time.
+        _DUMP_META[data_class] = cls_meta

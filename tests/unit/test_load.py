@@ -14,8 +14,8 @@ from typing import (
 
 import pytest
 
-from dataclass_wizard import JSONSerializable, json_field, json_key, LoadMixin
-from dataclass_wizard.errors import ParseError, MissingFields
+from dataclass_wizard import *
+from dataclass_wizard.errors import ParseError, MissingFields, UnknownJSONKey
 from dataclass_wizard.parsers import OptionalParser, Parser, IdentityParser, SingleArgParser
 from dataclass_wizard.type_def import NoneType, T
 from .conftest import MyUUIDSubclass
@@ -23,6 +23,96 @@ from ..conftest import *
 
 
 log = logging.getLogger(__name__)
+
+
+def test_fromdict():
+    """
+    Confirm that Meta settings for `fromdict` are applied as expected.
+    """
+
+    @dataclass
+    class MyClass:
+        my_bool: Optional[bool]
+        myStrOrInt: Union[str, int]
+
+    d = {'myBoolean': 'tRuE', 'my_str_or_int': 123}
+
+    c = fromdict(MyClass, d, LoadMeta(
+        MyClass,
+        key_transform='CAMEL',
+        json_key_to_field={'myBoolean': 'my_bool'}
+    ))
+
+    assert c.my_bool is True
+    assert isinstance(c.myStrOrInt, int)
+    assert c.myStrOrInt == 123
+
+
+def test_fromdict_raises_on_unknown_json_fields():
+    """
+    Confirm that Meta settings for `fromdict` are applied as expected.
+    """
+
+    @dataclass
+    class MyClass:
+        my_bool: Optional[bool]
+
+    d = {'myBoolean': 'tRuE', 'my_string': 'Hello world!'}
+    load_cfg = LoadMeta(MyClass,
+                        json_key_to_field={'myBoolean': 'my_bool'},
+                        raise_on_unknown_json_key=True)
+
+    # Technically we don't need to pass `load_cfg`, but we'll pass it in as
+    # that's how we'd typically expect to do it.
+    with pytest.raises(UnknownJSONKey) as exc_info:
+        _ = fromdict(MyClass, d, load_cfg)
+
+        e = exc_info.value
+
+        assert e.json_key == 'my_string'
+        assert e.obj == d
+        assert e.fields == ['my_bool']
+
+
+def test_fromdict_with_nested_dataclass():
+    """Confirm that `fromdict` works for nested dataclasses as well."""
+
+    @dataclass
+    class Container:
+        id: int
+        submittedDt: datetime
+        myElements: List['MyElement']
+
+    @dataclass
+    class MyElement:
+        order_index: Optional[int]
+        status_code: Union[int, str]
+
+    d = {'id': '123',
+         'submitted_dt': '2021-01-01 05:00:00',
+         'myElements': [
+             {'orderIndex': 111,
+              'statusCode': '200'},
+             {'order_index': '222',
+              'status_code': 404}
+         ]}
+
+    # Fix so the forward reference works (since the class definition is inside
+    # the test case)
+    globals().update(locals())
+
+    c = fromdict(Container, d, LoadMeta(Container,
+                                        key_transform='CAMEL'))
+
+    assert c.id == 123
+    assert c.submittedDt == datetime(2021, 1, 1, 5, 0)
+    # Key transform only applies to top-level dataclass
+    # unfortunately. Need to setup `LoadMeta` for `MyElement`
+    # if we need different key transform.
+    assert c.myElements == [
+            MyElement(order_index=111, status_code='200'),
+            MyElement(order_index=222, status_code=404)
+    ]
 
 
 @pytest.mark.parametrize(

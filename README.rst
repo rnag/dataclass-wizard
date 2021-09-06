@@ -181,6 +181,19 @@ The Dataclass Wizard library is available on PyPI:
 The ``dataclass-wizard`` library officially supports **Python 3.6** or higher.
 
 
+Supported Types
+---------------
+
+The Dataclass Wizard library provides inherent support for standard Python collections
+such as ``list``, ``dict`` and ``set``, as well as most Generics from the typing
+module, such as ``Union`` and ``Any``. Other commonly used types such as ``Enum``,
+``defaultdict``, and date and time objects such as ``datetime`` are also natively
+supported.
+
+For a complete list of the supported Python types, including info on the
+load/dump process for special types, check out the `Supported Types`_ section
+in the docs.
+
 JSON Marshalling
 ----------------
 
@@ -238,18 +251,84 @@ prefer to use that instead.
 Check out a `more complete example`_ of using the ``JSONSerializable``
 Mixin class.
 
-Supported Types
----------------
+No Inheritance Needed
+---------------------
 
-The Dataclass Wizard library provides inherent support for standard Python collections
-such as ``list``, ``dict`` and ``set``, as well as most Generics from the typing
-module, such as ``Union`` and ``Any``. Other commonly used types such as ``Enum``,
-``defaultdict``, and date and time objects such as ``datetime`` are also natively
-supported.
+It is important to note that the main purpose of sub-classing from
+``JSONWizard`` Mixin class is to provide helper methods like ``from_dict``
+and ``to_dict``, which makes it much more convenient and easier to load or
+dump your data class from and to JSON.
 
-For a complete list of the supported Python types, including info on the
-load/dump process for special types, check out the `Supported Types`_ section
-in the docs.
+That is, it's meant to *complement* the usage of the ``dataclass`` decorator,
+rather than to serve as a drop-in replacement for data classes, or to provide type
+validation for example; there are already excellent libraries like `pydantic`_ that
+provide these features if so desired.
+
+However, there may be use cases where we prefer to do away with the class
+inheritance model introduced by the Mixin class. In the interests of convenience
+and also so that data classes can be used *as is*, the Dataclass
+Wizard library provides the helper functions ``fromlist`` and ``fromdict``
+for de-serialization, and ``asdict`` for serialization. These functions also
+work recursively, so there is full support for nested dataclasses -- just as with
+the class inheritance approach.
+
+Here is an example to demonstrate the usage of these helper functions:
+
+.. code:: python3
+
+    from dataclasses import dataclass
+    from datetime import datetime
+    from typing import List, Optional, Union
+
+    from dataclass_wizard import fromdict, asdict, DumpMeta
+
+
+    @dataclass
+    class Container:
+        id: int
+        created_at: datetime
+        my_elements: List['MyElement']
+
+
+    @dataclass
+    class MyElement:
+        order_index: Optional[int]
+        status_code: Union[int, str]
+
+
+    source_dict = {'id': '123',
+                   'createdAt': '2021-01-01 05:00:00',
+                   'myElements': [
+                       {'orderIndex': 111, 'statusCode': '200'},
+                       {'order_index': '222', 'status_code': 404}
+                   ]}
+
+    # De-serialize the JSON dictionary object into a `Container` instance.
+    c = fromdict(Container, source_dict)
+
+    print(repr(c))
+    # prints:
+    #   Container(id=123, created_at=datetime.datetime(2021, 1, 1, 5, 0), my_elements=[MyElement(order_index=111, status_code='200'), MyElement(order_index=222, status_code=404)])
+
+    # Set up dump config for the inner class, as unfortunately there's no option
+    # currently to have the meta config apply in a recursive fashion.
+    _ = DumpMeta(MyElement, key_transform='SNAKE')
+
+    # Serialize the `Container` instance to a Python dict object with a custom
+    # dump config, for example one which converts field names to snake case.
+    json_dict = asdict(c, DumpMeta(Container,
+                                   key_transform='SNAKE',
+                                   marshal_date_time_as='TIMESTAMP'))
+
+    expected_dict = {'id': 123,
+                     'created_at': 1609495200,
+                     'my_elements': [
+                         {'order_index': 111, 'status_code': '200'},
+                         {'order_index': 222, 'status_code': 404}
+                     ]}
+
+    # Assert that we get the expected dictionary object.
+    assert json_dict == expected_dict
 
 Custom Key Mappings
 -------------------
@@ -444,6 +523,7 @@ This package was created with Cookiecutter_ and the `rnag/cookiecutter-pypackage
 .. _`Supported Types`: https://dataclass-wizard.readthedocs.io/en/latest/overview.html#supported-types
 .. _`Mixin`: https://stackoverflow.com/a/547714/10237506
 .. _`Meta`: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/meta.html
+.. _`pydantic`: https://pydantic-docs.helpmanual.io/
 .. _`Using Field Properties`: https://dataclass-wizard.readthedocs.io/en/latest/using_field_properties.html
 .. _`field properties`: https://dataclass-wizard.readthedocs.io/en/latest/using_field_properties.html
 .. _`custom mapping`: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/custom_key_mappings.html
