@@ -35,7 +35,7 @@ with IDEs in general.
 
 .. code:: python3
 
-    from dataclasses import dataclass
+    from dataclasses import dataclass, field
     from typing_extensions import Annotated
 
     from dataclass_wizard import JSONSerializable, json_field, json_key
@@ -57,6 +57,12 @@ with IDEs in general.
 
         # 3-- Using `Annotated` with a `json_key` (or :class:`JSON`) argument.
         my_str: Annotated[str, json_key('myField', 'myJSONKey')]
+
+        # 4-- Defining a value for `__remapping__` in the metadata stored
+        #     within a `dataclasses.Field` class.
+        my_str: str = field(metadata={
+            '__remapping__': json_key('myField', 'myJSONKey')
+        })
 
 One thing to note is that the mapping to each JSON key name is case-sensitive,
 so passing *myfield* (all lowercase) will not match a *myField* key in a
