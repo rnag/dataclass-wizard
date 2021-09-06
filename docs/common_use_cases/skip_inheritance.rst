@@ -2,8 +2,8 @@ Skip the Class Inheritance
 --------------------------
 
 It is important to note that the main purpose of sub-classing from
-``JSONWizard`` Mixin class is to provide helper methods like ``from_dict``
-and ``to_dict``, which makes it much more convenient and easier to load or
+``JSONWizard`` Mixin class is to provide helper methods like :meth:`from_dict`
+and :meth:`to_dict`, which makes it much more convenient and easier to load or
 dump your data class from and to JSON.
 
 That is, it's meant to *complement* the usage of the ``dataclass`` decorator,
@@ -14,8 +14,8 @@ provide these features if so desired.
 However, there may be use cases where we prefer to do away with the class
 inheritance model introduced by the Mixin class. In the interests of convenience
 and also so that data classes can be used *as is*, the Dataclass
-Wizard library provides the helper functions ``fromlist`` and ``fromdict``
-for de-serialization, and ``asdict`` for serialization. These functions also
+Wizard library provides the helper functions :func:`fromlist` and :func:`fromdict`
+for de-serialization, and :func:`asdict` for serialization. These functions also
 work recursively, so there is full support for nested dataclasses -- just as with
 the class inheritance approach.
 
