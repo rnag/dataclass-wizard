@@ -504,7 +504,7 @@ def fromdict(cls: Type[T],
         return load_func_for_dataclass(cls)(d)
 
 
-def fromlist(cls: Type[T], list_of_dict: List[Dict[str, Any]]) -> List[T]:
+def fromlist(cls: Type[T], list_of_dict: List[Dict[str, Any]]) -> T:
     """
     Converts a Python list object to a list of dataclass instances.
 

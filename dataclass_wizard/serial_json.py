@@ -6,6 +6,7 @@ from typing import Type, Dict, Any, List, Union
 from .abstractions import AbstractJSONWizard, W
 from .bases_meta import BaseJSONWizardMeta
 from .class_helper import call_meta_initializer_if_needed
+from .decorators import _alias
 from .dumpers import asdict
 from .loaders import fromdict, fromlist
 
@@ -41,18 +42,22 @@ class JSONSerializable(AbstractJSONWizard):
         return fromdict(cls, o) if isinstance(o, dict) else fromlist(cls, o)
 
     @classmethod
+    @_alias(fromlist)
     def from_list(cls: Type[W], o: List[Dict[str, Any]]) -> List[W]:
         """
         Converts a Python `list` object to a list of the dataclass instances.
         """
-        return fromlist(cls, o)
+        # alias: fromlist(cls, o)
+        ...
 
     @classmethod
+    @_alias(fromdict)
     def from_dict(cls: Type[W], o: Dict[str, Any]) -> W:
         """
         Converts a Python `dict` object to an instance of the dataclass.
         """
-        return fromdict(cls, o)
+        # alias: fromdict(cls, o)
+        ...
 
     def to_dict(self) -> Dict[str, Any]:
         """

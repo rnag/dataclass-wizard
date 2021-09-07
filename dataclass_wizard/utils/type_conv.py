@@ -35,7 +35,7 @@ def as_bool(o: Union[str, bool, N]):
     return o.upper() in _TRUTHY_VALUES
 
 
-def as_int(o: Union[str, int, bool, None], base_type=int,
+def as_int(o: Union[str, int, float, bool, None], base_type=int,
            default=0, raise_=True):
     """
     Return `o` if already a int, otherwise return the int value for a
@@ -56,14 +56,24 @@ def as_int(o: Union[str, int, bool, None], base_type=int,
     if t is bool:
         raise TypeError(f'as_int: Incorrect type, object={o!r}, type={t}')
 
-    if not o:
-        return default
+    if t is float:
+        return base_type(round(o))
 
     try:
+        # The object might be a float value as a string, e.g. `2.7`
+        if '.' in o:
+            return base_type(round(float(o)))
+
         return base_type(o)
+
     except ValueError:
+
+        if not o:
+            return default
+
         if raise_:
             raise
+
         return default
 
 
@@ -79,14 +89,17 @@ def as_str(o: Union[str, None], base_type=str, raise_=True):
     if isinstance(o, base_type):
         return o
 
-    if o is None:
-        return base_type()
-
     try:
         return base_type(o)
+
     except ValueError:
+
+        if o is None:
+            return base_type()
+
         if raise_:
             raise
+
         return base_type()
 
 
