@@ -297,7 +297,7 @@ Here is an example to demonstrate the usage of these helper functions:
 
 
     source_dict = {'id': '123',
-                   'createdAt': '2021-01-01 05:00:00',
+                   'createdAt': '2021-01-01 05:00:00Z',
                    'myElements': [
                        {'orderIndex': 111, 'statusCode': '200'},
                        {'order_index': '222', 'status_code': 404}

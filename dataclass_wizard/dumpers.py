@@ -210,7 +210,7 @@ def asdict(obj: T,
     dataclass. Here's a sample usage of this below::
 
         >>> dump_cfg = DumpMeta(MyClass, key_transform='CAMEL')
-        >>> asdict(MyClass, {"myStr": "value"}, dump_cfg)
+        >>> asdict(MyClass(my_str="value"), dump_cfg)
 
     If given, 'dict_factory' will be used instead of built-in dict.
     The function applies recursively to field values that are

@@ -601,7 +601,9 @@ def load_func_for_dataclass(cls: Type[T]) -> Callable[[Dict[str, Any]], T]:
             return cls(**cls_kwargs)
 
         except TypeError as e:
-            raise MissingFields(e, o, cls, cls_kwargs, dataclass_fields(cls))
+            raise MissingFields(
+                e, o, cls, cls_kwargs, dataclass_fields(cls)
+            ) from None
 
     # Save the load function for the class, so we don't need to run this logic
     # each time.

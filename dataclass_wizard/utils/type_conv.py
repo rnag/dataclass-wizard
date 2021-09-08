@@ -60,7 +60,7 @@ def as_int(o: Union[str, int, float, bool, None], base_type=int,
         return base_type(round(o))
 
     try:
-        # The object might be a float value as a string, e.g. `2.7`
+        # Check if the string represents a float value, e.g. '2.7'
         if '.' in o:
             return base_type(round(float(o)))
 

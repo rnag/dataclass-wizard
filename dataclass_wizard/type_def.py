@@ -1,6 +1,7 @@
 __all__ = [
     'PyForwardRef',
     'PyLiteral',
+    'PyProtocol',
     'PyDeque',
     'PyTypedDicts',
     'FrozenKeys',
@@ -8,6 +9,8 @@ __all__ = [
     'NoneType',
     'ExplicitNullType',
     'ExplicitNull',
+    'Encoder',
+    'Decoder',
     'NUMBERS',
     'T',
     'E',
@@ -25,7 +28,7 @@ from collections import deque
 from enum import Enum
 from typing import (
     Type, TypeVar, Sequence, Mapping,
-    List, DefaultDict, FrozenSet, NamedTuple, Callable
+    List, DefaultDict, FrozenSet, NamedTuple, Callable, AnyStr, Dict, Any, Union
 )
 from uuid import UUID
 
@@ -91,6 +94,7 @@ PyTypedDicts: List[Type['TypedDict']] = []
 if PY38_OR_ABOVE:
     from typing import ForwardRef as PyForwardRef
     from typing import Literal as PyLiteral
+    from typing import Protocol as PyProtocol
     from typing import TypedDict
     from typing import Deque as PyDeque
 
@@ -105,6 +109,7 @@ if PY38_OR_ABOVE:
         pass
 else:
     from typing_extensions import Literal as PyLiteral
+    from typing_extensions import Protocol as PyProtocol
     from typing_extensions import TypedDict as PyTypedDict
     # Seems like `Deque` was only introduced to `typing` in 3.6.1, so Python
     # 3.6.0 won't have it; to be safe, we'll instead import from the
@@ -133,3 +138,25 @@ class ExplicitNullType:
 
 
 ExplicitNull = ExplicitNullType()
+
+
+class Encoder(PyProtocol):
+    """
+    Represents an encoder for Python object -> JSON, e.g. analogous to
+    `json.dumps`
+    """
+
+    def __call__(self, obj: Dict[str, Any], **kwargs) -> AnyStr:
+        ...
+
+
+class Decoder(PyProtocol):
+    """
+    Represents a decoder for JSON -> Python object, e.g. analogous to
+    `json.loads`
+    """
+
+    def __call__(self, s: AnyStr, **kwargs) -> Union[
+        Dict[str, Any], List[Dict[str, Any]]
+    ]:
+        ...

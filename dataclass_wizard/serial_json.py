@@ -1,7 +1,7 @@
 import json
 # noinspection PyProtectedMember
 from dataclasses import _create_fn, _set_new_attribute
-from typing import Type, Dict, Any, List, Union
+from typing import Type, Dict, Any, List, Union, AnyStr
 
 from .abstractions import AbstractJSONWizard, W
 from .bases_meta import BaseJSONWizardMeta
@@ -9,6 +9,7 @@ from .class_helper import call_meta_initializer_if_needed
 from .decorators import _alias
 from .dumpers import asdict
 from .loaders import fromdict, fromlist
+from .type_def import Decoder, Encoder
 
 
 class JSONSerializable(AbstractJSONWizard):
@@ -32,12 +33,14 @@ class JSONSerializable(AbstractJSONWizard):
             return cls._init_subclass()
 
     @classmethod
-    def from_json(cls: Type[W], string: str) -> Union[W, List[W]]:
+    def from_json(cls: Type[W], string: AnyStr, *,
+                  decoder: Decoder = json.loads,
+                  **decoder_kwargs) -> Union[W, List[W]]:
         """
         Converts a JSON `string` to an instance of the dataclass, or a list of
         the dataclass instances.
         """
-        o = json.loads(string)
+        o = decoder(string, **decoder_kwargs)
 
         return fromdict(cls, o) if isinstance(o, dict) else fromlist(cls, o)
 
@@ -48,7 +51,6 @@ class JSONSerializable(AbstractJSONWizard):
         Converts a Python `list` object to a list of the dataclass instances.
         """
         # alias: fromlist(cls, o)
-        ...
 
     @classmethod
     @_alias(fromdict)
@@ -57,20 +59,22 @@ class JSONSerializable(AbstractJSONWizard):
         Converts a Python `dict` object to an instance of the dataclass.
         """
         # alias: fromdict(cls, o)
-        ...
 
-    def to_dict(self) -> Dict[str, Any]:
+    @_alias(asdict)
+    def to_dict(self: W) -> Dict[str, Any]:
         """
         Converts the dataclass instance to a Python dictionary object that is
         JSON serializable.
         """
-        return asdict(self)
+        # alias: asdict(self)
 
-    def to_json(self, indent=None) -> str:
+    def to_json(self: W, *,
+                encoder: Encoder = json.dumps,
+                **encoder_kwargs) -> AnyStr:
         """
         Converts the dataclass instance to a JSON `string` representation.
         """
-        return json.dumps(asdict(self), indent=indent)
+        return encoder(asdict(self), **encoder_kwargs)
 
     def __init_subclass__(cls, str=True):
         """
