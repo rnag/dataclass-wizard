@@ -51,6 +51,7 @@ class JSONSerializable(AbstractJSONWizard):
         Converts a Python `list` object to a list of the dataclass instances.
         """
         # alias: fromlist(cls, o)
+        ...
 
     @classmethod
     @_alias(fromdict)
@@ -59,6 +60,7 @@ class JSONSerializable(AbstractJSONWizard):
         Converts a Python `dict` object to an instance of the dataclass.
         """
         # alias: fromdict(cls, o)
+        ...
 
     @_alias(asdict)
     def to_dict(self: W) -> Dict[str, Any]:
@@ -67,6 +69,7 @@ class JSONSerializable(AbstractJSONWizard):
         JSON serializable.
         """
         # alias: asdict(self)
+        ...
 
     def to_json(self: W, *,
                 encoder: Encoder = json.dumps,
