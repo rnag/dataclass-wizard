@@ -19,7 +19,7 @@ from .class_helper import (
 )
 from .constants import _LOAD_HOOKS, SINGLE_ARG_ALIAS, IDENTITY
 from .decorators import _alias, _single_arg_alias, resolve_alias_func, _identity
-from .errors import ParseError, MissingFields, UnknownJSONKey
+from .errors import ParseError, MissingFields, UnknownJSONKey, MissingData
 from .log import LOG
 from .parsers import *
 from .type_def import (
@@ -529,73 +529,63 @@ def load_func_for_dataclass(cls: Type[T]) -> Callable[[Dict[str, Any]], T]:
     meta = get_meta(cls)
 
     # This contains a mapping of the original field name to the parser for its
-    # annotated type; the item lookup will be case-insensitive.
+    # annotated type; the item lookup *can* be case-insensitive.
     field_to_parser = dataclass_field_to_load_parser(cls_loader, cls)
 
-    # A cached mapping of keys in a JSON or dictionary object to the
+    # A cached mapping of each key in a JSON or dictionary object to the
     # resolved dataclass field name; useful so we don't need to do a case
     # transformation (via regex) each time.
     json_to_dataclass_field = json_field_to_dataclass_field(cls)
 
-    def cls_fromdict(o, *_):
-        # Need to create a separate dictionary to copy over the constructor args,
-        # as we don't want to mutate the original dictionary object.
+    def cls_fromdict(o: Dict[str, Any], *_):
+        """
+        De-serialize a dictionary `o` to an instance of a dataclass `cls`.
+        """
+
+        # Need to create a separate dictionary to copy over the constructor
+        # args, as we don't want to mutate the original dictionary object.
         cls_kwargs = {}
-        # Loop over the dictionary object
-        for json_field in o:
 
-            # Get the resolved dataclass field name
-            try:
-                field_name = json_to_dataclass_field[json_field]
-                # Exclude JSON keys that don't map to any fields.
-                if field_name is ExplicitNull:
-                    continue
+        # This try-block is here in case the object `o` is None.
+        try:
+            # Loop over the dictionary object
+            for json_field in o:
 
-            except KeyError:
-                # On an initial run, or no resolved field name
-
-                # Transform JSON field name (typically camel-cased) to the
-                # snake-cased variant which is convention in Python.
-                transformed_field = cls_loader.transform_json_field(json_field)
-
+                # Get the resolved dataclass field name
                 try:
-                    # Do a case-insensitive lookup of the dataclass field, and
-                    # cache the mapping so we have it for next time
-                    field_name = field_to_parser.get_key(transformed_field)
-                    json_to_dataclass_field[json_field] = field_name
+                    field_name = json_to_dataclass_field[json_field]
+                    # Exclude JSON keys that don't map to any fields.
+                    if field_name is ExplicitNull:
+                        continue
 
                 except KeyError:
-                    # Else, we see an unknown field in the dictionary object
-                    json_to_dataclass_field[json_field] = ExplicitNull
-                    LOG.warning(
-                        'JSON field %r missing from dataclass schema, '
-                        'class=%r, parsed field=%r',
-                        json_field, get_class_name(cls), transformed_field)
+                    try:
+                        field_name = determine_field_for_json_key(o, json_field)
+                    except LookupError:
+                        continue
 
-                    # Raise an error here (if needed)
-                    if meta.raise_on_unknown_json_key:
-                        cls_fields = dataclass_fields(cls)
-                        e = UnknownJSONKey(json_field, o, cls, cls_fields)
-                        raise e from None
+                try:
+                    # Note: pass the original cased field to the class constructor;
+                    # don't use the lowercase result from `transform_json_field`
+                    cls_kwargs[field_name] = field_to_parser[field_name](
+                        o[json_field])
 
-                    continue
-
-            try:
-                # Note: pass the original cased field to the class constructor;
-                # don't use the lowercase result from `transform_json_field`
-                cls_kwargs[field_name] = field_to_parser[field_name](
-                    o[json_field])
-
-            except ParseError as e:
-                # We run into a parsing error while loading the field value; Add
-                # additional info on the Exception object before re-raising it
-                #
-                # First confirm these values are not already set by an inner
-                # dataclass. If so, it likely makes it easier to debug the cause.
-                if not e.class_name:
-                    e.class_name = cls.__qualname__
+                except ParseError as e:
+                    # We run into a parsing error while loading the field value; Add
+                    # additional info on the Exception object before re-raising it
+                    #
+                    # First confirm these values are not already set by an inner
+                    # dataclass. If so, it likely makes it easier to debug the cause.
+                    e.class_name = cls
                     e.field_name = field_name
-                raise
+                    raise
+
+        except TypeError:
+            # If the object `o` is None, then raise an error with the relevant
+            # info included. Else, just re-raise the error.
+            if o is None:
+                raise MissingData(cls) from None
+            raise
 
         try:
             return cls(**cls_kwargs)
@@ -604,6 +594,46 @@ def load_func_for_dataclass(cls: Type[T]) -> Callable[[Dict[str, Any]], T]:
             raise MissingFields(
                 e, o, cls, cls_kwargs, dataclass_fields(cls)
             ) from None
+
+    def determine_field_for_json_key(o: Dict[str, Any], json_field: str):
+        """
+        Determines the dataclass field which a JSON key should map to. Note
+        this only runs the initial time, i.e. the first time we encounter the
+        key in a JSON object.
+
+        :raises LookupError: If there no resolved field name for the JSON key.
+        :raises UnknownJSONKey: If there is no resolved field name for the
+          JSON key, and`raise_on_unknown_json_key` is enabled in the Meta
+          config for the class.
+        """
+
+        # Transform JSON field name (typically camel-cased) to the
+        # snake-cased variant which is convention in Python.
+        transformed_field = cls_loader.transform_json_field(json_field)
+
+        try:
+            # Do a case-insensitive lookup of the dataclass field, and
+            # cache the mapping so we have it for next time
+            field_name = field_to_parser.get_key(transformed_field)
+            json_to_dataclass_field[json_field] = field_name
+
+        except KeyError:
+            # Else, we see an unknown field in the dictionary object
+            json_to_dataclass_field[json_field] = ExplicitNull
+            LOG.warning(
+                'JSON field %r missing from dataclass schema, '
+                'class=%r, parsed field=%r',
+                json_field, get_class_name(cls), transformed_field)
+
+            # Raise an error here (if needed)
+            if meta.raise_on_unknown_json_key:
+                cls_fields = dataclass_fields(cls)
+                e = UnknownJSONKey(json_field, o, cls, cls_fields)
+                raise e from None
+
+            raise LookupError
+
+        return field_name
 
     # Save the load function for the class, so we don't need to run this logic
     # each time.

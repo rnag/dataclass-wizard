@@ -59,14 +59,14 @@ def as_int(o: Union[str, int, float, bool, None], base_type=int,
     if t is float:
         return base_type(round(o))
 
-    try:
-        # Check if the string represents a float value, e.g. '2.7'
-        if '.' in o:
-            return base_type(round(float(o)))
+    # Check if the string represents a float value, e.g. '2.7'
+    if t is str and '.' in o:
+        return base_type(round(float(o)))
 
+    try:
         return base_type(o)
 
-    except ValueError:
+    except (TypeError, ValueError):
 
         if not o:
             return default
@@ -89,13 +89,13 @@ def as_str(o: Union[str, None], base_type=str, raise_=True):
     if isinstance(o, base_type):
         return o
 
+    if o is None:
+        return base_type()
+
     try:
         return base_type(o)
 
     except ValueError:
-
-        if o is None:
-            return base_type()
 
         if raise_:
             raise
