@@ -276,56 +276,39 @@ Here is an example to demonstrate the usage of these helper functions:
 
 .. code:: python3
 
-    from dataclasses import dataclass
+    from dataclasses import dataclass, field
     from datetime import datetime
-    from typing import List, Optional, Union
+    from typing import List, Union
 
     from dataclass_wizard import fromdict, asdict, DumpMeta
 
 
     @dataclass
-    class Container:
-        id: int
+    class A:
         created_at: datetime
-        my_elements: List['MyElement']
+        list_of_b: List['B'] = field(default_factory=list)
 
 
     @dataclass
-    class MyElement:
-        order_index: Optional[int]
-        status_code: Union[int, str]
+    class B:
+        status: Union[int, str]
 
 
-    source_dict = {'id': '123',
-                   'createdAt': '2021-01-01 05:00:00',
-                   'myElements': [
-                       {'orderIndex': 111, 'statusCode': '200'},
-                       {'order_index': '222', 'status_code': 404}
-                   ]}
+    source_dict = {'createdAt': '2010-06-10 15:50:00Z',
+                   'List-Of-B': [{'status': '200'}]}
 
-    # De-serialize the JSON dictionary object into a `Container` instance.
-    c = fromdict(Container, source_dict)
+    # De-serialize the JSON dictionary object into an `A` instance.
+    a = fromdict(A, source_dict)
 
-    print(repr(c))
-    # prints:
-    #   Container(id=123, created_at=datetime.datetime(2021, 1, 1, 5, 0), my_elements=[MyElement(order_index=111, status_code='200'), MyElement(order_index=222, status_code=404)])
+    print(repr(a))
+    # A(created_at=datetime.datetime(2010, 6, 10, 15, 50, tzinfo=datetime.timezone.utc), list_of_b=[B(status='200')])
 
-    # Set up dump config for the inner class, as unfortunately there's no option
-    # currently to have the meta config apply in a recursive fashion.
-    _ = DumpMeta(MyElement, key_transform='SNAKE')
+    # Serialize the `A` instance to a Python dict object with a
+    # custom dump config, for example one which converts converts
+    # datetime objects to a unix timestamp (as an int).
+    json_dict = asdict(a, DumpMeta(A, marshal_date_time_as='TIMESTAMP'))
 
-    # Serialize the `Container` instance to a Python dict object with a custom
-    # dump config, for example one which converts field names to snake case.
-    json_dict = asdict(c, DumpMeta(Container,
-                                   key_transform='SNAKE',
-                                   marshal_date_time_as='TIMESTAMP'))
-
-    expected_dict = {'id': 123,
-                     'created_at': 1609495200,
-                     'my_elements': [
-                         {'order_index': 111, 'status_code': '200'},
-                         {'order_index': 222, 'status_code': 404}
-                     ]}
+    expected_dict = {'createdAt': 1276185000, 'listOfB': [{'status': '200'}]}
 
     # Assert that we get the expected dictionary object.
     assert json_dict == expected_dict

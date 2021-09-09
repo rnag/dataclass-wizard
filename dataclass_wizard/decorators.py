@@ -1,8 +1,11 @@
 from functools import wraps
-from typing import Any, Type, Callable, Union
+from typing import Any, Type, Callable, Union, TypeVar, cast
 
 from .constants import SINGLE_ARG_ALIAS, IDENTITY
 from .errors import ParseError
+
+
+T = TypeVar('T')
 
 
 def try_with_load(f):
@@ -36,7 +39,7 @@ def discard_kwargs(f):
     return new_func
 
 
-def _alias(default: Callable):
+def _alias(default: Callable) -> Callable[[T], T]:
     """
     Decorator which re-assigns a function `_f` to point to `default` instead.
     Since global function calls in Python are somewhat expensive, this is
@@ -67,8 +70,8 @@ def _alias(default: Callable):
     just calling `f2()`.
     """
 
-    def new_func(_f):
-        return default
+    def new_func(_f: T) -> T:
+        return cast(T, default)
 
     return new_func
 

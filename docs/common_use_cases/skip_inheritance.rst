@@ -44,7 +44,7 @@ Here is an example to demonstrate the usage of these helper functions:
 
 
     source_dict = {'id': '123',
-                   'createdAt': '2021-01-01 05:00:00',
+                   'createdAt': '2021-01-01 05:00:00Z',
                    'myElements': [
                        {'orderIndex': 111, 'statusCode': '200'},
                        {'order_index': '222', 'status_code': 404}
@@ -57,8 +57,8 @@ Here is an example to demonstrate the usage of these helper functions:
     # prints:
     #   Container(id=123, created_at=datetime.datetime(2021, 1, 1, 5, 0), my_elements=[MyElement(order_index=111, status_code='200'), MyElement(order_index=222, status_code=404)])
 
-    # Set up dump config for the inner class, as unfortunately there's no option
-    # currently to have the meta config apply in a recursive fashion.
+    # (Optional) Set up dump config for the inner class, as unfortunately there's
+    # no option currently to have the meta config apply in a recursive fashion.
     _ = DumpMeta(MyElement, key_transform='SNAKE')
 
     # Serialize the `Container` instance to a Python dict object with a custom
@@ -68,7 +68,7 @@ Here is an example to demonstrate the usage of these helper functions:
                                    marshal_date_time_as='TIMESTAMP'))
 
     expected_dict = {'id': 123,
-                     'created_at': 1609495200,
+                     'created_at': 1609477200,
                      'my_elements': [
                          {'order_index': 111, 'status_code': '200'},
                          {'order_index': 222, 'status_code': 404}

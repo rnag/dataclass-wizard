@@ -96,6 +96,54 @@ def test_property_wizard_does_not_affect_read_only_properties():
     assert v.wheels == 1
 
 
+def test_property_wizard_does_not_error_when_forward_refs_are_declared():
+    """
+    Using `property_wizard` when the dataclass has a forward reference
+    defined in a type annotation.
+
+    """
+    @dataclass
+    class Vehicle(metaclass=property_wizard):
+
+        fire_truck: 'Truck'
+        cars: List['Car'] = field(default_factory=list)
+
+        _wheels: Union[int, str] = 4
+
+        @property
+        def wheels(self) -> int:
+            return self._wheels
+
+        @wheels.setter
+        def wheels(self, wheels: Union[int, str]):
+            self._wheels = int(wheels)
+
+    @dataclass
+    class Car:
+        tires: int
+
+    @dataclass
+    class Truck:
+        color: str
+
+    truck = Truck('red')
+
+    v = Vehicle(fire_truck=truck)
+    log.debug(v)
+    assert v.wheels == 4
+
+    v = Vehicle(fire_truck=truck, wheels=3)
+    log.debug(v)
+    assert v.wheels == 3
+
+    v = Vehicle(truck, [Car(4)], '6')
+    log.debug(v)
+    assert v.wheels == 6, 'The constructor should use our setter method'
+
+    v.wheels = '123'
+    assert v.wheels == 123, 'Expected assignment to use the setter method'
+
+
 def test_property_wizard_with_public_property_and_underscored_field():
     """
     Using `property_wizard` when the dataclass has an public property and an

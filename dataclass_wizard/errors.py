@@ -1,13 +1,15 @@
 import json
 from abc import ABC, abstractmethod
 from dataclasses import Field, MISSING
-from typing import Any, Type, Dict, Tuple
+from typing import Any, Type, Dict, Tuple, ClassVar, Optional
 
 
 class JSONWizardError(ABC, Exception):
     """
     Base error class, for errors raised by this library.
     """
+
+    _TEMPLATE: ClassVar[str]
 
     @property
     @abstractmethod
@@ -38,9 +40,26 @@ class ParseError(JSONWizardError):
         self.ann_type = ann_type
         self.base_error = base_err
         self.kwargs = kwargs
-        self.class_name: str = None
-        self.field_name: str = None
-        self._field_name = None
+        self._class_name: Optional[str] = None
+        self._field_name: Optional[str] = None
+
+    @property
+    def class_name(self) -> Optional[str]:
+        return self._class_name
+
+    @class_name.setter
+    def class_name(self, cls: Optional[Type]):
+        if self._class_name is None:
+            self._class_name = self.name(cls)
+
+    @property
+    def field_name(self) -> Optional[str]:
+        return self._field_name
+
+    @field_name.setter
+    def field_name(self, name: Optional[str]):
+        if self._field_name is None:
+            self._field_name = name
 
     @staticmethod
     def name(obj) -> str:
@@ -156,6 +175,45 @@ class UnknownJSONKey(JSONWizardError):
             json_string=json.dumps(self.obj),
             fields=self.fields,
             json_key=self.json_key)
+
+        if self.kwargs:
+            sep = '\n  '
+            parts = sep.join(f'{k}: {v!r}' for k, v in self.kwargs.items())
+            msg = f'{msg}{sep}{parts}'
+
+        return msg
+
+
+class MissingData(ParseError):
+    """
+    Error raised when unable to create a class instance, as the JSON object
+    is None.
+    """
+
+    _TEMPLATE = ('Failure loading class `{cls}`. '
+                 'Missing value for field (expected a dict, got None)\n'
+                 '  dataclass field: {field!r}\n'
+                 '  resolution: annotate the field as an `Optional[{cls}]`')
+
+    def __init__(self, cls: Type, **kwargs):
+
+        super().__init__(self, None, cls)
+
+        self.class_name: str = self.name(cls)
+
+    @staticmethod
+    def name(obj) -> str:
+        """Return the type or class name of an object"""
+        return getattr(obj, '__qualname__', getattr(obj, '__name__', obj))
+
+    @property
+    def message(self) -> str:
+        msg = self._TEMPLATE.format(
+            cls=self.class_name,
+            json_string=json.dumps(self.obj),
+            field=self.field_name,
+            o=self.obj,
+        )
 
         if self.kwargs:
             sep = '\n  '
