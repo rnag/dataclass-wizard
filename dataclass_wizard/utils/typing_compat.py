@@ -12,7 +12,6 @@ __all__ = [
     'is_generic',
     'is_base_generic',
     'is_annotated',
-    'get_type_hints_with_extras',
     'eval_forward_ref'
 ]
 
@@ -54,11 +53,9 @@ if not PY36:    # pragma: no cover
     )
 
     try:
-        from typing_extensions import get_type_hints, _AnnotatedAlias
+        from typing_extensions import _AnnotatedAlias
     except ImportError:
-        from typing import get_type_hints, _AnnotatedAlias
-
-    _get_type_hints_with_extras = partial(get_type_hints, include_extras=True)
+        from typing import _AnnotatedAlias
 
 
     def _is_annotated(cls):
@@ -140,7 +137,6 @@ else:   # pragma: no cover
         typing.GenericMeta,
     )
 
-    from typing import get_type_hints as _get_type_hints_with_extras
     from typing_extensions import AnnotatedMeta
 
 
@@ -295,16 +291,6 @@ def is_annotated(cls):
     Detects a :class:`typing.Annotated` class.
     """
     return _is_annotated(cls)
-
-
-def get_type_hints_with_extras(obj, **kwargs):
-    """
-    Generally the same as :func:`typing.get_type_hints`, but passes
-    ``extras=True`` by default, so that we can also retrieve the arguments
-    for :class:`typing.Annotated` types.
-
-    """
-    return _get_type_hints_with_extras(obj, **kwargs)
 
 
 # Note: need to wrap the annotation for `base_type` with a forward ref,

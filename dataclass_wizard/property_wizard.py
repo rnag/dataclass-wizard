@@ -4,8 +4,7 @@ from typing import Dict, Any, Type, Union, Tuple, Optional
 
 from .type_def import T, NoneType
 from .utils.typing_compat import (
-    get_type_hints_with_extras, get_origin, get_args,
-    is_generic, is_literal, is_annotated
+    get_origin, get_args, is_generic, is_literal, is_annotated
 )
 
 
@@ -27,7 +26,7 @@ def property_wizard(*args, **kwargs):
 
     cls: Type = type(*args, **kwargs)
     cls_dict: Dict[str, Any] = args[2]
-    annotations: AnnotationType = get_type_hints_with_extras(cls)
+    annotations: AnnotationType = cls_dict.get('__annotations__', {})
 
     # For each property, we want to replace the annotation for the underscore-
     # leading field associated with that property with the 'public' field
