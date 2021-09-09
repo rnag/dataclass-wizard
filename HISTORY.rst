@@ -2,6 +2,35 @@
 History
 =======
 
+0.13.0 (2021-09-08)
+-------------------
+**Features and Improvements**
+
+* Add new error class :class:`MissingData`, which is raised when a dataclass field
+  annotated as a *data class* type has a ``null`` JSON value in the load process.
+
+* Update the :func:`as_int` helper function so that ``float`` values as well as ones encoded
+  as strings are correctly converted to annotated ``int`` types, i.e. using the
+  ``int(round(float))`` syntax.
+
+* Add :class:`Encoder` and :class:`Decoder` model classes, and properly implement them
+  in the :class:`JSONWizard` helper methods.
+
+* Decorate the :class:`JSONWizard` helper methods :meth:`from_list`, :meth:`from_dict`,
+  and :meth:`to_dict` with the ``_alias`` decorator.
+
+**Bugfixes**
+
+* ``property_wizard``: Remove the internal usage of :func:`get_type_hints_with_extras`
+  for resolving class annotations. This is because ``typing.get_type_hints`` will raise
+  an error if a class has forward references in any type annotations. Since the usage
+  is as a metaclass, forward refs can *never* be resolved. So we will instead access
+  the class ``__annotations`` directly, and for now will ignore any forward references
+  which are declared.
+
+* Ensure :func:`fromlist` is actually exported at the top level (looks like that
+  was not the case)
+
 0.12.0 (2021-09-06)
 -------------------
 
