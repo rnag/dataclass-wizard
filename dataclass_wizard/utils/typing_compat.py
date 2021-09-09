@@ -18,7 +18,6 @@ __all__ = [
 import sys
 import typing
 from collections.abc import Callable
-from functools import partial
 
 from ..constants import PY36, PY38, PY310_OR_ABOVE
 from ..type_def import PyLiteral, PyTypedDicts, PyForwardRef
