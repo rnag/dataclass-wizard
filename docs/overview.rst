@@ -20,8 +20,8 @@ Advantages
 
 - Minimal setup required. In most cases, all you need is a dataclass that sub-classes
   from ``JSONWizard``.
-- Speed. It is up to 7 times faster than libraries such as `dataclasses-json`_
-  that use ``marshmellow``, and about 40 x faster than libraries such as `jsons`_
+- Speed. It is up to 25 times faster than libraries such as `dataclasses-json`_
+  that use ``marshmallow``, and about 60 x faster than libraries such as `jsons`_
   which don't seem to handle dataclasses as well as you'd expect.
 - Adds the ability to use field properties (with default values) in dataclasses.
 - Automatic key transform to/from JSON (ex. *camel* to *snake*).

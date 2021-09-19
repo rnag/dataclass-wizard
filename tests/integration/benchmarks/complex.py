@@ -1,13 +1,14 @@
 import logging
 from collections import defaultdict
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, asdict
 from datetime import datetime
 from timeit import timeit
-from typing import Optional, TypeVar, Dict, Any, List, Union, NamedTuple
+from typing import Optional, TypeVar, Dict, Any, List, Union, NamedTuple, Tuple
 
 import dataclass_factory
+import marshmallow
 import pytest
-from dataclasses_json import DataClassJsonMixin
+from dataclasses_json import DataClassJsonMixin, config
 from jsons import JsonSerializable
 
 from dataclass_wizard import JSONWizard
@@ -32,10 +33,7 @@ class MyClass:
 class MyClassDJ(DataClassJsonMixin):
     my_ledger: Dict[str, Any]
     the_answer_to_life: Optional[int]
-    # spent a long time debugging the issue: `dataclasses-json` doesn't
-    # seem to support List[ClassType] (unsure how to fix)
-    # people: List[Person]
-    people: List[Dict[str, Any]]
+    people: List['PersonDJ']
     is_enabled: bool = True
 
 
@@ -62,6 +60,31 @@ class Name(NamedTuple):
     salutation: Optional[str] = 'Mr.'
 
 
+@dataclass
+class PersonDJ:
+    # spent a long time debugging the issue: `dataclasses-json` doesn't
+    # seem to support Named Tuples like `Name` (unsure how to fix)
+    #
+    # I also can't annotate it as just a `Tuple` either... I have no idea
+    # why. So unsure what to do, now I'm just declaring it as `Any` type -
+    # which of course is a bit unfair on other test cases that handle
+    # Named Tuples properly, but it's the only I could get this to work.
+    name: Any
+    age: int
+    birthdate: datetime = field(metadata=config(
+            encoder=datetime.isoformat,
+            decoder=as_datetime,
+            mm_field=marshmallow.fields.DateTime(format='iso')
+    ))
+    gender: str
+    occupation: Union[str, List[str]]
+    # dataclass-factory doesn't support DefaultDict
+    # hobbies: DefaultDict[str, List[str]] = field(
+    #     default_factory=lambda: defaultdict(list))
+    hobbies: Dict[str, List[str]] = field(
+        default_factory=lambda: defaultdict(list))
+
+
 # Model for `dataclass-wizard`
 WizType = TypeVar('WizType', MyClass, JSONWizard)
 # Model for `jsons`
@@ -75,7 +98,8 @@ MyClassWizard: WizType = create_new_class(
     MyClass, (MyClass, JSONWizard), 'Wizard',
     attr_dict=vars(MyClass).copy())
 # MyClassDJ: DJType = create_new_class(
-#     MyClass, (MyClass, DataClassJsonMixin), 'DJ')
+#     MyClass, (MyClass, DataClassJsonMixin), 'DJ',
+#     attr_dict=vars(MyClass).copy())
 MyClassJsons: JsonsType = create_new_class(
     MyClass, (MyClass, JsonSerializable), 'Jsons',
     attr_dict=vars(MyClass).copy())
@@ -129,27 +153,27 @@ def test_load(data, n):
     g = globals().copy()
     g.update(locals())
 
-    # Result: 1.780
+    # Result: 1.753
     log.info('dataclass-wizard     %f',
              timeit('MyClassWizard.from_dict(data)', globals=g, number=n))
 
-    # Result: 1.372
+    # Result: 1.349
     log.info('dataclass-factory    %f',
              timeit('factory.load(data, MyClass)', globals=g, number=n))
 
-    # Result: 14.789
-    #   NOTE: This likely is not a fair comparison, since the rest load
-    #   `people` as a `List[Person]`, but in this case we just load it as
-    #   a dict.
+    # Result: 28.776
+    #   NOTE: This likely is not an entirely fair comparison, since the
+    #   rest load `Person.name` as a `Name` (which is a NamedTuple sub-class),
+    #   but in this case we just load it as an `Any` type.
     log.info('dataclasses-json     %f',
              timeit('MyClassDJ.from_dict(data)', globals=g, number=n))
 
     # these ones took a long time xD
-    # Result: 70.852
+    # Result: 70.752
     log.info('jsons                %f',
              timeit('MyClassJsons.load(data)', globals=g, number=n))
 
-    # Result: 120.078
+    # Result: 118.775
     log.info('jsons (strict)       %f',
              timeit('MyClassJsons.load(data, strict=True)', globals=g, number=n))
 
@@ -177,23 +201,28 @@ def test_dump(data, n):
     g = globals().copy()
     g.update(locals())
 
-    # Result: 4.150
+    # Result: 2.445
     log.info('dataclass-wizard     %f',
              timeit('c1.to_dict()', globals=g, number=n))
 
-    # Result: 4.878
+    # actually, `dataclasses.asdict` call seems to fail for some reason
+    # (possibly due to a `defaultdict` being used? would be a bug if so :o)
+    # log.info('asdict (dataclasses) %f',
+    #          timeit('asdict(c1)', globals=g, number=n))
+
+    # Result: 3.468
     log.info('dataclass-factory    %f',
              timeit('factory.dump(c2, MyClass)', globals=g, number=n))
 
-    # Result: 16.106
+    # Result: 15.214
     log.info('dataclasses-json     %f',
              timeit('c3.to_dict()', globals=g, number=n))
 
-    # Result: 69.602
+    # Result: 53.686
     log.info('jsons                %f',
              timeit('c4.dump()', globals=g, number=n))
 
-    # Result: 60.502
+    # Result: 48.100
     log.info('jsons (strict)       %f',
              timeit('c4.dump(strict=True)', globals=g, number=n))
 
