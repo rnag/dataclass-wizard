@@ -2,6 +2,14 @@
 History
 =======
 
+0.13.1 (2021-09-24)
+-------------------
+
+**Bugfixes**
+
+* Ensure that :func:`setup_dump_config_for_cls_if_needed` is called for nested
+  dataclasses, so that custom key mappings for example can be properly applied.
+
 0.13.0 (2021-09-08)
 -------------------
 **Features and Improvements**
