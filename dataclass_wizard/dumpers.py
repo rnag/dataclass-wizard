@@ -190,6 +190,23 @@ def get_dumper(cls=None, create=False) -> Type[DumpMixin]:
         return set_class_dumper(cls, DumpMixin)
 
 
+def _setup_cfg_and_get_dumper(cls: Type[T], obj: T) -> Type[DumpMixin]:
+    """
+    Setup initial config for the dataclass if needed, and return the dumper
+    for the dataclass.
+    """
+    cls_dumper = get_dumper(cls)
+
+    # Pass the class reference itself, since we know we have an instance of
+    # the class.
+    setup_dump_config_for_cls_if_needed(cls)
+
+    # Call the optional hook that runs before we process the dataclass
+    cls_dumper.__pre_as_dict__(obj)
+
+    return cls_dumper
+
+
 def asdict(obj: T,
            config: Optional[BaseMeta] = None,
            *, dict_factory=dict) -> Dict[str, Any]:
@@ -224,15 +241,8 @@ def asdict(obj: T,
 
     # -- The following lines are added, and are not present in original implementation. --
     cls = type(obj)
-    cls_dumper = get_dumper(cls)
+    cls_dumper = _setup_cfg_and_get_dumper(cls, obj)
     hooks = cls_dumper.__DUMP_HOOKS__
-
-    # Pass the class reference itself, since we know we have an instance of
-    # the class.
-    setup_dump_config_for_cls_if_needed(cls)
-
-    # Call the optional hook that runs before we process the dataclass
-    cls_dumper.__pre_as_dict__(obj)
     # -- END --
 
     return _asdict_inner(obj, dict_factory, hooks)
@@ -256,7 +266,7 @@ def _asdict_inner(obj, dict_factory, hooks) -> Any:
     if _is_dataclass_instance(obj):
 
         dataclass_to_json_field = dataclass_field_to_json_field(cls)
-        cls_dumper = get_dumper(cls)
+        cls_dumper = _setup_cfg_and_get_dumper(cls, obj)
         result = []
 
         for f in dataclass_fields(cls):
