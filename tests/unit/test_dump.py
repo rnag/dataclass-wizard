@@ -1,4 +1,5 @@
 import logging
+from abc import ABC
 from collections import deque
 from dataclasses import dataclass
 from datetime import datetime
@@ -8,6 +9,7 @@ from uuid import UUID
 import pytest
 
 from dataclass_wizard import *
+from dataclass_wizard.constants import TAG
 from dataclass_wizard.errors import ParseError
 from ..conftest import *
 
@@ -79,6 +81,72 @@ def test_asdict_with_nested_dataclass():
     }
 
     assert d == expected
+
+
+def test_tag_field_is_used_in_dump_process():
+    """
+    Confirm that the `_TAG` field appears in the serialized JSON or dict
+    object (even for nested dataclasses) when a value is set in the
+    `Meta` config for a JSONWizard sub-class.
+    """
+
+    @dataclass
+    class Data(ABC):
+        """ base class for a Member """
+        number: float
+
+    class DataA(Data):
+        """ A type of Data"""
+        pass
+
+    class DataB(Data, JSONWizard):
+        """ Another type of Data """
+        class _(JSONWizard.Meta):
+            """
+            This defines a custom tag that shows up in de-serialized
+            dictionary object.
+            """
+            tag = 'B'
+
+    @dataclass
+    class Container(JSONWizard):
+        """ container holds a subclass of Data """
+        class _(JSONWizard.Meta):
+            tag = 'CONTAINER'
+
+        data: Union[DataA, DataB]
+
+    data_a = DataA(number=1.0)
+    data_b = DataB(number=1.0)
+
+    # initialize container with DataA
+    container = Container(data=data_a)
+
+    # export container to string and load new container from string
+    d1 = container.to_dict()
+
+    expected = {
+        TAG: 'CONTAINER',
+        'data': {'number': 1.0}
+    }
+
+    assert d1 == expected
+
+    # initialize container with DataB
+    container = Container(data=data_b)
+
+    # export container to string and load new container from string
+    d2 = container.to_dict()
+
+    expected = {
+        TAG: 'CONTAINER',
+        'data': {
+            TAG: 'B',
+            'number': 1.0
+        }
+    }
+
+    assert d2 == expected
 
 
 def test_to_dict_key_transform_with_json_field():

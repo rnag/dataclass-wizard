@@ -13,12 +13,14 @@ __all__ = ['IdentityParser',
            'DefaultDictParser',
            'TypedDictParser']
 
-from dataclasses import dataclass, InitVar
+from dataclasses import dataclass, InitVar, is_dataclass
 from typing import (
     Type, Any, Optional, Tuple, Dict, Iterable, Callable, List
 )
 
 from .abstractions import AbstractParser, FieldToParser
+from .class_helper import get_meta
+from .constants import TAG
 from .errors import ParseError
 from .type_def import (
     FrozenKeys, NoneType, DefFactory,
@@ -138,7 +140,7 @@ class OptionalParser(AbstractParser):
 
 @dataclass
 class UnionParser(AbstractParser):
-    __slots__ = ('parsers', )
+    __slots__ = ('parsers', 'tag_to_parser')
 
     base_type: Tuple[Type[T], ...]
     get_parser: InitVar[GetParserType]
@@ -148,6 +150,13 @@ class UnionParser(AbstractParser):
 
         self.parsers = tuple(get_parser(t, cls) for t in self.base_type
                              if t is not NoneType)
+
+        self.tag_to_parser = {}
+        for t in self.base_type:
+            if is_dataclass(t):
+                meta = get_meta(t)
+                if meta.tag:
+                    self.tag_to_parser[meta.tag] = get_parser(t, cls)
 
     def __contains__(self, item):
         """Check if parser is expected to handle the specified item type."""
@@ -160,6 +169,23 @@ class UnionParser(AbstractParser):
         for parser in self.parsers:
             if o in parser:
                 return parser(o)
+
+        # Attempt to parse to the desired dataclass type, using the `_TAG`
+        # field in the input dictionary object.
+        try:
+            tag = o[TAG]
+        except (TypeError, KeyError):
+            # Invalid type (`o` is not a dictionary object) or no such key.
+            pass
+        else:
+            try:
+                return self.tag_to_parser[tag](o)
+            except KeyError:
+                raise ParseError(
+                    TypeError('Object with tag was not in any of Union types'),
+                    o, [p.base_type for p in self.parsers],
+                    input_tag=tag,
+                    valid_tags=list(self.tag_to_parser.keys()))
 
         raise ParseError(
             TypeError('Object was not in any of Union types'),

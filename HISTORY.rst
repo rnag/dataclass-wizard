@@ -2,6 +2,20 @@
 History
 =======
 
+0.14.0 (2021-09-25)
+-------------------
+**Features and Improvements**
+
+* Add the ability to handle de-serialization and serialization of dataclasses
+  within ``Union`` types. A new attribute ``tag`` in the inner ``Meta`` class
+  determines the tag name to map to a dataclass, when the dataclass is part
+  of any ``Union`` types.
+
+* The dump (serialization) process has been reworked to function more like the
+  load process. That is, it will properly use the :class:`Meta` config for a
+  dataclass, as well as any custom load hooks for nested dataclasses. Performance
+  or functionality should not otherwise be affected.
+
 0.13.1 (2021-09-24)
 -------------------
 
