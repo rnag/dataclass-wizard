@@ -17,10 +17,10 @@ requires = [
 ]
 
 test_requirements = [
-    'pytest==6.2.4',
-    'pytest-mock==3.6.1',
-    'pytest-cov==2.12.1',
-    'pytest-runner==5.3.1'
+    'pytest~=6.2.4',
+    'pytest-mock~=3.6.1',
+    'pytest-cov~=2.12.1',
+    'pytest-runner~=5.3.1'
 ]
 
 about = {}
