@@ -179,7 +179,8 @@ def LoadMeta(data_class: Type[T],
              debug_enabled: bool = False,
              raise_on_unknown_json_key: bool = False,
              json_key_to_field: Dict[str, str] = None,
-             key_transform: Union[LetterCase, str] = None) -> M:
+             key_transform: Union[LetterCase, str] = None,
+             tag: str = None) -> M:
     """
     Helper function to setup the ``Meta`` Config for the JSON load
     (de-serialization) process, which is intended for use alongside the
@@ -216,6 +217,7 @@ def LoadMeta(data_class: Type[T],
         cls_meta.raise_on_unknown_json_key = raise_on_unknown_json_key
         cls_meta.json_key_to_field = json_key_to_field
         cls_meta.key_transform_with_load = key_transform
+        cls_meta.tag = cls_meta.tag or tag
 
         # Run the meta initialization for the dataclass, and also save the
         # mapping to `_META` so we have it for next time.
@@ -230,7 +232,8 @@ def LoadMeta(data_class: Type[T],
 def DumpMeta(data_class: Type[T],
              debug_enabled: bool = False,
              marshal_date_time_as: Union[DateTimeTo, str] = None,
-             key_transform: Union[LetterCase, str] = None) -> M:
+             key_transform: Union[LetterCase, str] = None,
+             tag: str = None) -> M:
     """
     Helper function to setup the ``Meta`` Config for the JSON dump
     (serialization) process, which is intended for use alongside the
@@ -266,6 +269,7 @@ def DumpMeta(data_class: Type[T],
         cls_meta.debug_enabled |= debug_enabled
         cls_meta.marshal_date_time_as = marshal_date_time_as
         cls_meta.key_transform_with_dump = key_transform
+        cls_meta.tag = cls_meta.tag or tag
 
         # Run the meta initialization for the dataclass, and also save the
         # mapping to `_META` so we have it for next time.

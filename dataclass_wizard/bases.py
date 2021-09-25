@@ -64,6 +64,16 @@ class BaseMeta:
     # transformed.
     key_transform_with_dump: ClassVar[Union[LetterCase, str]] = None
 
+    # The field name that identifies the tag for a class.
+    #
+    # When set to a value, a '__tag__' field will be populated in the
+    # dictionary object in the dump (serialization) process. When loading
+    # (or de-serializing) a dictionary object, the '__tag__' field will be
+    # used to load the corresponding dataclass, assuming the dataclass field
+    # is properly annotated as a Union type, ex.:
+    #   my_data: Union[Data1, Data2, Data3]
+    tag: str = None
+
 
 class BaseLoadHook:
     """

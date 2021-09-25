@@ -4,6 +4,7 @@ Tests for the `loaders` module, but more importantly for the `parsers` module.
 Note: I might refactor this into a separate `test_parsers.py` as time permits.
 """
 import logging
+from abc import ABC
 from collections import namedtuple, defaultdict, deque
 from dataclasses import dataclass
 from datetime import datetime, date, time
@@ -15,6 +16,7 @@ from typing import (
 import pytest
 
 from dataclass_wizard import *
+from dataclass_wizard.constants import TAG
 from dataclass_wizard.errors import ParseError, MissingFields, UnknownJSONKey
 from dataclass_wizard.parsers import OptionalParser, Parser, IdentityParser, SingleArgParser
 from dataclass_wizard.type_def import NoneType, T
@@ -113,6 +115,87 @@ def test_fromdict_with_nested_dataclass():
             MyElement(order_index=111, status_code='200'),
             MyElement(order_index=222, status_code=404)
     ]
+
+
+def test_tag_field_is_used_in_load_process():
+    """
+    Confirm that the `_TAG` field is used when de-serializing to a dataclass
+    instance (even for nested dataclasses) when a value is set in the
+    `Meta` config for a JSONWizard sub-class.
+    """
+
+    @dataclass
+    class Data(ABC):
+        """ base class for a Member """
+        number: float
+
+    class DataA(Data, JSONWizard):
+        """ A type of Data"""
+        class _(JSONWizard.Meta):
+            """
+            This defines a custom tag that uniquely identifies the dataclass.
+            """
+            tag = 'A'
+
+    class DataB(Data, JSONWizard):
+        """ Another type of Data """
+        class _(JSONWizard.Meta):
+            """
+            This defines a custom tag that uniquely identifies the dataclass.
+            """
+            tag = 'B'
+
+    class DataC(Data):
+        """ A type of Data"""
+
+    @dataclass
+    class Container(JSONWizard):
+        """ container holds a subclass of Data """
+        class _(JSONWizard.Meta):
+            tag = 'CONTAINER'
+
+        data: Union[DataA, DataB, DataC]
+
+    data = {
+        'data': {
+            TAG: 'A',
+            'number': '1.0'
+        }
+    }
+
+    # initialize container with DataA
+    container = Container.from_dict(data)
+
+    # Assert we de-serialize as a DataA object.
+    assert type(container.data) == DataA
+    assert isinstance(container.data.number, float)
+    assert container.data.number == 1.0
+
+    data = {
+        'data': {
+            TAG: 'B',
+            'number': 2.0
+        }
+    }
+
+    # initialize container with DataA
+    container = Container.from_dict(data)
+
+    # Assert we de-serialize as a DataA object.
+    assert type(container.data) == DataB
+    assert isinstance(container.data.number, float)
+    assert container.data.number == 2.0
+
+    # Test we receive an error when we provide an invalid tag value
+    data = {
+        'data': {
+            TAG: 'C',
+            'number': 2.0
+        }
+    }
+
+    with pytest.raises(ParseError):
+        _ = Container.from_dict(data)
 
 
 @pytest.mark.parametrize(

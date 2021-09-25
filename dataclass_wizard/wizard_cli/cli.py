@@ -102,7 +102,7 @@ class FileTypeWithExt(argparse.FileType):
     """
 
     def __init__(self, mode='r', ext=None,
-                 bufsize=-1, encoding=None, errors=None):
+                 bufsize=-1, encoding=None, errors='ignore'):
 
         super().__init__(mode, bufsize, encoding, errors)
         self._ext = ext

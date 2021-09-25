@@ -14,7 +14,7 @@ from dataclasses import _is_dataclass_instance
 from datetime import datetime, time, date
 from decimal import Decimal
 from enum import Enum
-from typing import Type, Dict, Any, NamedTupleMeta, Optional
+from typing import Type, Dict, Any, NamedTupleMeta, Optional, Callable
 from uuid import UUID
 
 from .abstractions import AbstractDumper
@@ -23,9 +23,9 @@ from .class_helper import (
     create_new_class,
     dataclass_fields, dataclass_field_to_json_field,
     dataclass_to_dumper, set_class_dumper,
-    setup_dump_config_for_cls_if_needed,
+    _CLASS_TO_DUMP_FUNC, setup_dump_config_for_cls_if_needed, get_meta,
 )
-from .constants import _DUMP_HOOKS
+from .constants import _DUMP_HOOKS, TAG
 from .log import LOG
 from .type_def import NoneType, DD, LSQ, E, U, LT, NT, T
 from .utils.string_conv import to_camel_case
@@ -190,26 +190,9 @@ def get_dumper(cls=None, create=False) -> Type[DumpMixin]:
         return set_class_dumper(cls, DumpMixin)
 
 
-def _setup_cfg_and_get_dumper(cls: Type[T], obj: T) -> Type[DumpMixin]:
-    """
-    Setup initial config for the dataclass if needed, and return the dumper
-    for the dataclass.
-    """
-    cls_dumper = get_dumper(cls)
-
-    # Pass the class reference itself, since we know we have an instance of
-    # the class.
-    setup_dump_config_for_cls_if_needed(cls)
-
-    # Call the optional hook that runs before we process the dataclass
-    cls_dumper.__pre_as_dict__(obj)
-
-    return cls_dumper
-
-
 def asdict(obj: T,
            config: Optional[BaseMeta] = None,
-           *, dict_factory=dict) -> Dict[str, Any]:
+           *, cls=None, dict_factory=dict) -> Dict[str, Any]:
     """Return the fields of a dataclass instance as a new dictionary mapping
     field names to field values.
 
@@ -240,12 +223,87 @@ def asdict(obj: T,
     #     raise TypeError("asdict() should be called on dataclass instances")
 
     # -- The following lines are added, and are not present in original implementation. --
-    cls = type(obj)
-    cls_dumper = _setup_cfg_and_get_dumper(cls, obj)
-    hooks = cls_dumper.__DUMP_HOOKS__
+    cls = cls or type(obj)
+
+    try:
+        dump = _CLASS_TO_DUMP_FUNC[cls]
+    except KeyError:
+        dump = dump_func_for_dataclass(cls)
+
+    return dump(obj, dict_factory)
     # -- END --
 
-    return _asdict_inner(obj, dict_factory, hooks)
+
+def dump_func_for_dataclass(cls: Type[T]
+                            ) -> Callable[[T, Any], Dict[str, Any]]:
+
+    # Gets the dumper for the class, or the default dumper otherwise.
+    cls_dumper = get_dumper(cls)
+
+    # Get the meta config for the class, or the default config otherwise.
+    meta = get_meta(cls)
+
+    # This contains the dump hooks for the dataclass. If the class
+    # sub-classes from `DumpMixIn`, these hooks could be customized.
+    hooks = cls_dumper.__DUMP_HOOKS__
+
+    # Set up the initial dump config for the dataclass.
+    setup_dump_config_for_cls_if_needed(cls)
+
+    # A cached mapping of each dataclass field to the resolved key name in a
+    # JSON or dictionary object; useful so we don't need to do a case
+    # transformation (via regex) each time.
+    dataclass_to_json_field = dataclass_field_to_json_field(cls)
+
+    def cls_asdict(obj: T, dict_factory=dict) -> Dict[str, Any]:
+        """
+        Serialize a dataclass of type `cls` to a Python dictionary object.
+        """
+
+        # Call the optional hook that runs before we process the dataclass
+        cls_dumper.__pre_as_dict__(obj)
+
+        # This a list that contains a mapping of each dataclass field to its
+        # serialized value.
+        result = []
+
+        for f in dataclass_fields(cls):
+            # -- This line is *mostly* the same as in the original version --
+            value = _asdict_inner(getattr(obj, f.name), dict_factory, hooks)
+
+            json_field = dataclass_to_json_field.get(f.name)
+            if not json_field:
+                # Normalize the dataclass field name (by default to camel
+                # case)
+                json_field = cls_dumper.transform_dataclass_field(f.name)
+                dataclass_to_json_field[f.name] = json_field
+
+            # -- This line is *mostly* the same as in the original version --
+            result.append((json_field, value))
+
+        # -- This line is the same as in the original version --
+        return dict_factory(result)
+
+    def cls_asdict_with_tag(obj: T, dict_factory=dict) -> Dict[str, Any]:
+        """
+        Serialize a dataclass of type `cls` to a Python dictionary object.
+        Adds a tag field when `tag` field is passed in Meta.
+        """
+        result = cls_asdict(obj, dict_factory)
+        result[TAG] = meta.tag
+
+        return result
+
+    if meta.tag:
+        asdict_func = cls_asdict_with_tag
+    else:
+        asdict_func = cls_asdict
+
+    # Save the dump function for the class, so we don't need to run this logic
+    # each time.
+    _CLASS_TO_DUMP_FUNC[cls] = asdict_func
+
+    return asdict_func
 
 
 # NOTE: This method has been modified to accept a `hook` argument, and the
@@ -264,26 +322,7 @@ def _asdict_inner(obj, dict_factory, hooks) -> Any:
 
     # -- This check is the same as in the original version --
     if _is_dataclass_instance(obj):
-
-        dataclass_to_json_field = dataclass_field_to_json_field(cls)
-        cls_dumper = _setup_cfg_and_get_dumper(cls, obj)
-        result = []
-
-        for f in dataclass_fields(cls):
-            # -- This line is *mostly* the same as in the original version --
-            value = _asdict_inner(getattr(obj, f.name), dict_factory, hooks)
-
-            json_field = dataclass_to_json_field.get(f.name)
-            if not json_field:
-                # Normalize the dataclass field name (by default to camel
-                # case)
-                json_field = cls_dumper.transform_dataclass_field(f.name)
-                dataclass_to_json_field[f.name] = json_field
-
-            # -- This line is *mostly* the same as in the original version --
-            result.append((json_field, value))
-        # -- This line is the same as in the original version --
-        return dict_factory(result)
+        return asdict(obj, cls=cls, dict_factory=dict_factory)
 
     else:
 
