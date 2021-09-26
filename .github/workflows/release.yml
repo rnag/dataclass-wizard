@@ -1,4 +1,5 @@
 # Publish package on main branch if it's tagged with 'v*'
+# Ref: https://github.community/t/run-workflow-on-push-tag-on-specific-branch/17519
 
 name: build & release
 
@@ -6,7 +7,6 @@ name: build & release
 on:
   # Triggers the workflow on push or pull request events but only for the master branch
   push:
-    branches: [ master, main ]
     tags:
       - 'v*'
 
@@ -28,6 +28,10 @@ jobs:
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v2
+
+      - name: Exit if not on main branch
+        if: endsWith(github.ref, 'main') == false
+        run: exit -1
 
       - uses: actions/setup-python@v2
         with:
