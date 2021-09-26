@@ -72,7 +72,7 @@ class BaseMeta:
     # used to load the corresponding dataclass, assuming the dataclass field
     # is properly annotated as a Union type, ex.:
     #   my_data: Union[Data1, Data2, Data3]
-    tag: str = None
+    tag: ClassVar[str] = None
 
 
 class BaseLoadHook:
