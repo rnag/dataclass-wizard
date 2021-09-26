@@ -9,8 +9,8 @@ Dataclass Wizard
 .. image:: https://img.shields.io/pypi/pyversions/dataclass-wizard.svg
         :target: https://pypi.org/project/dataclass-wizard
 
-.. image:: https://travis-ci.com/rnag/dataclass-wizard.svg?branch=main
-        :target: https://travis-ci.com/rnag/dataclass-wizard
+.. image:: https://github.com/rnag/dataclass-wizard/actions/workflows/dev.yml/badge.svg
+        :target: https://github.com/rnag/dataclass-wizard/actions/workflows/dev.yml
 
 .. image:: https://readthedocs.org/projects/dataclass-wizard/badge/?version=latest
         :target: https://dataclass-wizard.readthedocs.io/en/latest/?version=latest
