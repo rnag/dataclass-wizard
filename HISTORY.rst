@@ -2,6 +2,14 @@
 History
 =======
 
+0.14.1 (2021-09-26)
+-------------------
+
+**Bugfixes**
+
+* The :attr:`Meta.tag` field should be updated to a ``ClassVar`` to help
+  reduce the memory footprint.
+
 0.14.0 (2021-09-25)
 -------------------
 **Features and Improvements**
