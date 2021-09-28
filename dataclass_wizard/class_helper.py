@@ -142,7 +142,7 @@ def _setup_load_config_for_cls(cls_loader, cls: Type):
     json_to_dataclass_field = _JSON_FIELD_TO_DATACLASS_FIELD[cls]
     name_to_parser = {}
 
-    for f in dataclass_fields(cls):
+    for f in dataclass_init_fields(cls):
 
         # Lookup the Parser (dispatcher) for each field based on its annotated
         # type, and then cache it so we don't need to lookup each time.
@@ -257,6 +257,11 @@ def dataclass_fields(cls) -> Tuple[Field]:
         _FIELDS[cls] = fields(cls)
 
     return _FIELDS[cls]
+
+
+def dataclass_init_fields(cls) -> Tuple[Field]:
+    """Get only the dataclass fields that would be passed into the constructor."""
+    return tuple(f for f in dataclass_fields(cls) if f.init)
 
 
 def create_new_class(
