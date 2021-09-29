@@ -6,7 +6,7 @@ Note: I might refactor this into a separate `test_parsers.py` as time permits.
 import logging
 from abc import ABC
 from collections import namedtuple, defaultdict, deque
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, date, time
 from typing import (
     List, Optional, Union, Tuple, Dict, NamedTuple, Type, DefaultDict,
@@ -196,6 +196,29 @@ def test_tag_field_is_used_in_load_process():
 
     with pytest.raises(ParseError):
         _ = Container.from_dict(data)
+
+
+def test_e2e_process_with_init_only_fields():
+    """
+    We are able to correctly de-serialize a class instance that excludes some
+    dataclass fields from the constructor, i.e. `field(init=False)`
+    """
+
+    @dataclass
+    class MyClass(JSONWizard):
+        my_str: str
+        my_float: float = field(default=0.123, init=False)
+        my_int: int = 1
+
+    c = MyClass('testing')
+
+    expected = {'myStr': 'testing', 'myFloat': 0.123, 'myInt': 1}
+
+    out_dict = c.to_dict()
+    assert out_dict == expected
+
+    # Assert we are able to de-serialize the data back as expected
+    assert c.from_dict(out_dict) == c
 
 
 @pytest.mark.parametrize(
