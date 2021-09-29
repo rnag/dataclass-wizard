@@ -2,6 +2,15 @@
 History
 =======
 
+0.14.2 (2021-09-28)
+-------------------
+
+**Bugfixes**
+
+* Dataclass fields that are excluded from the constructor method - i.e. ones
+  defined like ``field(init=False...)`` - should now be similarly handled in the
+  de-serialization process.
+
 0.14.1 (2021-09-26)
 -------------------
 
