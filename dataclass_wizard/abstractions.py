@@ -6,11 +6,15 @@ from dataclasses import dataclass, InitVar
 from datetime import datetime, time, date
 from decimal import Decimal
 from typing import (
-    Any, Type, TypeVar, Union, List, Tuple, Dict, SupportsFloat, AnyStr, Text,
-    Optional, SupportsInt, Sequence, Iterable
+    Any, Type, TypeVar, Union, List, Tuple, Dict, SupportsFloat, AnyStr,
+    Text, Sequence, Iterable
 )
 
-from .type_def import DefFactory, FrozenKeys, M, N, T, NT, E, U, DD, LSQ, ListOfJSONObject, JSONObject
+from .type_def import (
+    DefFactory, FrozenKeys, ListOfJSONObject, JSONObject,
+    M, N, T, NT, E, U, DD, LSQ
+)
+
 
 # Create a generic variable that can be 'AbstractJSONWizard', or any subclass.
 W = TypeVar('W', bound='AbstractJSONWizard')
