@@ -400,9 +400,14 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
             # If load hook is still not resolved at this point, it's possible
             # the type is a subclass of a known type.
             for typ in hooks:
-                if issubclass(base_type, typ):
-                    load_hook = hooks[typ]
-                    break
+                # TODO use a `is_subclass_safe` helper function instead
+                try:
+                    if issubclass(base_type, typ):
+                        load_hook = hooks[typ]
+                        break
+                except TypeError:
+                    continue
+
             else:
                 # No matching hook is found for the type.
                 err = TypeError('Provided type is not currently supported.')

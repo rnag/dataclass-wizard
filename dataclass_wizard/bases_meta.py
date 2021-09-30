@@ -233,7 +233,8 @@ def DumpMeta(data_class: Type[T],
              debug_enabled: bool = False,
              marshal_date_time_as: Union[DateTimeTo, str] = None,
              key_transform: Union[LetterCase, str] = None,
-             tag: str = None) -> M:
+             tag: str = None,
+             skip_defaults: bool = False) -> M:
     """
     Helper function to setup the ``Meta`` Config for the JSON dump
     (serialization) process, which is intended for use alongside the
@@ -270,6 +271,7 @@ def DumpMeta(data_class: Type[T],
         cls_meta.marshal_date_time_as = marshal_date_time_as
         cls_meta.key_transform_with_dump = key_transform
         cls_meta.tag = cls_meta.tag or tag
+        cls_meta.skip_defaults = skip_defaults
 
         # Run the meta initialization for the dataclass, and also save the
         # mapping to `_META` so we have it for next time.

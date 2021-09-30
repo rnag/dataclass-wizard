@@ -74,6 +74,11 @@ class BaseMeta:
     #   my_data: Union[Data1, Data2, Data3]
     tag: ClassVar[str] = None
 
+    # Determines whether we should we skip / omit fields with default values
+    # (based on the `default` or `default_factory` argument specified for
+    # the :func:`dataclasses.field`) in the serialization process.
+    skip_defaults: ClassVar[bool] = False
+
 
 class BaseLoadHook:
     """
