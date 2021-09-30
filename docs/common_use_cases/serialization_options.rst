@@ -4,8 +4,8 @@ Serialization Options
 The following parameters can be used to fine-tune and control how the serialization of a
 dataclass instance to a Python ``dict`` object or JSON string is handled.
 
-Skip Default Values
-~~~~~~~~~~~~~~~~~~~
+Skip Defaults
+~~~~~~~~~~~~~
 
 A common use case is skipping fields with default values - based on the ``default``
 or ``default_factory`` argument to :func:`dataclasses.field` - in the serialization
