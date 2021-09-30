@@ -271,20 +271,20 @@ def dataclass_init_fields(cls) -> Tuple[Field]:
 
 
 def dataclass_field_names(cls) -> Tuple[str, ...]:
-    """Get only the dataclass fields that would be passed into the constructor."""
+    """Get the names of all dataclass fields"""
     return tuple(f.name for f in dataclass_fields(cls))
 
 
 def dataclass_field_to_default(cls) -> Dict[str, Any]:
-    """Get only the dataclass fields that would be passed into the constructor."""
-    ret = {}
+    """Get default values for the (optional) dataclass fields."""
+    defaults = {}
     for f in dataclass_fields(cls):
         if f.default is not MISSING:
-            ret[f.name] = f.default
+            defaults[f.name] = f.default
         elif f.default_factory is not MISSING:
-            ret[f.name] = f.default_factory()
+            defaults[f.name] = f.default_factory()
 
-    return ret
+    return defaults
 
 
 def create_new_class(

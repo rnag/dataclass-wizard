@@ -28,7 +28,7 @@ from .class_helper import (
 )
 from .constants import _DUMP_HOOKS, TAG
 from .log import LOG
-from .type_def import NoneType, DD, LSQ, E, U, LT, NT, T, ExplicitNull
+from .type_def import ExplicitNull, NoneType, DD, LSQ, E, U, LT, NT, T
 from .utils.string_conv import to_camel_case
 
 

@@ -2,6 +2,23 @@
 History
 =======
 
+0.15.0 (2021-09-30)
+-------------------
+
+* Add the ability to skip fields with default values in the serialization
+  process. A new attribute ``skip_defaults`` in the inner ``Meta`` class
+  determines whether to skip / omit fields with default values, based on the
+  ``default`` or ``default_factory`` argument to :func:`dataclasses.field`.
+
+* Add the ability to omit fields in the serialization process.
+
+  * A new argument ``dump`` added to the :func:`json_key` and :func:`json_field`
+    helper functions determines whether to exclude the field in the JSON or
+    dictionary result.
+  * The :func:`asdict` helper function has similarly been updated to accept a
+    ``exclude`` argument, containing a list of one or more dataclass field
+    names to exclude from the serialization process.
+
 0.14.2 (2021-09-28)
 -------------------
 
