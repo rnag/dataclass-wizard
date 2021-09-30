@@ -212,7 +212,7 @@ def test_to_dict_with_skip_defaults():
         other_str: str = 'any value'
         optional_str: str = None
         my_list: List[str] = field(default_factory=list)
-        my_dict: DefaultDict[str, list[float]] = field(
+        my_dict: DefaultDict[str, List[float]] = field(
             default_factory=lambda: defaultdict(list))
 
     c = MyClass('abc')
