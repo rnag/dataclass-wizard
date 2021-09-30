@@ -4,6 +4,10 @@ from dataclasses import Field, MISSING
 from typing import Any, Type, Dict, Tuple, ClassVar, Optional
 
 
+# added as we can't import from `type_def`, as we run into a circular import.
+JSONObject = Dict[str, Any]
+
+
 class JSONWizardError(ABC, Exception):
     """
     Base error class, for errors raised by this library.
@@ -96,9 +100,9 @@ class MissingFields(JSONWizardError):
                  '  error: {e!s}')
 
     def __init__(self, base_err: Exception,
-                 obj: Dict[str, Any],
+                 obj: JSONObject,
                  cls: Type,
-                 cls_kwargs: Dict[str, Any],
+                 cls_kwargs: JSONObject,
                  cls_fields: Tuple[Field], **kwargs):
 
         super().__init__()
@@ -152,7 +156,7 @@ class UnknownJSONKey(JSONWizardError):
 
     def __init__(self,
                  json_key: str,
-                 obj: Dict[str, Any],
+                 obj: JSONObject,
                  cls: Type,
                  cls_fields: Tuple[Field], **kwargs):
         super().__init__()

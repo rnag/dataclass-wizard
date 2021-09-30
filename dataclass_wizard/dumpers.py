@@ -28,7 +28,10 @@ from .class_helper import (
 )
 from .constants import _DUMP_HOOKS, TAG
 from .log import LOG
-from .type_def import ExplicitNull, NoneType, DD, LSQ, E, U, LT, NT, T
+from .type_def import (
+    ExplicitNull, NoneType, JSONObject,
+    DD, LSQ, E, U, LT, NT, T
+)
 from .utils.string_conv import to_camel_case
 
 
@@ -194,7 +197,7 @@ def get_dumper(cls=None, create=False) -> Type[DumpMixin]:
 def asdict(obj: T,
            config: Optional[BaseMeta] = None,
            *, cls=None, dict_factory=dict,
-           exclude: List[str] = None, **kwargs) -> Dict[str, Any]:
+           exclude: List[str] = None, **kwargs) -> JSONObject:
     """Return the fields of a dataclass instance as a new dictionary mapping
     field names to field values.
 
@@ -237,7 +240,7 @@ def asdict(obj: T,
 
 
 def dump_func_for_dataclass(cls: Type[T]
-                            ) -> Callable[[T, Any, Any, Any], Dict[str, Any]]:
+                            ) -> Callable[[T, Any, Any, Any], JSONObject]:
 
     # Gets the dumper for the class, or the default dumper otherwise.
     cls_dumper = get_dumper(cls)
@@ -266,7 +269,7 @@ def dump_func_for_dataclass(cls: Type[T]
 
     def cls_asdict(obj: T, dict_factory=dict,
                    exclude: List[str] = None,
-                   skip_defaults=meta.skip_defaults) -> Dict[str, Any]:
+                   skip_defaults=meta.skip_defaults) -> JSONObject:
         """
         Serialize a dataclass of type `cls` to a Python dictionary object.
         """
@@ -319,7 +322,7 @@ def dump_func_for_dataclass(cls: Type[T]
 
     def cls_asdict_with_tag(obj: T, dict_factory=dict,
                             exclude: List[str] = None,
-                            **kwargs) -> Dict[str, Any]:
+                            **kwargs) -> JSONObject:
         """
         Serialize a dataclass of type `cls` to a Python dictionary object.
         Adds a tag field when `tag` field is passed in Meta.

@@ -69,7 +69,7 @@ from typing import (
 
 from .. import property_wizard
 from ..class_helper import get_class_name
-from ..type_def import PyDeque, T
+from ..type_def import PyDeque, JSONList, JSONObject, JSONValue, T
 from ..utils.string_conv import to_snake_case, to_pascal_case
 # noinspection PyProtectedMember
 from ..utils.type_conv import _TRUTHY_VALUES
@@ -85,16 +85,9 @@ _S = TypeVar('_S')
 _FALSY_VALUES = ('FALSE', 'F', 'NO', 'N', '0')
 _BOOL_VALUES = _TRUTHY_VALUES + _FALSY_VALUES
 
-# Valid object types in JSON.
-JSONObjectType = Union[None, str, bool, int, float, list, dict]
-
-# Valid collection types in JSON.
-JSONListType = List[Any]
-JSONMappingType = Dict[str, Any]
-
 # Valid types for JSON contents; this can be either a list of any type,
 # or a dictionary with `string` keys and values of any type.
-JSONBlobType = Union[JSONListType, JSONMappingType]
+JSONBlobType = Union[JSONList, JSONObject]
 
 PyDataTypeOrSeq = Union['PyDataType', Sequence['PyDataType']]
 TypeContainerElements = Union[PyDataTypeOrSeq,
@@ -395,6 +388,7 @@ class ModuleImporter:
 
         return f'{name}{start}{string}{end}'
 
+    # noinspection PyUnresolvedReferences
     @classmethod
     def wrap_with_import(cls, deck: PyDeque[str],
                          imported: object,
@@ -566,7 +560,9 @@ class TypeContainer(List[TypeContainerElements]):
 
         # I'm using `deque`s here to avoid doing `list.insert(0, x)` or later
         # iterating over `reversed(list)`, as this might be a bit faster.
+        # noinspection PyUnresolvedReferences
         typing_imports: PyDeque[object] = deque()
+        # noinspection PyUnresolvedReferences
         parts: PyDeque[str]
 
         if self.is_optional:
@@ -625,6 +621,7 @@ def possible_types_for_string_value(string: str) -> PyDataTypeOrSeq:
 
         # If force-resolve is enabled, just return the inferred type if one
         # was determined.
+        # noinspection PyUnresolvedReferences
         if Globals.force_strings and possible_types:
             return possible_types[0]
 
@@ -647,7 +644,7 @@ def possible_types_for_string_value(string: str) -> PyDataTypeOrSeq:
     return PyDataType.STRING
 
 
-def json_to_python_type(o: JSONObjectType) -> PyDataTypeOrSeq:
+def json_to_python_type(o: JSONValue) -> PyDataTypeOrSeq:
     """
     Convert a JSON object to a Python Data Type, or a Union of Python Data
     Types.
@@ -680,12 +677,11 @@ def json_to_python_type(o: JSONObjectType) -> PyDataTypeOrSeq:
 class JSONRootParser:
 
     data: JSONBlobType
-    force_strings: InitVar[bool] = False
 
     model: Union['PyListGenerator',
                  'PyDataclassGenerator'] = field(init=False)
 
-    def __post_init__(self, force_strings: bool):
+    def __post_init__(self):
 
         # Clear imports from last run
         ModuleImporter.clear_imports()
@@ -713,7 +709,7 @@ class JSONRootParser:
 @dataclass
 class PyDataclassGenerator(metaclass=property_wizard):
 
-    data: InitVar[JSONMappingType]
+    data: InitVar[JSONObject]
 
     _name: str = 'data'
     indent: str = ' ' * 4
@@ -751,7 +747,7 @@ class PyDataclassGenerator(metaclass=property_wizard):
 
         return obj
 
-    def __post_init__(self, data: JSONMappingType, nested_lvl: int):
+    def __post_init__(self, data: JSONObject, nested_lvl: int):
 
         for k, v in data.items():
             underscored_field = to_snake_case(k)
@@ -799,12 +795,14 @@ class PyDataclassGenerator(metaclass=property_wizard):
         parts = []
         nested_parts = []
 
+        # noinspection PyUnresolvedReferences
         if Globals.insert_comments:
             class_parts.append(
                 textwrap.indent('"""', self.indent))
             class_parts.append(
                 textwrap.indent(f'{self.name} dataclass', self.indent))
 
+            # noinspection PyUnresolvedReferences
             if Globals.newline_after_class_def:
                 class_parts.append('')
 
@@ -864,7 +862,7 @@ class PyListGenerator(metaclass=property_wizard):
     # Default name for model class if none is provided.
     default_name: ClassVar[str] = 'data'
 
-    data: JSONListType
+    data: JSONList
 
     container_name: str = 'container'
     _name: str = None

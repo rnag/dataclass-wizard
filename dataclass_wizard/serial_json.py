@@ -1,7 +1,7 @@
 import json
 # noinspection PyProtectedMember
 from dataclasses import _create_fn, _set_new_attribute
-from typing import Type, Dict, Any, List, Union, AnyStr
+from typing import Type, List, Union, AnyStr
 
 from .abstractions import AbstractJSONWizard, W
 from .bases_meta import BaseJSONWizardMeta
@@ -9,7 +9,7 @@ from .class_helper import call_meta_initializer_if_needed
 from .decorators import _alias
 from .dumpers import asdict
 from .loaders import fromdict, fromlist
-from .type_def import Decoder, Encoder
+from .type_def import Decoder, Encoder, JSONObject, ListOfJSONObject
 
 
 class JSONSerializable(AbstractJSONWizard):
@@ -46,7 +46,7 @@ class JSONSerializable(AbstractJSONWizard):
 
     @classmethod
     @_alias(fromlist)
-    def from_list(cls: Type[W], o: List[Dict[str, Any]]) -> List[W]:
+    def from_list(cls: Type[W], o: ListOfJSONObject) -> List[W]:
         """
         Converts a Python `list` object to a list of the dataclass instances.
         """
@@ -55,7 +55,7 @@ class JSONSerializable(AbstractJSONWizard):
 
     @classmethod
     @_alias(fromdict)
-    def from_dict(cls: Type[W], o: Dict[str, Any]) -> W:
+    def from_dict(cls: Type[W], o: JSONObject) -> W:
         """
         Converts a Python `dict` object to an instance of the dataclass.
         """
@@ -63,7 +63,7 @@ class JSONSerializable(AbstractJSONWizard):
         ...
 
     @_alias(asdict)
-    def to_dict(self: W) -> Dict[str, Any]:
+    def to_dict(self: W) -> JSONObject:
         """
         Converts the dataclass instance to a Python dictionary object that is
         JSON serializable.
@@ -78,6 +78,19 @@ class JSONSerializable(AbstractJSONWizard):
         Converts the dataclass instance to a JSON `string` representation.
         """
         return encoder(asdict(self), **encoder_kwargs)
+
+    @classmethod
+    def list_to_json(cls: Type[W],
+                     instances: List[W],
+                     encoder: Encoder = json.dumps,
+                     **encoder_kwargs) -> AnyStr:
+        """
+        Converts a ``list`` of dataclass instances to a JSON `string`
+        representation.
+        """
+        list_of_dict = [asdict(o, cls=cls) for o in instances]
+
+        return encoder(list_of_dict, **encoder_kwargs)
 
     def __init_subclass__(cls, str=True):
         """

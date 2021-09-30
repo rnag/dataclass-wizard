@@ -9,6 +9,10 @@ __all__ = [
     'NoneType',
     'ExplicitNullType',
     'ExplicitNull',
+    'JSONList',
+    'JSONObject',
+    'ListOfJSONObject',
+    'JSONValue',
     'Encoder',
     'Decoder',
     'NUMBERS',
@@ -90,6 +94,14 @@ NoneType = type(None)
 #   keyword with old-style TypedDict().  See https://bugs.python.org/issue42059
 PyTypedDicts: List[Type['TypedDict']] = []
 
+# Valid collection types in JSON.
+JSONList = List[Any]
+JSONObject = Dict[str, Any]
+ListOfJSONObject = List[JSONObject]
+
+# Valid value types in JSON.
+JSONValue = Union[None, str, bool, int, float, JSONList, JSONObject]
+
 
 if PY38_OR_ABOVE:
     from typing import ForwardRef as PyForwardRef
@@ -146,7 +158,8 @@ class Encoder(PyProtocol):
     `json.dumps`
     """
 
-    def __call__(self, obj: Dict[str, Any], **kwargs) -> AnyStr:
+    def __call__(self, obj: Union[JSONObject, JSONList],
+                 **kwargs) -> AnyStr:
         ...
 
 
@@ -156,7 +169,6 @@ class Decoder(PyProtocol):
     `json.loads`
     """
 
-    def __call__(self, s: AnyStr, **kwargs) -> Union[
-        Dict[str, Any], List[Dict[str, Any]]
-    ]:
+    def __call__(self, s: AnyStr,
+                 **kwargs) -> Union[JSONObject, ListOfJSONObject]:
         ...
