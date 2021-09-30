@@ -75,6 +75,21 @@ does not matter, but for demo purposes it's named the same as the base class her
             # How dataclass fields should be transformed to JSON keys.
             key_transform_with_dump = LetterCase.SNAKE
 
+            # The field name that identifies the tag for a class.
+            #
+            # When set to a value, a '__tag__' field will be populated in the
+            # dictionary object in the dump (serialization) process. When loading
+            # (or de-serializing) a dictionary object, the '__tag__' field will be
+            # used to load the corresponding dataclass, assuming the dataclass field
+            # is properly annotated as a Union type, ex.:
+            #   my_data: Union[Data1, Data2, Data3]
+            tag = ''
+
+            # Determines whether we should we skip / omit fields with default values
+            # (based on the `default` or `default_factory` argument specified for
+            # the :func:`dataclasses.field`) in the serialization process.
+            skip_defaults = True
+
         MyStr: str
         MyDate: date
 

@@ -6,11 +6,14 @@ from dataclasses import dataclass, InitVar
 from datetime import datetime, time, date
 from decimal import Decimal
 from typing import (
-    Any, Type, TypeVar, Union, List, Tuple, Dict, SupportsFloat, AnyStr, Text,
-    Optional, SupportsInt, Sequence, Iterable
+    Any, Type, TypeVar, Union, List, Tuple, Dict, SupportsFloat, AnyStr,
+    Text, Sequence, Iterable
 )
 
-from .type_def import DefFactory, FrozenKeys, M, N, T, NT, E, U, DD, LSQ
+from .type_def import (
+    DefFactory, FrozenKeys, ListOfJSONObject, JSONObject,
+    M, N, T, NT, E, U, DD, LSQ
+)
 
 
 # Create a generic variable that can be 'AbstractJSONWizard', or any subclass.
@@ -33,7 +36,7 @@ class AbstractJSONWizard(ABC):
 
     @classmethod
     @abstractmethod
-    def from_json(cls: Type[W], string: str) -> Union[W, List[W]]:
+    def from_json(cls: Type[W], string: AnyStr) -> Union[W, List[W]]:
         """
         Converts a JSON `string` to an instance of the dataclass, or a list of
         the dataclass instances.
@@ -41,29 +44,37 @@ class AbstractJSONWizard(ABC):
 
     @classmethod
     @abstractmethod
-    def from_list(cls: Type[W], o: List[Dict[str, Any]]) -> List[W]:
+    def from_list(cls: Type[W], o: ListOfJSONObject) -> List[W]:
         """
         Converts a Python `list` object to a list of the dataclass instances.
         """
 
     @classmethod
     @abstractmethod
-    def from_dict(cls: Type[W], o: Dict[str, Any]) -> W:
+    def from_dict(cls: Type[W], o: JSONObject) -> W:
         """
         Converts a Python `dict` object to an instance of the dataclass.
         """
 
     @abstractmethod
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self: W) -> JSONObject:
         """
         Converts the dataclass instance to a Python dictionary object that is
         JSON serializable.
         """
 
     @abstractmethod
-    def to_json(self, indent=None) -> str:
+    def to_json(self: W, indent=None) -> AnyStr:
         """
         Converts the dataclass instance to a JSON `string` representation.
+        """
+
+    @classmethod
+    @abstractmethod
+    def list_to_json(cls: Type[W], instances: List[W], indent=None) -> AnyStr:
+        """
+        Converts a ``list`` of dataclass instances to a JSON `string`
+        representation.
         """
 
 

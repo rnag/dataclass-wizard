@@ -91,7 +91,7 @@ Supported Types
 
 * Special `typing primitives`_ from the ``typing`` module
     - ``Any``
-    - ``Union``
+    - ``Union`` - Also supports `using dataclasses`_.
     - ``Optional``
 
 * Recently introduced Generic types (available in Python 3.6+ via the ``typing-extensions``
@@ -151,3 +151,5 @@ Special Cases
 * Commonly used ``dict`` sub-types (such as ``defaultdict``) will be de-serialized
   from JSON objects using the annotated base type, and serialized back as
   plain ``dict`` objects.
+
+.. _using dataclasses: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/dataclasses_in_union_types.html

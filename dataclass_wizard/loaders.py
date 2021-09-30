@@ -23,7 +23,7 @@ from .errors import ParseError, MissingFields, UnknownJSONKey, MissingData
 from .log import LOG
 from .parsers import *
 from .type_def import (
-    ExplicitNull, PyForwardRef, FrozenKeys, DefFactory, NoneType,
+    ExplicitNull, PyForwardRef, FrozenKeys, DefFactory, NoneType, JSONObject,
     M, N, T, E, U, DD, LSQ, NT
 )
 from .utils.string_conv import to_snake_case
@@ -488,7 +488,7 @@ def get_loader(class_or_instance=None, create=False) -> Type[LoadMixin]:
 
 
 def fromdict(cls: Type[T],
-             d: Dict[str, Any],
+             d: JSONObject,
              config: Optional[BaseMeta] = None) -> T:
     """
     Converts a Python dictionary object to a dataclass instance.
@@ -511,7 +511,7 @@ def fromdict(cls: Type[T],
     return load(d)
 
 
-def fromlist(cls: Type[T], list_of_dict: List[Dict[str, Any]]) -> List[T]:
+def fromlist(cls: Type[T], list_of_dict: List[JSONObject]) -> List[T]:
     """
     Converts a Python list object to a list of dataclass instances.
 
@@ -527,7 +527,7 @@ def fromlist(cls: Type[T], list_of_dict: List[Dict[str, Any]]) -> List[T]:
     return [load(d) for d in list_of_dict]
 
 
-def load_func_for_dataclass(cls: Type[T]) -> Callable[[Dict[str, Any]], T]:
+def load_func_for_dataclass(cls: Type[T]) -> Callable[[JSONObject], T]:
 
     # Gets the loader for the class, or the default loader otherwise.
     cls_loader = get_loader(cls)
@@ -544,7 +544,7 @@ def load_func_for_dataclass(cls: Type[T]) -> Callable[[Dict[str, Any]], T]:
     # transformation (via regex) each time.
     json_to_dataclass_field = json_field_to_dataclass_field(cls)
 
-    def cls_fromdict(o: Dict[str, Any], *_):
+    def cls_fromdict(o: JSONObject, *_):
         """
         De-serialize a dictionary `o` to an instance of a dataclass `cls`.
         """
@@ -610,7 +610,7 @@ def load_func_for_dataclass(cls: Type[T]) -> Callable[[Dict[str, Any]], T]:
                 e, o, cls, cls_kwargs, dataclass_fields(cls)
             ) from None
 
-    def lookup_field_for_json_key(o: Dict[str, Any], json_field: str):
+    def lookup_field_for_json_key(o: JSONObject, json_field: str):
         """
         Determines the dataclass field which a JSON key should map to. Note
         this only runs the initial time, i.e. the first time we encounter the

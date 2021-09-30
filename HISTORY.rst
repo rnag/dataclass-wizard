@@ -2,6 +2,16 @@
 History
 =======
 
+0.15.1 (2021-09-30)
+-------------------
+
+* Add a new method :meth:`list_to_json` to the :class:`JSONWizard` Mixin class, which can be
+  used to convert a list of dataclass instances to a JSON string representation.
+
+* Minor code refactoring to introduce small typing-related changes.
+
+* Update docs.
+
 0.15.0 (2021-09-30)
 -------------------
 
