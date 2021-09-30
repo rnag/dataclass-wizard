@@ -7,7 +7,7 @@ __description__ = 'Marshal dataclasses to/from JSON. Use field properties ' \
                   'with initial values. Construct a dataclass schema with ' \
                   'JSON input.'
 __url__ = 'https://github.com/rnag/dataclass-wizard'
-__version__ = '0.14.2'
+__version__ = '0.15.0'
 __author__ = 'Ritvik Nag'
 __author_email__ = 'rv.kvetch@gmail.com'
 __license__ = 'Apache 2.0'

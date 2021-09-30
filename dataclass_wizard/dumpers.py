@@ -14,20 +14,21 @@ from dataclasses import _is_dataclass_instance
 from datetime import datetime, time, date
 from decimal import Decimal
 from enum import Enum
-from typing import Type, Dict, Any, NamedTupleMeta, Optional, Callable
+from typing import Type, List, Dict, Any, NamedTupleMeta, Optional, Callable
 from uuid import UUID
 
 from .abstractions import AbstractDumper
 from .bases import BaseDumpHook, BaseMeta
 from .class_helper import (
     create_new_class,
-    dataclass_fields, dataclass_field_to_json_field,
+    dataclass_field_names, dataclass_field_to_default,
+    dataclass_field_to_json_field,
     dataclass_to_dumper, set_class_dumper,
     _CLASS_TO_DUMP_FUNC, setup_dump_config_for_cls_if_needed, get_meta,
 )
 from .constants import _DUMP_HOOKS, TAG
 from .log import LOG
-from .type_def import NoneType, DD, LSQ, E, U, LT, NT, T
+from .type_def import ExplicitNull, NoneType, DD, LSQ, E, U, LT, NT, T
 from .utils.string_conv import to_camel_case
 
 
@@ -192,7 +193,8 @@ def get_dumper(cls=None, create=False) -> Type[DumpMixin]:
 
 def asdict(obj: T,
            config: Optional[BaseMeta] = None,
-           *, cls=None, dict_factory=dict) -> Dict[str, Any]:
+           *, cls=None, dict_factory=dict,
+           exclude: List[str] = None, **kwargs) -> Dict[str, Any]:
     """Return the fields of a dataclass instance as a new dictionary mapping
     field names to field values.
 
@@ -230,12 +232,12 @@ def asdict(obj: T,
     except KeyError:
         dump = dump_func_for_dataclass(cls)
 
-    return dump(obj, dict_factory)
+    return dump(obj, dict_factory, exclude, **kwargs)
     # -- END --
 
 
 def dump_func_for_dataclass(cls: Type[T]
-                            ) -> Callable[[T, Any], Dict[str, Any]]:
+                            ) -> Callable[[T, Any, Any, Any], Dict[str, Any]]:
 
     # Gets the dumper for the class, or the default dumper otherwise.
     cls_dumper = get_dumper(cls)
@@ -255,7 +257,16 @@ def dump_func_for_dataclass(cls: Type[T]
     # transformation (via regex) each time.
     dataclass_to_json_field = dataclass_field_to_json_field(cls)
 
-    def cls_asdict(obj: T, dict_factory=dict) -> Dict[str, Any]:
+    # A cached mapping of dataclass field name to its default value, either
+    # via a `default` or `default_factory` argument.
+    field_to_default = dataclass_field_to_default(cls)
+
+    # A collection of field names in the dataclass.
+    field_names = dataclass_field_names(cls)
+
+    def cls_asdict(obj: T, dict_factory=dict,
+                   exclude: List[str] = None,
+                   skip_defaults=meta.skip_defaults) -> Dict[str, Any]:
         """
         Serialize a dataclass of type `cls` to a Python dictionary object.
         """
@@ -267,16 +278,38 @@ def dump_func_for_dataclass(cls: Type[T]
         # serialized value.
         result = []
 
-        for f in dataclass_fields(cls):
-            # -- This line is *mostly* the same as in the original version --
-            value = _asdict_inner(getattr(obj, f.name), dict_factory, hooks)
+        # Loop over the dataclass fields
+        for field in field_names:
 
-            json_field = dataclass_to_json_field.get(f.name)
-            if not json_field:
+            # Get the resolved JSON field name
+            try:
+                json_field = dataclass_to_json_field[field]
+
+            except KeyError:
                 # Normalize the dataclass field name (by default to camel
                 # case)
-                json_field = cls_dumper.transform_dataclass_field(f.name)
-                dataclass_to_json_field[f.name] = json_field
+                json_field = cls_dumper.transform_dataclass_field(field)
+                dataclass_to_json_field[field] = json_field
+
+            # Exclude any dataclass fields that are explicitly ignored.
+            if json_field is ExplicitNull:
+                continue
+            if exclude and field in exclude:
+                continue
+
+            # -- This line is *mostly* the same as in the original version --
+            fv = getattr(obj, field)
+
+            # Check if we need to strip defaults, and the field currently
+            # is assigned a default value.
+            #
+            # TODO: maybe it makes sense to move this logic to a separate
+            #   function, as it might be slightly more performant.
+            if skip_defaults and field in field_to_default \
+                    and fv == field_to_default[field]:
+                continue
+
+            value = _asdict_inner(fv, dict_factory, hooks)
 
             # -- This line is *mostly* the same as in the original version --
             result.append((json_field, value))
@@ -284,12 +317,14 @@ def dump_func_for_dataclass(cls: Type[T]
         # -- This line is the same as in the original version --
         return dict_factory(result)
 
-    def cls_asdict_with_tag(obj: T, dict_factory=dict) -> Dict[str, Any]:
+    def cls_asdict_with_tag(obj: T, dict_factory=dict,
+                            exclude: List[str] = None,
+                            **kwargs) -> Dict[str, Any]:
         """
         Serialize a dataclass of type `cls` to a Python dictionary object.
         Adds a tag field when `tag` field is passed in Meta.
         """
-        result = cls_asdict(obj, dict_factory)
+        result = cls_asdict(obj, dict_factory, exclude, **kwargs)
         result[TAG] = meta.tag
 
         return result

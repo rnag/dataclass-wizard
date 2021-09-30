@@ -6,7 +6,7 @@ from typing import Union, Collection
 _STR_COLLECTION = Union[str, Collection[str]]
 
 
-def json_key(*keys: str, all=False):
+def json_key(*keys: str, all=False, dump=True):
     """
     Represents a mapping of one or more JSON key names for a dataclass field.
 
@@ -24,13 +24,15 @@ def json_key(*keys: str, all=False):
       dataclass field to JSON key. If multiple JSON keys are passed in, it
       uses the first one provided in this case. This mapping is then used when
       `to_dict` or `to_json` is called, instead of the default key transform.
+    :param dump: False to skip this field in the serialization process to
+      JSON. By default, this field and its value is included.
     """
 
-    return JSON(*keys, all=all)
+    return JSON(*keys, all=all, dump=dump)
 
 
 def json_field(keys: _STR_COLLECTION, *,
-               all=False,
+               all=False, dump=True,
                default=MISSING, default_factory=MISSING,
                init=True, repr=True,
                hash=None, compare=True, metadata=None):
@@ -56,12 +58,15 @@ def json_field(keys: _STR_COLLECTION, *,
     JSON keys are passed in, it uses the first one provided in this case.
     This mapping is then used when ``to_dict`` or ``to_json`` is called,
     instead of the default key transform.
+
+    When `dump` is passed as False (default is True), this field will be
+    skipped, or excluded, in the serialization process to JSON.
     """
 
     if default is not MISSING and default_factory is not MISSING:
         raise ValueError('cannot specify both default and default_factory')
 
-    return JSONField(keys, all, default, default_factory, init, repr,
+    return JSONField(keys, all, dump, default, default_factory, init, repr,
                      hash, compare, metadata)
 
 
@@ -72,11 +77,13 @@ class JSON:
     See the docs on the :func:`json_key` function for more info.
     """
     __slots__ = ('keys',
-                 'all')
+                 'all',
+                 'dump')
 
-    def __init__(self, *keys: str, all=False):
+    def __init__(self, *keys: str, all=False, dump=True):
         self.keys = keys
         self.all = all
+        self.dump = dump
 
 
 class JSONField(Field):
@@ -88,7 +95,7 @@ class JSONField(Field):
     """
     __slots__ = ('json', )
 
-    def __init__(self, keys: _STR_COLLECTION, all: bool,
+    def __init__(self, keys: _STR_COLLECTION, all: bool, dump: bool,
                  default, default_factory, init, repr, hash, compare,
                  metadata):
 
@@ -98,4 +105,4 @@ class JSONField(Field):
         if isinstance(keys, str):
             keys = (keys, )
 
-        self.json = JSON(*keys, all=all)
+        self.json = JSON(*keys, all=all, dump=dump)

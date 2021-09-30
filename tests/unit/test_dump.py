@@ -1,9 +1,9 @@
 import logging
 from abc import ABC
-from collections import deque
-from dataclasses import dataclass
+from collections import deque, defaultdict
+from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Set, FrozenSet, Optional, Union, List
+from typing import Set, FrozenSet, Optional, Union, List, DefaultDict
 from uuid import UUID
 
 import pytest
@@ -195,6 +195,59 @@ def test_to_dict_key_transform_with_json_key():
     log.debug('Parsed object: %r', result)
 
     assert result == expected
+
+
+def test_to_dict_with_skip_defaults():
+    """
+    When `skip_defaults` is enabled in the class Meta, fields with default
+    values should be excluded from the serialization process.
+    """
+
+    @dataclass
+    class MyClass(JSONWizard):
+        class _(JSONWizard.Meta):
+            skip_defaults = True
+
+        my_str: str
+        other_str: str = 'any value'
+        optional_str: str = None
+        my_list: List[str] = field(default_factory=list)
+        my_dict: DefaultDict[str, List[float]] = field(
+            default_factory=lambda: defaultdict(list))
+
+    c = MyClass('abc')
+    log.debug('Instance: %r', c)
+
+    out_dict = c.to_dict()
+    assert out_dict == {'myStr': 'abc'}
+
+
+def test_to_dict_with_excluded_fields():
+    """
+    Excluding dataclass fields from the serialization process works
+    as expected.
+    """
+
+    @dataclass
+    class MyClass(JSONWizard):
+
+        my_str: str
+        other_str: Annotated[str, json_key('AnotherStr', dump=False)]
+        my_bool: bool = json_field('TestBool', dump=False)
+        my_int: int = 3
+
+    data = {'MyStr': 'my string',
+            'AnotherStr': 'testing 123',
+            'TestBool': True}
+
+    c = MyClass.from_dict(data)
+    log.debug('Instance: %r', c)
+
+    # dynamically exclude the `my_int` field from serialization
+    additional_exclude = ('my_int', )
+
+    out_dict = c.to_dict(exclude=additional_exclude)
+    assert out_dict == {'myStr': 'my string'}
 
 
 @pytest.mark.parametrize(

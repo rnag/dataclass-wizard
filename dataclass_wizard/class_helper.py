@@ -1,11 +1,11 @@
 from collections import defaultdict
-from dataclasses import Field, fields
+from dataclasses import MISSING, Field, fields
 from typing import Dict, Tuple, Type, Union, Callable, Optional, Any
 
 from .abstractions import W, AbstractLoader, AbstractDumper, AbstractParser
 from .bases import M, BaseMeta
 from .models import JSONField, JSON
-from .type_def import ExplicitNullType, T
+from .type_def import ExplicitNull, ExplicitNullType, T
 from .utils.dict_helper import DictWithLowerStore
 from .utils.typing_compat import is_annotated, get_args
 
@@ -207,8 +207,11 @@ def setup_dump_config_for_cls_if_needed(cls):
         # the class-specific mapping of dataclass field name to JSON key.
         if isinstance(f, Field):
 
-            if isinstance(f, JSONField) and f.json.all:
-                dataclass_to_json_field[f.name] = f.json.keys[0]
+            if isinstance(f, JSONField):
+                if not f.json.dump:
+                    dataclass_to_json_field[f.name] = ExplicitNull
+                elif f.json.all:
+                    dataclass_to_json_field[f.name] = f.json.keys[0]
 
             else:
                 value = f.metadata.get('__remapping__')
@@ -221,8 +224,11 @@ def setup_dump_config_for_cls_if_needed(cls):
         # key.
         if is_annotated(f.type):
             for extra in get_args(f.type)[1:]:
-                if isinstance(extra, JSON) and extra.all:
-                    dataclass_to_json_field[f.name] = extra.keys[0]
+                if isinstance(extra, JSON):
+                    if not extra.dump:
+                        dataclass_to_json_field[f.name] = ExplicitNull
+                    elif extra.all:
+                        dataclass_to_json_field[f.name] = extra.keys[0]
 
     # Mark the dataclass as processed, as the initial dump process is set up.
     _IS_DUMP_CONFIG_SETUP[cls] = True
@@ -262,6 +268,23 @@ def dataclass_fields(cls) -> Tuple[Field]:
 def dataclass_init_fields(cls) -> Tuple[Field]:
     """Get only the dataclass fields that would be passed into the constructor."""
     return tuple(f for f in dataclass_fields(cls) if f.init)
+
+
+def dataclass_field_names(cls) -> Tuple[str, ...]:
+    """Get the names of all dataclass fields"""
+    return tuple(f.name for f in dataclass_fields(cls))
+
+
+def dataclass_field_to_default(cls) -> Dict[str, Any]:
+    """Get default values for the (optional) dataclass fields."""
+    defaults = {}
+    for f in dataclass_fields(cls):
+        if f.default is not MISSING:
+            defaults[f.name] = f.default
+        elif f.default_factory is not MISSING:
+            defaults[f.name] = f.default_factory()
+
+    return defaults
 
 
 def create_new_class(
