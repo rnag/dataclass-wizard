@@ -25,7 +25,8 @@ __all__ = [
     'N',
     'S',
     'LT',
-    'LSQ'
+    'LSQ',
+    'FREF',
 ]
 
 from collections import deque
@@ -103,7 +104,7 @@ ListOfJSONObject = List[JSONObject]
 JSONValue = Union[None, str, bool, int, float, JSONList, JSONObject]
 
 
-if PY38_OR_ABOVE:
+if PY38_OR_ABOVE:  # pragma: no cover
     from typing import ForwardRef as PyForwardRef
     from typing import Literal as PyLiteral
     from typing import Protocol as PyProtocol
@@ -119,7 +120,7 @@ if PY38_OR_ABOVE:
         PyTypedDicts.append(PyTypedDict)
     except ImportError:
         pass
-else:
+else:  # pragma: no cover
     from typing_extensions import Literal as PyLiteral
     from typing_extensions import Protocol as PyProtocol
     from typing_extensions import TypedDict as PyTypedDict
@@ -131,11 +132,26 @@ else:
     PyTypedDicts.append(PyTypedDict)
 
     if PY36:
+        import typing
         from typing import _ForwardRef as PyForwardRef
+
         # Need to wrap the constructor to discard arguments like `is_argument`
         PyForwardRef.__init__ = discard_kwargs(PyForwardRef.__init__)
+
+        # This is needed to avoid an`AttributeError` when using PyForwardRef
+        # as an argument to `TypeVar`, as we do below.
+        if hasattr(typing, '_gorg'):  # Python 3.6.2 or lower
+            _gorg = typing._gorg
+            typing._gorg = lambda a: None if a is PyForwardRef else _gorg(a)
+        else:   # Python 3.6.3+
+            PyForwardRef._gorg = None
     else:
         from typing import ForwardRef as PyForwardRef
+
+
+# Forward references can be either strings or explicit `ForwardRef` objects.
+# noinspection SpellCheckingInspection
+FREF = TypeVar('FREF', str, PyForwardRef)
 
 
 # Create our own "nullish" type for explicit type assertions

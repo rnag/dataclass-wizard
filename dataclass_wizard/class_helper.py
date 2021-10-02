@@ -7,7 +7,9 @@ from .bases import M, BaseMeta
 from .models import JSONField, JSON
 from .type_def import ExplicitNull, ExplicitNullType, T
 from .utils.dict_helper import DictWithLowerStore
-from .utils.typing_compat import is_annotated, get_args
+from .utils.typing_compat import (
+    is_annotated, get_args, eval_forward_ref_if_needed
+)
 
 
 # A cached mapping of dataclass to the list of fields, as returned by
@@ -167,6 +169,7 @@ def _setup_load_config_for_cls(cls_loader, cls: Type):
         # look for any `JSON` objects in the arguments; for each object,
         # update the class-specific mapping of JSON key to dataclass field
         # name.
+        f.type = eval_forward_ref_if_needed(f.type, cls)
         if is_annotated(f.type):
             for extra in get_args(f.type)[1:]:
                 if isinstance(extra, JSON):
@@ -176,7 +179,7 @@ def _setup_load_config_for_cls(cls_loader, cls: Type):
     _FIELD_NAME_TO_LOAD_PARSER[cls] = DictWithLowerStore(name_to_parser)
 
 
-def setup_dump_config_for_cls_if_needed(cls):
+def setup_dump_config_for_cls_if_needed(cls: Type):
     """
     This function processes a class `cls` on an initial run, and sets up the
     dump process for `cls` by iterating over each dataclass field. For each
@@ -222,6 +225,7 @@ def setup_dump_config_for_cls_if_needed(cls):
         # look for any `JSON` objects in the arguments; for each object,
         # update the class-specific mapping of dataclass field name to JSON
         # key.
+        f.type = eval_forward_ref_if_needed(f.type, cls)
         if is_annotated(f.type):
             for extra in get_args(f.type)[1:]:
                 if isinstance(extra, JSON):

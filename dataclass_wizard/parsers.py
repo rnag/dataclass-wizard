@@ -28,7 +28,7 @@ from .type_def import (
 )
 from .utils.typing_compat import (
     get_origin, get_args, get_named_tuple_field_types,
-    get_keys_for_typed_dict)
+    get_keys_for_typed_dict, eval_forward_ref_if_needed)
 
 
 # Type defs
@@ -153,6 +153,7 @@ class UnionParser(AbstractParser):
 
         self.tag_to_parser = {}
         for t in self.base_type:
+            t = eval_forward_ref_if_needed(t, cls)
             if is_dataclass(t):
                 meta = get_meta(t)
                 if meta.tag:

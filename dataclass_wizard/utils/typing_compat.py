@@ -12,7 +12,8 @@ __all__ = [
     'is_generic',
     'is_base_generic',
     'is_annotated',
-    'eval_forward_ref'
+    'eval_forward_ref',
+    'eval_forward_ref_if_needed'
 ]
 
 import sys
@@ -20,7 +21,7 @@ import typing
 from collections.abc import Callable
 
 from ..constants import PY36, PY38, PY310_OR_ABOVE
-from ..type_def import PyLiteral, PyTypedDicts, PyForwardRef
+from ..type_def import FREF, PyLiteral, PyTypedDicts, PyForwardRef
 
 
 # TODO maybe move this to `type_def` if it makes sense
@@ -294,7 +295,7 @@ def is_annotated(cls):
 
 # Note: need to wrap the annotation for `base_type` with a forward ref,
 # because Python 3.6 complains.
-def eval_forward_ref(base_type: 'typing.Union[str, PyForwardRef]',
+def eval_forward_ref(base_type: FREF,
                      cls: typing.Type):
     """
     Evaluate a forward reference using the class globals, and return the
@@ -309,3 +310,17 @@ def eval_forward_ref(base_type: 'typing.Union[str, PyForwardRef]',
 
     # noinspection PyProtectedMember
     return typing._eval_type(base_type, base_globals, None)
+
+
+def eval_forward_ref_if_needed(base_type: FREF,
+                               base_cls: typing.Type):
+    """
+    If needed, evaluate a forward reference using the class globals, and
+    return the underlying type reference.
+    """
+
+    if isinstance(base_type, FREF.__constraints__):
+        # Evaluate the forward reference here.
+        base_type = eval_forward_ref(base_type, base_cls)
+
+    return base_type
