@@ -23,7 +23,7 @@ from .errors import ParseError, MissingFields, UnknownJSONKey, MissingData
 from .log import LOG
 from .parsers import *
 from .type_def import (
-    ExplicitNull, PyForwardRef, FrozenKeys, DefFactory, NoneType, JSONObject,
+    ExplicitNull, FrozenKeys, DefFactory, NoneType, JSONObject,
     M, N, T, E, U, DD, LSQ, NT
 )
 from .utils.string_conv import to_snake_case
@@ -32,7 +32,7 @@ from .utils.type_conv import (
 )
 from .utils.typing_compat import (
     is_literal, is_typed_dict, get_origin, get_args, is_annotated,
-    eval_forward_ref
+    eval_forward_ref_if_needed
 )
 
 
@@ -230,6 +230,7 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
                                   base_cls: Type[T] = None) -> AbstractParser:
         """Returns the Parser (dispatcher) for a given annotation type."""
         hooks = cls.__LOAD_HOOKS__
+        ann_type = eval_forward_ref_if_needed(ann_type, base_cls)
         load_hook = hooks.get(ann_type)
         base_type = ann_type
 
@@ -298,12 +299,6 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
 
                 elif base_type is Any:
                     load_hook = cls.default_load_to
-
-                elif isinstance(base_type, (str, PyForwardRef)):
-                    # Evaluate the forward reference here.
-                    base_type = eval_forward_ref(base_type, base_cls)
-
-                    return cls.get_parser_for_annotation(base_type, base_cls)
 
                 elif base_type is Ellipsis:
                     load_hook = cls.default_load_to

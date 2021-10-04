@@ -485,9 +485,8 @@ process.
 
 The attribute ``skip_defaults`` in the inner ``Meta`` class can be enabled, to exclude
 such field values from serialization.The ``to_dict`` method (or the ``asdict`` helper
-function) can also be passed an ``exclude`` argument, containing a list of one or more
-dataclass field names to exclude from the serialization process. An example of both these
-approaches is shown below.
+function) can also be passed an ``skip_defaults`` argument, which should have the same
+result. An example of both these approaches is shown below.
 
 .. code:: python3
 
