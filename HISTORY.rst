@@ -2,6 +2,19 @@
 History
 =======
 
+0.15.2 (2021-10-03)
+-------------------
+
+**Features and Improvements**
+
+* Add new internal helper function :func:`eval_forward_ref_if_needed`
+
+**Bugfixes**
+
+* Support forward references in type arguments to ``Union``, as well as when
+  iterating over the list of :func:`dataclasses.fields` for each data class.
+
+
 0.15.1 (2021-09-30)
 -------------------
 
