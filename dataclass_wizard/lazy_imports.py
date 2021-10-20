@@ -9,4 +9,4 @@ from .utils.lazy_loader import LazyLoader
 
 
 # pytimeparse: for parsing JSON string values as a `datetime.timedelta`
-pytimeparse = LazyLoader(globals(), 'pytimeparse', 'timeparse')
+pytimeparse = LazyLoader(globals(), 'pytimeparse', 'timedelta')
