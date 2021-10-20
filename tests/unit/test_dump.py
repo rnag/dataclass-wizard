@@ -2,7 +2,7 @@ import logging
 from abc import ABC
 from collections import deque, defaultdict
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Set, FrozenSet, Optional, Union, List, DefaultDict
 from uuid import UUID
 
@@ -401,6 +401,32 @@ def test_uuid(input, expectation):
 
     c = MyClass(my_id=input)
     expected = {'my_id': input.hex}
+
+    with expectation:
+        actual = c.to_dict()
+
+        assert actual == expected
+        log.debug('Parsed object: %r', actual)
+
+
+@pytest.mark.parametrize(
+    'input,expectation',
+    [
+        (timedelta(seconds=12345), does_not_raise()),
+        (timedelta(hours=1, minutes=32), does_not_raise()),
+        (timedelta(days=1, minutes=51, seconds=7), does_not_raise()),
+    ]
+)
+def test_timedelta(input, expectation):
+
+    @dataclass
+    class MyClass(JSONSerializable):
+        class Meta(JSONSerializable.Meta):
+            key_transform_with_dump = 'Snake'
+        my_td: timedelta
+
+    c = MyClass(my_td=input)
+    expected = {'my_td': str(input)}
 
     with expectation:
         actual = c.to_dict()

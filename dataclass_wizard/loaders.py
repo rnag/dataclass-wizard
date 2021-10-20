@@ -1,6 +1,6 @@
 from collections import defaultdict, deque, namedtuple
 from dataclasses import is_dataclass
-from datetime import datetime, time, date
+from datetime import datetime, time, date, timedelta
 from decimal import Decimal
 from enum import Enum
 from typing import (
@@ -28,7 +28,7 @@ from .type_def import (
 )
 from .utils.string_conv import to_snake_case
 from .utils.type_conv import (
-    as_bool, as_str, as_datetime, as_date, as_time, as_int
+    as_bool, as_str, as_datetime, as_date, as_time, as_int, as_timedelta
 )
 from .utils.typing_compat import (
     is_literal, is_typed_dict, get_origin, get_args, is_annotated,
@@ -223,6 +223,13 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
     @_alias(as_date)
     def load_to_date(o: Union[str, N], base_type: Type[date]) -> date:
         # alias: as_date
+        ...
+
+    @staticmethod
+    @_alias(as_timedelta)
+    def load_to_timedelta(
+            o: Union[str, N], base_type: Type[timedelta]) -> timedelta:
+        # alias: as_timedelta
         ...
 
     @classmethod
@@ -454,6 +461,7 @@ def setup_default_loader(cls=LoadMixin):
     cls.register_load_hook(datetime, cls.load_to_datetime)
     cls.register_load_hook(time, cls.load_to_time)
     cls.register_load_hook(date, cls.load_to_date)
+    cls.register_load_hook(timedelta, cls.load_to_timedelta)
 
 
 def get_loader(class_or_instance=None, create=False) -> Type[LoadMixin]:
