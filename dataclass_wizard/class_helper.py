@@ -3,7 +3,7 @@ from dataclasses import MISSING, Field, fields
 from typing import Dict, Tuple, Type, Union, Callable, Optional, Any
 
 from .abstractions import W, AbstractLoader, AbstractDumper, AbstractParser
-from .bases import M, BaseMeta
+from .bases import M, AbstractMeta
 from .models import JSONField, JSON
 from .type_def import ExplicitNull, ExplicitNullType, T
 from .utils.dict_helper import DictWithLowerStore
@@ -254,7 +254,7 @@ def get_meta(cls: Type[W]):
 
     This config is set when the inner :class:`Meta` is sub-classed.
     """
-    return _META.get(cls, BaseMeta)
+    return _META.get(cls, AbstractMeta)
 
 
 def dataclass_fields(cls) -> Tuple[Field]:

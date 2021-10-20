@@ -1,13 +1,15 @@
+from abc import ABC, abstractmethod
 from typing import Callable, Type, Dict, Optional, ClassVar, Union, TypeVar
 
+from .abstractions import W
 from .enums import DateTimeTo, LetterCase
 
 
-# Create a generic variable that can be 'BaseMeta', or any subclass.
-M = TypeVar('M', bound='BaseMeta')
+# Create a generic variable that can be 'AbstractMeta', or any subclass.
+M = TypeVar('M', bound='AbstractMeta')
 
 
-class BaseMeta:
+class AbstractMeta(ABC):
     """
     Base class definition for the `JSONWizard.Meta` inner class.
     """
@@ -78,6 +80,32 @@ class BaseMeta:
     # (based on the `default` or `default_factory` argument specified for
     # the :func:`dataclasses.field`) in the serialization process.
     skip_defaults: ClassVar[bool] = False
+
+    @classmethod
+    @abstractmethod
+    def bind_to(cls, dataclass: Type[W], create=True, is_default=True):
+        """
+        Initialize hook which applies the Meta config to `dataclass`. This
+        hook method is typically called by `dataclass`, which will be the
+        direct outer class.
+
+        :param dataclass: typically an outer class, which is a sub-class of
+          :class:`AbstractJSONWizard`, though at a minimum it should be a
+          dataclass.
+        :param create: When true, a separate loader/dumper will be created
+          for the class. If disabled, this will access the root loader/dumper,
+          so modifying this should affect global settings across all
+          dataclasses that use the JSON load/dump process.
+        :param is_default: When enabled, the Meta will be cached as the
+          default Meta config for the dataclass. Defaults to true.
+
+        """
+
+    @classmethod
+    @abstractmethod
+    def merge(cls, src: Type[M], other: Type[M],
+              data_class=None):
+        """TODO Merge src and other"""
 
 
 class BaseLoadHook:

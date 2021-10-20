@@ -10,7 +10,7 @@ from typing import (
 from uuid import UUID
 
 from .abstractions import AbstractLoader, AbstractParser, FieldToParser
-from .bases import BaseLoadHook, BaseMeta
+from .bases import BaseLoadHook, AbstractMeta
 from .class_helper import (
     get_class_name, create_new_class,
     dataclass_to_loader, set_class_loader,
@@ -484,7 +484,7 @@ def get_loader(class_or_instance=None, create=False) -> Type[LoadMixin]:
 
 def fromdict(cls: Type[T],
              d: JSONObject,
-             config: Optional[BaseMeta] = None) -> T:
+             config: Optional[AbstractMeta] = None) -> T:
     """
     Converts a Python dictionary object to a dataclass instance.
 

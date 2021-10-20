@@ -18,7 +18,7 @@ from typing import Type, List, Dict, Any, NamedTupleMeta, Optional, Callable
 from uuid import UUID
 
 from .abstractions import AbstractDumper
-from .bases import BaseDumpHook, BaseMeta
+from .bases import BaseDumpHook, AbstractMeta
 from .class_helper import (
     create_new_class,
     dataclass_field_names, dataclass_field_to_default,
@@ -86,36 +86,36 @@ class DumpMixin(AbstractDumper, BaseDumpHook):
 
     @staticmethod
     def dump_with_list_or_tuple(
-            o: LT, typ: Type[LT], dict_factory, hooks):
+            o: LT, typ: Type[LT], dict_factory, hooks, meta):
 
-        return typ(_asdict_inner(v, dict_factory, hooks) for v in o)
+        return typ(_asdict_inner(v, dict_factory, hooks, meta) for v in o)
 
     @staticmethod
     def dump_with_iterable(
-            o: LSQ, _typ: Type[LSQ], dict_factory, hooks):
+            o: LSQ, _typ: Type[LSQ], dict_factory, hooks, meta):
 
-        return list(_asdict_inner(v, dict_factory, hooks) for v in o)
+        return list(_asdict_inner(v, dict_factory, hooks, meta) for v in o)
 
     @staticmethod
     def dump_with_named_tuple(
-            o: NT, typ: Type[NT], dict_factory, hooks):
+            o: NT, typ: Type[NT], dict_factory, hooks, meta):
 
-        return typ(*[_asdict_inner(v, dict_factory, hooks) for v in o])
+        return typ(*[_asdict_inner(v, dict_factory, hooks, meta) for v in o])
 
     @staticmethod
     def dump_with_dict(
-            o: Dict, typ: Type[Dict], dict_factory, hooks):
+            o: Dict, typ: Type[Dict], dict_factory, hooks, meta):
 
-        return typ((_asdict_inner(k, dict_factory, hooks),
-                    _asdict_inner(v, dict_factory, hooks))
+        return typ((_asdict_inner(k, dict_factory, hooks, meta),
+                    _asdict_inner(v, dict_factory, hooks, meta))
                    for k, v in o.items())
 
     @staticmethod
     def dump_with_defaultdict(
-            o: DD, _typ: Type[DD], dict_factory, hooks):
+            o: DD, _typ: Type[DD], dict_factory, hooks, meta):
 
-        return {_asdict_inner(k, dict_factory, hooks):
-                _asdict_inner(v, dict_factory, hooks)
+        return {_asdict_inner(k, dict_factory, hooks, meta):
+                _asdict_inner(v, dict_factory, hooks, meta)
                 for k, v in o.items()}
 
     @staticmethod
@@ -195,7 +195,7 @@ def get_dumper(cls=None, create=False) -> Type[DumpMixin]:
 
 
 def asdict(obj: T,
-           config: Optional[BaseMeta] = None,
+           config: Optional[AbstractMeta] = None,
            *, cls=None, dict_factory=dict,
            exclude: List[str] = None, **kwargs) -> JSONObject:
     """Return the fields of a dataclass instance as a new dictionary mapping
@@ -233,20 +233,30 @@ def asdict(obj: T,
     try:
         dump = _CLASS_TO_DUMP_FUNC[cls]
     except KeyError:
-        dump = dump_func_for_dataclass(cls)
+        dump = dump_func_for_dataclass(cls, config)
 
     return dump(obj, dict_factory, exclude, **kwargs)
     # -- END --
 
 
-def dump_func_for_dataclass(cls: Type[T]
+def dump_func_for_dataclass(cls: Type[T],
+                            config: Optional[AbstractMeta] = None
                             ) -> Callable[[T, Any, Any, Any], JSONObject]:
 
     # Gets the dumper for the class, or the default dumper otherwise.
     cls_dumper = get_dumper(cls)
 
     # Get the meta config for the class, or the default config otherwise.
+    # TODO merge with cls meta
     meta = get_meta(cls)
+
+    if config:
+        if meta is AbstractMeta:
+            meta = config
+        else:
+            meta = meta.merge(meta, config)
+
+        meta.bind_to(cls, is_default=False)
 
     # This contains the dump hooks for the dataclass. If the class
     # sub-classes from `DumpMixIn`, these hooks could be customized.
@@ -312,7 +322,7 @@ def dump_func_for_dataclass(cls: Type[T]
                     and fv == field_to_default[field]:
                 continue
 
-            value = _asdict_inner(fv, dict_factory, hooks)
+            value = _asdict_inner(fv, dict_factory, hooks, meta)
 
             # -- This line is *mostly* the same as in the original version --
             result.append((json_field, value))
@@ -344,23 +354,23 @@ def dump_func_for_dataclass(cls: Type[T]
     return asdict_func
 
 
-# NOTE: This method has been modified to accept a `hook` argument, and the
-# return type has been annotated as `Any`. The logic inside this method has
-# also been heavily modified from the original implementation in
+# NOTE: This method has been modified to accept `hook` and `meta` arguments,
+# and the return type has been annotated as `Any`. The logic inside this
+# method has also been heavily modified from the original implementation in
 # `dataclasses`. However, I will call out specific lines where it is taken
 # directly from the original version.
-def _asdict_inner(obj, dict_factory, hooks) -> Any:
+def _asdict_inner(obj, dict_factory, hooks, meta) -> Any:
 
     cls = type(obj)
     dump_hook = hooks.get(cls)
-    hook_args = (obj, cls, dict_factory, hooks)
+    hook_args = (obj, cls, dict_factory, hooks, meta)
 
     if dump_hook is not None:
         return dump_hook(*hook_args)
 
     # -- This check is the same as in the original version --
     if _is_dataclass_instance(obj):
-        return asdict(obj, cls=cls, dict_factory=dict_factory)
+        return asdict(obj, meta, cls=cls, dict_factory=dict_factory)
 
     else:
 
