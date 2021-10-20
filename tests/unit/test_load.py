@@ -7,7 +7,7 @@ import logging
 from abc import ABC
 from collections import namedtuple, defaultdict, deque
 from dataclasses import dataclass, field
-from datetime import datetime, date, time
+from datetime import datetime, date, time, timedelta
 from typing import (
     List, Optional, Union, Tuple, Dict, NamedTuple, Type, DefaultDict,
     Set, FrozenSet, Generic
@@ -613,6 +613,35 @@ def test_time(input, expectation):
     with expectation:
         result = MyClass.from_dict(d)
         log.debug('Parsed object: %r', result)
+
+
+@pytest.mark.parametrize(
+    'input,expectation',
+    [
+        ('testing', pytest.raises(ValueError)),
+        ('23:59:59-04:00', pytest.raises(ValueError)),
+        ('32m', does_not_raise()),
+        ('2h32m', does_not_raise()),
+        ('4:13', does_not_raise()),
+        ('5hr34m56s', does_not_raise()),
+        ('1.2 minutes', does_not_raise()),
+        (12345, does_not_raise()),
+        (True, pytest.raises(TypeError)),
+        (timedelta(days=1, seconds=2), does_not_raise()),
+    ]
+)
+def test_timedelta(input, expectation):
+
+    @dataclass
+    class MyClass(JSONSerializable):
+        my_td: timedelta
+
+    d = {'myTD': input}
+
+    with expectation:
+        result = MyClass.from_dict(d)
+        log.debug('Parsed object: %r', result)
+        log.debug('timedelta string value: %s', result.my_td)
 
 
 @pytest.mark.parametrize(

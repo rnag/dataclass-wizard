@@ -6,13 +6,15 @@ __all__ = ['as_bool',
            'as_datetime',
            'as_date',
            'as_time',
+           'as_timedelta',
            'date_to_timestamp']
 
-from datetime import datetime, time, date
+from datetime import datetime, time, date, timedelta
 from numbers import Number
 from typing import Union, List, Type, AnyStr, Optional
 
 from ..errors import ParseError
+from ..lazy_imports import pytimeparse
 from ..type_def import E, N, NUMBERS
 
 
@@ -288,6 +290,50 @@ def as_time(o: Union[str, time], base_type=time, default=None, raise_=True):
             raise TypeError(f'Unsupported type, value={o!r}, type={type(o)}')
 
         return default
+
+
+def as_timedelta(o: Union[str, N, timedelta],
+                 base_type=timedelta, default=None, raise_=True):
+    """
+    Attempt to convert an object `o` to a :class:`timedelta` object using the
+    below logic.
+
+        * ``str``: convert strings via the ``pytimeparse.parse`` function.
+        * ``int``: A numeric value is assumed to be in seconds. In this case,
+          it is passed in to the constructor like ``timedelta(seconds=...)``
+        * ``timedelta``: Return object `o` if it's already of this type or
+            sub-type.
+
+    Otherwise, if we're unable to convert the value of `o` to a
+    :class:`timedelta` as expected, raise an error if the `raise_` parameter
+    is true; if not, return `default` instead.
+
+    """
+    try:
+        # We can assume that `o` is a string, as generally this will be the
+        # case.
+        seconds = pytimeparse.parse(o)
+
+    except TypeError:
+
+        # Check `type` explicitly, because `bool` is a sub-class of `int`
+        if type(o) in NUMBERS:
+            seconds = o
+
+        elif isinstance(o, base_type):
+            return o
+
+        elif raise_:
+            raise TypeError(f'Unsupported type, value={o!r}, type={type(o)}')
+
+        else:
+            return default
+
+    try:
+        return timedelta(seconds=seconds)
+
+    except TypeError:
+        raise ValueError(f'Invalid value for timedelta, value={o!r}')
 
 
 def date_to_timestamp(d: date) -> int:

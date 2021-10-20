@@ -3,7 +3,7 @@ Contains implementations for Abstract Base Classes
 """
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, InitVar
-from datetime import datetime, time, date
+from datetime import datetime, time, date, timedelta
 from decimal import Decimal
 from typing import (
     Any, Type, TypeVar, Union, List, Tuple, Dict, SupportsFloat, AnyStr,
@@ -315,6 +315,15 @@ class AbstractLoader(ABC):
         """
         Load a string or number (int or float) into a new object of type
         `base_type` (generally a :class:`date` or a sub-class of one)
+        """
+
+    @staticmethod
+    @abstractmethod
+    def load_to_timedelta(
+            o: Union[str, N], base_type: Type[timedelta]) -> timedelta:
+        """
+        Load a string or number (int or float) into a new object of type
+        `base_type` (generally a :class:`timedelta` or a sub-class of one)
         """
 
     @classmethod
