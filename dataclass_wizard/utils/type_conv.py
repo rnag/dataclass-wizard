@@ -14,6 +14,7 @@ from numbers import Number
 from typing import Union, List, Type, AnyStr, Optional
 
 from ..errors import ParseError
+from ..lazy_imports import pytimeparse
 from ..type_def import E, N, NUMBERS
 
 
@@ -308,8 +309,6 @@ def as_timedelta(o: Union[str, N, timedelta],
     is true; if not, return `default` instead.
 
     """
-    import pytimeparse
-
     try:
         # We can assume that `o` is a string, as generally this will be the
         # case.
