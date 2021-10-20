@@ -1,10 +1,10 @@
 """
-Lazy Import definitions. Generally, these imports will be available when the
+Lazy Import definitions. Generally, these imports will be available when any
 "bonus features" are installed, i.e. as below:
 
-  $ pip install dataclass-wizard[timeparse]
-
+  $ pip install dataclass-wizard[timedelta]
 """
+
 from .utils.lazy_loader import LazyLoader
 
 

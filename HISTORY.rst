@@ -2,6 +2,14 @@
 History
 =======
 
+0.16.0 (2021-10-20)
+-------------------
+
+* Add support for serializing ``datetime.timedelta``
+
+  * Requires an extra for de-serialization,
+    can be installed via ``pip install dataclass-wizard[timedelta]``.
+
 0.15.2 (2021-10-03)
 -------------------
 
