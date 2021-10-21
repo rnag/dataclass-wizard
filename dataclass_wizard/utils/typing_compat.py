@@ -17,6 +17,7 @@ __all__ = [
 ]
 
 import sys
+import types
 import typing
 from collections.abc import Callable
 
@@ -101,20 +102,32 @@ if not PY36:    # pragma: no cover
         except AttributeError:
             return False
 
-    def _get_origin(cls, raise_=False):
-        try:
-            return cls.__origin__
-        except AttributeError:
-            if raise_:
-                raise
-            return cls
-
     # Ref:
     #   https://github.com/python/typing/blob/master/typing_extensions/src_py3/typing_extensions.py#L2111
     if PY310_OR_ABOVE:
         _get_args = typing.get_args
+
+        def _get_origin(cls, raise_=False):
+            if isinstance(cls, types.UnionType):
+                return typing.Union
+
+            try:
+                return cls.__origin__
+            except AttributeError:
+                if raise_:
+                    raise
+                return cls
+
     else:
         from typing_extensions import get_args as _get_args
+
+        def _get_origin(cls, raise_=False):
+            try:
+                return cls.__origin__
+            except AttributeError:
+                if raise_:
+                    raise
+                return cls
 
 
     def _get_named_tuple_field_types(cls, raise_=True):
