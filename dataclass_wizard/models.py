@@ -1,6 +1,8 @@
 from dataclasses import Field, MISSING
 from typing import Union, Collection
 
+from .constants import PY310_OR_ABOVE
+
 
 # Type for a string or a collection of strings.
 _STR_COLLECTION = Union[str, Collection[str]]
@@ -95,14 +97,32 @@ class JSONField(Field):
     """
     __slots__ = ('json', )
 
-    def __init__(self, keys: _STR_COLLECTION, all: bool, dump: bool,
-                 default, default_factory, init, repr, hash, compare,
-                 metadata):
+    # In Python 3.10, dataclasses adds a new parameter to the :class:`Field`
+    # constructor: `kw_only`
+    #
+    # Ref: https://docs.python.org/3.10/library/dataclasses.html#dataclasses.dataclass
+    if PY310_OR_ABOVE:
+        def __init__(self, keys: _STR_COLLECTION, all: bool, dump: bool,
+                     default, default_factory, init, repr, hash, compare,
+                     metadata):
 
-        super().__init__(default, default_factory, init, repr, hash, compare,
-                         metadata)
+            super().__init__(default, default_factory, init, repr, hash,
+                             compare, metadata, False)
 
-        if isinstance(keys, str):
-            keys = (keys, )
+            if isinstance(keys, str):
+                keys = (keys,)
 
-        self.json = JSON(*keys, all=all, dump=dump)
+            self.json = JSON(*keys, all=all, dump=dump)
+
+    else:
+        def __init__(self, keys: _STR_COLLECTION, all: bool, dump: bool,
+                     default, default_factory, init, repr, hash, compare,
+                     metadata):
+
+            super().__init__(default, default_factory, init, repr, hash,
+                             compare, metadata)
+
+            if isinstance(keys, str):
+                keys = (keys, )
+
+            self.json = JSON(*keys, all=all, dump=dump)
