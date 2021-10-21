@@ -282,7 +282,7 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
                     elif issubclass(base_type, tuple) \
                             and hasattr(base_type, '_fields'):
 
-                        if hasattr(base_type, '__annotations__'):
+                        if getattr(base_type, '__annotations__', None):
                             # Annotated as a `typing.NamedTuple` subtype
                             load_hook = hooks.get(NamedTupleMeta)
                             return NamedTupleParser(
