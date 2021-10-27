@@ -2,6 +2,11 @@
 History
 =======
 
+0.16.2 (2021-10-26)
+-------------------
+
+* Minor code refactor and cleanup to support ``ForwardRef`` in Python 3.6 a little better.
+
 0.16.1 (2021-10-21)
 -------------------
 
