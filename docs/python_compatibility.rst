@@ -80,11 +80,13 @@ represent ``Union`` and ``Optional`` types.
     from __future__ import annotations
 
     import datetime
+    from dataclasses import dataclass
     from decimal import Decimal
 
     from dataclass_wizard import JSONWizard
 
 
+    @dataclass
     class A(JSONWizard):
         field_1: str | int | bool
         field_2: int | tuple[str | int] | bool
@@ -93,14 +95,17 @@ represent ``Union`` and ``Optional`` types.
         field_6: dict[str | int, list[B | C | D | None]]
 
 
+    @dataclass
     class B:
         ...
 
 
+    @dataclass
     class C:
         ...
 
 
+    @dataclass
     class D:
         ...
 
