@@ -48,17 +48,19 @@ Using the built-in JSON marshalling support for dataclasses:
 
 .. code:: python3
 
+    # Note: This import is not needed for Python 3.10+
+    from __future__ import annotations
+
     from dataclasses import dataclass, field
-    from typing import Optional, List, Tuple
 
     from dataclass_wizard import JSONWizard
 
 
     @dataclass
     class MyClass(JSONWizard):
-        my_str: Optional[str]
-        is_active_tuple: Tuple[bool, ...]
-        list_of_int: List[int] = field(default_factory=list)
+        my_str: str | None
+        is_active_tuple: tuple[bool, ...]
+        list_of_int: list[int] = field(default_factory=list)
 
 
     string = """

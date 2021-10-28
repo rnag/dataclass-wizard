@@ -91,12 +91,13 @@ def test_call_py_code_generator_with_file_name(mock_path):
     assert_py_code(expected, py_code=code_gen.py_code)
 
 
-def test_call_py_code_generator_with_experimental_features(mock_path):
+def test_call_py_code_generator_with_experimental_features():
     """
     Test calling the constructor for :class:`PyCodeGenerator` with the
     `-x|--experimental` flag.
     """
-    mock_path().read_bytes.return_value = b"""\
+
+    string = """\
     {"someField": null, "Some_List": [],
      "Objects": [{"key1": false},
                  {"key1": 1.2, "key2": "string"},
@@ -134,7 +135,7 @@ def test_call_py_code_generator_with_experimental_features(mock_path):
         key2: str | None
     '''
 
-    code_gen = PyCodeGenerator(file_name='my_file2.txt',
+    code_gen = PyCodeGenerator(file_contents=string,
                                experimental=True,
                                force_strings=True)
 

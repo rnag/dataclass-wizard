@@ -119,5 +119,76 @@ For example::
 
     echo '<json string>' | wiz gs - out
 
+Future Annotations
+------------------
+
+Passing in the ``-x/--experimental`` flag will enable experimental features via
+a ``__future__`` import, which allows `PEP 585`_ and `PEP 604`_- style
+annotations to be used in Python 3.7+
+
+For example, assume your ``input.json`` file contains the following contents:
+
+.. code:: json
+
+    {
+      "myField": null,
+      "My_List": [],
+      "Objects": [
+        {
+          "key1": false
+        },
+        {
+          "key1": 1.2,
+          "key2": "string"
+        },
+        {
+          "key1": "val",
+          "key2": null
+        }
+      ]
+    }
+
+Then we could run the following command::
+
+    $ wiz gs -x input.json
+
+The generated Python code is slightly different, as shown below. You might notice
+that a ``__future__`` import is added at the top, for compatibility with versions
+earlier than Python 3.10. In the annotations, we also prefer to use parameterized
+standard collections, and use the new pipe ``|`` syntax to represent ``Union``
+and ``Optional`` types.
+
+.. code:: python3
+
+    from __future__ import annotations
+
+    from dataclasses import dataclass
+    from typing import Any
+
+    from dataclass_wizard import JSONWizard
+
+
+    @dataclass
+    class Data(JSONWizard):
+        """
+        Data dataclass
+
+        """
+        my_field: Any
+        my_list: list
+        objects: list[Object]
+
+
+    @dataclass
+    class Object:
+        """
+        Object dataclass
+
+        """
+        key1: bool | float | str
+        key2: str | None
+
 
 .. _`opening an issue`: https://github.com/rnag/dataclass-wizard/issues
+.. _`PEP 585`: https://www.python.org/dev/peps/pep-0585/
+.. _`PEP 604`: https://www.python.org/dev/peps/pep-0604/
