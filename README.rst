@@ -48,7 +48,7 @@ Using the built-in JSON marshalling support for dataclasses:
 
 .. code:: python3
 
-    # Note: This import is not needed for Python 3.10+
+    # Note: This future import is not needed for Python 3.10+
     from __future__ import annotations
 
     from dataclasses import dataclass, field

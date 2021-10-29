@@ -2,6 +2,23 @@
 History
 =======
 
+0.17.0 (2021-10-28)
+-------------------
+
+* Support `new-style annotations`_ in Python 3.7+, via a ``__future__`` import
+  declared at a the top of a module; this allows `PEP 585`_ and `PEP 604`_ style
+  annotations to be used in Python 3.7 and higher.
+
+* ``wiz`` CLI: Add the *-x / --experimental* flag, which instead uses
+  new-style annotations in the generated Python code.
+
+* Update the docs and readme with examples and usage of *future
+  annotations* in Python 3.7+.
+
+.. _new-style annotations: https://dataclass-wizard.readthedocs.io/en/latest/python_compatibility.html#python-3-7
+.. _PEP 585: https://www.python.org/dev/peps/pep-0585/
+.. _PEP 604: https://www.python.org/dev/peps/pep-0604/
+
 0.16.2 (2021-10-26)
 -------------------
 
