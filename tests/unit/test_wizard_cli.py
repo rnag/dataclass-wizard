@@ -70,7 +70,7 @@ def test_call_py_code_generator_with_file_name(mock_path):
 
     expected = '''
     from dataclasses import dataclass
-    from typing import Any, Optional
+    from typing import Any
 
     from dataclass_wizard import JSONWizard
 
@@ -82,10 +82,61 @@ def test_call_py_code_generator_with_file_name(mock_path):
 
         """
         key: float
-        second_key: Optional[Any]
+        second_key: Any
     '''
 
     code_gen = PyCodeGenerator(file_name='my_file.txt',
+                               force_strings=True)
+
+    assert_py_code(expected, py_code=code_gen.py_code)
+
+
+def test_call_py_code_generator_with_experimental_features():
+    """
+    Test calling the constructor for :class:`PyCodeGenerator` with the
+    `-x|--experimental` flag.
+    """
+
+    string = """\
+    {"someField": null, "Some_List": [],
+     "Objects": [{"key1": false},
+                 {"key1": 1.2, "key2": "string"},
+                 {"key1": "val", "key2": null}]
+    }\
+    """
+
+    expected = '''
+    from __future__ import annotations
+
+    from dataclasses import dataclass
+    from typing import Any
+
+    from dataclass_wizard import JSONWizard
+
+
+    @dataclass
+    class Data(JSONWizard):
+        """
+        Data dataclass
+
+        """
+        some_field: Any
+        some_list: list
+        objects: list[Object]
+
+
+    @dataclass
+    class Object:
+        """
+        Object dataclass
+
+        """
+        key1: bool | float | str
+        key2: str | None
+    '''
+
+    code_gen = PyCodeGenerator(file_contents=string,
+                               experimental=True,
                                force_strings=True)
 
     assert_py_code(expected, py_code=code_gen.py_code)

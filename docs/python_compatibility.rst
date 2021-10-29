@@ -58,6 +58,57 @@ syntax:
     from typing_extensions import Literal, TypedDict, Annotated
 
 
+Python 3.7+
+-----------
+
+The Dataclass Wizard library supports the parsing of *future annotations* (also
+known as forward-declared annotations) which are enabled via a
+``from __future__ import annotations`` import added at the top of a module; this
+declaration allows `PEP 585`_ and `PEP 604`_- style annotations to be used in
+Python 3.7 and higher. The one main benefit, is that static type checkers and
+IDEs such as PyCharm appear to have solid support for using new-style
+annotations in this way.
+
+The following Python code illustrates the paradigm of future annotations in
+Python 3.7+ code; notice that a ``__future__`` import is added at the top, for
+compatibility with versions earlier than 3.10. In the annotations, we also prefer
+to use parameterized standard collections, and the new pipe ``|`` syntax to
+represent ``Union`` and ``Optional`` types.
+
+.. code:: python3
+
+    from __future__ import annotations
+
+    import datetime
+    from dataclasses import dataclass
+    from decimal import Decimal
+
+    from dataclass_wizard import JSONWizard
+
+
+    @dataclass
+    class A(JSONWizard):
+        field_1: str | int | bool
+        field_2: int | tuple[str | int] | bool
+        field_3: Decimal | datetime.date | str
+        field_4: str | int | None
+        field_6: dict[str | int, list[B | C | D | None]]
+
+
+    @dataclass
+    class B:
+        ...
+
+
+    @dataclass
+    class C:
+        ...
+
+
+    @dataclass
+    class D:
+        ...
+
 The Latest and Greatest
 -----------------------
 
@@ -93,3 +144,4 @@ the ``typing`` module altogether:
 
 
 .. _PEP 585: https://www.python.org/dev/peps/pep-0585/
+.. _PEP 604: https://www.python.org/dev/peps/pep-0604/

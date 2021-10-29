@@ -249,40 +249,6 @@ def test_bool(input, expected):
     assert result.my_bool == expected
 
 
-@pytest.mark.skipif(not PY310_OR_ABOVE,
-                    reason="requires Python 3.10 or higher")
-@pytest.mark.parametrize(
-    'input,expectation',
-    [
-        ({'my_field1': 3.1, 'my_field2': []}, pytest.raises(ParseError)),
-        ({'my_field1': 3, 'my_field2': []}, does_not_raise()),
-        ({'my_field1': 'string',
-          'my_field2': [{'date_field': None}]}, does_not_raise()),
-
-    ]
-)
-def test_load_with_py10_features(input, expectation):
-    """
-    Test case using the latest Python 3.10 features, such as PEP 604- style
-    annotations.
-
-    Ref: https://www.python.org/dev/peps/pep-0604/
-    """
-
-    @dataclass
-    class B:
-        date_field: datetime | None
-
-    @dataclass
-    class A(JSONWizard):
-        my_field1: bool | str | int
-        my_field2: list[B]
-
-    with expectation:
-        result = A.from_dict(input)
-        log.debug('Parsed object: %r', result)
-
-
 def test_from_dict_with_missing_fields():
     """
     Calling `from_dict` when required dataclass field(s) are missing in the
