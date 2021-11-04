@@ -2,6 +2,8 @@ __all__ = [
     'does_not_raise',
     'data_file_path',
     'PY36',
+    'PY39_OR_ABOVE',
+    'PY310_OR_ABOVE',
     # For compatibility with Python 3.6 and 3.7
     'Literal',
     'TypedDict',

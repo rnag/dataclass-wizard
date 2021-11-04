@@ -7,7 +7,7 @@ from typing import Union, List, ClassVar, DefaultDict, Set
 import pytest
 
 from dataclass_wizard import property_wizard
-from ..conftest import Literal, Annotated, PY39_OR_ABOVE
+from ..conftest import Literal, Annotated, PY39_OR_ABOVE, PY310_OR_ABOVE
 
 log = logging.getLogger(__name__)
 
@@ -192,6 +192,44 @@ def test_property_wizard_with_public_property_and_field():
         # The value of `wheels` here will be ignored, since `wheels` is simply
         # re-assigned on the following property definition.
         wheels: Union[int, str] = 4
+
+        @property
+        def wheels(self) -> int:
+            return self._wheels
+
+        @wheels.setter
+        def wheels(self, wheels: Union[int, str]):
+            self._wheels = int(wheels)
+
+    v = Vehicle()
+    log.debug(v)
+    assert v.wheels == 0
+
+    v = Vehicle(wheels=3)
+    log.debug(v)
+    assert v.wheels == 3
+
+    v = Vehicle('6')
+    log.debug(v)
+    assert v.wheels == 6, 'The constructor should use our setter method'
+
+    v.wheels = '123'
+    assert v.wheels == 123, 'Expected assignment to use the setter method'
+
+
+@pytest.mark.skipif(not PY310_OR_ABOVE, reason='requires Python 3.10 or higher')
+def test_property_wizard_with_public_property_and_field_with_or():
+    """
+    Using `property_wizard` when the dataclass has both a property and field
+    name *without* a leading underscore, and using the OR ("|") operator in
+    Python 3.10+, instead of the `typing.Union` usage.
+    """
+    @dataclass
+    class Vehicle(metaclass=property_wizard):
+
+        # The value of `wheels` here will be ignored, since `wheels` is simply
+        # re-assigned on the following property definition.
+        wheels: int | str = 4
 
         @property
         def wheels(self) -> int:
