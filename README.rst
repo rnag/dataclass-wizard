@@ -48,8 +48,7 @@ Using the built-in JSON marshalling support for dataclasses:
 
 .. code:: python3
 
-    # Note: This future import is not needed for Python 3.10+
-    from __future__ import annotations
+    from __future__ import annotations  # This can be removed in Python 3.10+
 
     from dataclasses import dataclass, field
 
@@ -90,7 +89,7 @@ Using the built-in JSON marshalling support for dataclasses:
 
 .. code:: python3
 
-    from __future__ import annotations
+    from __future__ import annotations  # This can be removed in Python 3.10+
 
     from dataclasses import dataclass, field
     from typing_extensions import Annotated
