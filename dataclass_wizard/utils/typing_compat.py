@@ -133,6 +133,7 @@ if not PY36:    # pragma: no cover
         _BASE_GENERIC_TYPES = (
             typing._GenericAlias,
             typing._SpecialForm,
+            types.GenericAlias,
             types.UnionType,
         )
 
@@ -293,9 +294,7 @@ def is_generic(cls):
 
     https://stackoverflow.com/a/52664522/10237506
     """
-    if isinstance(cls, _BASE_GENERIC_TYPES) or _get_origin(cls):
-        return True
-    return False
+    return isinstance(cls, _BASE_GENERIC_TYPES)
 
 
 def is_base_generic(cls):
