@@ -2,6 +2,13 @@
 History
 =======
 
+0.17.1 (2021-11-04)
+-------------------
+
+* ``property_wizard``: Update the metaclass to support `new-style annotations`_,
+  also via a ``__future__`` import declared at a the top of a module; this allows
+  `PEP 585`_ and `PEP 604`_ style annotations to be used in Python 3.7 and higher.
+
 0.17.0 (2021-10-28)
 -------------------
 
