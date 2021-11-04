@@ -4,7 +4,7 @@ from typing import Dict, Any, Type, Union, Tuple, Optional
 
 from .type_def import T, NoneType
 from .utils.typing_compat import (
-    get_origin, get_args, is_generic, is_literal, is_annotated
+    get_origin, get_args, is_generic, is_literal, is_annotated, eval_forward_ref_if_needed
 )
 
 
@@ -96,12 +96,12 @@ def _process_public_property(cls: Type, public_f: str, val: property,
         except AttributeError:
             # The underscored field is probably type-annotated but not defined
             #   i.e. my_var: str
-            fval = _default_from_annotation(annotations, under_f)
+            fval = _default_from_annotation(cls, annotations, under_f)
         else:
             # Check if the value of underscored field is a dataclass Field. If
             # so, we can use the `default` or `default_factory` if one is set.
             if isinstance(v, Field):
-                fval, is_set = _process_field(annotations, under_f, v)
+                fval, is_set = _process_field(cls, annotations, under_f, v)
             else:
                 fval.default = v
                 is_set = True
@@ -112,7 +112,7 @@ def _process_public_property(cls: Type, public_f: str, val: property,
             delattr(cls, under_f)
 
     if public_f in annotations and not is_set:
-        fval = _default_from_annotation(annotations, public_f)
+        fval = _default_from_annotation(cls, annotations, public_f)
 
     # Wraps the `setter` for the property
     val = val.setter(_wrapper(val.fset, fval))
@@ -145,11 +145,11 @@ def _process_underscored_property(cls: Type, under_f: str, val: property,
         #   (this is what `dataclasses` uses to add the field to the
         #   constructor)
         annotation_repls[under_f] = public_f
-        fval = _default_from_annotation(annotations, under_f)
+        fval = _default_from_annotation(cls, annotations, under_f)
 
     if public_f in annotations:
         # First, get the type annotation for the public field
-        fval = _default_from_annotation(annotations, public_f)
+        fval = _default_from_annotation(cls, annotations, public_f)
 
         if hasattr(cls, public_f):
             # Get the value of the field without a leading underscore
@@ -157,7 +157,7 @@ def _process_underscored_property(cls: Type, under_f: str, val: property,
             # Check if the value of public field is a dataclass Field. If so,
             # we can use the `default` or `default_factory` if one is set.
             if isinstance(v, Field):
-                fval = _process_field(annotations, public_f, v)[0]
+                fval = _process_field(cls, annotations, public_f, v)[0]
             else:
                 fval.default = v
 
@@ -176,7 +176,7 @@ def _process_underscored_property(cls: Type, under_f: str, val: property,
     delattr(cls, under_f)
 
 
-def _process_field(cls_annotations: AnnotationType,
+def _process_field(cls: Type, cls_annotations: AnnotationType,
                    field: str, field_val: Field) -> Tuple[Field, bool]:
     """
     Get the default value for `field`, which is defined as a
@@ -193,12 +193,12 @@ def _process_field(cls_annotations: AnnotationType,
     elif field_val.default_factory is not MISSING:
         return field_val, True
     else:
-        field_val = _default_from_annotation(cls_annotations, field)
+        field_val = _default_from_annotation(cls, cls_annotations, field)
         return field_val, False
 
 
 def _default_from_annotation(
-        cls_annotations: AnnotationType, field: str) -> Field:
+        cls: Type, cls_annotations: AnnotationType, field: str) -> Field:
     """
     Get the default value for the type annotated on a field. Note that we
     include a check to see if the annotated type is a `Generic` type from the
@@ -207,9 +207,18 @@ def _default_from_annotation(
 
     default_type = cls_annotations.get(field)
 
+    try:
+        default_type = eval_forward_ref_if_needed(default_type, cls)
+    except NameError:
+        # Since we are run as a metaclass, we can only evaluate types that are
+        # available when the base class `cls` is declared; thus, we can run
+        # into an error when the annotation has a forward reference to a class
+        # or type that is not yet defined.
+        default_type = None
+
     if is_generic(default_type):
         # Annotated type is a Generic from the `typing` module
-        return _default_from_generic_type(default_type, field)
+        return _default_from_generic_type(cls, default_type, field)
 
     return _default_from_type(default_type)
 
@@ -235,7 +244,9 @@ def _default_from_type(default_type: Type[T]) -> Field:
 
 
 def _default_from_generic_type(
-        default_type: Type[T], field: Optional[str] = None) -> Field:
+        cls: Type,
+        default_type: Type[T],
+        field: Optional[str] = None) -> Field:
     """
     Process a Generic type from the `typing` module, and return the default
     value (or default factory) for the annotated type.
@@ -251,10 +262,10 @@ def _default_from_generic_type(
         for extra in extras:
             if isinstance(extra, Field):
                 return _process_field(
-                    {field: default_type}, field, extra)[0]
+                    cls, {field: default_type}, field, extra)[0]
         # Else, if none of the extras are particularly useful, just process
         # type `T`, which can be either a concrete or Generic sub-type.
-        return _default_from_annotation({field: default_type}, field)
+        return _default_from_annotation(cls, {field: default_type}, field)
 
     if is_literal(default_type):
         # The Generic type appears as `Literal["r", "r+", ...]`

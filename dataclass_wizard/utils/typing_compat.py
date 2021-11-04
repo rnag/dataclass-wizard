@@ -38,7 +38,7 @@ for PyTypedDict in PyTypedDicts:
     del RealPyTypedDict
 
 
-def _get_typing_locals():
+def _get_typing_locals():  # pragma: no cover
     """
     Get typing locals() used to evaluate forward-declared annotations.
 
@@ -80,11 +80,6 @@ def get_keys_for_typed_dict(cls):
 if not PY36:    # pragma: no cover
     # Python 3.7+
 
-    _BASE_GENERIC_TYPES = (
-        typing._GenericAlias,
-        typing._SpecialForm,
-    )
-
     try:
         from typing_extensions import _AnnotatedAlias
     except ImportError:
@@ -93,10 +88,6 @@ if not PY36:    # pragma: no cover
 
     def _is_annotated(cls):
         return isinstance(cls, _AnnotatedAlias)
-
-
-    def _is_generic(cls):
-        return isinstance(cls, _BASE_GENERIC_TYPES)
 
 
     def _is_base_generic(cls):
@@ -138,8 +129,14 @@ if not PY36:    # pragma: no cover
     #   https://github.com/python/typing/blob/master/typing_extensions/src_py3/typing_extensions.py#L2111
     if PY310_OR_ABOVE:
         _get_args = typing.get_args
-        _TYPING_LOCALS = None
 
+        _BASE_GENERIC_TYPES = (
+            typing._GenericAlias,
+            typing._SpecialForm,
+            types.UnionType,
+        )
+
+        _TYPING_LOCALS = None
 
         def _process_forward_annotation(base_type):
             return PyForwardRef(base_type, is_argument=False)
@@ -158,6 +155,11 @@ if not PY36:    # pragma: no cover
 
     else:
         from typing_extensions import get_args as _get_args
+
+        _BASE_GENERIC_TYPES = (
+            typing._GenericAlias,
+            typing._SpecialForm,
+        )
 
         if PY39:  # PEP 585 is introduced in Python 3.9
             _TYPING_LOCALS = {'Union': typing.Union}
@@ -205,10 +207,6 @@ else:   # pragma: no cover
     def _process_forward_annotation(base_type):
         return PyForwardRef(
             repl_or_with_union(base_type), is_argument=False)
-
-
-    def _is_generic(cls):
-        return isinstance(cls, _BASE_GENERIC_TYPES)
 
 
     def _is_base_generic(cls):
@@ -295,7 +293,9 @@ def is_generic(cls):
 
     https://stackoverflow.com/a/52664522/10237506
     """
-    return _is_generic(cls)
+    if isinstance(cls, _BASE_GENERIC_TYPES) or _get_origin(cls):
+        return True
+    return False
 
 
 def is_base_generic(cls):
