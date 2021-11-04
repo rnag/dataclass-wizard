@@ -90,8 +90,9 @@ Using the built-in JSON marshalling support for dataclasses:
 
 .. code:: python3
 
+    from __future__ import annotations
+
     from dataclasses import dataclass, field
-    from typing import Union
     from typing_extensions import Annotated
 
     from dataclass_wizard import property_wizard
@@ -100,24 +101,24 @@ Using the built-in JSON marshalling support for dataclasses:
     @dataclass
     class Vehicle(metaclass=property_wizard):
         # Note: The example below uses the default value from the `field` extra in
-        # the `Annotated` definition; if `wheels` were annotated as a `Union` type,
+        # the `Annotated` definition; if `wheels` were annotated as `int | str`,
         # it would default to 0, because `int` appears as the first type argument.
         #
         # Any right-hand value assigned to `wheels` is ignored as it is simply
         # re-declared by the property; here it is simply omitted for brevity.
-        wheels: Annotated[Union[int, str], field(default=4)]
+        wheels: Annotated[int | str, field(default=4)]
 
         # This is a shorthand version of the above; here an IDE suggests
         # `_wheels` as a keyword argument to the constructor method, though
         # it will actually be named as `wheels`.
-        # _wheels: Union[int, str] = 4
+        # _wheels: int | str = 4
 
         @property
         def wheels(self) -> int:
             return self._wheels
 
         @wheels.setter
-        def wheels(self, wheels: Union[int, str]):
+        def wheels(self, wheels: int | str):
             self._wheels = int(wheels)
 
 
