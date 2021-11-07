@@ -17,10 +17,12 @@ __all__ = [
 ]
 
 import sys
+import types
 import typing
 from collections.abc import Callable
 
-from ..constants import PY36, PY38, PY310_OR_ABOVE
+from .string_conv import repl_or_with_union
+from ..constants import PY36, PY38, PY310_OR_ABOVE, PY39
 from ..type_def import FREF, PyLiteral, PyTypedDicts, PyForwardRef
 
 
@@ -36,6 +38,37 @@ for PyTypedDict in PyTypedDicts:
     del RealPyTypedDict
 
 
+def _get_typing_locals():  # pragma: no cover
+    """
+    Get typing locals() used to evaluate forward-declared annotations.
+
+    This allows standard collections to map to typing Generics; this is used
+    to support PEP-585 syntax for Python 3.7+ (see below)
+
+    https://www.python.org/dev/peps/pep-0585/#implementation
+    """
+    try:
+        from typing import OrderedDict as PyOrderedDict
+    except ImportError:  # Python 3.6
+        from typing_extensions import OrderedDict as PyOrderedDict
+
+    return {
+        'Union': typing.Union,
+        'tuple': typing.Tuple,
+        'list': typing.List,
+        'dict': typing.Dict,
+        'set': typing.Set,
+        'frozenset': typing.FrozenSet,
+        'type': typing.Type,
+        # `collections` imports
+        'deque': typing.Deque,
+        'defaultdict': typing.DefaultDict,
+        'OrderedDict': PyOrderedDict,
+        'Counter': typing.Counter,
+        'ChainMap': typing.ChainMap,
+    }
+
+
 def get_keys_for_typed_dict(cls):
     """
     Given a :class:`TypedDict` sub-class, returns a pair of
@@ -47,11 +80,6 @@ def get_keys_for_typed_dict(cls):
 if not PY36:    # pragma: no cover
     # Python 3.7+
 
-    _BASE_GENERIC_TYPES = (
-        typing._GenericAlias,
-        typing._SpecialForm,
-    )
-
     try:
         from typing_extensions import _AnnotatedAlias
     except ImportError:
@@ -60,10 +88,6 @@ if not PY36:    # pragma: no cover
 
     def _is_annotated(cls):
         return isinstance(cls, _AnnotatedAlias)
-
-
-    def _is_generic(cls):
-        return isinstance(cls, _BASE_GENERIC_TYPES)
 
 
     def _is_base_generic(cls):
@@ -101,20 +125,60 @@ if not PY36:    # pragma: no cover
         except AttributeError:
             return False
 
-    def _get_origin(cls, raise_=False):
-        try:
-            return cls.__origin__
-        except AttributeError:
-            if raise_:
-                raise
-            return cls
-
     # Ref:
     #   https://github.com/python/typing/blob/master/typing_extensions/src_py3/typing_extensions.py#L2111
     if PY310_OR_ABOVE:
         _get_args = typing.get_args
+
+        _BASE_GENERIC_TYPES = (
+            typing._GenericAlias,
+            typing._SpecialForm,
+            types.GenericAlias,
+            types.UnionType,
+        )
+
+        _TYPING_LOCALS = None
+
+        def _process_forward_annotation(base_type):
+            return PyForwardRef(base_type, is_argument=False)
+
+
+        def _get_origin(cls, raise_=False):
+            if isinstance(cls, types.UnionType):
+                return typing.Union
+
+            try:
+                return cls.__origin__
+            except AttributeError:
+                if raise_:
+                    raise
+                return cls
+
     else:
         from typing_extensions import get_args as _get_args
+
+        _BASE_GENERIC_TYPES = (
+            typing._GenericAlias,
+            typing._SpecialForm,
+        )
+
+        if PY39:  # PEP 585 is introduced in Python 3.9
+            _TYPING_LOCALS = {'Union': typing.Union}
+
+        else:  # Python 3.7+
+            _TYPING_LOCALS = _get_typing_locals()
+
+        def _process_forward_annotation(base_type):
+            return PyForwardRef(
+                repl_or_with_union(base_type), is_argument=False)
+
+        def _get_origin(cls, raise_=False):
+            try:
+                return cls.__origin__
+            except AttributeError:
+                if raise_:
+                    raise
+                return cls
 
 
     def _get_named_tuple_field_types(cls, raise_=True):
@@ -136,12 +200,14 @@ else:   # pragma: no cover
         typing._FinalTypingBase,
         typing.GenericMeta,
     )
+    _TYPING_LOCALS = _get_typing_locals()
 
     from typing_extensions import AnnotatedMeta
 
 
-    def _is_generic(cls):
-        return isinstance(cls, _BASE_GENERIC_TYPES)
+    def _process_forward_annotation(base_type):
+        return PyForwardRef(
+            repl_or_with_union(base_type), is_argument=False)
 
 
     def _is_base_generic(cls):
@@ -228,7 +294,7 @@ def is_generic(cls):
 
     https://stackoverflow.com/a/52664522/10237506
     """
-    return _is_generic(cls)
+    return isinstance(cls, _BASE_GENERIC_TYPES)
 
 
 def is_base_generic(cls):
@@ -293,8 +359,6 @@ def is_annotated(cls):
     return _is_annotated(cls)
 
 
-# Note: need to wrap the annotation for `base_type` with a forward ref,
-# because Python 3.6 complains.
 def eval_forward_ref(base_type: FREF,
                      cls: typing.Type):
     """
@@ -303,13 +367,13 @@ def eval_forward_ref(base_type: FREF,
     """
 
     if isinstance(base_type, str):
-        base_type = PyForwardRef(base_type, is_argument=False)
+        base_type = _process_forward_annotation(base_type)
 
     # Evaluate the ForwardRef here
     base_globals = sys.modules[cls.__module__].__dict__
 
     # noinspection PyProtectedMember
-    return typing._eval_type(base_type, base_globals, None)
+    return typing._eval_type(base_type, base_globals, _TYPING_LOCALS)
 
 
 def eval_forward_ref_if_needed(base_type: FREF,

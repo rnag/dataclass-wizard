@@ -11,7 +11,7 @@ See the end of this file for the original Apache license from this library.
 from collections import defaultdict, deque
 # noinspection PyProtectedMember
 from dataclasses import _is_dataclass_instance
-from datetime import datetime, time, date
+from datetime import datetime, time, date, timedelta
 from decimal import Decimal
 from enum import Enum
 from typing import Type, List, Dict, Any, NamedTupleMeta, Optional, Callable
@@ -134,6 +134,10 @@ class DumpMixin(AbstractDumper, BaseDumpHook):
     def dump_with_date(o: date, *_):
         return o.isoformat()
 
+    @staticmethod
+    def dump_with_timedelta(o: timedelta, *_):
+        return str(o)
+
 
 def setup_default_dumper(cls=DumpMixin):
     """
@@ -166,6 +170,7 @@ def setup_default_dumper(cls=DumpMixin):
     cls.register_dump_hook(datetime, cls.dump_with_datetime)
     cls.register_dump_hook(time, cls.dump_with_time)
     cls.register_dump_hook(date, cls.dump_with_date)
+    cls.register_dump_hook(timedelta, cls.dump_with_timedelta)
 
 
 def get_dumper(cls=None, create=False) -> Type[DumpMixin]:

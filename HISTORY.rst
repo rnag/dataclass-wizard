@@ -2,6 +2,48 @@
 History
 =======
 
+0.17.1 (2021-11-04)
+-------------------
+
+* ``property_wizard``: Update the metaclass to support `new-style annotations`_,
+  also via a ``__future__`` import declared at a the top of a module; this allows
+  `PEP 585`_ and `PEP 604`_ style annotations to be used in Python 3.7 and higher.
+
+0.17.0 (2021-10-28)
+-------------------
+
+* Support `new-style annotations`_ in Python 3.7+, via a ``__future__`` import
+  declared at a the top of a module; this allows `PEP 585`_ and `PEP 604`_ style
+  annotations to be used in Python 3.7 and higher.
+
+* ``wiz`` CLI: Add the *-x / --experimental* flag, which instead uses
+  new-style annotations in the generated Python code.
+
+* Update the docs and readme with examples and usage of *future
+  annotations* in Python 3.7+.
+
+.. _new-style annotations: https://dataclass-wizard.readthedocs.io/en/latest/python_compatibility.html#python-3-7
+.. _PEP 585: https://www.python.org/dev/peps/pep-0585/
+.. _PEP 604: https://www.python.org/dev/peps/pep-0604/
+
+0.16.2 (2021-10-26)
+-------------------
+
+* Minor code refactor and cleanup to support ``ForwardRef`` in Python 3.6 a little better.
+
+0.16.1 (2021-10-21)
+-------------------
+
+* Add full support for Python 3.10
+
+0.16.0 (2021-10-20)
+-------------------
+
+* Add support for serializing ``datetime.timedelta``
+
+  * Requires an extra for de-serialization,
+    can be installed via ``pip install dataclass-wizard[timedelta]``.
+
 0.15.2 (2021-10-03)
 -------------------
 

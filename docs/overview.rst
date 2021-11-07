@@ -86,8 +86,9 @@ Supported Types
 
 * *date* and *time* objects
     - ``datetime``
-    - ``time``
     - ``date``
+    - ``time``
+    - ``timedelta``
 
 * Special `typing primitives`_ from the ``typing`` module
     - ``Any``

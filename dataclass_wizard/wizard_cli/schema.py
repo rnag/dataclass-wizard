@@ -110,17 +110,22 @@ class PyCodeGenerator:
     # of "TRUE" will appear as a `Union[str, bool]` type by default.
     force_strings: InitVar[bool] = None
 
+    # Enable experimental features via a `__future__` import, which allows
+    # PEP-585 and PEP-604 style annotations in Python 3.7+
+    experimental: InitVar[bool] = None
+
     # The rest of these fields are just for internal use.
     parser: 'JSONRootParser' = field(init=False)
     data: JSONBlobType = field(init=False)
     _py_code_lines: List[str] = field(default=None, init=False)
 
     def __post_init__(self, file_name: str, file_contents: str,
-                      force_strings: bool):
+                      force_strings: bool, experimental: bool):
 
         # Set global flags
         global Globals
-        Globals = _Globals(force_strings=force_strings)
+        Globals = _Globals(force_strings=force_strings,
+                           experimental=experimental)
 
         # https://stackoverflow.com/a/62940588/10237506
         if file_name:
@@ -161,6 +166,10 @@ class _Globals:
     # Should we force-resolve inferred types for strings? For example, a value
     # of "TRUE" will appear as a `Union[str, bool]` type by default.
     force_strings: bool = False
+
+    # Enable experimental features via a `__future__` import, which allows
+    # PEP-585 and PEP-604 style annotations in Python 3.7+
+    experimental: bool = False
 
     # Should we insert auto-generated comments under each dataclass.
     insert_comments: bool = True
@@ -362,7 +371,7 @@ class ModuleImporter:
                                 imported: object,
                                 wrap_chars='[]',
                                 register_import=True,
-                                level=0) -> str:
+                                level=1) -> str:
         """
         Wraps `string` so it is contained within `imported`. The `wrap_chars`
         parameter determines the enclosing characters to use -- defaults to
@@ -394,7 +403,7 @@ class ModuleImporter:
                          imported: object,
                          wrap_chars='[]',
                          register_import=True,
-                         level=0) -> None:
+                         level=1) -> None:
         """
         Same as :meth:`wrap_string_with_import` above, except this accepts
         a list (deque) of strings to be wrapped instead.
@@ -412,7 +421,7 @@ class ModuleImporter:
         deck.append(end)
 
     @classmethod
-    def register_import(cls, imported: object, level=0) -> None:
+    def register_import(cls, imported: object, level=1) -> None:
         """
         Registers a new import for the given object.
 
@@ -442,6 +451,15 @@ class ModuleImporter:
             return
 
         cls._MOD_IMPORTS[level][module].add(name)
+
+    @classmethod
+    def register_future_import(cls, name: str) -> None:
+        """
+        Registers a top-level `__future__` import for a module, which is
+        required to be the first import defined at the top of the file.
+
+        """
+        cls._MOD_IMPORTS[0]['__future__'].add(name)
 
     @classmethod
     def clear_imports(cls):
@@ -552,6 +570,9 @@ class TypeContainer(List[TypeContainerElements]):
         return '\n'.join(lines)
 
     def __str__(self):
+        ...
+
+    def _default_str(self):
         """
         Return the string representation of the resolved type -
           ex.`Optional[Union[str, int]]`
@@ -565,15 +586,15 @@ class TypeContainer(List[TypeContainerElements]):
         # noinspection PyUnresolvedReferences
         parts: PyDeque[str]
 
-        if self.is_optional:
-            typing_imports.appendleft(Optional)
-
         if not self:
             # This is the case when the only value encountered for a field is
             # a `null` - hence, we're unable to determine the type.
             typing_imports.appendleft(Any)
 
-        elif len(self) > 1:
+        elif self.is_optional:
+            typing_imports.appendleft(Optional)
+
+        if len(self) > 1:
             # Else, if we have more than one type for a field, then the
             # resolved type should be a `Union` of all the seen types.
             typing_imports.appendleft(Union)
@@ -584,6 +605,20 @@ class TypeContainer(List[TypeContainerElements]):
             ModuleImporter.wrap_with_import(parts, tp)
 
         return ''.join(parts).replace('[]', '')
+
+    def _experimental_features_str(self):
+
+        if not self:
+            # This is the case when the only value encountered for a field is
+            # a `null` - hence, we're unable to determine the type.
+            ModuleImporter.register_import(Any)
+            return 'Any'
+
+        parts = [str(typ) for typ in self]
+        if self.is_optional:
+            parts.append('None')
+
+        return ' | '.join(parts)
 
 
 def possible_types_for_string_value(string: str) -> PyDataTypeOrSeq:
@@ -686,6 +721,20 @@ class JSONRootParser:
         # Clear imports from last run
         ModuleImporter.clear_imports()
 
+        str_method_prefix = 'default'
+
+        # Check if experimental features are enabled
+        if Globals.experimental:
+            # Add the required `__future__` import
+            ModuleImporter.register_future_import('annotations')
+            # Update how annotations are resolved
+            str_method_prefix = 'experimental_features'
+
+        # Set the `__str__` method to use for classes
+        str_method_name = f'_{str_method_prefix}_str'
+        for typ in TypeContainer, PyListGenerator, PyDataclassGenerator:
+            typ.__str__ = getattr(typ, str_method_name)
+
         # We'll need an import for the @dataclass decorator, at a minimum
         ModuleImporter.register_import(dataclass)
 
@@ -785,7 +834,7 @@ class PyDataclassGenerator(metaclass=property_wizard):
     def get_lines(self) -> List[str]:
         if self.is_root:
             ModuleImporter.register_import_by_name(
-                'dataclass_wizard', 'JSONWizard', level=1)
+                'dataclass_wizard', 'JSONWizard', level=2)
             class_name = f'class {self.name}(JSONWizard):'
         else:
             class_name = f'class {self.name}:'
@@ -830,7 +879,13 @@ class PyDataclassGenerator(metaclass=property_wizard):
         return class_parts
 
     def __str__(self):
+        ...
+
+    def _default_str(self):
         return f"'{self.name}'"
+
+    def _experimental_features_str(self):
+        return self.name
 
     def __repr__(self):
         """
@@ -1005,6 +1060,9 @@ class PyListGenerator(metaclass=property_wizard):
         return lines
 
     def __str__(self):
+        ...
+
+    def _default_str(self):
 
         if len(self.parsed_types) == 0:
             # We could also wrap it with 'Optional' here, since we see it's
@@ -1016,6 +1074,14 @@ class PyListGenerator(metaclass=property_wizard):
 
         return ModuleImporter.wrap_string_with_import(
             str(self.parsed_types), List)
+
+    def _experimental_features_str(self):
+
+        if len(self.parsed_types) == 0:
+            return 'list'
+
+        return ModuleImporter.wrap_string_with_import(
+            str(self.parsed_types), list)
 
     def __repr__(self):
         """

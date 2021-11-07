@@ -1,6 +1,71 @@
 Examples
 ========
 
+Simple
+~~~~~~
+
+The following example has been tested on **Python 3.7+**. See below for an
+alternate version that is supported in Python 3.6+.
+
+.. code:: python3
+
+    # Note: in Python 3.10+, this import can be removed
+    from __future__ import annotations
+
+    from dataclasses import dataclass, field
+
+    from dataclass_wizard import JSONWizard
+
+
+    @dataclass
+    class MyClass(JSONWizard):
+        my_str: str | None
+        is_active_tuple: tuple[bool, ...]
+        list_of_int: list[int] = field(default_factory=list)
+
+
+    string = """
+    {
+      "my_str": 20,
+      "ListOfInt": ["1", "2", 3],
+      "isActiveTuple": ["true", "false", 1, false]
+    }
+    """
+
+    # De-serialize the JSON string into a `MyClass` object.
+    c = MyClass.from_json(string)
+
+    print(repr(c))
+    # prints:
+    #   MyClass(my_str='20', is_active_tuple=(True, False, True, False), list_of_int=[1, 2, 3])
+
+    print(c.to_json())
+    # prints:
+    #   {"myStr": "20", "isActiveTuple": [true, false, true, false], "listOfInt": [1, 2, 3]}
+
+    # True
+    assert c == c.from_dict(c.to_dict())
+
+Using Typing Imports
+--------------------
+
+This approach is supported in **Python 3.6+**. Usage is the same as above.
+
+.. code:: python3
+
+    from dataclasses import dataclass, field
+    from typing import Optional, List, Tuple
+
+    from dataclass_wizard import JSONWizard
+
+
+    @dataclass
+    class MyClass(JSONWizard):
+        my_str: Optional[str]
+        is_active_tuple: Tuple[bool, ...]
+        list_of_int: List[int] = field(default_factory=list)
+
+
 A (More) Complete Example
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 

@@ -134,17 +134,28 @@ else:  # pragma: no cover
     if PY36:
         import typing
         from typing import _ForwardRef as PyForwardRef
+        from functools import wraps
 
         # Need to wrap the constructor to discard arguments like `is_argument`
         PyForwardRef.__init__ = discard_kwargs(PyForwardRef.__init__)
 
         # This is needed to avoid an`AttributeError` when using PyForwardRef
         # as an argument to `TypeVar`, as we do below.
-        if hasattr(typing, '_gorg'):  # Python 3.6.2 or lower
-            _gorg = typing._gorg
-            typing._gorg = lambda a: None if a is PyForwardRef else _gorg(a)
-        else:   # Python 3.6.3+
-            PyForwardRef._gorg = None
+        #
+        # See https://stackoverflow.com/a/69436981/10237506.
+        _old_type_check = typing._type_check
+
+        @wraps(_old_type_check)
+        def _new_type_check(arg, message):
+            if arg is PyForwardRef:
+                return arg
+            return _old_type_check(arg, message)
+
+        typing._type_check = _new_type_check
+        # ensure the global namespace is the same for users
+        # regardless of the version of Python they're using
+        del _new_type_check, typing, wraps
+
     else:
         from typing import ForwardRef as PyForwardRef
 

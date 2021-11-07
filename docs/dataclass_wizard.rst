@@ -85,6 +85,14 @@ dataclass\_wizard.errors module
    :undoc-members:
    :show-inheritance:
 
+dataclass\_wizard.lazy\_imports module
+--------------------------------------
+
+.. automodule:: dataclass_wizard.lazy_imports
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 dataclass\_wizard.loaders module
 --------------------------------
 

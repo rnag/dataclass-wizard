@@ -92,6 +92,11 @@ def setup_parser():
                                 'resolve to a `bool` type, instead of the '
                                 'default `Union[bool, str]`.')
 
+    gs_parser.add_argument("-x", "--experimental", action="store_true",
+                           help='Enable experimental features via a __future__ '
+                                'import, which allows PEP-585 and PEP-604 '
+                                'style annotations in Python 3.7+')
+
     gs_parser.set_defaults(func=gen_py_schema)
 
 
@@ -156,6 +161,7 @@ def gen_py_schema(args):
     out_file: TextIO = args.out_file
     no_json_file: bool = args.no_json_file
     force_strings: bool = args.force_strings
+    experimental: bool = args.experimental
 
     # Currently these arguments are unused
     # verbose, quiet = args.verbose, args.quiet
@@ -171,7 +177,8 @@ def gen_py_schema(args):
 
     try:
         code_gen = PyCodeGenerator(file_contents=json_string,
-                                   force_strings=force_strings)
+                                   force_strings=force_strings,
+                                   experimental=experimental)
 
     except JSONDecodeError as e:
         msg = str(e).lower()
