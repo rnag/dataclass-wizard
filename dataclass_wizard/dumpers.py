@@ -18,7 +18,7 @@ from typing import Type, List, Dict, Any, NamedTupleMeta, Optional, Callable
 from uuid import UUID
 
 from .abstractions import AbstractDumper
-from .bases import BaseDumpHook, AbstractMeta
+from .bases import BaseDumpHook, AbstractMeta, META
 from .class_helper import (
     create_new_class,
     dataclass_field_names, dataclass_field_to_default,
@@ -245,7 +245,7 @@ def asdict(obj: T,
 
 
 def dump_func_for_dataclass(cls: Type[T],
-                            config: Optional[AbstractMeta] = None,
+                            config: Optional[META] = None,
                             nested_cls_to_dump_func: Dict[Type, Any] = None,
                             ) -> Callable[[T, Any, Any, Any], JSONObject]:
 
@@ -255,10 +255,10 @@ def dump_func_for_dataclass(cls: Type[T],
     # Get the meta config for the class, or the default config otherwise.
     meta = get_meta(cls)
 
-    # Check if we're being run for the outer dataclass or for a nested one.
-    is_outer_class = nested_cls_to_dump_func is None
+    # Check if we're being run for the main dataclass or for a nested one.
+    is_main_class = nested_cls_to_dump_func is None
 
-    if is_outer_class:  # we are being run for the outer dataclass
+    if is_main_class:  # we are being run for the main dataclass
         nested_cls_to_dump_func = {}
         # If the `recursive` flag is enabled and a Meta config is provided,
         # apply the Meta recursively to any nested classes.
@@ -267,7 +267,7 @@ def dump_func_for_dataclass(cls: Type[T],
 
     else:  # we are being run for a nested dataclass
         if config:
-            # we want to apply the meta config from the outer dataclass
+            # we want to apply the meta config from the main dataclass
             # recursively.
             meta = meta | config
             meta.bind_to(cls, is_default=False)
@@ -364,7 +364,7 @@ def dump_func_for_dataclass(cls: Type[T],
 
     # In any case, save the dump function for the class, so we don't need to
     # run this logic each time.
-    if is_outer_class:
+    if is_main_class:
         _CLASS_TO_DUMP_FUNC[cls] = asdict_func
     else:
         nested_cls_to_dump_func[cls] = asdict_func

@@ -10,7 +10,7 @@ from typing import (
 from uuid import UUID
 
 from .abstractions import AbstractLoader, AbstractParser, FieldToParser
-from .bases import BaseLoadHook, AbstractMeta
+from .bases import BaseLoadHook, AbstractMeta, META
 from .class_helper import (
     get_class_name, create_new_class,
     dataclass_to_loader, set_class_loader,
@@ -234,7 +234,8 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
 
     @classmethod
     def get_parser_for_annotation(cls, ann_type: Type[T],
-                                  base_cls: Type[T] = None) -> AbstractParser:
+                                  base_cls: Type = None,
+                                  config: META = None) -> AbstractParser:
         """Returns the Parser (dispatcher) for a given annotation type."""
         hooks = cls.__LOAD_HOOKS__
         ann_type = eval_forward_ref_if_needed(ann_type, base_cls)
@@ -251,12 +252,13 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
             # 3.6 behaves a bit differently (doesn't have an `__origin__`
             # attribute for example)
             if is_literal(ann_type):
-                return LiteralParser(cls, ann_type)
+                return LiteralParser(base_cls, config, ann_type)
 
             if is_annotated(ann_type):
                 # Given `Annotated[T, MaxValue(10), ...]`, we only need `T`
                 ann_type = get_args(ann_type)[0]
-                return cls.get_parser_for_annotation(ann_type, base_cls)
+                return cls.get_parser_for_annotation(
+                    ann_type, base_cls, config)
 
             # This property will be available for most generic types in the
             # `typing` library.
@@ -271,7 +273,11 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
 
                     if is_dataclass(base_type):
                         base_type: Type[T]
-                        load_hook = load_func_for_dataclass(base_type)
+                        load_hook = load_func_for_dataclass(
+                            base_type,
+                            is_main_class=False,
+                            config=config
+                        )
 
                     elif issubclass(base_type, Enum):
                         load_hook = hooks.get(Enum)
@@ -286,21 +292,21 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
                             # Annotated as a `typing.NamedTuple` subtype
                             load_hook = hooks.get(NamedTupleMeta)
                             return NamedTupleParser(
-                                base_cls, base_type, load_hook,
+                                base_cls, config, base_type, load_hook,
                                 cls.get_parser_for_annotation
                             )
                         else:
                             # Annotated as a `collections.namedtuple` subtype
                             load_hook = hooks.get(namedtuple)
                             return NamedTupleUntypedParser(
-                                base_cls, base_type, load_hook,
+                                base_cls, config, base_type, load_hook,
                                 cls.get_parser_for_annotation
                             )
 
                     elif is_typed_dict(base_type):
                         load_hook = cls.load_to_typed_dict
                         return TypedDictParser(
-                            base_cls, base_type, load_hook,
+                            base_cls, config, base_type, load_hook,
                             cls.get_parser_for_annotation
                         )
 
@@ -331,34 +337,34 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
                     elif NoneType in base_types and len(base_types) == 2:
                         # Special case for Optional[x], which is actually Union[x, None]
                         return OptionalParser(
-                            base_cls, base_types[0],
+                            base_cls, config, base_types[0],
                             cls.get_parser_for_annotation
                         )
 
                     else:
                         return UnionParser(
-                            base_cls, base_types,
+                            base_cls, config, base_types,
                             cls.get_parser_for_annotation
                         )
 
                 elif issubclass(base_type, defaultdict):
                     load_hook = cls.load_to_defaultdict
                     return DefaultDictParser(
-                        base_cls, ann_type, load_hook,
+                        base_cls, config, ann_type, load_hook,
                         cls.get_parser_for_annotation
                     )
 
                 elif issubclass(base_type, dict):
                     load_hook = cls.load_to_dict
                     return MappingParser(
-                        base_cls, ann_type, load_hook,
+                        base_cls, config, ann_type, load_hook,
                         cls.get_parser_for_annotation
                     )
 
                 elif issubclass(base_type, LSQ.__constraints__):
                     load_hook = cls.load_to_iterable
                     return IterableParser(
-                        base_cls, ann_type, load_hook,
+                        base_cls, config, ann_type, load_hook,
                         cls.get_parser_for_annotation
                     )
 
@@ -374,7 +380,7 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
                         parser = VariadicTupleParser
 
                     return parser(
-                        base_cls, ann_type, load_hook,
+                        base_cls, config, ann_type, load_hook,
                         cls.get_parser_for_annotation
                     )
 
@@ -386,17 +392,20 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
         elif issubclass(base_type, dict):
             load_hook = cls.load_to_dict
             return MappingParser(
-                base_cls, ann_type, load_hook, cls.get_parser_for_annotation)
+                base_cls, config, ann_type, load_hook,
+                cls.get_parser_for_annotation)
 
         elif issubclass(base_type, LSQ.__constraints__):
             load_hook = cls.load_to_iterable
             return IterableParser(
-                base_cls, ann_type, load_hook, cls.get_parser_for_annotation)
+                base_cls, config, ann_type, load_hook,
+                cls.get_parser_for_annotation)
 
         elif issubclass(base_type, tuple):
             load_hook = cls.load_to_tuple
             return TupleParser(
-                base_cls, ann_type, load_hook, cls.get_parser_for_annotation)
+                base_cls, config, ann_type, load_hook,
+                cls.get_parser_for_annotation)
 
         if load_hook is None:
             # If load hook is still not resolved at this point, it's possible
@@ -420,12 +429,12 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
 
         if hasattr(load_hook, SINGLE_ARG_ALIAS):
             load_hook = resolve_alias_func(load_hook, locals())
-            return SingleArgParser(base_cls, base_type, load_hook)
+            return SingleArgParser(base_cls, config, base_type, load_hook)
 
         if hasattr(load_hook, IDENTITY):
-            return IdentityParser(base_type, base_type)
+            return IdentityParser(base_type, config, base_type)
 
-        return Parser(base_cls, base_type, load_hook)
+        return Parser(base_cls, config, base_type, load_hook)
 
 
 def setup_default_loader(cls=LoadMixin):
@@ -464,13 +473,14 @@ def setup_default_loader(cls=LoadMixin):
     cls.register_load_hook(timedelta, cls.load_to_timedelta)
 
 
-def get_loader(class_or_instance=None, create=False) -> Type[LoadMixin]:
+def get_loader(class_or_instance=None, create=True) -> Type[LoadMixin]:
     """
     Get the loader for the class, using the following logic:
 
         * Return the class if it's already a sub-class of :class:`LoadMixin`
-        * If `create` is enabled, a new sub-class of :class:`LoadMixin` for
-          the class will be generated and cached on the initial run.
+        * If `create` is enabled (which is the default), a new sub-class of
+          :class:`LoadMixin` for the class will be generated and cached on the
+          initial run.
         * Otherwise, we will return the base loader, :class:`LoadMixin`, which
           can potentially be shared by more than one dataclass.
 
@@ -530,17 +540,33 @@ def fromlist(cls: Type[T], list_of_dict: List[JSONObject]) -> List[T]:
     return [load(d) for d in list_of_dict]
 
 
-def load_func_for_dataclass(cls: Type[T]) -> Callable[[JSONObject], T]:
+def load_func_for_dataclass(
+        cls: Type[T],
+        is_main_class: bool = True,
+        config: Optional[META] = None) -> Callable[[JSONObject], T]:
 
-    # Gets the loader for the class, or the default loader otherwise.
+    # Get the loader for the class, or create a new one as needed.
     cls_loader = get_loader(cls)
 
     # Get the meta config for the class, or the default config otherwise.
     meta = get_meta(cls)
 
+    if is_main_class:  # we are being run for the main dataclass
+        # If the `recursive` flag is enabled and a Meta config is provided,
+        # apply the Meta recursively to any nested classes.
+        if meta.recursive and meta is not AbstractMeta:
+            config = meta
+
+    else:  # we are being run for a nested dataclass
+        if config:
+            # we want to apply the meta config from the main dataclass
+            # recursively.
+            meta = meta | config
+            meta.bind_to(cls, is_default=False)
+
     # This contains a mapping of the original field name to the parser for its
     # annotated type; the item lookup *can* be case-insensitive.
-    field_to_parser = dataclass_field_to_load_parser(cls_loader, cls)
+    field_to_parser = dataclass_field_to_load_parser(cls_loader, cls, config)
 
     # A cached mapping of each key in a JSON or dictionary object to the
     # resolved dataclass field name; useful so we don't need to do a case

@@ -162,7 +162,8 @@ class BaseJSONWizardMeta(AbstractMeta):
 
 
 # noinspection PyPep8Naming
-def LoadMeta(debug_enabled: bool = False,
+def LoadMeta(*, debug_enabled: bool = False,
+             recursive: bool = True,
              raise_on_unknown_json_key: bool = False,
              json_key_to_field: Dict[str, str] = None,
              key_transform: Union[LetterCase, str] = None,
@@ -191,6 +192,7 @@ def LoadMeta(debug_enabled: bool = False,
         'key_transform_with_load': key_transform,
         'json_key_to_field': json_key_to_field,
         'debug_enabled': debug_enabled,
+        'recursive': recursive,
         'tag': tag,
     }
 
@@ -200,7 +202,8 @@ def LoadMeta(debug_enabled: bool = False,
 
 
 # noinspection PyPep8Naming
-def DumpMeta(debug_enabled: bool = False,
+def DumpMeta(*, debug_enabled: bool = False,
+             recursive: bool = True,
              marshal_date_time_as: Union[DateTimeTo, str] = None,
              key_transform: Union[LetterCase, str] = None,
              tag: str = None,
@@ -229,6 +232,7 @@ def DumpMeta(debug_enabled: bool = False,
         'key_transform_with_dump': key_transform,
         'skip_defaults': skip_defaults,
         'debug_enabled': debug_enabled,
+        'recursive': recursive,
         'tag': tag,
     }
 

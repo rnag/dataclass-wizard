@@ -10,6 +10,7 @@ from .type_def import FrozenKeys
 M = TypeVar('M', bound='AbstractMeta')
 # Use `Type` here explicitly, because we will never have an `M` object.
 M = Type[M]
+META = M  # alias, since `M` is already defined in another module
 
 
 class ABCOrAndMeta(ABCMeta):

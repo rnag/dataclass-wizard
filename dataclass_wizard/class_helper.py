@@ -109,17 +109,21 @@ def dataclass_field_to_json_field(cls):
 
 
 def dataclass_field_to_load_parser(
-        cls_loader, cls: Type) -> 'DictWithLowerStore[str, AbstractParser]':
+        cls_loader: Type[AbstractLoader],
+        cls: Type,
+        config: M) -> 'DictWithLowerStore[str, AbstractParser]':
     """
     Returns a mapping of each lower-cased field name to its annotated type.
     """
     if cls not in _FIELD_NAME_TO_LOAD_PARSER:
-        _setup_load_config_for_cls(cls_loader, cls)
+        _setup_load_config_for_cls(cls_loader, cls, config)
 
     return _FIELD_NAME_TO_LOAD_PARSER[cls]
 
 
-def _setup_load_config_for_cls(cls_loader, cls: Type):
+def _setup_load_config_for_cls(cls_loader: Type[AbstractLoader],
+                               cls: Type,
+                               config: M):
     """
     This function processes a class `cls` on an initial run, and sets up the
     load process for `cls` by iterating over each dataclass field. For each
@@ -149,7 +153,8 @@ def _setup_load_config_for_cls(cls_loader, cls: Type):
         # Lookup the Parser (dispatcher) for each field based on its annotated
         # type, and then cache it so we don't need to lookup each time.
         name_to_parser[f.name] = cls_loader.get_parser_for_annotation(
-            f.type, cls)
+            f.type, cls, config
+        )
 
         # Check if the field is a `Field` type or a subclass. If so, update
         # the class-specific mapping of JSON key to dataclass field name.

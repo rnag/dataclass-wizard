@@ -101,7 +101,7 @@ def test_fromdict_with_nested_dataclass():
     # the test case)
     globals().update(locals())
 
-    LoadMeta(key_transform='CAMEL').bind_to(Container)
+    LoadMeta(key_transform='CAMEL', recursive=False).bind_to(Container)
 
     c = fromdict(Container, d)
 
@@ -1289,9 +1289,9 @@ def test_optional_parser_contains(input, expected):
 
     """
     base_type: Type[T] = str
-    mock_parser = Parser(None, None, lambda: None)
+    mock_parser = Parser(None, None, None, lambda: None)
     optional_parser = OptionalParser(
-        None, base_type, lambda a, b: mock_parser)
+        None, None, base_type, lambda *args: mock_parser)
 
     actual = input in optional_parser
     assert actual == expected
@@ -1306,7 +1306,7 @@ def test_single_arg_parser_without_hook():
     class MyClass(Generic[T]):
         pass
 
-    parser = SingleArgParser(None, MyClass, None)
+    parser = SingleArgParser(None, None, MyClass, None)
 
     c = MyClass()
     assert parser(c) == c
