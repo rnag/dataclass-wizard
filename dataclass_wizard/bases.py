@@ -58,8 +58,19 @@ class ABCOrAndMeta(ABCMeta):
             if k in src_dict:
                 base_dict[k] = src_dict[k]
 
+        new_cls_name = src.__name__
+        # Check if the type of the class we want to create is
+        # `JSONWizard.Meta` or a subclass. If so, we want to avoid the
+        # mandatory `__init_subclass__` call that gets invoked when creating
+        # a new class, so use the superclass type instead.
+        if src.__is_inner_meta__:
+            # In a reversed MRO, the inheritance tree looks like this:
+            #   |___ object -> AbstractMeta -> BaseJSONWizardMeta -> ...
+            # So here, we want to choose the third-to-last class in the list.
+            src = src.__mro__[-3]
+
         # noinspection PyTypeChecker
-        return type(src.__name__, (src, ), base_dict)
+        return type(new_cls_name, (src, ), base_dict)
 
     def __and__(cls: M, other: M) -> M:
         """
@@ -96,6 +107,9 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
         'json_key_to_field',
         'tag',
     })
+
+    # Class attribute which enables us to detect a `JSONWizard.Meta` subclass.
+    __is_inner_meta__: ClassVar[bool] = False
 
     # True to enable Debug mode for additional (more verbose) log output.
     #
