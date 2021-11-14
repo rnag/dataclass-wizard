@@ -8,22 +8,27 @@ from .type_def import FrozenKeys
 
 # Create a generic variable that can be 'AbstractMeta', or any subclass.
 M = TypeVar('M', bound='AbstractMeta')
+# Use `Type` here explicitly, because we will never have an `M` object.
+M = Type[M]
 
 
-class ABCOrMeta(ABCMeta):
+class ABCOrAndMeta(ABCMeta):
     """
-    Metaclass to add a class-level `__or__` method to a base class
-    of type `M`.
+    Metaclass to add class-level :meth:`__or__` and :meth:`__and__` methods
+    to a base class of type :type:`M`.
 
     Ref:
       - https://stackoverflow.com/q/15008807/10237506
       - https://stackoverflow.com/a/57351066/10237506
     """
 
-    def __or__(cls: Type[M], other: Type[M]) -> Type[M]:
+    def __or__(cls: M, other: M) -> M:
         """
         Merge two Meta configs. Priority will be given to the source config
         present in `cls`, e.g. the first operand in the '|' expression.
+
+        Use case: Merge the Meta configs for two separate dataclasses into a
+        single, unified Meta config.
         """
         this_dict = cls.__dict__
         other_dict = other.__dict__
@@ -44,8 +49,27 @@ class ABCOrMeta(ABCMeta):
         # noinspection PyTypeChecker
         return type(cls.__name__, (cls, ), base_dict)
 
+    def __and__(cls: M, other: M) -> M:
+        """
+        Merge the `other` Meta config into the first one, i.e. `cls`. This
+        operation does not create a new class, but instead it modifies the
+        source config `cls` in-place; the source will be the first operand in
+        the '&' expression.
 
-class AbstractMeta(metaclass=ABCOrMeta):
+        Use case: Merge a separate Meta config (for a single dataclass) with
+        the first config.
+        """
+        other_dict = other.__dict__
+
+        # Set meta attributes here.
+        for k in cls.all_fields:
+            if k in other_dict:
+                setattr(cls, k, other_dict[k])
+
+        return cls
+
+
+class AbstractMeta(metaclass=ABCOrAndMeta):
     """
     Base class definition for the `JSONWizard.Meta` inner class.
     """
@@ -55,6 +79,7 @@ class AbstractMeta(metaclass=ABCOrMeta):
     # When merging two Meta configs for a class, these are the only
     # attributes which will not be merged.
     __special_attrs__ = frozenset({
+        'debug_enabled',
         'json_key_to_field',
         'tag',
     })
@@ -126,9 +151,14 @@ class AbstractMeta(metaclass=ABCOrMeta):
     skip_defaults: ClassVar[bool] = False
 
     @cached_class_property
+    def all_fields(cls):
+        """Return a list of all class attributes"""
+        return frozenset(AbstractMeta.__annotations__)
+
+    @cached_class_property
     def fields_to_merge(cls) -> FrozenKeys:
         """Return a list of class attributes, minus `__special_attrs__`"""
-        return frozenset(AbstractMeta.__annotations__) - cls.__special_attrs__
+        return cls.all_fields - cls.__special_attrs__
 
     @classmethod
     @abstractmethod

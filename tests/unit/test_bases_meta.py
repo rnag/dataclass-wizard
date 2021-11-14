@@ -39,7 +39,7 @@ def mock_get_dumper(mocker: MockerFixture):
     return mocker.patch('dataclass_wizard.bases_meta.get_dumper')
 
 
-def test_merge_meta():
+def test_merge_meta_with_or():
     """We are able to merge two Meta classes using the __or__ method."""
     class A(BaseJSONWizardMeta):
         debug_enabled = True
@@ -56,11 +56,12 @@ def test_merge_meta():
         json_key_to_field = {'k2': 'v2'}
 
     # Merge the two Meta config together
-    merged_meta: Type[M] = A | B
+    merged_meta: M = A | B
 
     # Assert we are a subclass of A, which subclasses from `BaseJSONWizardMeta`
     assert issubclass(merged_meta, BaseJSONWizardMeta)
     assert issubclass(merged_meta, A)
+    assert merged_meta is not A
 
     # Assert Meta fields are merged from A and B as expected (with priority
     # given to A)
@@ -75,6 +76,47 @@ def test_merge_meta():
     # Assert A and B have not been mutated
     assert A.key_transform_with_load is None
     assert B.key_transform_with_load == 'SNAKE'
+    assert B.json_key_to_field == {'k2': 'v2'}
+    # Assert that Base class attributes have not been mutated
+    assert BaseJSONWizardMeta.key_transform_with_load is None
+    assert BaseJSONWizardMeta.json_key_to_field is None
+
+
+def test_merge_meta_with_and():
+    """We are able to merge two Meta classes using the __or__ method."""
+    class A(BaseJSONWizardMeta):
+        debug_enabled = True
+        key_transform_with_dump = 'CAMEL'
+        marshal_date_time_as = None
+        tag = None
+        json_key_to_field = {'k1': 'v1'}
+
+    class B(BaseJSONWizardMeta):
+        debug_enabled = False
+        key_transform_with_load = 'SNAKE'
+        marshal_date_time_as = DateTimeTo.TIMESTAMP
+        tag = 'My Test Tag'
+        json_key_to_field = {'k2': 'v2'}
+
+    # Merge the two Meta config together
+    merged_meta: M = A & B
+
+    # Assert we are a subclass of A, which subclasses from `BaseJSONWizardMeta`
+    assert issubclass(merged_meta, BaseJSONWizardMeta)
+    assert merged_meta is A
+
+    # Assert Meta fields are merged from A and B as expected (with priority
+    # given to A)
+    assert 'CAMEL' == merged_meta.key_transform_with_dump == A.key_transform_with_dump
+    assert 'SNAKE' == merged_meta.key_transform_with_load == B.key_transform_with_load
+    assert DateTimeTo.TIMESTAMP is merged_meta.marshal_date_time_as is A.marshal_date_time_as
+    assert False is merged_meta.debug_enabled is A.debug_enabled
+    # Assert that special attributes are copied from B
+    assert 'My Test Tag' == merged_meta.tag == A.tag
+    assert {'k2': 'v2'} == merged_meta.json_key_to_field == A.json_key_to_field
+
+    # Assert A has been mutated
+    assert A.key_transform_with_load == B.key_transform_with_load == 'SNAKE'
     assert B.json_key_to_field == {'k2': 'v2'}
     # Assert that Base class attributes have not been mutated
     assert BaseJSONWizardMeta.key_transform_with_load is None

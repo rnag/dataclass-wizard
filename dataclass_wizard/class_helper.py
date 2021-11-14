@@ -56,7 +56,7 @@ _META_INITIALIZER: Dict[
 
 # Mapping of dataclass to its Meta inner class, which will only be set when
 # the :class:`JSONSerializable.Meta` is sub-classed.
-_META: Dict[Type, Type[M]] = {}
+_META: Dict[Type, M] = {}
 
 
 def dataclass_to_loader(cls):
@@ -248,7 +248,7 @@ def call_meta_initializer_if_needed(cls: Type[W]):
         _META_INITIALIZER[cls_name](cls)
 
 
-def get_meta(cls: Type[W]):
+def get_meta(cls: Type) -> M:
     """
     Retrieves the Meta config for the :class:`AbstractJSONWizard` subclass.
 

@@ -9,6 +9,7 @@ from uuid import UUID
 import pytest
 
 from dataclass_wizard import *
+from dataclass_wizard.class_helper import get_meta
 from dataclass_wizard.constants import TAG
 from dataclass_wizard.errors import ParseError
 from ..conftest import *
@@ -32,8 +33,18 @@ def test_asdict_and_fromdict():
 
     LoadMeta(
         key_transform='CAMEL',
+        raise_on_unknown_json_key=True,
         json_key_to_field={'myBoolean': 'my_bool', '__all__': True}
     ).bind_to(MyClass)
+
+    DumpMeta(key_transform='SNAKE').bind_to(MyClass)
+
+    # Assert that meta is properly merged as expected
+    meta = get_meta(MyClass)
+    assert 'CAMEL' == meta.key_transform_with_load
+    assert 'SNAKE' == meta.key_transform_with_dump
+    assert True is meta.raise_on_unknown_json_key
+    assert {'myBoolean': 'my_bool'} == meta.json_key_to_field
 
     c = fromdict(MyClass, d)
 
@@ -41,7 +52,6 @@ def test_asdict_and_fromdict():
     assert isinstance(c.myStrOrInt, int)
     assert c.myStrOrInt == 123
 
-    DumpMeta(key_transform='SNAKE').bind_to(MyClass)
     new_dict = asdict(c)
 
     assert new_dict == {'myBoolean': True, 'my_str_or_int': 123}
