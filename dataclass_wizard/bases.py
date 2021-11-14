@@ -1,19 +1,63 @@
-from abc import ABC, abstractmethod
+from abc import ABCMeta, abstractmethod
 from typing import Callable, Type, Dict, Optional, ClassVar, Union, TypeVar
 
-from .abstractions import W
+from .decorators import cached_class_property
 from .enums import DateTimeTo, LetterCase
+from .type_def import FrozenKeys
 
 
 # Create a generic variable that can be 'AbstractMeta', or any subclass.
 M = TypeVar('M', bound='AbstractMeta')
 
 
-class AbstractMeta(ABC):
+class ABCOrMeta(ABCMeta):
+    """
+    Metaclass to add a class-level `__or__` method to a base class
+    of type `M`.
+
+    Ref:
+      - https://stackoverflow.com/q/15008807/10237506
+      - https://stackoverflow.com/a/57351066/10237506
+    """
+
+    def __or__(cls: Type[M], other: Type[M]) -> Type[M]:
+        """
+        Merge two Meta configs. Priority will be given to the source config
+        present in `cls`, e.g. the first operand in the '|' expression.
+        """
+        this_dict = cls.__dict__
+        other_dict = other.__dict__
+
+        base_dict = {'__slots__': ()}
+        # Set meta attributes here.
+        for k in cls.fields_to_merge:
+            if k in this_dict:
+                base_dict[k] = this_dict[k]
+            elif k in other_dict:
+                base_dict[k] = other_dict[k]
+
+        # This mapping won't be updated. Use the src by default.
+        for k in cls.__special_attrs__:
+            if k in this_dict:
+                base_dict[k] = this_dict[k]
+
+        # noinspection PyTypeChecker
+        return type(cls.__name__, (cls, ), base_dict)
+
+
+class AbstractMeta(metaclass=ABCOrMeta):
     """
     Base class definition for the `JSONWizard.Meta` inner class.
     """
     __slots__ = ()
+
+    # A list of class attributes that are exclusive to the Meta config.
+    # When merging two Meta configs for a class, these are the only
+    # attributes which will not be merged.
+    __special_attrs__ = frozenset({
+        'json_key_to_field',
+        'tag',
+    })
 
     # True to enable Debug mode for additional (more verbose) log output.
     #
@@ -81,17 +125,20 @@ class AbstractMeta(ABC):
     # the :func:`dataclasses.field`) in the serialization process.
     skip_defaults: ClassVar[bool] = False
 
+    @cached_class_property
+    def fields_to_merge(cls) -> FrozenKeys:
+        """Return a list of class attributes, minus `__special_attrs__`"""
+        return frozenset(AbstractMeta.__annotations__) - cls.__special_attrs__
+
     @classmethod
     @abstractmethod
-    def bind_to(cls, dataclass: Type[W], create=True, is_default=True):
+    def bind_to(cls, dataclass: Type, create=True, is_default=True):
         """
-        Initialize hook which applies the Meta config to `dataclass`. This
-        hook method is typically called by `dataclass`, which will be the
-        direct outer class.
+        Initialize hook which applies the Meta config to `dataclass`, which is
+        typically a subclass of :class:`JSONWizard`.
 
-        :param dataclass: typically an outer class, which is a sub-class of
-          :class:`AbstractJSONWizard`, though at a minimum it should be a
-          dataclass.
+        :param dataclass: A class which has been decorated by the `@dataclass`
+          decorator; typically this is a sub-class of :class:`JSONWizard`.
         :param create: When true, a separate loader/dumper will be created
           for the class. If disabled, this will access the root loader/dumper,
           so modifying this should affect global settings across all
@@ -100,12 +147,6 @@ class AbstractMeta(ABC):
           default Meta config for the dataclass. Defaults to true.
 
         """
-
-    @classmethod
-    @abstractmethod
-    def merge(cls, src: Type[M], other: Type[M],
-              data_class=None):
-        """TODO Merge src and other"""
 
 
 class BaseLoadHook:

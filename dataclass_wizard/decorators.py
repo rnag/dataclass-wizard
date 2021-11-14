@@ -8,6 +8,33 @@ from .errors import ParseError
 T = TypeVar('T')
 
 
+# noinspection PyPep8Naming
+class cached_class_property(object):
+    """
+    Descriptor decorator implementing a class-level, read-only property,
+    which caches the attribute on-demand on the first use.
+
+    Credits: https://stackoverflow.com/a/4037979/10237506
+    """
+    def __init__(self, func):
+        self.__func__ = func
+        self.__attr_name__ = func.__name__
+        self.d = None
+
+    def __get__(self, instance, cls=None):
+        """This method is only called the first time, to cache the value."""
+        if cls is None:
+            cls = type(instance)
+
+        # Build the attribute.
+        attr = self.__func__(cls)
+
+        # Cache the value; hide ourselves.
+        setattr(cls, self.__attr_name__, attr)
+
+        return attr
+
+
 def try_with_load(f):
 
     @wraps(f)

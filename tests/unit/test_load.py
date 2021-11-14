@@ -39,11 +39,10 @@ def test_fromdict():
 
     d = {'myBoolean': 'tRuE', 'my_str_or_int': 123}
 
-    c = fromdict(MyClass, d, LoadMeta(
-        MyClass,
-        key_transform='CAMEL',
-        json_key_to_field={'myBoolean': 'my_bool'}
-    ))
+    LoadMeta(key_transform='CAMEL',
+             json_key_to_field={'myBoolean': 'my_bool'}).bind_to(MyClass)
+
+    c = fromdict(MyClass, d)
 
     assert c.my_bool is True
     assert isinstance(c.myStrOrInt, int)
@@ -60,14 +59,13 @@ def test_fromdict_raises_on_unknown_json_fields():
         my_bool: Optional[bool]
 
     d = {'myBoolean': 'tRuE', 'my_string': 'Hello world!'}
-    load_cfg = LoadMeta(MyClass,
-                        json_key_to_field={'myBoolean': 'my_bool'},
-                        raise_on_unknown_json_key=True)
+    LoadMeta(json_key_to_field={'myBoolean': 'my_bool'},
+             raise_on_unknown_json_key=True).bind_to(MyClass)
 
     # Technically we don't need to pass `load_cfg`, but we'll pass it in as
     # that's how we'd typically expect to do it.
     with pytest.raises(UnknownJSONKey) as exc_info:
-        _ = fromdict(MyClass, d, load_cfg)
+        _ = fromdict(MyClass, d)
 
         e = exc_info.value
 
@@ -103,8 +101,9 @@ def test_fromdict_with_nested_dataclass():
     # the test case)
     globals().update(locals())
 
-    c = fromdict(Container, d, LoadMeta(Container,
-                                        key_transform='CAMEL'))
+    LoadMeta(key_transform='CAMEL').bind_to(Container)
+
+    c = fromdict(Container, d)
 
     assert c.id == 123
     assert c.submittedDt == datetime(2021, 1, 1, 5, 0)

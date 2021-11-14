@@ -30,17 +30,19 @@ def test_asdict_and_fromdict():
 
     d = {'myBoolean': 'tRuE', 'my_str_or_int': 123}
 
-    c = fromdict(MyClass, d, LoadMeta(
-        MyClass,
+    LoadMeta(
         key_transform='CAMEL',
         json_key_to_field={'myBoolean': 'my_bool', '__all__': True}
-    ))
+    ).bind_to(MyClass)
+
+    c = fromdict(MyClass, d)
 
     assert c.my_bool is True
     assert isinstance(c.myStrOrInt, int)
     assert c.myStrOrInt == 123
 
-    new_dict = asdict(c, DumpMeta(MyClass, key_transform='SNAKE'))
+    DumpMeta(key_transform='SNAKE').bind_to(MyClass)
+    new_dict = asdict(c)
 
     assert new_dict == {'myBoolean': True, 'my_str_or_int': 123}
 
@@ -64,9 +66,10 @@ def test_asdict_with_nested_dataclass():
 
     c = Container(123, submitted_dt, myElements=elements)
 
-    d = asdict(c, DumpMeta(Container,
-                           key_transform='SNAKE',
-                           marshal_date_time_as='TIMESTAMP'))
+    DumpMeta(key_transform='SNAKE',
+             marshal_date_time_as='TIMESTAMP').bind_to(Container)
+
+    d = asdict(c)
 
     expected = {
         'id': 123,

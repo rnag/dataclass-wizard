@@ -200,7 +200,6 @@ def get_dumper(cls=None, create=False) -> Type[DumpMixin]:
 
 
 def asdict(obj: T,
-           config: Optional[AbstractMeta] = None,
            *, cls=None, dict_factory=dict,
            exclude: List[str] = None, **kwargs) -> JSONObject:
     """Return the fields of a dataclass instance as a new dictionary mapping
@@ -216,11 +215,11 @@ def asdict(obj: T,
       c = C(1, 2)
       assert asdict(c) == {'x': 1, 'y': 2}
 
-    `config` is an optional ``DumpMeta`` configuration to set up for the
-    dataclass. Here's a sample usage of this below::
+    TODO: Here's an example of using a custom Dump configuration for a class
+      via ``DumpMeta``::
 
-        >>> dump_cfg = DumpMeta(MyClass, key_transform='CAMEL')
-        >>> asdict(MyClass(my_str="value"), dump_cfg)
+        >>> DumpMeta(key_transform='CAMEL').bind_to(MyClass)
+        >>> asdict(MyClass(my_str="value"))
 
     If given, 'dict_factory' will be used instead of built-in dict.
     The function applies recursively to field values that are
@@ -238,7 +237,7 @@ def asdict(obj: T,
     try:
         dump = _CLASS_TO_DUMP_FUNC[cls]
     except KeyError:
-        dump = dump_func_for_dataclass(cls, config)
+        dump = dump_func_for_dataclass(cls)
 
     return dump(obj, dict_factory, exclude, **kwargs)
     # -- END --
@@ -375,7 +374,8 @@ def _asdict_inner(obj, dict_factory, hooks, meta) -> Any:
 
     # -- This check is the same as in the original version --
     if _is_dataclass_instance(obj):
-        return asdict(obj, meta, cls=cls, dict_factory=dict_factory)
+        # TODO
+        return asdict(obj, cls=cls, dict_factory=dict_factory)
 
     else:
 

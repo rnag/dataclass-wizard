@@ -7,7 +7,7 @@ both import directly from `bases`.
 from datetime import datetime, date
 from typing import Type, Optional, Dict, Union
 
-from .abstractions import W, AbstractJSONWizard
+from .abstractions import AbstractJSONWizard
 from .bases import AbstractMeta, M
 from .class_helper import (
     _META_INITIALIZER, _META,
@@ -20,7 +20,7 @@ from .enums import LetterCase, DateTimeTo
 from .errors import ParseError
 from .loaders import get_loader
 from .log import LOG
-from .type_def import E, T
+from .type_def import E
 from .utils.type_conv import date_to_timestamp, as_enum
 
 
@@ -29,7 +29,6 @@ from .utils.type_conv import date_to_timestamp, as_enum
 #
 # Note: These are *only* for use with the ``fromdict`` and ``asdict``
 # helper functions.
-_LOAD_META: Dict[Type, Type[M]] = {}
 _DUMP_META: Dict[Type, Type[M]] = {}
 
 
@@ -82,7 +81,7 @@ class BaseJSONWizardMeta(AbstractMeta):
             cls.bind_to(new_cls, create=False)
 
     @classmethod
-    def bind_to(cls, dataclass: Type[W], create=True, is_default=True):
+    def bind_to(cls, dataclass: Type, create=True, is_default=True):
 
         cls_loader = get_loader(dataclass, create=create)
         cls_dumper = get_dumper(dataclass, create=create)
@@ -148,35 +147,6 @@ class BaseJSONWizardMeta(AbstractMeta):
             _META[dataclass] = cls
 
     @classmethod
-    def merge(cls, src: Type[M], other: Type[M],
-              data_class=None):
-        """
-        Merge two Meta configs. Priority will be given to the source config.
-        """
-        cls_meta = create_new_class(
-            data_class or cls, (BaseJSONWizardMeta, ), suffix='Meta')
-
-        # Set meta attributes here.
-        cls_meta.marshal_date_time_as = (
-            src.marshal_date_time_as or other.marshal_date_time_as
-        )
-        cls_meta.debug_enabled = src.debug_enabled | other.debug_enabled
-        cls_meta.raise_on_unknown_json_key = (
-            src.raise_on_unknown_json_key | other.raise_on_unknown_json_key
-        )
-        # This mapping won't be updated. Use the src by default.
-        cls_meta.json_key_to_field = src.json_key_to_field
-        cls_meta.tag = src.tag
-
-        cls_meta.key_transform_with_load = (
-            src.key_transform_with_load or other.key_transform_with_load
-        )
-        cls_meta.key_transform_with_dump = (
-            src.key_transform_with_dump or other.key_transform_with_dump
-        )
-        cls_meta.skip_defaults = src.skip_defaults | other.skip_defaults
-
-    @classmethod
     def _as_enum_safe(cls, name: str, base_type: Type[E]) -> Optional[E]:
         """
         Attempt to return the value for class attribute :attr:`attr_name` as
@@ -197,8 +167,7 @@ class BaseJSONWizardMeta(AbstractMeta):
 
 
 # noinspection PyPep8Naming
-def LoadMeta(data_class: Type[T],
-             debug_enabled: bool = False,
+def LoadMeta(debug_enabled: bool = False,
              raise_on_unknown_json_key: bool = False,
              json_key_to_field: Dict[str, str] = None,
              key_transform: Union[LetterCase, str] = None,
@@ -214,45 +183,27 @@ def LoadMeta(data_class: Type[T],
 
     Examples::
 
-        >>> fromdict(MyClass, {"myStr": "value"}, \
-                     LoadMeta(MyClass, key_transform='CAMEL'))
+        >>> LoadMeta(key_transform='CAMEL').bind_to(MyClass)
+        >>> fromdict(MyClass, {"myStr": "value"})
 
     .. _Docs: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/meta.html
     """
-    try:
-        return _LOAD_META[data_class]
 
-    except KeyError:
-        # Initial run - we have not set up the load config for the class yet
+    # Create a new subclass of :class:`AbstractMeta`
+    cls_meta = type('Meta', (BaseJSONWizardMeta, ), {'__slots__': ()})
 
-        try:
-            cls_meta = _META[data_class]
-        except KeyError:
-            # Meta does not exist for the class. Create a new subclass of
-            # :class:`AbstractMeta`, and cache it so we have it for next time
-            # (for example for the dump or serialization process).
-            cls_meta = create_new_class(
-                data_class, (BaseJSONWizardMeta, ), suffix='Meta')
+    # Set meta attributes here.
+    cls_meta.debug_enabled |= debug_enabled
+    cls_meta.raise_on_unknown_json_key = raise_on_unknown_json_key
+    cls_meta.json_key_to_field = json_key_to_field
+    cls_meta.key_transform_with_load = key_transform
+    cls_meta.tag = cls_meta.tag or tag
 
-        # Set meta attributes here.
-        cls_meta.debug_enabled |= debug_enabled
-        cls_meta.raise_on_unknown_json_key = raise_on_unknown_json_key
-        cls_meta.json_key_to_field = json_key_to_field
-        cls_meta.key_transform_with_load = key_transform
-        cls_meta.tag = cls_meta.tag or tag
-
-        # Run the meta initialization for the dataclass, and also save the
-        # mapping to `_META` so we have it for next time.
-        # noinspection PyProtectedMember
-        cls_meta.bind_to(data_class)
-
-        # Save the load config, so we don't have to run this logic each time.
-        _LOAD_META[data_class] = cls_meta
+    return cls_meta
 
 
 # noinspection PyPep8Naming
-def DumpMeta(data_class: Type[T],
-             debug_enabled: bool = False,
+def DumpMeta(debug_enabled: bool = False,
              marshal_date_time_as: Union[DateTimeTo, str] = None,
              key_transform: Union[LetterCase, str] = None,
              tag: str = None,
@@ -268,37 +219,20 @@ def DumpMeta(data_class: Type[T],
 
     Examples::
 
-        >>> asdict(MyClass, {"myStr": "value"}, \
-                   DumpMeta(MyClass, key_transform='CAMEL'))
+        >>> DumpMeta(key_transform='CAMEL').bind_to(MyClass)
+        >>> asdict(MyClass, {"myStr": "value"})
 
     .. _Docs: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/meta.html
     """
-    try:
-        return _DUMP_META[data_class]
 
-    except KeyError:
-        # Initial run - we have not set up the dump config for the class yet
+    # Create a new subclass of :class:`AbstractMeta`
+    cls_meta = type('Meta', (BaseJSONWizardMeta, ), {'__slots__': ()})
 
-        try:
-            cls_meta = _META[data_class]
-        except KeyError:
-            # Meta does not exist for the class. Create a new subclass of
-            # :class:`AbstractMeta`, and cache it so we have it for next time
-            # (for example for the dump or serialization process).
-            cls_meta = create_new_class(
-                data_class, (BaseJSONWizardMeta, ), suffix='Meta')
+    # Set meta attributes here.
+    cls_meta.debug_enabled |= debug_enabled
+    cls_meta.marshal_date_time_as = marshal_date_time_as
+    cls_meta.key_transform_with_dump = key_transform
+    cls_meta.tag = cls_meta.tag or tag
+    cls_meta.skip_defaults = skip_defaults
 
-        # Set meta attributes here.
-        cls_meta.debug_enabled |= debug_enabled
-        cls_meta.marshal_date_time_as = marshal_date_time_as
-        cls_meta.key_transform_with_dump = key_transform
-        cls_meta.tag = cls_meta.tag or tag
-        cls_meta.skip_defaults = skip_defaults
-
-        # Run the meta initialization for the dataclass, and also save the
-        # mapping to `_META` so we have it for next time.
-        # noinspection PyProtectedMember
-        cls_meta.bind_to(data_class)
-
-        # Save the dump config, so we don't have to run this logic each time.
-        _DUMP_META[data_class] = cls_meta
+    return cls_meta
