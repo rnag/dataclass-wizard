@@ -192,7 +192,7 @@ def get_dumper(cls=None, create=True) -> Type[DumpMixin]:
             return set_class_dumper(cls, cls)
 
         elif create:
-            cls_dumper = create_new_class(cls, (DumpMixin,))
+            cls_dumper = create_new_class(cls, (DumpMixin, ))
             return set_class_dumper(cls, cls_dumper)
 
         return set_class_dumper(cls, DumpMixin)

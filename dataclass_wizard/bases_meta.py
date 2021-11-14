@@ -112,10 +112,12 @@ class BaseJSONWizardMeta(AbstractMeta):
 
             if enum_val is DateTimeTo.TIMESTAMP:
                 # Update dump hooks for the `datetime` and `date` types
+                cls_dumper.dump_with_datetime = lambda o, *_: round(o.timestamp())
+                cls_dumper.dump_with_date = lambda o, *_: date_to_timestamp(o)
                 cls_dumper.register_dump_hook(
-                    datetime, lambda o, *_: round(o.timestamp()))
+                    datetime, cls_dumper.dump_with_datetime)
                 cls_dumper.register_dump_hook(
-                    date, lambda o, *_: date_to_timestamp(o))
+                    date, cls_dumper.dump_with_date)
 
             elif enum_val is DateTimeTo.ISO_FORMAT:
                 # noop; the default dump hook for `datetime` and `date`
