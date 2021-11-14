@@ -30,24 +30,35 @@ class ABCOrAndMeta(ABCMeta):
         Use case: Merge the Meta configs for two separate dataclasses into a
         single, unified Meta config.
         """
-        this_dict = cls.__dict__
+        src = cls
+        src_dict = src.__dict__
         other_dict = other.__dict__
 
         base_dict = {'__slots__': ()}
+
         # Set meta attributes here.
-        for k in cls.fields_to_merge:
-            if k in this_dict:
-                base_dict[k] = this_dict[k]
-            elif k in other_dict:
-                base_dict[k] = other_dict[k]
+        if src is AbstractMeta:
+            # Here we can't use `src` because the `bind_to` method isn't
+            # defined on the abstract class. Use `other` instead, which
+            # *will* be a concrete subclass of `AbstractMeta`.
+            src = other
+            for k in src.fields_to_merge:
+                if k in other_dict:
+                    base_dict[k] = other_dict[k]
+        else:
+            for k in src.fields_to_merge:
+                if k in src_dict:
+                    base_dict[k] = src_dict[k]
+                elif k in other_dict:
+                    base_dict[k] = other_dict[k]
 
         # This mapping won't be updated. Use the src by default.
-        for k in cls.__special_attrs__:
-            if k in this_dict:
-                base_dict[k] = this_dict[k]
+        for k in src.__special_attrs__:
+            if k in src_dict:
+                base_dict[k] = src_dict[k]
 
         # noinspection PyTypeChecker
-        return type(cls.__name__, (cls, ), base_dict)
+        return type(src.__name__, (src, ), base_dict)
 
     def __and__(cls: M, other: M) -> M:
         """
@@ -80,6 +91,7 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
     # attributes which will not be merged.
     __special_attrs__ = frozenset({
         'debug_enabled',
+        'recursive',
         'json_key_to_field',
         'tag',
     })
@@ -96,6 +108,16 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
     #
     # Note there is a minor performance impact when DEBUG mode is enabled.
     debug_enabled: ClassVar[bool] = False
+
+    # When enabled, a specified Meta config for the main dataclass (i.e. the
+    # class on which `from_dict` and `to_dict` is called) will cascade down
+    # and be merged with the Meta config for each *nested* dataclass; note
+    # that during a merge, priority is given to the Meta config specified on
+    # each class.
+    #
+    # The default behavior is True, so the Meta config (if provided) will
+    # apply in a recursive manner.
+    recursive: ClassVar[bool] = True
 
     # True to raise an class:`UnknownJSONKey` when an unmapped JSON key is
     # encountered when `from_dict` or `from_json` is called; an unknown key is

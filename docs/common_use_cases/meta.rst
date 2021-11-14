@@ -45,6 +45,16 @@ does not matter, but for demo purposes it's named the same as the base class her
             # Note there is a minor performance impact when DEBUG mode is enabled.
             debug_enabled = True
 
+            # When enabled, a specified Meta config for the main dataclass (i.e. the
+            # class on which `from_dict` and `to_dict` is called) will cascade down
+            # and be merged with the Meta config for each *nested* dataclass; note
+            # that during a merge, priority is given to the Meta config specified on
+            # each class.
+            #
+            # The default behavior is True, so the Meta config (if provided) will
+            # apply in a recursive manner.
+            recursive = True
+
             # True to raise an class:`UnknownJSONKey` when an unmapped JSON key is
             # encountered when `from_dict` or `from_json` is called; an unknown key is
             # one that does not have a known mapping to a dataclass field.

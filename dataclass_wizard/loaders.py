@@ -490,20 +490,20 @@ def get_loader(class_or_instance=None, create=False) -> Type[LoadMixin]:
         return set_class_loader(class_or_instance, LoadMixin)
 
 
-def fromdict(cls: Type[T],
-             d: JSONObject,
-             config: Optional[AbstractMeta] = None) -> T:
+def fromdict(cls: Type[T], d: JSONObject) -> T:
     """
     Converts a Python dictionary object to a dataclass instance.
 
     Iterates over each dataclass field recursively; lists, dicts, and nested
     dataclasses will likewise be initialized as expected.
 
-    `config` is an optional ``LoadMeta`` configuration to set up for the
-    dataclass. Here's a sample usage of this below::
+    When directly invoking this function, an optional Meta configuration for
+    the dataclass can be specified via ``LoadMeta``; by default, this will
+    apply recursively to any nested dataclasses. Here's a sample usage of this
+    below::
 
-        >>> load_cfg = LoadMeta(MyClass, key_transform='CAMEL')
-        >>> fromdict(MyClass, {"myStr": "value"}, load_cfg)
+        >>> LoadMeta(key_transform='CAMEL').bind_to(MyClass)
+        >>> fromdict(MyClass, {"myStr": "value"})
 
     """
     try:

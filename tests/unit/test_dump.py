@@ -85,11 +85,10 @@ def test_asdict_with_nested_dataclass():
         'id': 123,
         'submitted_dt': round(submitted_dt.timestamp()),
         'my_elements': [
-            # Key transform only applies to top-level dataclass
-            # unfortunately. Need to setup `DumpMeta` for `MyElement`
-            # if we need different key transform.
-            {'orderIndex': 111, 'statusCode': '200'},
-            {'orderIndex': 222, 'statusCode': 404}
+            # Key transform now applies recursively to all nested dataclasses
+            # by default! :-)
+            {'order_index': 111, 'status_code': '200'},
+            {'order_index': 222, 'status_code': 404}
         ]
     }
 
