@@ -679,8 +679,9 @@ def load_func_for_dataclass(
 
         return field_name
 
-    # Save the load function for the class, so we don't need to run this logic
-    # each time.
-    _CLASS_TO_LOAD_FUNC[cls] = cls_fromdict
+    # Save the load function for the main dataclass, so we don't need to run
+    # this logic each time.
+    if is_main_class:
+        _CLASS_TO_LOAD_FUNC[cls] = cls_fromdict
 
     return cls_fromdict

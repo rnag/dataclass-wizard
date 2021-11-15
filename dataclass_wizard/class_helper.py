@@ -16,10 +16,10 @@ from .utils.typing_compat import (
 # `dataclasses.fields()`.
 _FIELDS: Dict[Type, Tuple[Field]] = {}
 
-# Mapping of dataclass to its `load` function.
+# Mapping of main dataclass to its `load` function.
 _CLASS_TO_LOAD_FUNC: Dict[Type, Any] = {}
 
-# Mapping of (outer) dataclass to its `dump` function.
+# Mapping of main dataclass to its `dump` function.
 _CLASS_TO_DUMP_FUNC: Dict[Type, Any] = {}
 
 # A mapping of dataclass to its loader.

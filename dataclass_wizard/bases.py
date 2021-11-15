@@ -188,7 +188,7 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
     skip_defaults: ClassVar[bool] = False
 
     @cached_class_property
-    def all_fields(cls):
+    def all_fields(cls) -> FrozenKeys:
         """Return a list of all class attributes"""
         return frozenset(AbstractMeta.__annotations__)
 
