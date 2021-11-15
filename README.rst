@@ -46,6 +46,9 @@ Usage
 
 Using the built-in JSON marshalling support for dataclasses:
 
+    Note: The following example should work in **Python 3.7+** with the included ``__future__``
+    import.
+
 .. code:: python3
 
     from __future__ import annotations  # This can be removed in Python 3.10+
@@ -280,11 +283,17 @@ the class inheritance approach.
 
 Here is an example to demonstrate the usage of these helper functions:
 
+.. note::
+  As of *v0.18.0*, the Meta config for the main dataclass will cascade down
+  and be merged with the Meta config (if specified) of each nested dataclass. To
+  disable this behavior, you can pass in ``recursive=False`` to the Meta config.
+
 .. code:: python3
 
+    from __future__ import annotations
+
     from dataclasses import dataclass, field
-    from datetime import datetime
-    from typing import List, Union
+    from datetime import datetime, date
 
     from dataclass_wizard import fromdict, asdict, DumpMeta
 
@@ -292,30 +301,43 @@ Here is an example to demonstrate the usage of these helper functions:
     @dataclass
     class A:
         created_at: datetime
-        list_of_b: List['B'] = field(default_factory=list)
+        list_of_b: list[B] = field(default_factory=list)
 
 
     @dataclass
     class B:
-        status: Union[int, str]
+        my_status: int | str
+        my_date: date | None = None
 
 
     source_dict = {'createdAt': '2010-06-10 15:50:00Z',
-                   'List-Of-B': [{'status': '200'}]}
+                   'List-Of-B': [
+                       {'MyStatus': '200', 'my_date': '2021-12-31'}
+                   ]}
 
     # De-serialize the JSON dictionary object into an `A` instance.
     a = fromdict(A, source_dict)
 
     print(repr(a))
-    # A(created_at=datetime.datetime(2010, 6, 10, 15, 50, tzinfo=datetime.timezone.utc), list_of_b=[B(status='200')])
+    # A(created_at=datetime.datetime(2010, 6, 10, 15, 50, tzinfo=datetime.timezone.utc),
+    #   list_of_b=[B(my_status='200', my_date=datetime.date(2021, 12, 31))])
 
-    # Serialize the `A` instance to a Python dict object with a
-    # custom dump config, for example one which converts converts
-    # datetime objects to a unix timestamp (as an int).
-    json_dict = asdict(a, DumpMeta(A, marshal_date_time_as='TIMESTAMP'))
+    # Set an optional dump config for the main dataclass, for example one which
+    # converts converts date and datetime objects to a unix timestamp (as an int)
+    #
+    # Note that `recursive=True` is the default, so this Meta config will be
+    # merged with the Meta config (if specified) of each nested dataclass.
+    DumpMeta(marshal_date_time_as='TIMESTAMP',
+             key_transform='SNAKE',
+             # Finally, apply the Meta config to the main dataclass.
+             ).bind_to(A)
 
-    expected_dict = {'createdAt': 1276185000, 'listOfB': [{'status': '200'}]}
+    # Serialize the `A` instance to a Python dict object.
+    json_dict = asdict(a)
 
+    expected_dict = {'created_at': 1276185000, 'list_of_b': [{'my_status': '200', 'my_date': 1640926800}]}
+
+    print(json_dict)
     # Assert that we get the expected dictionary object.
     assert json_dict == expected_dict
 
@@ -362,6 +384,11 @@ prefer that field names appear in *snake case* when a dataclass instance is seri
 The inner ``Meta`` class allows easy configuration of such settings, as
 shown below; and as a nice bonus, IDEs should be able to assist with code completion
 along the way.
+
+.. note::
+  As of *v0.18.0*, the Meta config for the main dataclass will cascade down
+  and be merged with the Meta config (if specified) of each nested dataclass. To
+  disable this behavior, you can pass in ``recursive=False`` to the Meta config.
 
 .. code:: python3
 
@@ -440,31 +467,40 @@ an unknown JSON key is encountered in the  *load* (de-serialization) process.
 
 
     @dataclass
-    class MyClass(JSONWizard):
+    class Container(JSONWizard):
 
         class _(JSONWizard.Meta):
             # True to enable Debug mode for additional (more verbose) log output.
             debug_enabled = True
             # True to raise an class:`UnknownJSONKey` when an unmapped JSON key is
-            # encountered when `from_dict` or `from_json` is called.
+            # encountered when `from_dict` or `from_json` is called. Note that by
+            # default, this is also recursively applied to any nested dataclasses.
             raise_on_unknown_json_key = True
 
+        element: 'MyElement'
+
+
+    @dataclass
+    class MyElement:
         my_str: str
         my_float: float
 
 
     d = {
-        'myStr': 'string',
-        'my_float': '1.23',
-        # Notice how this key is not mapped to a known dataclass field!
-        'my_bool': 'Testing'
+        'element': {
+            'myStr': 'string',
+            'my_float': '1.23',
+            # Notice how this key is not mapped to a known dataclass field!
+            'my_bool': 'Testing'
+        }
     }
 
     # Try to de-serialize the dictionary object into a `MyClass` object.
     try:
-        c = MyClass.from_dict(d)
+        c = Container.from_dict(d)
     except UnknownJSONKey as e:
         print('Received error:', type(e).__name__)
+        print('Class:', e.class_name)
         print('Unknown JSON key:', e.json_key)
         print('JSON object:', e.obj)
         print('Known Fields:', e.fields)

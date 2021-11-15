@@ -14,6 +14,11 @@ defining an inner class which extends from ``JSONSerializable.Meta`` (or the
 aliased name ``JSONWizard.Meta``), as shown below. The name of the inner class
 does not matter, but for demo purposes it's named the same as the base class here.
 
+.. note::
+  As of *v0.18.0*, the Meta config for the main dataclass will "cascade down"
+  and be merged with the Meta config (if specified) of each nested dataclass. To
+  disable this behavior, you can pass in ``recursive=False`` to the Meta config.
+
 .. code:: python3
 
     import logging
@@ -44,6 +49,16 @@ does not matter, but for demo purposes it's named the same as the base class her
             #
             # Note there is a minor performance impact when DEBUG mode is enabled.
             debug_enabled = True
+
+            # When enabled, a specified Meta config for the main dataclass (i.e. the
+            # class on which `from_dict` and `to_dict` is called) will cascade down
+            # and be merged with the Meta config for each *nested* dataclass; note
+            # that during a merge, priority is given to the Meta config specified on
+            # each class.
+            #
+            # The default behavior is True, so the Meta config (if provided) will
+            # apply in a recursive manner.
+            recursive = True
 
             # True to raise an class:`UnknownJSONKey` when an unmapped JSON key is
             # encountered when `from_dict` or `from_json` is called; an unknown key is
@@ -114,13 +129,30 @@ transformed. If you need similar behavior for any of the ``typing``
 sub-classes mentioned, simply convert them to dataclasses and the key
 transform should then apply for those fields.
 
-Any :class:`Meta` settings only affect the Outer Class
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Any :class:`Meta` settings only affect a class model
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 All attributes set in the ``Meta`` class will only apply to the
-outer dataclass, and should not affect the load/dump process for
-other dataclasses. However if you do desire this behavior, see the
-:ref:`Global Meta Settings<Global Meta>` section below.
+class model that ``from_dict`` or ``to_dict`` runs on; that is,
+it will apply recursively to any nested dataclasses by default, and
+merge with the ``Meta`` config (if specified) for each class. Note that
+you can pass ``recursive=False`` in the ``Meta`` config, if you only want
+it to apply to the main dataclass, and not to any nested dataclasses
+in the model.
+
+When the ``Meta`` config for the main dataclass is merged with any nested
+dataclass, priority is given to any fields explicitly set in the ``Meta``
+config for each class. In addition, the following attributes in each class's
+``Meta`` are excluded from a merge:
+
+- :attr:`debug_enabled`
+- :attr:`recursive`
+- :attr:`json_key_to_field`
+- :attr:`tag`
+
+Also, note that a ``Meta`` config should not affect the load/dump process
+for other, unrelated dataclasses. Though if you do desire this behavior, see
+the :ref:`Global Meta Settings<Global Meta>` section below.
 
 Here's a quick example to confirm this behavior:
 
@@ -138,7 +170,6 @@ Here's a quick example to confirm this behavior:
 
     @dataclass
     class FirstClass(JSONWizard):
-
         class _(JSONWizard.Meta):
             debug_enabled = True
             marshal_date_time_as = 'Timestamp'
@@ -146,14 +177,19 @@ Here's a quick example to confirm this behavior:
             key_transform_with_dump = 'SNAKE'
 
         MyStr: str
+        MyNestedClass: 'MyNestedClass'
+
+
+    @dataclass
+    class MyNestedClass:
         MyDate: date
 
 
     @dataclass
     class SecondClass(JSONWizard):
-
         # If `SecondClass` were to define it's own `Meta` class, those changes
-        # would only be applied to `SecondClass`, and no other dataclass.
+        # would only be applied to `SecondClass` and any nested dataclass
+        # by default.
         # class _(JSONWizard.Meta):
         #     key_transform_with_dump = 'PASCAL'
 
@@ -162,28 +198,29 @@ Here's a quick example to confirm this behavior:
 
 
     def main():
-
-        data = {'my_str': 'test', 'myDATE': '2010-12-30'}
+        data = {'my_str': 'test', 'myNestedClass': {'myDATE': '2010-12-30'}}
 
         c1 = FirstClass.from_dict(data)
         print(repr(c1))
         # prints:
-        #   FirstClass(MyStr='test', MyDate=datetime.date(2010, 12, 30))
+        #   FirstClass(MyStr='test', MyNestedClass=MyNestedClass(MyDate=datetime.date(2010, 12, 30)))
 
         string = c1.to_json()
         print(string)
         # prints:
-        #   {"my_str": "test", "my_date": 1293685200}
+        #   {"my_str": "test", "my_nested_class": {"my_date": 1293685200}}
 
-        c2 = SecondClass.from_dict(data)
+        data2 = {'my_str': 'test', 'myDATE': '2022-01-15'}
+
+        c2 = SecondClass.from_dict(data2)
         print(repr(c2))
         # prints:
-        #   SecondClass(my_str='test', my_date=datetime.date(2010, 12, 30))
+        #   SecondClass(my_str='test', my_date=datetime.date(2022, 1, 15))
 
         string = c2.to_json()
         print(string)
         # prints:
-        #   {"myStr": "test", "myDate": "2010-12-30"}
+        #   {"myStr": "test", "myDate": "2022-01-15"}
 
 
     if __name__ == '__main__':

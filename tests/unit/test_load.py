@@ -39,11 +39,10 @@ def test_fromdict():
 
     d = {'myBoolean': 'tRuE', 'my_str_or_int': 123}
 
-    c = fromdict(MyClass, d, LoadMeta(
-        MyClass,
-        key_transform='CAMEL',
-        json_key_to_field={'myBoolean': 'my_bool'}
-    ))
+    LoadMeta(key_transform='CAMEL',
+             json_key_to_field={'myBoolean': 'my_bool'}).bind_to(MyClass)
+
+    c = fromdict(MyClass, d)
 
     assert c.my_bool is True
     assert isinstance(c.myStrOrInt, int)
@@ -60,14 +59,13 @@ def test_fromdict_raises_on_unknown_json_fields():
         my_bool: Optional[bool]
 
     d = {'myBoolean': 'tRuE', 'my_string': 'Hello world!'}
-    load_cfg = LoadMeta(MyClass,
-                        json_key_to_field={'myBoolean': 'my_bool'},
-                        raise_on_unknown_json_key=True)
+    LoadMeta(json_key_to_field={'myBoolean': 'my_bool'},
+             raise_on_unknown_json_key=True).bind_to(MyClass)
 
     # Technically we don't need to pass `load_cfg`, but we'll pass it in as
     # that's how we'd typically expect to do it.
     with pytest.raises(UnknownJSONKey) as exc_info:
-        _ = fromdict(MyClass, d, load_cfg)
+        _ = fromdict(MyClass, d)
 
         e = exc_info.value
 
@@ -103,8 +101,9 @@ def test_fromdict_with_nested_dataclass():
     # the test case)
     globals().update(locals())
 
-    c = fromdict(Container, d, LoadMeta(Container,
-                                        key_transform='CAMEL'))
+    LoadMeta(key_transform='CAMEL', recursive=False).bind_to(Container)
+
+    c = fromdict(Container, d)
 
     assert c.id == 123
     assert c.submittedDt == datetime(2021, 1, 1, 5, 0)
@@ -1290,9 +1289,9 @@ def test_optional_parser_contains(input, expected):
 
     """
     base_type: Type[T] = str
-    mock_parser = Parser(None, None, lambda: None)
+    mock_parser = Parser(None, None, None, lambda: None)
     optional_parser = OptionalParser(
-        None, base_type, lambda a, b: mock_parser)
+        None, None, base_type, lambda *args: mock_parser)
 
     actual = input in optional_parser
     assert actual == expected
@@ -1307,7 +1306,7 @@ def test_single_arg_parser_without_hook():
     class MyClass(Generic[T]):
         pass
 
-    parser = SingleArgParser(None, MyClass, None)
+    parser = SingleArgParser(None, None, MyClass, None)
 
     c = MyClass()
     assert parser(c) == c

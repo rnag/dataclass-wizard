@@ -9,6 +9,7 @@ from uuid import UUID
 import pytest
 
 from dataclass_wizard import *
+from dataclass_wizard.class_helper import get_meta
 from dataclass_wizard.constants import TAG
 from dataclass_wizard.errors import ParseError
 from ..conftest import *
@@ -30,17 +31,28 @@ def test_asdict_and_fromdict():
 
     d = {'myBoolean': 'tRuE', 'my_str_or_int': 123}
 
-    c = fromdict(MyClass, d, LoadMeta(
-        MyClass,
+    LoadMeta(
         key_transform='CAMEL',
+        raise_on_unknown_json_key=True,
         json_key_to_field={'myBoolean': 'my_bool', '__all__': True}
-    ))
+    ).bind_to(MyClass)
+
+    DumpMeta(key_transform='SNAKE').bind_to(MyClass)
+
+    # Assert that meta is properly merged as expected
+    meta = get_meta(MyClass)
+    assert 'CAMEL' == meta.key_transform_with_load
+    assert 'SNAKE' == meta.key_transform_with_dump
+    assert True is meta.raise_on_unknown_json_key
+    assert {'myBoolean': 'my_bool'} == meta.json_key_to_field
+
+    c = fromdict(MyClass, d)
 
     assert c.my_bool is True
     assert isinstance(c.myStrOrInt, int)
     assert c.myStrOrInt == 123
 
-    new_dict = asdict(c, DumpMeta(MyClass, key_transform='SNAKE'))
+    new_dict = asdict(c)
 
     assert new_dict == {'myBoolean': True, 'my_str_or_int': 123}
 
@@ -64,19 +76,19 @@ def test_asdict_with_nested_dataclass():
 
     c = Container(123, submitted_dt, myElements=elements)
 
-    d = asdict(c, DumpMeta(Container,
-                           key_transform='SNAKE',
-                           marshal_date_time_as='TIMESTAMP'))
+    DumpMeta(key_transform='SNAKE',
+             marshal_date_time_as='TIMESTAMP').bind_to(Container)
+
+    d = asdict(c)
 
     expected = {
         'id': 123,
         'submitted_dt': round(submitted_dt.timestamp()),
         'my_elements': [
-            # Key transform only applies to top-level dataclass
-            # unfortunately. Need to setup `DumpMeta` for `MyElement`
-            # if we need different key transform.
-            {'orderIndex': 111, 'statusCode': '200'},
-            {'orderIndex': 222, 'statusCode': 404}
+            # Key transform now applies recursively to all nested dataclasses
+            # by default! :-)
+            {'order_index': 111, 'status_code': '200'},
+            {'order_index': 222, 'status_code': 404}
         ]
     }
 
