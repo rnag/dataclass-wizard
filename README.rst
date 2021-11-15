@@ -46,10 +46,8 @@ Usage
 
 Using the built-in JSON marshalling support for dataclasses:
 
-  ::
-
-  Note: The following example should work in **Python 3.7+** with the included ``__future__``
-  import.
+    Note: The following example should work in **Python 3.7+** with the included ``__future__``
+    import.
 
 .. code:: python3
 
