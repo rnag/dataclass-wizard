@@ -2,6 +2,46 @@
 History
 =======
 
+0.18.0 (2021-11-14)
+-------------------
+
+**Breaking Changes**
+
+* The :func:`LoadMeta` and :func:`DumpMeta` helper functions no longer accept
+  a class type as the first argument; the correct usage now is to invoke the
+  :meth:`bind_to` method on the ``Meta`` config returned. That is, given a
+  dataclass :class:`A`, replace the following syntax::
+
+      LoadMeta(A, **kwargs)
+
+  with a more explicit binding::
+
+      LoadMeta(**kwargs).bind_to(A)
+
+* The :func:`asdict` helper function no longer accepts a ``Meta`` config
+  as an argument. This is to encourage the usage of :func:`LoadMeta` and
+  :func:`DumpMeta`, as mentioned above. The main impetus for this change is
+  performance, since the ``Meta`` config for a class only needs to be set up
+  once using this approach.
+
+* Updated the project status from *Beta* to *Production/Stable*, to signify
+  that any further breaking changes will result in bumping the major version.
+
+**Features and Improvements**
+
+* Add the :meth:`bind_to` method to the base Meta class,
+  :class:`BaseJSONWizardMeta`.
+
+* Meta config specified for a main dataclass (i.e. the class passed in to
+  ``from_dict`` and ``to_dict``) now applies recursively to any nested
+  dataclasses by default. The Meta config from the main class will be
+  merged with the Meta config for each nested class. Note that this behavior
+  can be disabled however, with the :attr:`recursive` parameter passed in
+  to the ``Meta`` config.
+
+* Rename :class:`BaseMeta` to :class:`AbstractMeta`, as the name should be
+  overall more clearer, since it's actually an abstract class.
+
 0.17.1 (2021-11-04)
 -------------------
 
