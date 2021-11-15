@@ -154,11 +154,8 @@ any special class inheritance model:
 
     # Setup tags for the dataclasses. This can be passed into either
     # `LoadMeta` or `DumpMeta`.
-    #
-    # Note that I'm not a fan of this syntax either, so it might change. I was
-    # thinking of something more explicit, like `LoadMeta(...).bind_to(class)`
-    LoadMeta(DataA, tag='A')
-    LoadMeta(DataB, tag='B')
+    LoadMeta(tag='A').bind_to(DataA)
+    LoadMeta(tag='B').bind_to(DataB)
 
     # The rest is the same as before.
 
