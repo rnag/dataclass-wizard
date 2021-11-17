@@ -19,7 +19,6 @@ class cached_class_property(object):
     def __init__(self, func):
         self.__func__ = func
         self.__attr_name__ = func.__name__
-        self.d = None
 
     def __get__(self, instance, cls=None):
         """This method is only called the first time, to cache the value."""

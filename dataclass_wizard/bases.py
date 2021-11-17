@@ -110,7 +110,7 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
     })
 
     # Class attribute which enables us to detect a `JSONWizard.Meta` subclass.
-    __is_inner_meta__: ClassVar[bool] = False
+    __is_inner_meta__ = False
 
     # True to enable Debug mode for additional (more verbose) log output.
     #
