@@ -111,19 +111,22 @@ def dataclass_field_to_json_field(cls):
 def dataclass_field_to_load_parser(
         cls_loader: Type[AbstractLoader],
         cls: Type,
-        config: M) -> 'DictWithLowerStore[str, AbstractParser]':
+        config: M,
+        save: bool = True) -> 'DictWithLowerStore[str, AbstractParser]':
     """
     Returns a mapping of each lower-cased field name to its annotated type.
     """
     if cls not in _FIELD_NAME_TO_LOAD_PARSER:
-        _setup_load_config_for_cls(cls_loader, cls, config)
+        return _setup_load_config_for_cls(cls_loader, cls, config, save)
 
     return _FIELD_NAME_TO_LOAD_PARSER[cls]
 
 
 def _setup_load_config_for_cls(cls_loader: Type[AbstractLoader],
                                cls: Type,
-                               config: M):
+                               config: M,
+                               save: bool = True
+                               ) -> 'DictWithLowerStore[str, AbstractParser]':
     """
     This function processes a class `cls` on an initial run, and sets up the
     load process for `cls` by iterating over each dataclass field. For each
@@ -181,7 +184,12 @@ def _setup_load_config_for_cls(cls_loader: Type[AbstractLoader],
                     for key in extra.keys:
                         json_to_dataclass_field[key] = f.name
 
-    _FIELD_NAME_TO_LOAD_PARSER[cls] = DictWithLowerStore(name_to_parser)
+    parser_dict = DictWithLowerStore(name_to_parser)
+    # only cache the load parser for the class if `save` is enabled
+    if save:
+        _FIELD_NAME_TO_LOAD_PARSER[cls] = parser_dict
+
+    return parser_dict
 
 
 def setup_dump_config_for_cls_if_needed(cls: Type):
