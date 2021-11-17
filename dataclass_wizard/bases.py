@@ -1,6 +1,7 @@
 from abc import ABCMeta, abstractmethod
 from typing import Callable, Type, Dict, Optional, ClassVar, Union, TypeVar
 
+from .constants import TAG
 from .decorators import cached_class_property
 from .enums import DateTimeTo, LetterCase
 from .type_def import FrozenKeys
@@ -109,7 +110,7 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
     })
 
     # Class attribute which enables us to detect a `JSONWizard.Meta` subclass.
-    __is_inner_meta__: ClassVar[bool] = False
+    __is_inner_meta__ = False
 
     # True to enable Debug mode for additional (more verbose) log output.
     #
@@ -174,13 +175,25 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
 
     # The field name that identifies the tag for a class.
     #
-    # When set to a value, a '__tag__' field will be populated in the
+    # When set to a value, an :attr:`TAG` field will be populated in the
     # dictionary object in the dump (serialization) process. When loading
-    # (or de-serializing) a dictionary object, the '__tag__' field will be
+    # (or de-serializing) a dictionary object, the :attr:`TAG` field will be
     # used to load the corresponding dataclass, assuming the dataclass field
     # is properly annotated as a Union type, ex.:
     #   my_data: Union[Data1, Data2, Data3]
     tag: ClassVar[str] = None
+
+    # The dictionary key that identifies the tag field for a class. This is
+    # only set when the `tag` field or the `auto_assign_tags` flag is enabled
+    # in the `Meta` config for a dataclass.
+    #
+    # Defaults to '__tag__' if not specified.
+    tag_key: ClassVar[str] = TAG
+
+    # Auto-assign the class name as a dictionary "tag" key, for any dataclass
+    # fields which are in a `Union` declaration, ex.:
+    #   my_data: Union[Data1, Data2, Data3]
+    auto_assign_tags: ClassVar[bool] = False
 
     # Determines whether we should we skip / omit fields with default values
     # (based on the `default` or `default_factory` argument specified for

@@ -100,6 +100,18 @@ does not matter, but for demo purposes it's named the same as the base class her
             #   my_data: Union[Data1, Data2, Data3]
             tag = ''
 
+            # The dictionary key that identifies the tag field for a class. This is
+            # only set when the `tag` field or the `auto_assign_tags` flag is enabled
+            # in the `Meta` config for a dataclass.
+            #
+            # Defaults to '__tag__' if not specified.
+            tag_key = ''
+
+            # Auto-assign the class name as a dictionary "tag" key, for any dataclass
+            # fields which are in a `Union` declaration, ex.:
+            #   my_data: Union[Data1, Data2, Data3]
+            auto_assign_tags = False
+
             # Determines whether we should we skip / omit fields with default values
             # (based on the `default` or `default_factory` argument specified for
             # the :func:`dataclasses.field`) in the serialization process.

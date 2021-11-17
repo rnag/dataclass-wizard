@@ -40,5 +40,9 @@ SINGLE_ARG_ALIAS = '__SINGLE_ARG_ALIAS__'
 IDENTITY = '__IDENTITY__'
 
 # The dictionary key that identifies the tag field for a class. This is only
-# set when the `tag` field is enabled in the `Meta` config for a dataclass.
+# set when the `tag` field or the `auto_assign_tags` flag is enabled in the
+# `Meta` config for a dataclass.
+#
+# Note that this key can also be customized in the `Meta` config for a class,
+# via the :attr:`tag_key` field.
 TAG = '__tag__'

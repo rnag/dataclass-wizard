@@ -25,6 +25,7 @@ from .class_helper import (
     dataclass_field_to_json_field,
     dataclass_to_dumper, set_class_dumper,
     _CLASS_TO_DUMP_FUNC, setup_dump_config_for_cls_if_needed, get_meta,
+    dataclass_field_to_load_parser,
 )
 from .constants import _DUMP_HOOKS, TAG
 from .decorators import _alias
@@ -291,6 +292,21 @@ def dump_func_for_dataclass(cls: Type[T],
     # A collection of field names in the dataclass.
     field_names = dataclass_field_names(cls)
 
+    # Check if we need to auto-assign tags for dataclasses in `Union` types.
+    if meta.auto_assign_tags:
+        # Unfortunately, we can't handle this as part of the dump process, as
+        # we don't process the class annotations here. So instead, generate
+        # the load parser for each field  (if needed), but don't cache the
+        # result, as it's conceivable we might yet call `LoadMeta` later.
+        from .loaders import get_loader
+        cls_loader = get_loader(cls)
+        # Use the cached result if it exists, but don't cache it ourselves.
+        _ = dataclass_field_to_load_parser(
+            cls_loader, cls, config, save=False)
+
+    # Tag key to populate when a dataclass is in a `Union` with other types.
+    tag_key = meta.tag_key or TAG
+
     def cls_asdict(obj: T, dict_factory=dict,
                    exclude: List[str] = None,
                    skip_defaults=meta.skip_defaults) -> JSONObject:
@@ -353,7 +369,7 @@ def dump_func_for_dataclass(cls: Type[T],
         Adds a tag field when `tag` field is passed in Meta.
         """
         result = cls_asdict(obj, dict_factory, exclude, **kwargs)
-        result[TAG] = meta.tag
+        result[tag_key] = meta.tag
 
         return result
 

@@ -19,8 +19,8 @@ from typing import (
 )
 
 from .abstractions import AbstractParser, FieldToParser
-from .bases import META
-from .class_helper import get_meta
+from .bases import META, AbstractMeta
+from .class_helper import get_meta, _META
 from .constants import TAG
 from .errors import ParseError
 from .type_def import (
@@ -144,7 +144,7 @@ class OptionalParser(AbstractParser):
 
 @dataclass
 class UnionParser(AbstractParser):
-    __slots__ = ('parsers', 'tag_to_parser')
+    __slots__ = ('parsers', 'tag_to_parser', 'tag_key')
 
     base_type: Tuple[Type[T], ...]
     get_parser: InitVar[GetParserType]
@@ -152,6 +152,15 @@ class UnionParser(AbstractParser):
     def __post_init__(self, cls: Type,
                       config: META,
                       get_parser: GetParserType):
+
+        # Tag key to search for when a dataclass is in a `Union` with
+        # other types.
+        if config:
+            self.tag_key: str = config.tag_key or TAG
+            auto_assign_tags = config.auto_assign_tags
+        else:
+            self.tag_key = TAG
+            auto_assign_tags = False
 
         self.parsers = tuple(
             get_parser(t, cls, config) for t in self.base_type
@@ -162,8 +171,23 @@ class UnionParser(AbstractParser):
             t = eval_forward_ref_if_needed(t, cls)
             if is_dataclass(t):
                 meta = get_meta(t)
-                if meta.tag:
-                    self.tag_to_parser[meta.tag] = get_parser(t, cls, config)
+                tag = meta.tag
+                if not tag and (auto_assign_tags or meta.auto_assign_tags):
+                    cls_name = t.__name__
+                    tag = cls_name
+                    # We don't want to mutate the base Meta class here
+                    if meta is AbstractMeta:
+                        from .bases_meta import BaseJSONWizardMeta
+                        cls_dict = {'__slots__': (), 'tag': tag}
+                        meta = type(cls_name + 'Meta', (BaseJSONWizardMeta, ), cls_dict)
+                        _META[t] = meta
+                    else:
+                        meta.tag = cls_name
+                if tag:
+                    # TODO see if we can use a mapping of dataclass type to
+                    #   load func (maybe one passed in to __post_init__),
+                    #   rather than generating one on the fly like this.
+                    self.tag_to_parser[tag] = get_parser(t, cls, config)
 
     def __contains__(self, item):
         """Check if parser is expected to handle the specified item type."""
@@ -177,10 +201,10 @@ class UnionParser(AbstractParser):
             if o in parser:
                 return parser(o)
 
-        # Attempt to parse to the desired dataclass type, using the `_TAG`
+        # Attempt to parse to the desired dataclass type, using the "tag"
         # field in the input dictionary object.
         try:
-            tag = o[TAG]
+            tag = o[self.tag_key]
         except (TypeError, KeyError):
             # Invalid type (`o` is not a dictionary object) or no such key.
             pass
@@ -192,11 +216,14 @@ class UnionParser(AbstractParser):
                     TypeError('Object with tag was not in any of Union types'),
                     o, [p.base_type for p in self.parsers],
                     input_tag=tag,
+                    tag_key=self.tag_key,
                     valid_tags=list(self.tag_to_parser.keys()))
 
         raise ParseError(
             TypeError('Object was not in any of Union types'),
-            o, [p.base_type for p in self.parsers])
+            o, [p.base_type for p in self.parsers],
+            tag_key=self.tag_key
+        )
 
 
 @dataclass

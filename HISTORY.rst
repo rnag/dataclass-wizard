@@ -2,6 +2,22 @@
 History
 =======
 
+0.19.0 (2021-11-17)
+-------------------
+
+**Features and Improvements**
+
+* Add the option to customize the name of the *tag* key that will be used to
+  (de)serialize fields that contain dataclasses within ``Union`` types. A new
+  attribute :attr:`tag_key` in the ``Meta`` config determines the key in the
+  JSON object that will be used for this purpose, which defaults to ``__tag__`` if not specified.
+
+* Add the ability to *auto-generate* tags for a class - using the name of
+  the class - if a value for :attr:`tag` is not specified in the ``Meta`` config
+  for a dataclass that appears within a ``Union`` declaration. A new flag
+  :attr:`auto_assign_tags` in the ``Meta`` config can be enabled to allow
+  auto-assigning the class name as a tag.
+
 0.18.0 (2021-11-14)
 -------------------
 
