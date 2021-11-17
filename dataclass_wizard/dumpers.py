@@ -291,6 +291,9 @@ def dump_func_for_dataclass(cls: Type[T],
     # A collection of field names in the dataclass.
     field_names = dataclass_field_names(cls)
 
+    # Tag key to populate when a dataclass is in a `Union` with other types.
+    tag_key = meta.tag_key or TAG
+
     def cls_asdict(obj: T, dict_factory=dict,
                    exclude: List[str] = None,
                    skip_defaults=meta.skip_defaults) -> JSONObject:
@@ -353,7 +356,7 @@ def dump_func_for_dataclass(cls: Type[T],
         Adds a tag field when `tag` field is passed in Meta.
         """
         result = cls_asdict(obj, dict_factory, exclude, **kwargs)
-        result[TAG] = meta.tag
+        result[tag_key] = meta.tag
 
         return result
 
