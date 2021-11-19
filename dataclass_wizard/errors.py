@@ -1,7 +1,8 @@
 import json
 from abc import ABC, abstractmethod
 from dataclasses import Field, MISSING
-from typing import Any, Type, Dict, Tuple, ClassVar, Optional
+from typing import (Any, Type, Dict, Tuple, ClassVar,
+                    Optional, Union, Iterable)
 
 
 # added as we can't import from `type_def`, as we run into a circular import.
@@ -36,7 +37,11 @@ class ParseError(JSONWizardError):
                  '  value: {o!r}\n'
                  '  error: {e!s}')
 
-    def __init__(self, base_err: Exception, obj: Any, ann_type: Type, **kwargs):
+    def __init__(self, base_err: Exception,
+                 obj: Any,
+                 ann_type: Union[Type, Iterable],
+                 **kwargs):
+
         super().__init__()
 
         self.obj = obj

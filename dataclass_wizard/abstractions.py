@@ -10,6 +10,7 @@ from typing import (
     Text, Sequence, Iterable
 )
 
+from .bases import META
 from .type_def import (
     DefFactory, FrozenKeys, ListOfJSONObject, JSONObject,
     M, N, T, NT, E, U, DD, LSQ
@@ -99,7 +100,13 @@ class AbstractParser(ABC):
     # type `base_type`. This is primarily useful for resolving `ForwardRef`
     # types, where we need the globals of the class to resolve the underlying
     # type of the reference.
-    cls: InitVar[Type[T]]
+    cls: InitVar[Type]
+
+    # This represents an optional Meta config that was specified for the main
+    # dataclass. This is primarily useful to have so that we can merge this
+    # base Meta config with the one for each class, and then recursively
+    # apply the merged Meta config to any nested dataclasses.
+    config: InitVar[META]
 
     # This is usually the underlying base type of the annotation (for example,
     # for `List[str]` it will be `list`), though in some cases this will be
@@ -329,7 +336,8 @@ class AbstractLoader(ABC):
     @classmethod
     @abstractmethod
     def get_parser_for_annotation(cls, ann_type: Type[T],
-                                  base_cls: Type[T] = None) -> AbstractParser:
+                                  base_cls: Type = None,
+                                  config: META = None) -> AbstractParser:
         """
         Returns the Parser (dispatcher) for a given annotation type.
 

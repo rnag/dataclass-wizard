@@ -27,6 +27,9 @@ class JSONSerializable(AbstractJSONWizard):
         """
         __slots__ = ()
 
+        # Class attribute to enable detection of the class type.
+        __is_inner_meta__ = True
+
         def __init_subclass__(cls):
             # Set the `__init_subclass__` method here, so we can ensure it
             # doesn't run for the `JSONSerializable.Meta` class.

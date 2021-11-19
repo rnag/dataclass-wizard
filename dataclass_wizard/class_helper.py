@@ -3,7 +3,7 @@ from dataclasses import MISSING, Field, fields
 from typing import Dict, Tuple, Type, Union, Callable, Optional, Any
 
 from .abstractions import W, AbstractLoader, AbstractDumper, AbstractParser
-from .bases import M, BaseMeta
+from .bases import M, AbstractMeta
 from .models import JSONField, JSON
 from .type_def import ExplicitNull, ExplicitNullType, T
 from .utils.dict_helper import DictWithLowerStore
@@ -16,10 +16,10 @@ from .utils.typing_compat import (
 # `dataclasses.fields()`.
 _FIELDS: Dict[Type, Tuple[Field]] = {}
 
-# Mapping of dataclass to its `load` function.
+# Mapping of main dataclass to its `load` function.
 _CLASS_TO_LOAD_FUNC: Dict[Type, Any] = {}
 
-# Mapping of dataclass to its `dump` function.
+# Mapping of main dataclass to its `dump` function.
 _CLASS_TO_DUMP_FUNC: Dict[Type, Any] = {}
 
 # A mapping of dataclass to its loader.
@@ -56,7 +56,7 @@ _META_INITIALIZER: Dict[
 
 # Mapping of dataclass to its Meta inner class, which will only be set when
 # the :class:`JSONSerializable.Meta` is sub-classed.
-_META: Dict[Type, Type[M]] = {}
+_META: Dict[Type, M] = {}
 
 
 def dataclass_to_loader(cls):
@@ -109,17 +109,24 @@ def dataclass_field_to_json_field(cls):
 
 
 def dataclass_field_to_load_parser(
-        cls_loader, cls: Type) -> 'DictWithLowerStore[str, AbstractParser]':
+        cls_loader: Type[AbstractLoader],
+        cls: Type,
+        config: M,
+        save: bool = True) -> 'DictWithLowerStore[str, AbstractParser]':
     """
     Returns a mapping of each lower-cased field name to its annotated type.
     """
     if cls not in _FIELD_NAME_TO_LOAD_PARSER:
-        _setup_load_config_for_cls(cls_loader, cls)
+        return _setup_load_config_for_cls(cls_loader, cls, config, save)
 
     return _FIELD_NAME_TO_LOAD_PARSER[cls]
 
 
-def _setup_load_config_for_cls(cls_loader, cls: Type):
+def _setup_load_config_for_cls(cls_loader: Type[AbstractLoader],
+                               cls: Type,
+                               config: M,
+                               save: bool = True
+                               ) -> 'DictWithLowerStore[str, AbstractParser]':
     """
     This function processes a class `cls` on an initial run, and sets up the
     load process for `cls` by iterating over each dataclass field. For each
@@ -149,7 +156,8 @@ def _setup_load_config_for_cls(cls_loader, cls: Type):
         # Lookup the Parser (dispatcher) for each field based on its annotated
         # type, and then cache it so we don't need to lookup each time.
         name_to_parser[f.name] = cls_loader.get_parser_for_annotation(
-            f.type, cls)
+            f.type, cls, config
+        )
 
         # Check if the field is a `Field` type or a subclass. If so, update
         # the class-specific mapping of JSON key to dataclass field name.
@@ -176,7 +184,12 @@ def _setup_load_config_for_cls(cls_loader, cls: Type):
                     for key in extra.keys:
                         json_to_dataclass_field[key] = f.name
 
-    _FIELD_NAME_TO_LOAD_PARSER[cls] = DictWithLowerStore(name_to_parser)
+    parser_dict = DictWithLowerStore(name_to_parser)
+    # only cache the load parser for the class if `save` is enabled
+    if save:
+        _FIELD_NAME_TO_LOAD_PARSER[cls] = parser_dict
+
+    return parser_dict
 
 
 def setup_dump_config_for_cls_if_needed(cls: Type):
@@ -248,13 +261,13 @@ def call_meta_initializer_if_needed(cls: Type[W]):
         _META_INITIALIZER[cls_name](cls)
 
 
-def get_meta(cls: Type[W]):
+def get_meta(cls: Type) -> M:
     """
     Retrieves the Meta config for the :class:`AbstractJSONWizard` subclass.
 
     This config is set when the inner :class:`Meta` is sub-classed.
     """
-    return _META.get(cls, BaseMeta)
+    return _META.get(cls, AbstractMeta)
 
 
 def dataclass_fields(cls) -> Tuple[Field]:
