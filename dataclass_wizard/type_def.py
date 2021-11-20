@@ -3,6 +3,7 @@ __all__ = [
     'PyLiteral',
     'PyProtocol',
     'PyDeque',
+    'PyTypedDict',
     'PyTypedDicts',
     'FrozenKeys',
     'DefFactory',
@@ -21,6 +22,7 @@ __all__ = [
     'U',
     'M',
     'NT',
+    'DT',
     'DD',
     'N',
     'S',
@@ -30,6 +32,7 @@ __all__ = [
 ]
 
 from collections import deque
+from datetime import date, time, datetime
 from enum import Enum
 from typing import (
     Type, TypeVar, Sequence, Mapping,
@@ -59,6 +62,9 @@ M = TypeVar('M', bound=Mapping)
 
 # NamedTuple type
 NT = TypeVar('NT', bound=NamedTuple)
+
+# Date, time, or datetime type
+DT = TypeVar('DT', date, time, datetime)
 
 # DefaultDict type
 DD = TypeVar('DD', bound=DefaultDict)
@@ -108,10 +114,10 @@ if PY38_OR_ABOVE:  # pragma: no cover
     from typing import ForwardRef as PyForwardRef
     from typing import Literal as PyLiteral
     from typing import Protocol as PyProtocol
-    from typing import TypedDict
+    from typing import TypedDict as PyTypedDict
     from typing import Deque as PyDeque
 
-    PyTypedDicts.append(TypedDict)
+    PyTypedDicts.append(PyTypedDict)
     # Python 3.8+ users might import from either `typing` or
     # `typing_extensions`, so check for both types.
     try:

@@ -15,12 +15,13 @@ from .class_helper import (
     get_class_name, create_new_class,
     dataclass_to_loader, set_class_loader,
     dataclass_field_to_load_parser, json_field_to_dataclass_field,
-    _CLASS_TO_LOAD_FUNC, dataclass_fields, get_meta,
+    _CLASS_TO_LOAD_FUNC, dataclass_fields, get_meta, is_subclass_safe,
 )
 from .constants import _LOAD_HOOKS, SINGLE_ARG_ALIAS, IDENTITY
 from .decorators import _alias, _single_arg_alias, resolve_alias_func, _identity
 from .errors import ParseError, MissingFields, UnknownJSONKey, MissingData
 from .log import LOG
+from .models import Extras, _PatternedDT
 from .parsers import *
 from .type_def import (
     ExplicitNull, FrozenKeys, DefFactory, NoneType, JSONObject,
@@ -235,7 +236,7 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
     @classmethod
     def get_parser_for_annotation(cls, ann_type: Type[T],
                                   base_cls: Type = None,
-                                  config: META = None) -> AbstractParser:
+                                  extras: Extras = None) -> AbstractParser:
         """Returns the Parser (dispatcher) for a given annotation type."""
         hooks = cls.__LOAD_HOOKS__
         ann_type = eval_forward_ref_if_needed(ann_type, base_cls)
@@ -247,18 +248,24 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
         #   unseemly and there's really no need for that, as any such
         #   performance gains (if they do exist) are minimal at best.
 
+        if 'pattern' in extras and is_subclass_safe(
+                ann_type, (date, time, datetime)):
+            # Check for a field that was initially annotated like:
+            #   Annotated[List[time], Pattern('%H:%M:%S')]
+            return PatternedDTParser(base_cls, extras, base_type)
+
         if load_hook is None:
             # Need to check this first, because the `Literal` type in Python
             # 3.6 behaves a bit differently (doesn't have an `__origin__`
             # attribute for example)
             if is_literal(ann_type):
-                return LiteralParser(base_cls, config, ann_type)
+                return LiteralParser(base_cls, extras, ann_type)
 
             if is_annotated(ann_type):
                 # Given `Annotated[T, MaxValue(10), ...]`, we only need `T`
                 ann_type = get_args(ann_type)[0]
                 return cls.get_parser_for_annotation(
-                    ann_type, base_cls, config)
+                    ann_type, base_cls, extras)
 
             # This property will be available for most generic types in the
             # `typing` library.
@@ -276,7 +283,7 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
                         load_hook = load_func_for_dataclass(
                             base_type,
                             is_main_class=False,
-                            config=config
+                            config=extras['config']
                         )
 
                     elif issubclass(base_type, Enum):
@@ -292,26 +299,31 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
                             # Annotated as a `typing.NamedTuple` subtype
                             load_hook = hooks.get(NamedTupleMeta)
                             return NamedTupleParser(
-                                base_cls, config, base_type, load_hook,
+                                base_cls, extras, base_type, load_hook,
                                 cls.get_parser_for_annotation
                             )
                         else:
                             # Annotated as a `collections.namedtuple` subtype
                             load_hook = hooks.get(namedtuple)
                             return NamedTupleUntypedParser(
-                                base_cls, config, base_type, load_hook,
+                                base_cls, extras, base_type, load_hook,
                                 cls.get_parser_for_annotation
                             )
 
                     elif is_typed_dict(base_type):
                         load_hook = cls.load_to_typed_dict
                         return TypedDictParser(
-                            base_cls, config, base_type, load_hook,
+                            base_cls, extras, base_type, load_hook,
                             cls.get_parser_for_annotation
                         )
 
                 elif base_type is Any:
                     load_hook = cls.default_load_to
+
+                elif isinstance(base_type, _PatternedDT):
+                    # Check for a field that was initially annotated like:
+                    #   DateTimePattern('%m/%d/%y %H:%M:%S')]
+                    return PatternedDTParser(base_cls, extras, base_type)
 
                 elif base_type is Ellipsis:
                     load_hook = cls.default_load_to
@@ -337,34 +349,34 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
                     elif NoneType in base_types and len(base_types) == 2:
                         # Special case for Optional[x], which is actually Union[x, None]
                         return OptionalParser(
-                            base_cls, config, base_types[0],
+                            base_cls, extras, base_types[0],
                             cls.get_parser_for_annotation
                         )
 
                     else:
                         return UnionParser(
-                            base_cls, config, base_types,
+                            base_cls, extras, base_types,
                             cls.get_parser_for_annotation
                         )
 
                 elif issubclass(base_type, defaultdict):
                     load_hook = cls.load_to_defaultdict
                     return DefaultDictParser(
-                        base_cls, config, ann_type, load_hook,
+                        base_cls, extras, ann_type, load_hook,
                         cls.get_parser_for_annotation
                     )
 
                 elif issubclass(base_type, dict):
                     load_hook = cls.load_to_dict
                     return MappingParser(
-                        base_cls, config, ann_type, load_hook,
+                        base_cls, extras, ann_type, load_hook,
                         cls.get_parser_for_annotation
                     )
 
                 elif issubclass(base_type, LSQ.__constraints__):
                     load_hook = cls.load_to_iterable
                     return IterableParser(
-                        base_cls, config, ann_type, load_hook,
+                        base_cls, extras, ann_type, load_hook,
                         cls.get_parser_for_annotation
                     )
 
@@ -380,7 +392,7 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
                         parser = VariadicTupleParser
 
                     return parser(
-                        base_cls, config, ann_type, load_hook,
+                        base_cls, extras, ann_type, load_hook,
                         cls.get_parser_for_annotation
                     )
 
@@ -392,19 +404,19 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
         elif issubclass(base_type, dict):
             load_hook = cls.load_to_dict
             return MappingParser(
-                base_cls, config, ann_type, load_hook,
+                base_cls, extras, ann_type, load_hook,
                 cls.get_parser_for_annotation)
 
         elif issubclass(base_type, LSQ.__constraints__):
             load_hook = cls.load_to_iterable
             return IterableParser(
-                base_cls, config, ann_type, load_hook,
+                base_cls, extras, ann_type, load_hook,
                 cls.get_parser_for_annotation)
 
         elif issubclass(base_type, tuple):
             load_hook = cls.load_to_tuple
             return TupleParser(
-                base_cls, config, ann_type, load_hook,
+                base_cls, extras, ann_type, load_hook,
                 cls.get_parser_for_annotation)
 
         if load_hook is None:
@@ -429,12 +441,12 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
 
         if hasattr(load_hook, SINGLE_ARG_ALIAS):
             load_hook = resolve_alias_func(load_hook, locals())
-            return SingleArgParser(base_cls, config, base_type, load_hook)
+            return SingleArgParser(base_cls, extras, base_type, load_hook)
 
         if hasattr(load_hook, IDENTITY):
-            return IdentityParser(base_type, config, base_type)
+            return IdentityParser(base_type, extras, base_type)
 
-        return Parser(base_cls, config, base_type, load_hook)
+        return Parser(base_cls, extras, base_type, load_hook)
 
 
 def setup_default_loader(cls=LoadMixin):

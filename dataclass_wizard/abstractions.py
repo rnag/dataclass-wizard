@@ -11,6 +11,7 @@ from typing import (
 )
 
 from .bases import META
+from .models import Extras
 from .type_def import (
     DefFactory, FrozenKeys, ListOfJSONObject, JSONObject,
     M, N, T, NT, E, U, DD, LSQ
@@ -106,7 +107,7 @@ class AbstractParser(ABC):
     # dataclass. This is primarily useful to have so that we can merge this
     # base Meta config with the one for each class, and then recursively
     # apply the merged Meta config to any nested dataclasses.
-    config: InitVar[META]
+    extras: InitVar[Extras]
 
     # This is usually the underlying base type of the annotation (for example,
     # for `List[str]` it will be `list`), though in some cases this will be
@@ -337,7 +338,7 @@ class AbstractLoader(ABC):
     @abstractmethod
     def get_parser_for_annotation(cls, ann_type: Type[T],
                                   base_cls: Type = None,
-                                  config: META = None) -> AbstractParser:
+                                  extras: Extras = None) -> AbstractParser:
         """
         Returns the Parser (dispatcher) for a given annotation type.
 

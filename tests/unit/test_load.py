@@ -16,8 +16,9 @@ from typing import (
 import pytest
 
 from dataclass_wizard import *
-from dataclass_wizard.constants import TAG, PY310_OR_ABOVE
+from dataclass_wizard.constants import TAG
 from dataclass_wizard.errors import ParseError, MissingFields, UnknownJSONKey
+from dataclass_wizard.models import Extras, _PatternBase
 from dataclass_wizard.parsers import OptionalParser, Parser, IdentityParser, SingleArgParser
 from dataclass_wizard.type_def import NoneType, T
 from .conftest import MyUUIDSubclass
@@ -114,6 +115,116 @@ def test_fromdict_with_nested_dataclass():
             MyElement(order_index=111, status_code='200'),
             MyElement(order_index=222, status_code=404)
     ]
+
+
+def test_date_times_with_custom_pattern():
+    """
+    Date, time, and datetime objects with a custom date string
+    format that will be passed to the built-in `datetime.strptime` method
+    when de-serializing date strings.
+
+    Note that the serialization format for dates and times still use ISO
+    format, by default.
+    """
+
+    class MyDate(date):
+        ...
+
+    class MyTime(time):
+        def get_hour(self):
+            return self.hour
+
+    class MyDT(datetime):
+        def get_year(self):
+            return self.year
+
+    @dataclass
+    class MyClass:
+        date_field1: DatePattern['%m-%y']
+        time_field1: TimePattern['%H-%M']
+        dt_field1: DateTimePattern['%d, %b, %Y %I::%M::%S.%f %p']
+        date_field2: Annotated[MyDate, Pattern('%Y/%m/%d')]
+        time_field2: Annotated[List[MyTime], Pattern('%H:%M:%S')]
+        dt_field2: Annotated[MyDT, Pattern('%m/%d/%y %H@%M@%S')]
+
+        other_field: str
+
+    data = {'date_field1': '12-22',
+            'time_field1': '15-20',
+            'dt_field1': '3, Jan, 2022 11::30::12.123456 pm',
+            'date_field2': '2021/12/30',
+            'time_field2': ['1:20:30', '12:30:50'],
+            'dt_field2': '01/02/23 02@03@52',
+            'other_field': 'testing'}
+
+    class_obj = fromdict(MyClass, data)
+
+    # noinspection PyTypeChecker
+    expected_obj = MyClass(date_field1=date(2022, 12, 1),
+                           time_field1=time(15, 20),
+                           dt_field1=datetime(2022, 1, 3, 23, 30, 12, 123456),
+                           date_field2=MyDate(2021, 12, 30),
+                           time_field2=[MyTime(1, 20, 30), MyTime(12, 30, 50)],
+                           dt_field2=MyDT(2023, 1, 2, 2, 3, 52),
+                           other_field='testing')
+
+    log.debug('Deserialized object: %r', class_obj)
+    # Assert that dates / times are correctly de-serialized as expected.
+    assert class_obj == expected_obj
+
+    serialized_dict = asdict(class_obj)
+
+    expected_dict = {'dateField1': '2022-12-01',
+                     'timeField1': '15:20:00',
+                     'dtField1': '2022-01-03T23:30:12.123456',
+                     'dateField2': '2021-12-30',
+                     'timeField2': ['01:20:30', '12:30:50'],
+                     'dtField2': '2023-01-02T02:03:52',
+                     'otherField': 'testing'}
+
+    log.debug('Serialized dict object: %s', serialized_dict)
+    # Assert that dates / times are correctly serialized as expected.
+    assert serialized_dict == expected_dict
+
+    # Assert that de-serializing again, using the serialized date strings
+    # in ISO format, still works.
+    assert fromdict(MyClass, serialized_dict) == expected_obj
+
+
+def test_date_times_with_custom_pattern_when_input_is_invalid():
+    """
+    Date, time, and datetime objects with a custom date string
+    format, but the input date string does not match the set pattern.
+    """
+
+    @dataclass
+    class MyClass:
+        date_field: DatePattern['%m-%d-%y']
+
+    data = {'date_field': '12.31.21'}
+
+    with pytest.raises(ParseError):
+        _ = fromdict(MyClass, data)
+
+
+def test_date_times_with_custom_pattern_when_annotation_is_invalid():
+    """
+    Date, time, and datetime objects with a custom date string
+    format, but the annotated type is not a valid date/time type.
+    """
+    class MyCustomPattern(str, _PatternBase):
+        pass
+
+    @dataclass
+    class MyClass:
+        date_field: MyCustomPattern['%m-%d-%y']
+
+    data = {'date_field': '12-31-21'}
+
+    with pytest.raises(TypeError) as e:
+        _ = fromdict(MyClass, data)
+
+    log.debug('Error details: %r', e.value)
 
 
 def test_tag_field_is_used_in_load_process():
@@ -1321,7 +1432,8 @@ def test_parser_with_unsupported_type():
     class MyClass(Generic[T]):
         pass
 
-    mock_parser = LoadMixin.get_parser_for_annotation(None, MyClass)
+    extras: Extras = {}
+    mock_parser = LoadMixin.get_parser_for_annotation(None, MyClass, extras)
 
     assert type(mock_parser) is IdentityParser
 

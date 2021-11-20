@@ -1,11 +1,29 @@
-from dataclasses import Field, MISSING
-from typing import Union, Collection
+# noinspection PyProtectedMember
+from dataclasses import MISSING, Field, _create_fn
+from datetime import date, datetime, time
+from typing import Union, Collection, Callable, Any, Type
+from typing import cast, Optional
 
+from .bases import META
 from .constants import PY310_OR_ABOVE
+from .type_def import DT, PyTypedDict
+from .utils.type_conv import as_datetime, as_time, as_date
 
 
 # Type for a string or a collection of strings.
 _STR_COLLECTION = Union[str, Collection[str]]
+
+# A date, time, datetime sub type, or None.
+DT_OR_NONE = Optional[DT]
+
+
+class Extras(PyTypedDict):
+    """
+    "Extra" config that can be used in the load / dump process.
+    """
+    config: META
+    # noinspection PyTypedDict
+    pattern: '_PatternedDT'
 
 
 def json_key(*keys: str, all=False, dump=True):
@@ -126,3 +144,92 @@ class JSONField(Field):
                 keys = (keys, )
 
             self.json = JSON(*keys, all=all, dump=dump)
+
+
+# noinspection PyPep8Naming
+def Pattern(pattern: str):
+    return _PatternedDT(pattern)
+
+
+class _PatternBase:
+    __slots__ = ()
+
+    def __class_getitem__(cls, pattern: str):
+        return _PatternedDT(pattern, cast(DT, cls.__base__))
+
+    __getitem__ = __class_getitem__
+
+
+class DatePattern(date, _PatternBase):
+    __slots__ = ()
+
+
+class TimePattern(time, _PatternBase):
+    __slots__ = ()
+
+
+class DateTimePattern(datetime, _PatternBase):
+    __slots__ = ()
+
+
+class _PatternedDT:
+    __slots__ = ('cls', 'pattern')
+
+    def __init__(self, pattern: str, cls: DT_OR_NONE = None):
+        self.cls = cls
+        self.pattern = pattern
+
+    def get_transform_func(self):
+        cls = self.cls
+
+        body_lines = ['try:',
+                      '  dt = datetime.strptime(date_string, pattern)']
+
+        func_locals = {'datetime': datetime,
+                       'pattern': self.pattern,
+                       'cls': cls}
+
+        default_load_func: Callable[[Any, Type[DT]], DT]
+
+        if cls is datetime:
+            default_load_func = as_datetime
+            body_lines.append('  return dt')
+        elif cls is date:
+            default_load_func = as_date
+            body_lines.append('  return dt.date()')
+        elif cls is time:
+            default_load_func = as_time
+            body_lines.append('  return dt.time()')
+        elif issubclass(cls, datetime):
+            default_load_func = as_datetime
+            func_locals['datetime'] = cls
+            body_lines.append('  return dt')
+        elif issubclass(cls, date):
+            default_load_func = as_date
+            body_lines.append('  return cls(dt.year, dt.month, dt.day)')
+        elif issubclass(cls, time):
+            default_load_func = as_time
+            body_lines.append('  return cls(dt.hour, dt.minute, dt.second, '
+                              'dt.microsecond, fold=dt.fold)')
+        else:
+            raise TypeError(f'Annotation for `Pattern` is of invalid type '
+                            f'({cls}). Expected a type or subtype of: '
+                            f'{DT.__constraints__}')
+
+        body_lines.append('except ValueError as e:')
+        body_lines.extend(['  try:',
+                           '    return default_load_func(date_string, cls)',
+                           '  except ValueError:',
+                           '     raise e'])
+
+        func_locals['default_load_func'] = default_load_func
+
+        return _create_fn('pattern_to_dt',
+                          ('date_string', ),
+                          body_lines,
+                          locals=func_locals,
+                          return_type=DT)
+
+    def __repr__(self):
+        repr_val = [f'{k}={getattr(self, k)!r}' for k in self.__slots__]
+        return f'{self.__class__.__name__}({", ".join(repr_val)})'
