@@ -360,14 +360,14 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
                         )
 
                 elif issubclass(base_type, defaultdict):
-                    load_hook = cls.load_to_defaultdict
+                    load_hook = hooks[defaultdict]
                     return DefaultDictParser(
                         base_cls, extras, ann_type, load_hook,
                         cls.get_parser_for_annotation
                     )
 
                 elif issubclass(base_type, dict):
-                    load_hook = cls.load_to_dict
+                    load_hook = hooks[dict]
                     return MappingParser(
                         base_cls, extras, ann_type, load_hook,
                         cls.get_parser_for_annotation
@@ -381,7 +381,7 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
                     )
 
                 elif issubclass(base_type, tuple):
-                    load_hook = cls.load_to_tuple
+                    load_hook = hooks[tuple]
                     # Check if the `Tuple` appears in the variadic form
                     #   i.e. Tuple[str, ...]
                     args = get_args(ann_type)
@@ -402,7 +402,7 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
         # TODO i'll need to refactor this to remove duplicate lines above -
         # maybe merge them together.
         elif issubclass(base_type, dict):
-            load_hook = cls.load_to_dict
+            load_hook = hooks[dict]
             return MappingParser(
                 base_cls, extras, ann_type, load_hook,
                 cls.get_parser_for_annotation)
@@ -414,7 +414,7 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
                 cls.get_parser_for_annotation)
 
         elif issubclass(base_type, tuple):
-            load_hook = cls.load_to_tuple
+            load_hook = hooks[tuple]
             return TupleParser(
                 base_cls, extras, ann_type, load_hook,
                 cls.get_parser_for_annotation)
