@@ -127,14 +127,27 @@ def test_date_times_with_custom_pattern():
     format, by default.
     """
 
-    class MyDate(date):
+    def create_strict_eq(name, bases, cls_dict):
+        """Generate a strict "type" equality method for a class."""
+        cls = type(name, bases, cls_dict)
+        __class__ = cls  # provide closure cell for super()
+
+        def __eq__(self, other):
+            if type(other) is not cls:  # explicitly check the type
+                return False
+            return super().__eq__(other)
+
+        cls.__eq__ = __eq__
+        return cls
+
+    class MyDate(date, metaclass=create_strict_eq):
         ...
 
-    class MyTime(time):
+    class MyTime(time, metaclass=create_strict_eq):
         def get_hour(self):
             return self.hour
 
-    class MyDT(datetime):
+    class MyDT(datetime, metaclass=create_strict_eq):
         def get_year(self):
             return self.year
 
@@ -144,7 +157,7 @@ def test_date_times_with_custom_pattern():
         time_field1: TimePattern['%H-%M']
         dt_field1: DateTimePattern['%d, %b, %Y %I::%M::%S.%f %p']
         date_field2: Annotated[MyDate, Pattern('%Y/%m/%d')]
-        time_field2: Annotated[List[MyTime], Pattern('%H:%M:%S')]
+        time_field2: Annotated[List[MyTime], Pattern('%I:%M %p')]
         dt_field2: Annotated[MyDT, Pattern('%m/%d/%y %H@%M@%S')]
 
         other_field: str
@@ -153,7 +166,7 @@ def test_date_times_with_custom_pattern():
             'time_field1': '15-20',
             'dt_field1': '3, Jan, 2022 11::30::12.123456 pm',
             'date_field2': '2021/12/30',
-            'time_field2': ['1:20:30', '12:30:50'],
+            'time_field2': ['1:20 PM', '12:30 am'],
             'dt_field2': '01/02/23 02@03@52',
             'other_field': 'testing'}
 
@@ -164,7 +177,7 @@ def test_date_times_with_custom_pattern():
                            time_field1=time(15, 20),
                            dt_field1=datetime(2022, 1, 3, 23, 30, 12, 123456),
                            date_field2=MyDate(2021, 12, 30),
-                           time_field2=[MyTime(1, 20, 30), MyTime(12, 30, 50)],
+                           time_field2=[MyTime(13, 20), MyTime(0, 30)],
                            dt_field2=MyDT(2023, 1, 2, 2, 3, 52),
                            other_field='testing')
 
@@ -178,7 +191,7 @@ def test_date_times_with_custom_pattern():
                      'timeField1': '15:20:00',
                      'dtField1': '2022-01-03T23:30:12.123456',
                      'dateField2': '2021-12-30',
-                     'timeField2': ['01:20:30', '12:30:50'],
+                     'timeField2': ['13:20:00', '00:30:00'],
                      'dtField2': '2023-01-02T02:03:52',
                      'otherField': 'testing'}
 
