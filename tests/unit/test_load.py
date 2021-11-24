@@ -117,6 +117,7 @@ def test_fromdict_with_nested_dataclass():
     ]
 
 
+@pytest.mark.skipif(PY36, reason='requires Python 3.7 or higher')
 def test_date_times_with_custom_pattern():
     """
     Date, time, and datetime objects with a custom date string
@@ -204,6 +205,7 @@ def test_date_times_with_custom_pattern():
     assert fromdict(MyClass, serialized_dict) == expected_obj
 
 
+@pytest.mark.skipif(PY36, reason='requires Python 3.7 or higher')
 def test_date_times_with_custom_pattern_when_input_is_invalid():
     """
     Date, time, and datetime objects with a custom date string
@@ -220,6 +222,7 @@ def test_date_times_with_custom_pattern_when_input_is_invalid():
         _ = fromdict(MyClass, data)
 
 
+@pytest.mark.skipif(PY36, reason='requires Python 3.7 or higher')
 def test_date_times_with_custom_pattern_when_annotation_is_invalid():
     """
     Date, time, and datetime objects with a custom date string
