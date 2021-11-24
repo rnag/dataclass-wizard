@@ -1,13 +1,14 @@
 # noinspection PyProtectedMember
 from dataclasses import MISSING, Field, _create_fn
 from datetime import date, datetime, time
-from typing import Union, Collection, Callable, Any, Type
+from typing import Union, Collection, Callable
 from typing import cast, Optional
 
 from .bases import META
 from .constants import PY310_OR_ABOVE
 from .type_def import DT, PyTypedDict
 from .utils.type_conv import as_datetime, as_time, as_date
+
 
 # Type for a string or a collection of strings.
 _STR_COLLECTION = Union[str, Collection[str]]
@@ -112,7 +113,7 @@ class JSONField(Field):
 
     See the docs on the :func:`json_field` function for more info.
     """
-    __slots__ = ('json',)
+    __slots__ = ('json', )
 
     # In Python 3.10, dataclasses adds a new parameter to the :class:`Field`
     # constructor: `kw_only`
@@ -127,7 +128,7 @@ class JSONField(Field):
                              compare, metadata, False)
 
             if isinstance(keys, str):
-                keys = (keys,)
+                keys = (keys, )
 
             self.json = JSON(*keys, all=all, dump=dump)
 
@@ -140,7 +141,7 @@ class JSONField(Field):
                              compare, metadata)
 
             if isinstance(keys, str):
-                keys = (keys,)
+                keys = (keys, )
 
             self.json = JSON(*keys, all=all, dump=dump)
 

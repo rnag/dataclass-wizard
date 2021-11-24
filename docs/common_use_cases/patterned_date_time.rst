@@ -57,8 +57,8 @@ The usage is shown below, and is again pretty straightforward.
         #      `time`, and `datetime` respectively.
         date_field: DatePattern['%b %d, %Y']
         time_field: TimePattern['%I:%M %p']
-        # 2 -- Use `Annotated` to annotate the time as `datetime` explicitly, and
-        #      pass in `Pattern` as an extra.
+        # 2 -- Use `Annotated` to annotate the field as `list[time]` for example,
+        #      and pass in `Pattern` as an extra.
         dt_field: Annotated[datetime, Pattern('%m/%d/%y %H:%M:%S')]
 
 
