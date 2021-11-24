@@ -508,6 +508,60 @@ an unknown JSON key is encountered in the  *load* (de-serialization) process.
         print('Successfully de-serialized the JSON object.')
         print(repr(c))
 
+Date and Time with Custom Patterns
+----------------------------------
+
+As of *v0.20.0*, date and time strings in a `custom format`_ can be de-serialized
+using the ``DatePattern``, ``TimePattern``, and ``DateTimePattern`` type annotations,
+representing patterned `date`, `time`, and `datetime` objects respectively.
+
+This will internally call ``datetime.strptime`` with the format specified in the annotation,
+and also use the ``fromisoformat()`` method in case the date string is in ISO-8601 format.
+All dates and times will continue to be serialized as ISO format strings by default. For more
+info, check out the `Patterned Date and Time`_ section in the docs.
+
+A brief example of the intended usage is shown below:
+
+.. code:: python3
+
+    from dataclasses import dataclass
+    from datetime import time, datetime
+    from typing import List
+    # Note: in Python 3.9+, you can import this from `typing` instead
+    from typing_extensions import Annotated
+
+    from dataclass_wizard import fromdict, asdict, DatePattern, TimePattern, Pattern
+
+
+    @dataclass
+    class MyClass:
+        date_field: DatePattern['%m-%Y']
+        dt_field: Annotated[datetime, Pattern('%m/%d/%y %H.%M.%S')]
+        time_field1: TimePattern['%H:%M']
+        time_field2: Annotated[List[time], Pattern('%I:%M %p')]
+
+
+    data = {'date_field': '12-2022',
+            'time_field1': '15:20',
+            'dt_field': '1/02/23 02.03.52',
+            'time_field2': ['1:20 PM', '12:30 am']}
+
+    class_obj = fromdict(MyClass, data)
+
+    # All annotated fields de-serialize as just date, time, or datetime, as shown.
+    print(class_obj)
+    # MyClass(date_field=datetime.date(2022, 12, 1), dt_field=datetime.datetime(2023, 1, 2, 2, 3, 52),
+    #         time_field1=datetime.time(15, 20), time_field2=[datetime.time(13, 20), datetime.time(0, 30)])
+
+    # All date/time fields are serialized as ISO-8601 format strings by default.
+    print(asdict(class_obj))
+    # {'dateField': '2022-12-01', 'dtField': '2023-01-02T02:03:52',
+    #  'timeField1': '15:20:00', 'timeField2': ['13:20:00', '00:30:00']}
+
+    # But, the patterned date/times can still be de-serialized back after
+    # serialization. In fact, it'll be faster than parsing the custom patterns!
+    assert class_obj == fromdict(MyClass, asdict(class_obj))
+
 Serialization Options
 ---------------------
 
@@ -660,3 +714,5 @@ This package was created with Cookiecutter_ and the `rnag/cookiecutter-pypackage
 .. _`wiz-cli`: https://dataclass-wizard.readthedocs.io/en/latest/wiz_cli.html
 .. _`key limitations`: https://florimond.dev/en/posts/2018/10/reconciling-dataclasses-and-properties-in-python/
 .. _`more complete example`: https://dataclass-wizard.readthedocs.io/en/latest/examples.html#a-more-complete-example
+.. _custom format: https://docs.python.org/3/library/datetime.html#strftime-and-strptime-format-codes
+.. _`Patterned Date and Time`: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/patterned_date_time.html
