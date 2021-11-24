@@ -4,7 +4,7 @@ from typing import Dict, Tuple, Type, Union, Callable, Optional, Any
 
 from .abstractions import W, AbstractLoader, AbstractDumper, AbstractParser
 from .bases import M, AbstractMeta
-from .models import JSONField, JSON
+from .models import JSONField, JSON, Extras, _PatternedDT
 from .type_def import ExplicitNull, ExplicitNullType, T
 from .utils.dict_helper import DictWithLowerStore
 from .utils.typing_compat import (
@@ -152,12 +152,10 @@ def _setup_load_config_for_cls(cls_loader: Type[AbstractLoader],
     name_to_parser = {}
 
     for f in dataclass_init_fields(cls):
+        field_extras: Extras = {'config': config}
 
-        # Lookup the Parser (dispatcher) for each field based on its annotated
-        # type, and then cache it so we don't need to lookup each time.
-        name_to_parser[f.name] = cls_loader.get_parser_for_annotation(
-            f.type, cls, config
-        )
+        f.type = eval_forward_ref_if_needed(f.type, cls)
+        field_type = f.type
 
         # Check if the field is a `Field` type or a subclass. If so, update
         # the class-specific mapping of JSON key to dataclass field name.
@@ -177,12 +175,20 @@ def _setup_load_config_for_cls(cls_loader: Type[AbstractLoader],
         # look for any `JSON` objects in the arguments; for each object,
         # update the class-specific mapping of JSON key to dataclass field
         # name.
-        f.type = eval_forward_ref_if_needed(f.type, cls)
-        if is_annotated(f.type):
-            for extra in get_args(f.type)[1:]:
+        if is_annotated(field_type):
+            ann_type, *extras = get_args(field_type)
+            for extra in extras:
                 if isinstance(extra, JSON):
                     for key in extra.keys:
                         json_to_dataclass_field[key] = f.name
+                elif isinstance(extra, _PatternedDT):
+                    field_extras['pattern'] = extra
+
+        # Lookup the Parser (dispatcher) for each field based on its annotated
+        # type, and then cache it so we don't need to lookup each time.
+        name_to_parser[f.name] = cls_loader.get_parser_for_annotation(
+            field_type, cls, field_extras
+        )
 
     parser_dict = DictWithLowerStore(name_to_parser)
     # only cache the load parser for the class if `save` is enabled
@@ -366,3 +372,11 @@ def is_subclass(obj, base_cls: Type) -> bool:
     """Check if `obj` is a sub-class of `base_cls`"""
     cls = obj if isinstance(obj, type) else type(obj)
     return issubclass(cls, base_cls)
+
+
+def is_subclass_safe(cls, class_or_tuple) -> bool:
+    """Check if `obj` is a sub-class of `base_cls` (safer version)"""
+    try:
+        return issubclass(cls, class_or_tuple)
+    except TypeError:
+        return cls is class_or_tuple

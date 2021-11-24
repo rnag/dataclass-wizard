@@ -201,23 +201,31 @@ def as_datetime(o: Union[str, Number, datetime],
     is true; if not, return `default` instead.
 
     """
+    # noinspection PyBroadException
     try:
         # We can assume that `o` is a string, as generally this will be the
         # case. Also, :func:`fromisoformat` does an instance check separately.
         return base_type.fromisoformat(o.replace('Z', '+00:00', 1))
 
-    except (TypeError, AttributeError):
+    except Exception:
+
+        t = type(o)
+
+        if t is str:
+            # Minor performance fix: if it's a string, we don't need to run
+            # the other type checks.
+            pass
 
         # Check `type` explicitly, because `bool` is a sub-class of `int`
-        if type(o) in NUMBERS:
+        elif t in NUMBERS:
             # noinspection PyTypeChecker
             return base_type.fromtimestamp(o)
 
-        if isinstance(o, base_type):
+        elif t is base_type:
             return o
 
         if raise_:
-            raise TypeError(f'Unsupported type, value={o!r}, type={type(o)}')
+            raise TypeError(f'Unsupported type, value={o!r}, type={t}')
 
         return default
 
@@ -240,23 +248,31 @@ def as_date(o: Union[str, Number, date],
     is true; if not, return `default` instead.
 
     """
+    # noinspection PyBroadException
     try:
         # We can assume that `o` is a string, as generally this will be the
         # case. Also, :func:`fromisoformat` does an instance check separately.
         return base_type.fromisoformat(o)
 
-    except (TypeError, AttributeError):
+    except Exception:
+
+        t = type(o)
+
+        if t is str:
+            # Minor performance fix: if it's a string, we don't need to run
+            # the other type checks.
+            pass
 
         # Check `type` explicitly, because `bool` is a sub-class of `int`
-        if type(o) in NUMBERS:
+        elif t in NUMBERS:
             # noinspection PyTypeChecker
             return base_type.fromtimestamp(o)
 
-        if isinstance(o, base_type):
+        elif t is base_type:
             return o
 
         if raise_:
-            raise TypeError(f'Unsupported type, value={o!r}, type={type(o)}')
+            raise TypeError(f'Unsupported type, value={o!r}, type={t}')
 
         return default
 
@@ -276,18 +292,26 @@ def as_time(o: Union[str, time], base_type=time, default=None, raise_=True):
     is true; if not, return `default` instead.
 
     """
+    # noinspection PyBroadException
     try:
         # We can assume that `o` is a string, as generally this will be the
         # case. Also, :func:`fromisoformat` does an instance check separately.
         return base_type.fromisoformat(o.replace('Z', '+00:00', 1))
 
-    except (TypeError, AttributeError):
+    except Exception:
 
-        if isinstance(o, base_type):
+        t = type(o)
+
+        if t is str:
+            # Minor performance fix: if it's a string, we don't need to run
+            # the other type checks.
+            pass
+
+        elif t is base_type:
             return o
 
         if raise_:
-            raise TypeError(f'Unsupported type, value={o!r}, type={type(o)}')
+            raise TypeError(f'Unsupported type, value={o!r}, type={t}')
 
         return default
 

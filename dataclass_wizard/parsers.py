@@ -1,6 +1,7 @@
 __all__ = ['IdentityParser',
            'SingleArgParser',
            'Parser',
+           'PatternedDTParser',
            'LiteralParser',
            'UnionParser',
            'OptionalParser',
@@ -19,10 +20,11 @@ from typing import (
 )
 
 from .abstractions import AbstractParser, FieldToParser
-from .bases import META, AbstractMeta
+from .bases import AbstractMeta
 from .class_helper import get_meta, _META
 from .constants import TAG
 from .errors import ParseError
+from .models import _PatternedDT, Extras
 from .type_def import (
     FrozenKeys, NoneType, DefFactory,
     T, M, S, DD, LSQ, N, NT
@@ -33,7 +35,7 @@ from .utils.typing_compat import (
 
 
 # Type defs
-GetParserType = Callable[[Type[T], Type, META], AbstractParser]
+GetParserType = Callable[[Type[T], Type, Extras], AbstractParser]
 TupleOfParsers = Tuple[AbstractParser, ...]
 
 
@@ -117,16 +119,41 @@ class LiteralParser(AbstractParser):
 
 
 @dataclass
+class PatternedDTParser(AbstractParser):
+    __slots__ = ('hook', )
+
+    base_type: _PatternedDT
+
+    # noinspection PyDataclass
+    def __post_init__(self, _cls: Type, extras: Extras, *_):
+        if not isinstance(self.base_type, _PatternedDT):
+            dt_cls = self.base_type
+            self.base_type = extras['pattern']
+            self.base_type.cls = dt_cls
+
+        self.hook = self.base_type.get_transform_func()
+
+    def __call__(self, date_string: str):
+        try:
+            return self.hook(date_string)
+        except ValueError as e:
+            raise ParseError(
+                e, date_string, self.base_type.cls,
+                pattern=self.base_type.pattern
+            )
+
+
+@dataclass
 class OptionalParser(AbstractParser):
     __slots__ = ('parser', )
 
     get_parser: InitVar[GetParserType]
 
     def __post_init__(self, cls: Type,
-                      config: META,
+                      extras: Extras,
                       get_parser: GetParserType):
 
-        self.parser: AbstractParser = get_parser(self.base_type, cls, config)
+        self.parser: AbstractParser = get_parser(self.base_type, cls, extras)
 
     def __contains__(self, item):
         """Check if parser is expected to handle the specified item type."""
@@ -150,11 +177,12 @@ class UnionParser(AbstractParser):
     get_parser: InitVar[GetParserType]
 
     def __post_init__(self, cls: Type,
-                      config: META,
+                      extras: Extras,
                       get_parser: GetParserType):
 
         # Tag key to search for when a dataclass is in a `Union` with
         # other types.
+        config = extras.get('config')
         if config:
             self.tag_key: str = config.tag_key or TAG
             auto_assign_tags = config.auto_assign_tags
@@ -163,7 +191,7 @@ class UnionParser(AbstractParser):
             auto_assign_tags = False
 
         self.parsers = tuple(
-            get_parser(t, cls, config) for t in self.base_type
+            get_parser(t, cls, extras) for t in self.base_type
             if t is not NoneType)
 
         self.tag_to_parser = {}
@@ -187,7 +215,7 @@ class UnionParser(AbstractParser):
                     # TODO see if we can use a mapping of dataclass type to
                     #   load func (maybe one passed in to __post_init__),
                     #   rather than generating one on the fly like this.
-                    self.tag_to_parser[tag] = get_parser(t, cls, config)
+                    self.tag_to_parser[tag] = get_parser(t, cls, extras)
 
     def __contains__(self, item):
         """Check if parser is expected to handle the specified item type."""
@@ -240,7 +268,7 @@ class IterableParser(AbstractParser):
     get_parser: InitVar[GetParserType]
 
     def __post_init__(self, cls: Type,
-                      config: META,
+                      extras: Extras,
                       get_parser: GetParserType):
 
         # Get the subscripted element type
@@ -254,7 +282,7 @@ class IterableParser(AbstractParser):
         #   ex. `List[str]` -> `list`
         self.base_type = get_origin(self.base_type)
 
-        self.elem_parser = get_parser(elem_type, cls, config)
+        self.elem_parser = get_parser(elem_type, cls, extras)
 
     def __call__(self, o: Iterable) -> LSQ:
         """
@@ -295,7 +323,7 @@ class TupleParser(AbstractParser):
     get_parser: InitVar[GetParserType]
 
     def __post_init__(self, cls: Type,
-                      config: META,
+                      extras: Extras,
                       get_parser: GetParserType):
 
         # Get the subscripted values
@@ -303,7 +331,7 @@ class TupleParser(AbstractParser):
         elem_types = get_args(self.base_type)
         self.base_type = get_origin(self.base_type)
         # A collection with a parser for each type argument
-        self.elem_parsers = tuple(get_parser(t, cls, config)
+        self.elem_parsers = tuple(get_parser(t, cls, extras)
                                   for t in elem_types)
         # Total count is generally the number of type arguments to `Tuple`, but
         # can be `Infinity` when a `Tuple` appears in its un-subscripted form.
@@ -356,7 +384,7 @@ class VariadicTupleParser(TupleParser):
     __slots__ = ('first_elem_parser', )
 
     def __post_init__(self, cls: Type,
-                      config: META,
+                      extras: Extras,
                       get_parser: GetParserType):
 
         # Get the subscripted values
@@ -369,7 +397,7 @@ class VariadicTupleParser(TupleParser):
         # argument.
         # Given `Tuple[T, ...]`, we only need a parser for `T`
         self.first_elem_parser: Tuple[AbstractParser]
-        self.first_elem_parser = get_parser(elem_types[0], cls, config),
+        self.first_elem_parser = get_parser(elem_types[0], cls, extras),
         # Total count should be `Infinity` here, since the variadic form
         # accepts any number of possible arguments.
         self.total_count: N = float('inf')
@@ -401,7 +429,7 @@ class NamedTupleParser(AbstractParser):
     get_parser: InitVar[GetParserType]
 
     def __post_init__(self, cls: Type,
-                      config: META,
+                      extras: Extras,
                       get_parser: GetParserType):
 
         # Get the field annotations for the `NamedTuple` type
@@ -410,7 +438,7 @@ class NamedTupleParser(AbstractParser):
         )
 
         self.field_to_parser: Optional[FieldToParser] = {
-            f: get_parser(ftype, cls, config)
+            f: get_parser(ftype, cls, extras)
             for f, ftype in type_anns.items()
         }
 
@@ -436,11 +464,11 @@ class NamedTupleUntypedParser(AbstractParser):
     get_parser: InitVar[GetParserType]
 
     def __post_init__(self, cls: Type,
-                      config: META,
+                      extras: Extras,
                       get_parser: GetParserType):
 
-        self.dict_parser = get_parser(dict, cls, config)
-        self.list_parser = get_parser(list, cls, config)
+        self.dict_parser = get_parser(dict, cls, extras)
+        self.list_parser = get_parser(list, cls, extras)
 
     def __call__(self, o: Any):
         """
@@ -462,7 +490,7 @@ class MappingParser(AbstractParser):
     get_parser: InitVar[GetParserType]
 
     def __post_init__(self, cls: Type,
-                      config: META,
+                      extras: Extras,
                       get_parser: GetParserType):
         try:
             key_type, val_type = get_args(self.base_type)
@@ -473,8 +501,8 @@ class MappingParser(AbstractParser):
         #   ex. `Dict[str, Any]` -> `dict`
         self.base_type: Type[M] = get_origin(self.base_type)
 
-        self.key_parser = get_parser(key_type, cls, config)
-        self.val_parser = get_parser(val_type, cls, config)
+        self.key_parser = get_parser(key_type, cls, extras)
+        self.val_parser = get_parser(val_type, cls, extras)
 
     def __call__(self, o: M) -> M:
         return self.hook(o, self.base_type, self.key_parser, self.val_parser)
@@ -490,9 +518,9 @@ class DefaultDictParser(MappingParser):
         [Any, Type[DD], DefFactory, AbstractParser, AbstractParser], DD]
 
     def __post_init__(self, cls: Type,
-                      config: META,
+                      extras: Extras,
                       get_parser: GetParserType):
-        super().__post_init__(cls, config, get_parser)
+        super().__post_init__(cls, extras, get_parser)
 
         # The default factory argument to pass to the `defaultdict` subclass
         self.default_factory: DefFactory = self.val_parser.base_type
@@ -514,11 +542,11 @@ class TypedDictParser(AbstractParser):
     get_parser: InitVar[GetParserType]
 
     def __post_init__(self, cls: Type,
-                      config: META,
+                      extras: Extras,
                       get_parser: GetParserType):
 
         self.key_to_parser: FieldToParser = {
-            k: get_parser(v, cls, config)
+            k: get_parser(v, cls, extras)
             for k, v in self.base_type.__annotations__.items()
         }
 

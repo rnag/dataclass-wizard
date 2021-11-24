@@ -1,11 +1,29 @@
-from dataclasses import Field, MISSING
-from typing import Union, Collection
+# noinspection PyProtectedMember
+from dataclasses import MISSING, Field, _create_fn
+from datetime import date, datetime, time
+from typing import Union, Collection, Callable
+from typing import cast, Optional
 
+from .bases import META
 from .constants import PY310_OR_ABOVE
+from .type_def import DT, PyTypedDict
+from .utils.type_conv import as_datetime, as_time, as_date
 
 
 # Type for a string or a collection of strings.
 _STR_COLLECTION = Union[str, Collection[str]]
+
+# A date, time, datetime sub type, or None.
+DT_OR_NONE = Optional[DT]
+
+
+class Extras(PyTypedDict):
+    """
+    "Extra" config that can be used in the load / dump process.
+    """
+    config: META
+    # noinspection PyTypedDict
+    pattern: '_PatternedDT'
 
 
 def json_key(*keys: str, all=False, dump=True):
@@ -110,7 +128,7 @@ class JSONField(Field):
                              compare, metadata, False)
 
             if isinstance(keys, str):
-                keys = (keys,)
+                keys = (keys, )
 
             self.json = JSON(*keys, all=all, dump=dump)
 
@@ -126,3 +144,153 @@ class JSONField(Field):
                 keys = (keys, )
 
             self.json = JSON(*keys, all=all, dump=dump)
+
+
+# noinspection PyPep8Naming
+def Pattern(pattern: str):
+    """
+    Represents a pattern (i.e. format string) for a date / time / datetime
+    type or subtype. For example, a custom pattern like below::
+
+        %d, %b, %Y %H:%M:%S.%f
+
+    A sample usage of ``Pattern``, using a subclass of :class:`time`::
+
+        time_field: Annotated[List[MyTime], Pattern('%I:%M %p')]
+
+    :param pattern: A format string to be passed in to `datetime.strptime`
+    """
+    return _PatternedDT(pattern)
+
+
+class _PatternBase:
+    """Base "subscriptable" pattern for date/time/datetime."""
+    __slots__ = ()
+
+    def __class_getitem__(cls, pattern: str):
+        return _PatternedDT(pattern, cast(DT, cls.__base__))
+
+    __getitem__ = __class_getitem__
+
+
+class DatePattern(date, _PatternBase):
+    """
+    An annotated type representing a date pattern (i.e. format string). Upon
+    de-serialization, the resolved type will be a :class:`date` instead.
+
+    See the docs on :func:`Pattern` for more info.
+    """
+    __slots__ = ()
+
+
+class TimePattern(time, _PatternBase):
+    """
+    An annotated type representing a time pattern (i.e. format string). Upon
+    de-serialization, the resolved type will be a :class:`time` instead.
+
+    See the docs on :func:`Pattern` for more info.
+    """
+    __slots__ = ()
+
+
+class DateTimePattern(datetime, _PatternBase):
+    """
+    An annotated type representing a datetime pattern (i.e. format string). Upon
+    de-serialization, the resolved type will be a :class:`datetime` instead.
+
+    See the docs on :func:`Pattern` for more info.
+    """
+    __slots__ = ()
+
+
+class _PatternedDT:
+    """
+    Base class for pattern matching using :meth:`datetime.strptime` when
+    loading (de-serializing) a string to a date / time / datetime object.
+    """
+
+    # `cls` is the date/time/datetime type or subclass.
+    # `pattern` is the format string to pass in to `datetime.strptime`.
+    __slots__ = ('cls',
+                 'pattern')
+
+    def __init__(self, pattern: str, cls: DT_OR_NONE = None):
+        self.cls = cls
+        self.pattern = pattern
+
+    def get_transform_func(self) -> Callable[[str], DT]:
+        """
+        Build an return a load function which takes a `date_string` as an
+        argument, and returns a new object of type :attr:`cls`.
+
+        We try to parse the input string to a `cls` object in the following
+        order:
+            - In case it's an ISO-8601 format string, or a numeric timestamp,
+              we first parse with the default load function (ex. as_datetime).
+              We parse strings using the builtin :meth:`fromisoformat` method,
+              as this is much faster than :meth:`datetime.strptime` - see link
+              below for more details.
+            - Next, we parse with :meth:`datetime.strptime` by passing in the
+              :attr:`pattern` to match against. If the pattern is invalid, the
+              method raises a ValueError, which is is re-raised by our
+              `Parser` implementation.
+
+        Ref: https://stackoverflow.com/questions/13468126/a-faster-strptime
+
+        :raises ValueError: If the input date string does not match the
+          pre-defined pattern.
+        """
+
+        cls = self.cls
+
+        # Parse with `fromisoformat` first, because its *much* faster than
+        # `datetime.strptime` - see linked article above for more details.
+        body_lines = [
+            'dt = default_load_func(date_string, cls, raise_=False)',
+            'if dt is not None:',
+            '  return dt',
+            'dt = datetime.strptime(date_string, pattern)',
+        ]
+
+        locals_ns = {'datetime': datetime,
+                     'pattern': self.pattern,
+                     'cls': cls}
+
+        if cls is datetime:
+            default_load_func = as_datetime
+            body_lines.append('return dt')
+        elif cls is date:
+            default_load_func = as_date
+            body_lines.append('return dt.date()')
+        elif cls is time:
+            default_load_func = as_time
+            body_lines.append('return dt.time()')
+        elif issubclass(cls, datetime):
+            default_load_func = as_datetime
+            locals_ns['datetime'] = cls
+            body_lines.append('return dt')
+        elif issubclass(cls, date):
+            default_load_func = as_date
+            body_lines.append('return cls(dt.year, dt.month, dt.day)')
+        elif issubclass(cls, time):
+            default_load_func = as_time
+            body_lines.append('return cls(dt.hour, dt.minute, dt.second, '
+                              'dt.microsecond, fold=dt.fold)')
+        else:
+            raise TypeError(f'Annotation for `Pattern` is of invalid type '
+                            f'({cls}). Expected a type or subtype of: '
+                            f'{DT.__constraints__}')
+
+        locals_ns['default_load_func'] = default_load_func
+
+        # TODO This approach unfortunately won't work in Python 3.6. To fix
+        #   it, we'll need to pass `globals` instead of `locals` here.
+        return _create_fn('pattern_to_dt',
+                          ('date_string', ),
+                          body_lines,
+                          locals=locals_ns,
+                          return_type=DT)
+
+    def __repr__(self):
+        repr_val = [f'{k}={getattr(self, k)!r}' for k in self.__slots__]
+        return f'{self.__class__.__name__}({", ".join(repr_val)})'

@@ -2,6 +2,18 @@
 History
 =======
 
+0.20.0 (2021-11-23)
+-------------------
+
+* Support custom patterns for dates and times, which are parsed (de-serialized) using :meth:`datetime.strptime`.
+  This allows two approaches to be used, which have complete support in Python 3.7+ currently:
+
+    - Using the ``DatePattern``, ``TimePattern``, and ``DateTimePattern`` type annotations,
+      representing patterned `date`, `time`, and `datetime` objects respectively.
+
+    - Use ``Annotated`` to annotate the field as ``list[time]`` for example, and pass
+      in :func:`Pattern` as an extra.
+
 0.19.0 (2021-11-17)
 -------------------
 

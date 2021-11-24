@@ -83,7 +83,11 @@ __all__ = [
     'DumpMeta',
     # Models
     'json_field',
-    'json_key'
+    'json_key',
+    'Pattern',
+    'DatePattern',
+    'TimePattern',
+    'DateTimePattern',
 ]
 
 import logging
@@ -92,7 +96,8 @@ from .bases_meta import LoadMeta, DumpMeta
 from .constants import PY36
 from .dumpers import DumpMixin, setup_default_dumper, asdict
 from .loaders import LoadMixin, setup_default_loader, fromlist, fromdict
-from .models import json_field, json_key
+from .models import (json_field, json_key,
+                     Pattern, DatePattern, TimePattern, DateTimePattern)
 from .property_wizard import property_wizard
 from .serial_json import JSONSerializable
 

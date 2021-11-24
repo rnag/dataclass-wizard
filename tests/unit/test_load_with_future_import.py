@@ -8,7 +8,7 @@ from typing import Optional
 
 import pytest
 
-from dataclass_wizard import JSONWizard
+from dataclass_wizard import JSONWizard, DumpMeta
 from dataclass_wizard.errors import ParseError
 from ..conftest import *
 
@@ -213,7 +213,7 @@ def test_dataclasses_in_union_types_with_auto_assign_tags():
     @dataclass
     class Data:
         my_str: str
-        my_list: list[C | D]
+        my_list: list[C | D | E]
 
     @dataclass
     class A:
@@ -231,6 +231,19 @@ def test_dataclasses_in_union_types_with_auto_assign_tags():
     class D:
         my_field: float
 
+    @dataclass
+    class E:
+        ...
+
+    # This is to coverage a case where we have a Meta config for a class,
+    # but we do not define a tag in the Meta config.
+    DumpMeta(key_transform='SNAKE').bind_to(D)
+
+    # Bind a custom tag to class E, so we can cover a case when
+    # `auto_assign_tags` is true, but we are still able to specify a
+    # custom tag for a class.
+    DumpMeta(tag='!E').bind_to(E)
+
     # Fix so the forward reference works
     globals().update(locals())
 
@@ -238,7 +251,8 @@ def test_dataclasses_in_union_types_with_auto_assign_tags():
         'my_data': {
             'myStr': 'string',
             'MyList': [{'type': 'D', 'my_field': 1.23},
-                       {'type': 'C', 'my_field': 3.21}]
+                       {'type': 'C', 'my_field': 3.21},
+                       {'type': '!E'}]
         },
         'my_dict': {
             'key': {'type': 'A',
@@ -249,14 +263,16 @@ def test_dataclasses_in_union_types_with_auto_assign_tags():
     expected_obj = Container(
         my_data=Data(my_str='string',
                      my_list=[D(my_field=1.23),
-                              C(my_field=3)]),
+                              C(my_field=3),
+                              E()]),
         my_dict={'key': A(val='123')}
     )
 
     expected_dict = {
         "my_data": {"my_str": "string",
                     "my_list": [{"my_field": 1.23, "type": "D"},
-                                {"my_field": 3, "type": "C"}]},
+                                {"my_field": 3, "type": "C"},
+                                {'type': '!E'}]},
         "my_dict": {"key": {"val": "123", "type": "A"}}
     }
 
