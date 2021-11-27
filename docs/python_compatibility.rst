@@ -112,16 +112,15 @@ represent ``Union`` and ``Optional`` types.
 The Latest and Greatest
 -----------------------
 
-If you already have Python 3.9 or higher, you can leverage the new support for parameterized
-standard collections that was added as part of `PEP 585`_, and avoid these imports from
+If you already have Python 3.10 or higher, you can leverage the new support for parameterized
+standard collections that was added as part of `PEP 585`_, as well as the ability to write
+Union types as ``X | Y`` which is introduced in `PEP 604`_, and avoid these imports from
 the ``typing`` module altogether:
 
 .. code:: python3
 
     from collections import defaultdict
     from dataclasses import dataclass
-    # Notice we only need *one* import here from the typing module
-    from typing import Union
 
     from dataclass_wizard import JSONWizard
 
@@ -130,7 +129,7 @@ the ``typing`` module altogether:
     class MyClass(JSONWizard):
         my_list: list[str]
         my_dict: defaultdict[str, list[int]]
-        my_tuple: tuple[Union[int, str], ...]
+        my_tuple: tuple[int | str, ...]
 
 
     if __name__ == '__main__':

@@ -2,6 +2,11 @@
 History
 =======
 
+0.20.1 (2021-11-27)
+-------------------
+
+* Update and refactor docs, doc layout, and the readme.
+
 0.20.0 (2021-11-23)
 -------------------
 
