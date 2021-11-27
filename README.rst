@@ -31,19 +31,7 @@ nested dataclass model.
 
 -------------------
 
-.. raw:: html
-
-   <style type="text/css">
-     .bolditalic {
-       font-weight: bold;
-       font-style: italic;
-     }
-   </style>
-
-.. role:: bolditalic
-   :class: bolditalic
-
-:bolditalic:`Behold, the power of the Dataclass Wizard`::
+**Behold, the power of the Dataclass Wizard**::
 
     >>> from __future__ import annotations
     >>> from dataclasses import dataclass, field
@@ -663,12 +651,12 @@ The ``dataclass-wizard`` library fully supports declaring dataclass models in
 As of *v0.19.0*, there is added support to  *auto-generate* tags for a dataclass model
 -- based on the class name -- as well as to specify a custom *tag key* that will be
 present in the JSON object, which defaults to a special ``__tag__`` key otherwise.
-These two options are controlled by the :attr:`auto_assign_tags` and :attr:`tag_key`
+These two options are controlled by the ``auto_assign_tags`` and ``tag_key``
 attributes (respectively) in the ``Meta`` config.
 
 To illustrate a specific example, a JSON object such as
 ``{"oneOf": {"type": "A", ...}, ...}`` will now automatically map to a dataclass
-instance ``A``, provided that the :attr:`tag_key` is correctly set to "type", and
+instance ``A``, provided that the ``tag_key`` is correctly set to "type", and
 the field ``one_of`` is annotated as a Union type in the ``A | B`` syntax.
 
 Let's start out with an example, which aims to demonstrate the simplest usage of
