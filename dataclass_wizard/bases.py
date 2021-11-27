@@ -101,7 +101,7 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
 
     # A list of class attributes that are exclusive to the Meta config.
     # When merging two Meta configs for a class, these are the only
-    # attributes which will not be merged.
+    # attributes which will *not* be merged.
     __special_attrs__ = frozenset({
         'debug_enabled',
         'recursive',

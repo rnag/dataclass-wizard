@@ -47,7 +47,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = 'Dataclass Wizard'
-copyright = "2021, Ritvik Nag"
+copyright = '2021, <a href="https://github.com/rnag">Ritvik Nag</a>'
 author = "Ritvik Nag"
 
 # The version info for the project you're documenting, acts as replacement
@@ -90,9 +90,14 @@ html_theme = 'alabaster'
 # documentation.
 #
 html_theme_options = {
-    "note_bg": "#fff9bf",
+    "github_user": "rnag",
+    "github_repo": "dataclass-wizard",
     "description": 'A set of simple, yet elegant <i>wizarding</i> tools for '
-                   'interacting with the Python <code>dataclasses</code> module.'
+                   'interacting with the Python <code>dataclasses</code> module.',
+    "show_powered_by": False,
+    "github_banner": True,
+    "show_related": False,
+    "note_bg": "#fff9bf",
 }
 
 # Add any paths that contain custom static files (such as style sheets) here,
@@ -100,6 +105,18 @@ html_theme_options = {
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
 
+# Custom sidebar templates, maps document names to template names.
+html_sidebars = {
+    "index": ["sidebarintro.html", "sourcelink.html", "searchbox.html", "hacks.html"],
+    "**": [
+        "sidebarintro.html",
+        "localtoc.html",
+        "relations.html",
+        "sourcelink.html",
+        "searchbox.html",
+        "hacks.html",
+    ],
+}
 
 # -- Options for HTMLHelp output ---------------------------------------
 

@@ -2,6 +2,7 @@
 Dataclass Wizard
 ================
 
+Full documentation is available at `Read The Docs`_. (`Installation`_)
 
 .. image:: https://img.shields.io/pypi/v/dataclass-wizard.svg
         :target: https://pypi.org/project/dataclass-wizard
@@ -24,14 +25,75 @@ Dataclass Wizard
 
 
 This library provides a set of simple, yet elegant *wizarding* tools for
-interacting with the Python ``dataclasses`` module.
+interacting with the Python ``dataclasses`` module. The primary use is
+as a fast serialization framework that works well in particular with a
+nested dataclass model.
 
-Full documentation is at:
+-------------------
 
-* https://dataclass-wizard.readthedocs.io
+.. raw:: html
+
+   <style type="text/css">
+     .bolditalic {
+       font-weight: bold;
+       font-style: italic;
+     }
+   </style>
+
+.. role:: bolditalic
+   :class: bolditalic
+
+:bolditalic:`Behold, the power of the Dataclass Wizard`::
+
+    >>> from __future__ import annotations
+    >>> from dataclasses import dataclass, field
+    >>> from dataclass_wizard import JSONWizard
+    >>>
+    >>> @dataclass
+    ... class MyClass(JSONWizard):
+    ...     my_str: str | None
+    ...     is_active_tuple: tuple[bool, ...]
+    ...     list_of_int: list[int] = field(default_factory=list)
+    ...
+    >>> string = """
+    ... {
+    ...   "my_str": 20,
+    ...   "ListOfInt": ["1", "2", 3],
+    ...   "isActiveTuple": ["true", false, 1]
+    ... }
+    ... """
+    >>>
+    >>> instance = MyClass.from_json(string)
+    >>> instance
+    MyClass(my_str='20', is_active_tuple=(True, False, True), list_of_int=[1, 2, 3])
+    >>> instance.to_json()
+    '{"myStr": "20", "isActiveTuple": [true, false, true], "listOfInt": [1, 2, 3]}'
+    >>> instance == MyClass.from_json(instance.to_json())
+    True
+
+---
+
+.. contents:: Contents
+   :depth: 1
+   :local:
+   :backlinks: none
+
+
+Installation
+------------
+
+The Dataclass Wizard library is available `on PyPI`_, and can be installed with ``pip``:
+
+.. code-block:: shell
+
+    $ pip install dataclass-wizard
+
+The ``dataclass-wizard`` library officially supports **Python 3.6** or higher.
+
 
 Features
 --------
+
 Here are the supported features that ``dataclass-wizard`` currently provides:
 
 -  *JSON (de)serialization*: marshal dataclasses to/from JSON and Python
@@ -40,6 +102,21 @@ Here are the supported features that ``dataclass-wizard`` currently provides:
    values in dataclass instances.
 -  *JSON to Dataclass generation*: construct a dataclass schema with a JSON file
    or string input.
+
+
+Supported Types
+---------------
+
+The Dataclass Wizard library provides inherent support for standard Python collections
+such as ``list``, ``dict`` and ``set``, as well as most Generics from the typing
+module, such as ``Union`` and ``Any``. Other commonly used types such as ``Enum``,
+``defaultdict``, and date and time objects such as ``datetime`` are also natively
+supported.
+
+For a complete list of the supported Python types, including info on the
+load/dump process for special types, check out the `Supported Types`_ section
+in the docs.
+
 
 Usage
 -----
@@ -54,38 +131,77 @@ Using the built-in JSON marshalling support for dataclasses:
     from __future__ import annotations  # This can be removed in Python 3.10+
 
     from dataclasses import dataclass, field
+    from datetime import date
+    from enum import Enum
 
     from dataclass_wizard import JSONWizard
 
 
     @dataclass
-    class MyClass(JSONWizard):
-        my_str: str | None
-        is_active_tuple: tuple[bool, ...]
-        list_of_int: list[int] = field(default_factory=list)
+    class Data(JSONWizard):
+
+        class _(JSONWizard.Meta):
+            # Sets the target key transform to use for serialization;
+            # defaults to `camelCase` if not specified.
+            key_transform_with_dump = 'LISP'
+
+        a_sample_bool: bool
+        values: list[Inner] = field(default_factory=list)
 
 
-    string = """
-    {
-      "my_str": 20,
-      "ListOfInt": ["1", "2", 3],
-      "isActiveTuple": ["true", "false", 1, false]
-    }
-    """
+    @dataclass
+    class Inner:
+        vehicle: Car | None
+        my_dates: dict[int, date]
 
-    # De-serialize the JSON string into a `MyClass` object.
-    c = MyClass.from_json(string)
 
-    print(repr(c))
-    # prints:
-    #   MyClass(my_str='20', is_active_tuple=(True, False, True, False), list_of_int=[1, 2, 3])
+    class Car(Enum):
+        SEDAN = 'BMW Coupe'
+        SUV = 'Toyota 4Runner'
+        JEEP = 'Jeep Cherokee'
 
-    print(c.to_json())
-    # prints:
-    #   {"myStr": "20", "isActiveTuple": [true, false, true, false], "listOfInt": [1, 2, 3]}
 
-    # True
-    assert c == c.from_dict(c.to_dict())
+    def main():
+
+        my_dict = {
+            'values': [
+                {
+                    'vehicle': 'Toyota 4Runner',
+                    'My-Dates': {'123': '2023-01-31'}
+                },
+                {
+                    'vehicle': None,
+                    'my_dates': {}
+                }
+            ],
+            'aSampleBool': 'TRUE'
+        }
+
+        # De-serialize (a JSON string or dictionary data) into a `Data` instance.
+        data = Data.from_dict(my_dict)
+
+        print(repr(data))
+        # > Data(a_sample_bool=True, values=[Inner(vehicle=<Car.SUV: 'Toyota 4Runner'>, ...)])
+
+        # assert enums values are as expected
+        assert data.values[0].vehicle is Car.SUV
+
+        print(data.to_json(indent=2))
+        # {
+        #   "a-sample-bool": true,
+        #   "values": [
+        #     {
+        #       "vehicle": "Toyota 4Runner",
+        #       "my-dates": {
+        #         "123": "2023-01-31"
+        #       }
+        #   ...
+
+        # True
+        assert data == data.from_json(data.to_json())
+
+    if __name__ == '__main__':
+        main()
 
 ... and with the ``property_wizard``, which provides support for
 `field properties`_ with default values in dataclasses:
@@ -174,30 +290,6 @@ Using the built-in JSON marshalling support for dataclasses:
         """
         created_at: date
 
-
-Installing Dataclass Wizard and Supported Versions
---------------------------------------------------
-The Dataclass Wizard library is available on PyPI:
-
-.. code-block:: shell
-
-    $ python -m pip install dataclass-wizard
-
-The ``dataclass-wizard`` library officially supports **Python 3.6** or higher.
-
-
-Supported Types
----------------
-
-The Dataclass Wizard library provides inherent support for standard Python collections
-such as ``list``, ``dict`` and ``set``, as well as most Generics from the typing
-module, such as ``Union`` and ``Any``. Other commonly used types such as ``Enum``,
-``defaultdict``, and date and time objects such as ``datetime`` are also natively
-supported.
-
-For a complete list of the supported Python types, including info on the
-load/dump process for special types, check out the `Supported Types`_ section
-in the docs.
 
 JSON Marshalling
 ----------------
@@ -787,6 +879,9 @@ Credits
 
 This package was created with Cookiecutter_ and the `rnag/cookiecutter-pypackage`_ project template.
 
+.. _Read The Docs: https://dataclass-wizard.readthedocs.io
+.. _Installation: https://dataclass-wizard.readthedocs.io/en/latest/installation.html
+.. _on PyPI: https://pypi.org/project/dataclass-wizard/
 .. _Cookiecutter: https://github.com/cookiecutter/cookiecutter
 .. _`rnag/cookiecutter-pypackage`: https://github.com/rnag/cookiecutter-pypackage
 .. _`Contributing`: https://dataclass-wizard.readthedocs.io/en/latest/contributing.html
