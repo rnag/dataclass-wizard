@@ -562,6 +562,93 @@ A brief example of the intended usage is shown below:
     # serialization. In fact, it'll be faster than parsing the custom patterns!
     assert class_obj == fromdict(MyClass, asdict(class_obj))
 
+Dataclasses in ``Union`` Types
+------------------------------
+
+The ``dataclass-wizard`` library fully supports declaring dataclass models in
+`Union`_ types as field annotations, such as ``list[Wizard | Archer | Barbarian]``.
+
+As of *v0.19.0*, there is added support to  *auto-generate* tags for a dataclass model
+-- based on the class name -- as well as to specify a custom *tag key* that will be
+present in the JSON object, which defaults to a special ``__tag__`` key otherwise.
+These two options are controlled by the :attr:`auto_assign_tags` and :attr:`tag_key`
+attributes (respectively) in the ``Meta`` config.
+
+To illustrate a specific example, a JSON object such as
+``{"oneOf": {"type": "A", ...}, ...}`` will now automatically map to a dataclass
+instance ``A``, provided that the :attr:`tag_key` is correctly set to "type", and
+the field ``one_of`` is annotated as a Union type in the ``A | B`` syntax.
+
+Let's start out with an example, which aims to demonstrate the simplest usage of
+dataclasses in ``Union`` types. For more info, check out the
+`Dataclasses in Union Types`_ section in the docs.
+
+.. code:: python3
+
+    from __future__ import annotations
+
+    from dataclasses import dataclass
+
+    from dataclass_wizard import JSONWizard
+
+
+    @dataclass
+    class Container(JSONWizard):
+
+        class Meta(JSONWizard.Meta):
+            tag_key = 'type'
+            auto_assign_tags = True
+
+        objects: list[A | B | C]
+
+
+    @dataclass
+    class A:
+        my_int: int
+        my_bool: bool = False
+
+
+    @dataclass
+    class B:
+        my_int: int
+        my_bool: bool = True
+
+
+    @dataclass
+    class C:
+        my_str: str
+
+
+    data = {
+        'objects': [
+            {'type': 'A', 'my_int': 42},
+            {'type': 'C', 'my_str': 'hello world'},
+            {'type': 'B', 'my_int': 123},
+            {'type': 'A', 'my_int': 321, 'myBool': True}
+        ]
+    }
+
+
+    c = Container.from_dict(data)
+    print(f'{c!r}')
+
+    # True
+    assert c == Container(objects=[A(my_int=42, my_bool=False),
+                                   C(my_str='hello world'),
+                                   B(my_int=123, my_bool=True),
+                                   A(my_int=321, my_bool=True)])
+
+
+    print(c.to_dict())
+    # prints the following on a single line:
+    # {'objects': [{'myInt': 42, 'myBool': False, 'type': 'A'},
+    #              {'myStr': 'hello world', 'type': 'C'},
+    #              {'myInt': 123, 'myBool': True, 'type': 'B'},
+    #              {'myInt': 321, 'myBool': True, 'type': 'A'}]}
+
+    # True
+    assert c == c.from_json(c.to_json())
+
 Serialization Options
 ---------------------
 
@@ -716,3 +803,5 @@ This package was created with Cookiecutter_ and the `rnag/cookiecutter-pypackage
 .. _`more complete example`: https://dataclass-wizard.readthedocs.io/en/latest/examples.html#a-more-complete-example
 .. _custom format: https://docs.python.org/3/library/datetime.html#strftime-and-strptime-format-codes
 .. _`Patterned Date and Time`: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/patterned_date_time.html
+.. _Union: https://docs.python.org/3/library/typing.html#typing.Union
+.. _`Dataclasses in Union Types`: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/dataclasses_in_union_types.html

@@ -12,7 +12,7 @@ at all, which was kind of a glaring omission, and something on my "to-do" list o
 to (eventually) add support for.
 
 There is now full support for defining dataclasses as ``Union`` type arguments. The
-reason it did not *generally* work before, is because the data being de-serialized i
+reason it did not *generally* work before, is because the data being de-serialized is
 often a JSON object, which only knows simple types such as arrays and dictionaries,
 for example. A ``dict`` type would not otherwise match any of the ``Union[Data1, Data2]``
 types, even if the object had all the correct dataclass fields as keys. This is simply
