@@ -19,6 +19,8 @@
 #
 import os
 import sys
+
+# Insert the Project root path into the system.
 sys.path.insert(0, os.path.abspath('..'))
 
 from dataclass_wizard import __version__
@@ -31,7 +33,10 @@ from dataclass_wizard import __version__
 
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
-extensions = ['sphinx.ext.autodoc', 'sphinx.ext.viewcode']
+extensions = [
+    'sphinx.ext.autodoc',
+    'sphinx.ext.viewcode',
+]
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -107,13 +112,17 @@ html_static_path = ['_static']
 
 # Custom sidebar templates, maps document names to template names.
 html_sidebars = {
-    "index": ["sidebarintro.html", "sourcelink.html", "searchbox.html", "hacks.html"],
+    "index": ["sidebarintro.html", "sourcelink.html", "sidebar_modindex.html", "searchbox.html", "hacks.html"],
     "**": [
         "sidebarintro.html",
+        # -- These are Sphinx builtin templates that are rendered by default --
+        # See https://www.sphinx-doc.org/en/master/usage/configuration.html#confval-html_sidebars
         "localtoc.html",
         "relations.html",
+        "sidebar_modindex.html",  # Except this one, which is a custom template
         "sourcelink.html",
         "searchbox.html",
+        # -- End --
         "hacks.html",
     ],
 }
