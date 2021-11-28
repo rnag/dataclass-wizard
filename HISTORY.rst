@@ -2,10 +2,11 @@
 History
 =======
 
-0.20.1 (2021-11-27)
--------------------
+0.20.1 - 0.20.2 (2021-11-27)
+----------------------------
 
 * Update and refactor docs, doc layout, and the readme.
+* Move benchmark tests to the ``benchmarks/`` directory.
 
 0.20.0 (2021-11-23)
 -------------------

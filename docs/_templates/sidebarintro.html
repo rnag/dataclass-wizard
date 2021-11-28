@@ -31,7 +31,7 @@
 })" async></script>
 -->
 
-<h1 class="logo"><a href="https://dataclass-wizard.readthedocs.io/">Dataclass Wizard</a></h1>
+<h1 class="logo"><a href="{{ pathto(master_doc) }}">Dataclass Wizard</a></h1>
 
 <p class="blurb">
     A set of simple, yet elegant <i>wizarding</i> tools for interacting with the
@@ -40,16 +40,20 @@
 
 <h3>Useful Links</h3>
 <ul>
+  <!-- Quickstart is hidden because the docs are outdated; will need to update later. -->
   <!--<li><a href="https://dataclass.readthedocs.io/en/latest/user/quickstart/">Quickstart</a></li>-->
-  <li><a href="https://dataclass-wizard.readthedocs.io/en/latest/overview.html">Overview</a></li>
-  <li><a href="https://dataclass-wizard.readthedocs.io/en/latest/examples.html">Examples</a></li>
-  <li><a href="https://dataclass-wizard.readthedocs.io/en/latest/python_compatibility.html">Py Compatibility</a></li>
-  <li><a href="https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases">Common Use Cases</a></li>
-  <li><a href="https://dataclass-wizard.readthedocs.io/en/latest/advanced_usage">Advanced Usage</a></li>
-  <li><a href="https://dataclass-wizard.readthedocs.io/en/latest/wiz_cli.html">CLI Tool</a></li>
-  <li><a href="https://dataclass-wizard.readthedocs.io/en/latest/py-modindex.html">API Reference</a></li>
-  <li><a href="https://dataclass-wizard.readthedocs.io/en/latest/history.html">Release History</a></li>
-  <li><a href="https://dataclass-wizard.readthedocs.io/en/latest/contributing.html">Contributors Guide</a></li>
+  <li><a href="{{ pathto('overview') }}">Overview</a></li>
+  <li><a href="{{ pathto('examples') }}">Examples</a></li>
+  <li><a href="{{ pathto('python_compatibility') }}">Py Compatibility</a></li>
+  <li><a href="{{ pathto('common_use_cases', 1) }}">Common Use Cases</a></li>
+  <li><a href="{{ pathto('advanced_usage', 1) }}">Advanced Usage</a></li>
+  <li><a href="{{ pathto('history') }}">Release History</a></li>
+  <li><a href="{{ pathto('contributing') }}">Contributors Guide</a></li>
+
+  <p></p>
+
+  <li><a href="{{ pathto('wiz_cli') }}">CLI Tool</a></li>
+  <li><a href="{{ pathto('using_field_properties') }}">Using Field Properties</a></li>
 
   <p></p>
 

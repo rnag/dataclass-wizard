@@ -25,9 +25,10 @@ Full documentation is available at `Read The Docs`_. (`Installation`_)
 
 
 This library provides a set of simple, yet elegant *wizarding* tools for
-interacting with the Python ``dataclasses`` module. The primary use is
-as a fast serialization framework that works well in particular with a
-nested dataclass model.
+interacting with the Python ``dataclasses`` module.
+
+    The primary use is as a fast serialization framework that enables dataclass instances to
+    be converted to/from JSON; this works well in particular with a *nested dataclass* model.
 
 -------------------
 
@@ -36,7 +37,7 @@ nested dataclass model.
     >>> from __future__ import annotations
     >>> from dataclasses import dataclass, field
     >>> from dataclass_wizard import JSONWizard
-    >>>
+    ...
     >>> @dataclass
     ... class MyClass(JSONWizard):
     ...     my_str: str | None
@@ -50,13 +51,13 @@ nested dataclass model.
     ...   "isActiveTuple": ["true", false, 1]
     ... }
     ... """
-    >>>
+    ...
     >>> instance = MyClass.from_json(string)
     >>> instance
     MyClass(my_str='20', is_active_tuple=(True, False, True), list_of_int=[1, 2, 3])
     >>> instance.to_json()
     '{"myStr": "20", "isActiveTuple": [true, false, true], "listOfInt": [1, 2, 3]}'
-    >>> instance == MyClass.from_json(instance.to_json())
+    >>> instance == MyClass.from_dict(instance.to_dict())
     True
 
 ---
@@ -862,6 +863,12 @@ to discuss a new feature or change.
 
 Check out the `Contributing`_ section in the docs for more info.
 
+TODOs
+-----
+
+All feature ideas or suggestions for future consideration, have been currently added
+`as milestones`_ in the project's GitHub repo.
+
 Credits
 -------
 
@@ -888,3 +895,4 @@ This package was created with Cookiecutter_ and the `rnag/cookiecutter-pypackage
 .. _`Patterned Date and Time`: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/patterned_date_time.html
 .. _Union: https://docs.python.org/3/library/typing.html#typing.Union
 .. _`Dataclasses in Union Types`: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/dataclasses_in_union_types.html
+.. _as milestones: https://github.com/rnag/dataclass-wizard/milestones
