@@ -125,8 +125,8 @@ Special Cases
   method -- i.e. ``UUID(string)``, and by default are serialized back to JSON
   using the ``hex`` attribute -- i.e. :attr:`my_uuid.hex`.
 
-* ``Decimal`` types are de-serialized using the ``Decimal(str(o))`` syntax
-  (or with an annotated subclass of *Decimal*), and are serialized via the
+* ``Decimal`` types are de-serialized using the ``Decimal(str(o))`` syntax --
+  or via an annotated subclass of *Decimal* -- and are serialized via the
   builtin :func:`str` function.
 
 * ``NamedTuple`` sub-types are de-serialized from a ``list``, ``tuple``, or any
@@ -146,6 +146,16 @@ Special Cases
   For ``datetime`` and ``time`` types, there is one noteworthy addition: the
   suffix "+00:00" is replaced with "Z", which is a common abbreviation for UTC time.
 
+* For ``timedelta`` types, the values to de-serialize can either be strings or numbers,
+  so we check the type explicitly. If the value is a string, we first ensure it's in
+  a numeric form like '1.23', and if so convert it to a *float* value in seconds;
+  otherwise, we convert values like '01:45' or '3hr12m56s' via the `pytimeparse`_
+  module, which is also available as an extra via ``pip install dataclass-wizard[timedelta]``.
+  Lastly, any numeric values are assumed to be in seconds and are used as is.
+
+  All :class:`timedelta` values are serialized back to JSON using the builtin :meth:`str` method,
+  so for example ``timedelta(seconds=3)`` will be serialized as "0:00:03".
+
 * ``set``, ``frozenset``, and ``deque`` types will be de-serialized using their
   annotated base types, and serialized as ``list``'s.
 
@@ -154,3 +164,4 @@ Special Cases
   plain ``dict`` objects.
 
 .. _using dataclasses: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/dataclasses_in_union_types.html
+.. _pytimeparse: https://pypi.org/project/pytimeparse/

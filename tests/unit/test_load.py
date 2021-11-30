@@ -746,6 +746,8 @@ def test_time(input, expectation):
     [
         ('testing', pytest.raises(ValueError)),
         ('23:59:59-04:00', pytest.raises(ValueError)),
+        ('32', does_not_raise()),
+        ('32.7', does_not_raise()),
         ('32m', does_not_raise()),
         ('2h32m', does_not_raise()),
         ('4:13', does_not_raise()),
