@@ -322,9 +322,12 @@ def as_timedelta(o: Union[str, N, timedelta],
     Attempt to convert an object `o` to a :class:`timedelta` object using the
     below logic.
 
-        * ``str``: convert strings via the ``pytimeparse.parse`` function.
-        * ``int``: A numeric value is assumed to be in seconds. In this case,
-          it is passed in to the constructor like ``timedelta(seconds=...)``
+        * ``str``: If the string is in a numeric form like "1.23", we convert
+          it to a ``float`` and assume it's in seconds. Otherwise, we convert
+          strings via the ``pytimeparse.parse`` function.
+        * ``int`` or ``float``: A numeric value is assumed to be in seconds.
+          In this case, it is passed in to the constructor like
+          ``timedelta(seconds=...)``
         * ``timedelta``: Return object `o` if it's already of this type or
             sub-type.
 
@@ -333,25 +336,30 @@ def as_timedelta(o: Union[str, N, timedelta],
     is true; if not, return `default` instead.
 
     """
-    try:
-        # We can assume that `o` is a string, as generally this will be the
-        # case.
-        seconds = pytimeparse.parse(o)
 
-    except TypeError:
+    t = type(o)
 
-        # Check `type` explicitly, because `bool` is a sub-class of `int`
-        if type(o) in NUMBERS:
-            seconds = o
-
-        elif isinstance(o, base_type):
-            return o
-
-        elif raise_:
-            raise TypeError(f'Unsupported type, value={o!r}, type={type(o)}')
-
+    if t is str:
+        # Check if the string represents a numeric value like "1.23"
+        # Ref: https://stackoverflow.com/a/23639915/10237506
+        if o.replace('.', '', 1).isdigit():
+            seconds = float(o)
         else:
-            return default
+            # Otherwise, parse strings using `pytimeparse`
+            seconds = pytimeparse.parse(o)
+
+    # Check `type` explicitly, because `bool` is a sub-class of `int`
+    elif t in NUMBERS:
+        seconds = o
+
+    elif t is base_type:
+        return o
+
+    elif raise_:
+        raise TypeError(f'Unsupported type, value={o!r}, type={t}')
+
+    else:
+        return default
 
     try:
         return timedelta(seconds=seconds)

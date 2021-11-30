@@ -2,6 +2,13 @@
 History
 =======
 
+0.20.3 (2021-11-30)
+-------------------
+
+* Update the parsing logic in :func:`as_timedelta` for :class:`timedelta` annotated types
+  so we now explicitly check the types. If the value is numeric, or if it's a string in a numeric value
+  like "1.2", we can parse it directly and so avoid calling the :mod:`pytimeparse` module.
+
 0.20.1 - 0.20.2 (2021-11-27)
 ----------------------------
 

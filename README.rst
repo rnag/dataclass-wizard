@@ -107,8 +107,8 @@ load/dump process for special types, check out the `Supported Types`_ section
 in the docs.
 
 
-Usage
------
+Usage and Examples
+------------------
 
 Using the built-in JSON marshalling support for dataclasses:
 
@@ -183,7 +183,7 @@ Using the built-in JSON marshalling support for dataclasses:
         #       "vehicle": "Toyota 4Runner",
         #       "my-dates": {
         #         "123": "2023-01-31"
-        #       }
+        #       },
         #   ...
 
         # True
