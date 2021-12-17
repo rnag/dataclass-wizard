@@ -229,6 +229,68 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
         """
 
 
+class AbstractEnvMeta:
+    """
+    Base class definition for the `EnvWizard.Meta` inner class.
+    """
+    __slots__ = ()
+
+    # A list of class attributes that are exclusive to the Meta config.
+    # When merging two Meta configs for a class, these are the only
+    # attributes which will *not* be merged.
+    __special_attrs__ = frozenset({
+        'debug_enabled',
+        'env_var_to_field',
+    })
+
+    # Class attribute which enables us to detect a `EnvWizard.Meta` subclass.
+    __is_inner_meta__ = False
+
+    # True to enable Debug mode for additional (more verbose) log output.
+    #
+    # For example, a message is logged with the environment variable that is
+    # mapped to each attribute.
+    #
+    # This also results in more helpful messages during error handling, which
+    # can be useful when debugging the cause when values are an invalid type
+    # (i.e. they don't match the annotation for the field) when unmarshalling
+    # a environ variable values to attributes in an EnvWizard subclass.
+    #
+    # Note there is a minor performance impact when DEBUG mode is enabled.
+    debug_enabled: ClassVar[bool] = False
+
+    # A customized mapping of environment variables to dataclass fields.
+    #
+    # Note: this is in addition to the implicit field transformations, like
+    #   "myStr" -> "my_str"
+    env_var_to_field: ClassVar[Dict[str, str]] = None
+
+    @cached_class_property
+    def all_fields(cls) -> FrozenKeys:
+        """Return a list of all class attributes"""
+        return frozenset(AbstractEnvMeta.__annotations__)
+
+    @cached_class_property
+    def fields_to_merge(cls) -> FrozenKeys:
+        """Return a list of class attributes, minus `__special_attrs__`"""
+        return cls.all_fields - cls.__special_attrs__
+
+    @classmethod
+    @abstractmethod
+    def bind_to(cls, env_class: Type, create=True):
+        """
+        Initialize hook which applies the Meta config to `env_class`, which is
+        typically a subclass of :class:`EnvWizard`.
+
+        :param env_class: A sub-class of :class:`EnvWizard`.
+        :param create: When true, a separate loader/dumper will be created
+          for the class. If disabled, this will access the root loader/dumper,
+          so modifying this should affect global settings across all
+          dataclasses that use the JSON load/dump process.
+
+        """
+
+
 class BaseLoadHook:
     """
     Container class for type hooks.

@@ -9,6 +9,7 @@ __all__ = ['as_bool',
            'as_timedelta',
            'date_to_timestamp']
 
+import json
 from datetime import datetime, time, date, timedelta
 from numbers import Number
 from typing import Union, List, Type, AnyStr, Optional
@@ -112,13 +113,18 @@ def as_list(o: Union[str, List[str]], sep=','):
     return the list result.
 
     """
+    o = o.lstrip()
+
     if not o:
         return []
 
-    if isinstance(o, list):
-        return o
+    if isinstance(o, str):
+        if o.lstrip().startswith('['):
+            return json.loads(o)
+        else:
+            return [e.strip() for e in o.split(sep)]
 
-    return o.split(sep)
+    return o
 
 
 def as_enum(o: Union[AnyStr, N],

@@ -5,7 +5,7 @@ from decimal import Decimal
 from enum import Enum
 from typing import (
     Any, Type, Dict, List, Tuple, Iterable, Sequence, Union,
-    NamedTupleMeta, SupportsFloat, AnyStr, Text, Callable, Optional
+    NamedTupleMeta, SupportsFloat, AnyStr, Text, Callable, Optional, TypeVar
 )
 from uuid import UUID
 
@@ -374,7 +374,7 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
                     )
 
                 elif issubclass(base_type, LSQ.__constraints__):
-                    load_hook = cls.load_to_iterable
+                    load_hook = hooks[list]
                     return IterableParser(
                         base_cls, extras, ann_type, load_hook,
                         cls.get_parser_for_annotation
@@ -408,7 +408,7 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
                 cls.get_parser_for_annotation)
 
         elif issubclass(base_type, LSQ.__constraints__):
-            load_hook = cls.load_to_iterable
+            load_hook = hooks[list]
             return IterableParser(
                 base_cls, extras, ann_type, load_hook,
                 cls.get_parser_for_annotation)
@@ -485,7 +485,8 @@ def setup_default_loader(cls=LoadMixin):
     cls.register_load_hook(timedelta, cls.load_to_timedelta)
 
 
-def get_loader(class_or_instance=None, create=True) -> Type[LoadMixin]:
+def get_loader(class_or_instance=None, create=True,
+               base_cls: T = LoadMixin) -> Type[T]:
     """
     Get the loader for the class, using the following logic:
 
@@ -506,10 +507,10 @@ def get_loader(class_or_instance=None, create=True) -> Type[LoadMixin]:
             return set_class_loader(class_or_instance, class_or_instance)
 
         elif create:
-            cls_loader = create_new_class(class_or_instance, (LoadMixin, ))
+            cls_loader = create_new_class(class_or_instance, (base_cls, ))
             return set_class_loader(class_or_instance, cls_loader)
 
-        return set_class_loader(class_or_instance, LoadMixin)
+        return set_class_loader(class_or_instance, base_cls)
 
 
 def fromdict(cls: Type[T], d: JSONObject) -> T:

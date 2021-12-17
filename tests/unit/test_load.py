@@ -443,7 +443,7 @@ def test_from_dict_key_transform_with_json_key():
     'input,expected,expectation',
     [
         ([1, '2', 3], {1, 2, 3}, does_not_raise()),
-        ('TrUe', True, pytest.raises(ParseError)),
+        ('TrUe', True, pytest.raises(ValueError)),
         ((3.22, 2.11, 1.22), {3, 2, 1}, does_not_raise()),
     ]
 )
@@ -471,7 +471,7 @@ def test_set(input, expected, expectation):
     'input,expected,expectation',
     [
         ([1, '2', 3], {1, 2, 3}, does_not_raise()),
-        ('TrUe', True, pytest.raises(ParseError)),
+        ('TrUe', True, pytest.raises(ValueError)),
         ((3.22, 2.11, 1.22), {1, 2, 3}, does_not_raise()),
     ]
 )
@@ -793,7 +793,7 @@ def test_timedelta(input, expectation):
             [1, '2', 3], does_not_raise(), [1, 2, 3]
         ),
         (
-            'testing', pytest.raises(ParseError), None
+            'testing', pytest.raises(ValueError), None
         ),
     ]
 )
@@ -816,7 +816,7 @@ def test_list(input, expectation, expected):
     'input,expectation,expected',
     [
         (
-            ['hello', 'world'], pytest.raises(ParseError), None
+            ['hello', 'world'], pytest.raises(ValueError), None
         ),
         (
             [1, '2', 3], does_not_raise(), [1, 2, 3]
@@ -1103,7 +1103,7 @@ def test_dict(input, expectation, expected):
             # Might need to change this behavior if needed: currently it
             # raises an error, which I think is good for now since we don't
             # want to add `null`s to a list anyway.
-            {2: None}, pytest.raises(ParseError), None
+            {2: None}, pytest.raises(TypeError), None
         ),
         (
             # Incorrect type - `list`, but should be a `dict`
