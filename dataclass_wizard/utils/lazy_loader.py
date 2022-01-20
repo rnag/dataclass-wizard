@@ -34,7 +34,7 @@ class LazyLoader(types.ModuleType):
 
         except ModuleNotFoundError:
             # The lazy-loaded module is not currently installed.
-            msg = f'Unable to import the module `{self.__name__}`'
+            msg = f'Unable to import the module `{self._local_name}`'
 
             if self._extra:
                 from ..__version__ import __title__

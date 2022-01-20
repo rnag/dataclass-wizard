@@ -1,12 +1,18 @@
+__all__ = ['JSONListWizard',
+           'JSONFileWizard',
+           'YAMLWizard']
+
 import json
-from typing import Type, Union, AnyStr, List
+from typing import Type, Union, AnyStr, List, Optional, TextIO, BinaryIO
 
 from .abstractions import W
 from .dumpers import asdict
+from .lazy_imports import yaml
 from .loaders import fromdict, fromlist
 from .models import Container
 from .serial_json import JSONSerializable
-from .type_def import ListOfJSONObject, Decoder, FileDecoder, FileEncoder
+from .type_def import (T, ListOfJSONObject,
+                       Encoder, Decoder, FileDecoder, FileEncoder)
 
 
 class JSONListWizard(JSONSerializable, str=False):
@@ -27,7 +33,6 @@ class JSONListWizard(JSONSerializable, str=False):
           JSON file.
 
     """
-
     @classmethod
     def from_json(cls: Type[W], string: AnyStr, *,
                   decoder: Decoder = json.loads,
@@ -58,11 +63,12 @@ class JSONFileWizard:
 
     This can be paired with the :class:`JSONSerializable` (JSONWizard) mixin
     class for complete extensibility.
+
     """
     @classmethod
-    def from_json_file(cls: Type[W], file: str, *,
+    def from_json_file(cls: Type[T], file: str, *,
                        decoder: FileDecoder = json.load,
-                       **decoder_kwargs) -> Union[W, List[W]]:
+                       **decoder_kwargs) -> Union[T, List[T]]:
         """
         Reads in the JSON file contents and converts to an instance of the
         dataclass, or a list of the dataclass instances.
@@ -80,3 +86,73 @@ class JSONFileWizard:
         """
         with open(file, mode) as out_file:
             encoder(asdict(self), out_file, **encoder_kwargs)
+
+
+class YAMLWizard:
+    """
+    A mixin class that makes it easier to interact with YAML data.
+
+    """
+    @classmethod
+    def from_yaml(cls: Type[T],
+                  string_or_stream: Union[AnyStr, TextIO, BinaryIO], *,
+                  decoder: Optional[Decoder] = None,
+                  **decoder_kwargs) -> Union[T, List[T]]:
+        """
+        Converts a YAML `string` to an instance of the dataclass, or a list of
+        the dataclass instances.
+        """
+        if decoder is None:
+            decoder = yaml.safe_load
+
+        o = decoder(string_or_stream, **decoder_kwargs)
+
+        return fromdict(cls, o) if isinstance(o, dict) else fromlist(cls, o)
+
+    @classmethod
+    def from_yaml_file(cls: Type[T], file: str, *,
+                       decoder: Optional[FileDecoder] = None,
+                       **decoder_kwargs) -> Union[T, List[T]]:
+        """
+        Reads in the YAML file contents and converts to an instance of the
+        dataclass, or a list of the dataclass instances.
+        """
+        with open(file) as in_file:
+            return cls.from_yaml(in_file, decoder=decoder,
+                                 **decoder_kwargs)
+
+    def to_yaml(self: T, *,
+                encoder: Optional[Encoder] = None,
+                **encoder_kwargs) -> AnyStr:
+        """
+        Converts the dataclass instance to a YAML `string` representation.
+        """
+        if encoder is None:
+            encoder = yaml.dump
+
+        return encoder(asdict(self), **encoder_kwargs)
+
+    def to_yaml_file(self, file: str, mode: str = 'w',
+                     encoder: Optional[FileEncoder] = None,
+                     **encoder_kwargs) -> None:
+        """
+        Serializes the instance and writes it to a YAML file.
+        """
+        with open(file, mode) as out_file:
+            self.to_yaml(stream=out_file)
+
+    @classmethod
+    def list_to_yaml(cls: Type[T],
+                     instances: List[T],
+                     encoder: Optional[Encoder] = None,
+                     **encoder_kwargs) -> AnyStr:
+        """
+        Converts a ``list`` of dataclass instances to a YAML `string`
+        representation.
+        """
+        if encoder is None:
+            encoder = yaml.dump
+
+        list_of_dict = [asdict(o, cls=cls) for o in instances]
+
+        return encoder(list_of_dict, **encoder_kwargs)
