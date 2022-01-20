@@ -78,7 +78,7 @@ class JSONFileWizard:
 
         return fromdict(cls, o) if isinstance(o, dict) else fromlist(cls, o)
 
-    def to_json_file(self, file: str, mode: str = 'w',
+    def to_json_file(self: T, file: str, mode: str = 'w',
                      encoder: FileEncoder = json.dump,
                      **encoder_kwargs) -> None:
         """
@@ -132,14 +132,15 @@ class YAMLWizard:
 
         return encoder(asdict(self), **encoder_kwargs)
 
-    def to_yaml_file(self, file: str, mode: str = 'w',
+    def to_yaml_file(self: T, file: str, mode: str = 'w',
                      encoder: Optional[FileEncoder] = None,
                      **encoder_kwargs) -> None:
         """
         Serializes the instance and writes it to a YAML file.
         """
         with open(file, mode) as out_file:
-            self.to_yaml(stream=out_file)
+            self.to_yaml(stream=out_file, encoder=encoder,
+                         **encoder_kwargs)
 
     @classmethod
     def list_to_yaml(cls: Type[T],
