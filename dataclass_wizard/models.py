@@ -1,12 +1,14 @@
+import json
 # noinspection PyProtectedMember
 from dataclasses import MISSING, Field, _create_fn
 from datetime import date, datetime, time
-from typing import Union, Collection, Callable
-from typing import cast, Optional
+from typing import (cast, Collection, Callable,
+                    Optional, List, Union, Type)
 
 from .bases import META
 from .constants import PY310_OR_ABOVE
-from .type_def import DT, PyTypedDict
+from .decorators import cached_property
+from .type_def import T, DT, Encoder, PyTypedDict, FileEncoder
 from .utils.type_conv import as_datetime, as_time, as_date
 
 
@@ -294,3 +296,87 @@ class _PatternedDT:
     def __repr__(self):
         repr_val = [f'{k}={getattr(self, k)!r}' for k in self.__slots__]
         return f'{self.__class__.__name__}({", ".join(repr_val)})'
+
+
+class Container(List[T]):
+    """Convenience wrapper around a collection of dataclass instances.
+
+    For all intents and purposes, this should behave exactly as a `list`
+    object.
+
+    Usage:
+
+        >>> from dataclass_wizard import Container, fromlist
+        >>> from dataclasses import make_dataclass
+        >>>
+        >>> A = make_dataclass('A', [('f1', str), ('f2', int)])
+        >>> list_of_a = fromlist(A, [{'f1': 'hello', 'f2': 1}, {'f1': 'world', 'f2': 2}])
+        >>> c = Container[A](list_of_a)
+        >>> print(c.prettify())
+
+    """
+    __slots__ = ('__dict__',
+                 '__orig_class__')
+
+    @cached_property
+    def __model__(self) -> Type[T]:
+        """
+        Given a declaration like Container[T], this returns the subscripted
+        value of the generic type T.
+        """
+        try:
+            return self.__orig_class__.__args__[0]
+        except AttributeError:
+            cls_name = self.__class__.__qualname__
+            msg = (f'A {cls_name} object needs to be instantiated with '
+                   f'a generic type T.\n\n'
+                   'Example:\n'
+                   f'  my_list = {cls_name}[T](...)')
+
+            raise TypeError(msg) from None
+
+    def __str__(self):
+        """
+        Control the value displayed when ``print(self)`` is called.
+        """
+        import pprint
+        return pprint.pformat(self)
+
+    def prettify(self, encoder: Encoder = json.dumps,
+                 ensure_ascii=False,
+                 **encoder_kwargs) -> str:
+        """
+        Convert the list of instances to a *prettified* JSON string.
+        """
+        return self.to_json(
+            indent=2,
+            encoder=encoder,
+            ensure_ascii=ensure_ascii,
+            **encoder_kwargs
+        )
+
+    def to_json(self, encoder: Encoder = json.dumps,
+                **encoder_kwargs) -> str:
+        """
+        Convert the list of instances to a JSON string.
+        """
+        from .dumpers import asdict
+
+        cls = self.__model__
+        list_of_dict = [asdict(o, cls=cls) for o in self]
+
+        return encoder(list_of_dict, **encoder_kwargs)
+
+    def to_json_file(self, file: str, mode: str = 'w',
+                     encoder: FileEncoder = json.dump,
+                     **encoder_kwargs) -> None:
+        """
+        Serializes the list of instances and writes it to a JSON file.
+        """
+        from .dumpers import asdict
+
+        cls = self.__model__
+        list_of_dict = [asdict(o, cls=cls) for o in self]
+
+        with open(file, mode) as out_file:
+            encoder(list_of_dict, out_file, **encoder_kwargs)
