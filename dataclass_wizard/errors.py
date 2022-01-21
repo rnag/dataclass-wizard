@@ -202,8 +202,8 @@ class MissingData(ParseError):
     _TEMPLATE = ('Failure loading class `{cls}`. '
                  'Missing value for field (expected a dict, got None)\n'
                  '  dataclass field: {field!r}\n'
-                 '  resolution: annotate the field as an '
-                 '`Optional[{inner_cls}]`')
+                 '  resolution: annotate the field as '
+                 '`Optional[{inner_cls}]` or `{inner_cls} | None`')
 
     def __init__(self, inner_cls: Type, **kwargs):
         super().__init__(self, None, inner_cls, **kwargs)
