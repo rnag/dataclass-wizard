@@ -202,13 +202,12 @@ class MissingData(ParseError):
     _TEMPLATE = ('Failure loading class `{cls}`. '
                  'Missing value for field (expected a dict, got None)\n'
                  '  dataclass field: {field!r}\n'
-                 '  resolution: annotate the field as an `Optional[{cls}]`')
+                 '  resolution: annotate the field as an '
+                 '`Optional[{inner_cls}]`')
 
-    def __init__(self, cls: Type, **kwargs):
-
-        super().__init__(self, None, cls)
-
-        self.class_name: str = self.name(cls)
+    def __init__(self, inner_cls: Type, **kwargs):
+        super().__init__(self, None, inner_cls, **kwargs)
+        self.inner_class_name: str = self.name(inner_cls)
 
     @staticmethod
     def name(obj) -> str:
@@ -219,6 +218,7 @@ class MissingData(ParseError):
     def message(self) -> str:
         msg = self._TEMPLATE.format(
             cls=self.class_name,
+            inner_cls=self.inner_class_name,
             json_string=json.dumps(self.obj),
             field=self.field_name,
             o=self.obj,

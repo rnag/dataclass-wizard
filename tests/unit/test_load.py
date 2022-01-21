@@ -17,9 +17,13 @@ import pytest
 
 from dataclass_wizard import *
 from dataclass_wizard.constants import TAG
-from dataclass_wizard.errors import ParseError, MissingFields, UnknownJSONKey
+from dataclass_wizard.errors import (
+    ParseError, MissingFields, UnknownJSONKey, MissingData
+)
 from dataclass_wizard.models import Extras, _PatternBase
-from dataclass_wizard.parsers import OptionalParser, Parser, IdentityParser, SingleArgParser
+from dataclass_wizard.parsers import (
+    OptionalParser, Parser, IdentityParser, SingleArgParser
+)
 from dataclass_wizard.type_def import NoneType, T
 from .conftest import MyUUIDSubclass
 from ..conftest import *
@@ -1460,3 +1464,72 @@ def test_parser_with_unsupported_type():
 
     # with pytest.raises(ParseError):
     #     _ = mock_parser('hello world')
+
+
+def test_load_with_inner_model_when_data_is_null():
+    """
+    Test loading JSON data to an inner model dataclass, when the
+    data being de-serialized is a null, and the annotated type for
+    the field is not in the syntax `T | None`.
+    """
+
+    @dataclass
+    class Inner:
+        my_bool: bool
+        my_str: str
+
+    @dataclass
+    class Outer(JSONWizard):
+        inner: Inner
+
+    json_dict = {'inner': None}
+
+    with pytest.raises(MissingData) as exc_info:
+        _ = Outer.from_dict(json_dict)
+
+    e = exc_info.value
+    assert e.class_name == Outer.__qualname__
+    assert e.inner_class_name == Inner.__qualname__
+    assert e.field_name == 'inner'
+    # the error should mention that we want an Inner, but get a None
+    assert e.ann_type is Inner
+    assert type(None) is e.obj_type
+
+
+def test_load_with_inner_model_when_data_is_wrong_type():
+    """
+    Test loading JSON data to an inner model dataclass, when the
+    data being de-serialized is a wrong type (list).
+    """
+
+    @dataclass
+    class Inner:
+        my_bool: bool
+        my_str: str
+
+    @dataclass
+    class Outer(JSONWizard):
+        my_str: str
+        inner: Inner
+
+    json_dict = {
+        'myStr': 'testing',
+        'inner': [
+            {
+                'myStr': '123',
+                'myBool': 'false',
+                'my_val': '2',
+            }
+        ]
+    }
+
+    with pytest.raises(ParseError) as exc_info:
+        _ = Outer.from_dict(json_dict)
+
+    e = exc_info.value
+    assert e.class_name == Outer.__qualname__
+    assert e.field_name == 'inner'
+    assert e.base_error.__class__ is TypeError
+    # the error should mention that we want a dict, but get a list
+    assert e.ann_type == dict
+    assert e.obj_type == list
