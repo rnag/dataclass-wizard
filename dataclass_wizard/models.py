@@ -315,8 +315,10 @@ class Container(List[T]):
         >>> print(c.prettify())
 
     """
-    __slots__ = ('__dict__',
-                 '__orig_class__')
+
+    # TODO: Uncomment once we drop support for Python 3.6
+    # __slots__ = ('__dict__',
+    #              '__orig_class__')
 
     @cached_property
     def __model__(self) -> Type[T]:
