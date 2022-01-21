@@ -121,7 +121,7 @@ class JSONField(Field):
     # constructor: `kw_only`
     #
     # Ref: https://docs.python.org/3.10/library/dataclasses.html#dataclasses.dataclass
-    if PY310_OR_ABOVE:
+    if PY310_OR_ABOVE:  # pragma: no cover
         def __init__(self, keys: _STR_COLLECTION, all: bool, dump: bool,
                      default, default_factory, init, repr, hash, compare,
                      metadata):
@@ -134,7 +134,7 @@ class JSONField(Field):
 
             self.json = JSON(*keys, all=all, dump=dump)
 
-    else:
+    else:  # pragma: no cover
         def __init__(self, keys: _STR_COLLECTION, all: bool, dump: bool,
                      default, default_factory, init, repr, hash, compare,
                      metadata):

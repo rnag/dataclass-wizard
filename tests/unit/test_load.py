@@ -1489,7 +1489,7 @@ def test_load_with_inner_model_when_data_is_null():
 
     e = exc_info.value
     assert e.class_name == Outer.__qualname__
-    assert e.inner_class_name == Inner.__qualname__
+    assert e.nested_class_name == Inner.__qualname__
     assert e.field_name == 'inner'
     # the error should mention that we want an Inner, but get a None
     assert e.ann_type is Inner

@@ -203,11 +203,11 @@ class MissingData(ParseError):
                  'Missing value for field (expected a dict, got None)\n'
                  '  dataclass field: {field!r}\n'
                  '  resolution: annotate the field as '
-                 '`Optional[{inner_cls}]` or `{inner_cls} | None`')
+                 '`Optional[{nested_cls}]` or `{nested_cls} | None`')
 
-    def __init__(self, inner_cls: Type, **kwargs):
-        super().__init__(self, None, inner_cls, **kwargs)
-        self.inner_class_name: str = self.name(inner_cls)
+    def __init__(self, nested_cls: Type, **kwargs):
+        super().__init__(self, None, nested_cls, **kwargs)
+        self.nested_class_name: str = self.name(nested_cls)
 
     @staticmethod
     def name(obj) -> str:
@@ -218,7 +218,7 @@ class MissingData(ParseError):
     def message(self) -> str:
         msg = self._TEMPLATE.format(
             cls=self.class_name,
-            inner_cls=self.inner_class_name,
+            nested_cls=self.nested_class_name,
             json_string=json.dumps(self.obj),
             field=self.field_name,
             o=self.obj,
