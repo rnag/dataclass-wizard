@@ -1,21 +1,14 @@
-from dataclasses import dataclass
-
 import pytest
 from pytest_mock import MockerFixture
 
 from dataclass_wizard import fromlist
 from dataclass_wizard.models import Container, json_field
+from .conftest import SampleClass
 
 
 @pytest.fixture
 def mock_open(mocker: MockerFixture):
     return mocker.patch('dataclass_wizard.models.open')
-
-
-@dataclass
-class A:
-    f1: str
-    f2: int
 
 
 def test_json_field_does_not_allow_both_default_and_default_factory():
@@ -43,9 +36,9 @@ def test_container_methods(mocker: MockerFixture, mock_open):
     list_of_dict = [{'f1': 'hello', 'f2': 1},
                     {'f1': 'world', 'f2': 2}]
 
-    list_of_a = fromlist(A, list_of_dict)
+    list_of_a = fromlist(SampleClass, list_of_dict)
 
-    c = Container[A](list_of_a)
+    c = Container[SampleClass](list_of_a)
 
     # The repr() is very short, so it would be expected to fit in one line,
     # which thus aligns with the output of `pprint.pformat`.

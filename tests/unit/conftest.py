@@ -1,11 +1,17 @@
 """
 Common test fixtures and utilities.
 """
-
-from pathlib import Path
+from dataclasses import dataclass
 from uuid import UUID
 
 from ..conftest import PY36
+
+
+@dataclass
+class SampleClass:
+    """Sample dataclass model for various test scenarios."""
+    f1: str
+    f2: int
 
 
 if PY36:
