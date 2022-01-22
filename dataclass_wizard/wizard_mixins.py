@@ -1,3 +1,6 @@
+"""
+Helper Wizard Mixin classes.
+"""
 __all__ = ['JSONListWizard',
            'JSONFileWizard',
            'YAMLWizard']
@@ -6,7 +9,10 @@ import json
 from typing import Type, Union, AnyStr, List, Optional, TextIO, BinaryIO
 
 from .abstractions import W
+from .bases_meta import DumpMeta
+from .class_helper import _META
 from .dumpers import asdict
+from .enums import LetterCase
 from .lazy_imports import yaml
 from .loaders import fromdict, fromlist
 from .models import Container
@@ -17,7 +23,7 @@ from .type_def import (T, ListOfJSONObject,
 
 class JSONListWizard(JSONSerializable, str=False):
     """
-    A mixin class that extends :class:`JSONSerializable` (JSONWizard)
+    A Mixin class that extends :class:`JSONSerializable` (JSONWizard)
     to return :class:`Container` - instead of `list` - objects.
 
     Note that `Container` objects are simply convenience wrappers around a
@@ -59,10 +65,10 @@ class JSONListWizard(JSONSerializable, str=False):
 
 class JSONFileWizard:
     """
-    A mixin class that makes it easier to interact with JSON files.
+    A Mixin class that makes it easier to interact with JSON files.
 
-    This can be paired with the :class:`JSONSerializable` (JSONWizard) mixin
-    class for complete extensibility.
+    This can be paired with the :class:`JSONSerializable` (JSONWizard) Mixin
+    class for more complete extensibility.
 
     """
     @classmethod
@@ -89,10 +95,30 @@ class JSONFileWizard:
 
 
 class YAMLWizard:
+    # noinspection PyUnresolvedReferences
     """
-    A mixin class that makes it easier to interact with YAML data.
+    A Mixin class that makes it easier to interact with YAML data.
+
+    .. NOTE::
+      The default key transform used in the YAML dump process is `lisp-case`,
+      however this can easily be customized without the need to sub-class
+      from :class:`JSONWizard`.
+
+    For example:
+
+        >>> @dataclass
+        >>> class MyClass(YAMLWizard, key_transform='CAMEL'):
+        >>>     ...
 
     """
+    def __init_subclass__(cls, key_transform=LetterCase.LISP):
+        """Allow easy setup of common config, such as key casing transform."""
+
+        # Only add the key transform if Meta config has not been specified
+        # for the dataclass.
+        if key_transform and cls not in _META:
+            DumpMeta(key_transform=key_transform).bind_to(cls)
+
     @classmethod
     def from_yaml(cls: Type[T],
                   string_or_stream: Union[AnyStr, TextIO, BinaryIO], *,
