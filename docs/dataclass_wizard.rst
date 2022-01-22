@@ -149,6 +149,14 @@ dataclass\_wizard.type\_def module
    :undoc-members:
    :show-inheritance:
 
+dataclass\_wizard.wizard\_mixins module
+---------------------------------------
+
+.. automodule:: dataclass_wizard.wizard_mixins
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 Module contents
 ---------------
 
