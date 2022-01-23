@@ -634,9 +634,20 @@ def load_func_for_dataclass(
 
         except TypeError:
             # If the object `o` is None, then raise an error with the relevant
-            # info included. Else, just re-raise the error.
+            # info included.
             if o is None:
                 raise MissingData(cls) from None
+
+            # Check if the object `o` is some other type than what we expect -
+            # for example, we could be passed in a `list` type instead.
+            if not isinstance(o, dict):
+                e = TypeError('Incorrect type for field')
+                raise ParseError(
+                    e, o, dict,
+                    desired_type=dict
+                ) from None
+
+            #  Else, just re-raise the error.
             raise
 
         # Now pass the arguments to the constructor method, and return the new

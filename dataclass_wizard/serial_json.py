@@ -95,6 +95,7 @@ class JSONSerializable(AbstractJSONWizard):
 
         return encoder(list_of_dict, **encoder_kwargs)
 
+    # noinspection PyShadowingBuiltins
     def __init_subclass__(cls, str=True):
         """
         Checks for optional settings and flags that may be passed in by the
@@ -116,5 +117,5 @@ def _str_fn():
     representation, when the `str()` method is invoked.
     """
     return _create_fn('__str__',
-                      ('self',),
+                      ('self', ),
                       ['return self.to_json(indent=2)'])

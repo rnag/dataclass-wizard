@@ -10,3 +10,6 @@ from .utils.lazy_loader import LazyLoader
 
 # pytimeparse: for parsing JSON string values as a `datetime.timedelta`
 pytimeparse = LazyLoader(globals(), 'pytimeparse', 'timedelta')
+
+# PyYAML: to add support for (de)serializing YAML data to dataclass instances
+yaml = LazyLoader(globals(), 'yaml', 'yaml', local_name='PyYAML')

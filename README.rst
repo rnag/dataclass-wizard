@@ -85,13 +85,21 @@ Features
 
 Here are the supported features that ``dataclass-wizard`` currently provides:
 
--  *JSON (de)serialization*: marshal dataclasses to/from JSON and Python
+-  *JSON/YAML (de)serialization*: marshal dataclasses to/from JSON, YAML, and Python
    ``dict`` objects.
 -  *Field properties*: support for using properties with default
    values in dataclass instances.
 -  *JSON to Dataclass generation*: construct a dataclass schema with a JSON file
    or string input.
 
+Wizard Mixins
+-------------
+
+In addition to the ``JSONWizard``, here a few extra Mixin_ classes that might prove incredibly convenient to use.
+
+* `JSONListWizard`_ -- Extends ``JSONWizard`` to return `Container`_ -- instead of *list* -- objects where possible.
+* `JSONFileWizard`_ -- Makes it easier to convert dataclass instances from/to JSON files on a local drive.
+* `YAMLWizard`_ -- Provides support to convert dataclass instances to/from YAML, using the default ``PyYAML`` parser.
 
 Supported Types
 ---------------
@@ -881,6 +889,10 @@ This package was created with Cookiecutter_ and the `rnag/cookiecutter-pypackage
 .. _`rnag/cookiecutter-pypackage`: https://github.com/rnag/cookiecutter-pypackage
 .. _`Contributing`: https://dataclass-wizard.readthedocs.io/en/latest/contributing.html
 .. _`open an issue`: https://github.com/rnag/dataclass-wizard/issues
+.. _`JSONListWizard`: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/wizard_mixins.html#jsonlistwizard
+.. _`JSONFileWizard`: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/wizard_mixins.html#jsonfilewizard
+.. _`YAMLWizard`: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/wizard_mixins.html#yamlwizard
+.. _`Container`: https://dataclass-wizard.readthedocs.io/en/latest/dataclass_wizard.html#dataclass_wizard.Container
 .. _`Supported Types`: https://dataclass-wizard.readthedocs.io/en/latest/overview.html#supported-types
 .. _`Mixin`: https://stackoverflow.com/a/547714/10237506
 .. _`Meta`: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/meta.html

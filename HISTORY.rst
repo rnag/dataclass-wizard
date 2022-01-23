@@ -2,6 +2,25 @@
 History
 =======
 
+0.21.0 (2022-01-23)
+-------------------
+
+**Features and Improvements**
+
+* Adds few extra Wizard Mixin classes that might prove incredibly convenient to use.
+
+    - :class:`JSONListWizard` - Extends :class:`JSONWizard` to return *Container* -- instead of *list* -- objects where possible.
+    - :class:`JSONFileWizard` - Makes it easier to convert dataclass instances from/to JSON files on a local drive.
+    - :class:`YAMLWizard` - Provides support to convert dataclass instances to/from YAML, using the default PyYAML parser.
+
+* Add a new :class:`Container` model class, a *list* sub-type which acts as a convenience wrapper around a collection of dataclass instances.
+
+* The ``dataclass-wizard`` library now supports parsing of YAML data. It adds the `PyYAML`_ as an optional dependency, which is loaded when it's used for the initial time. This extra dependency can be installed via::
+
+      $ pip install dataclass-wizard[yaml]
+
+.. _PyYAML: https://pypi.org/project/PyYAML/
+
 0.20.3 (2021-11-30)
 -------------------
 
