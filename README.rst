@@ -92,6 +92,14 @@ Here are the supported features that ``dataclass-wizard`` currently provides:
 -  *JSON to Dataclass generation*: construct a dataclass schema with a JSON file
    or string input.
 
+Wizard Mixins
+-------------
+
+In addition to the ``JSONWizard``, here a few extra Mixin_ classes that might prove incredibly convenient to use.
+
+* `JSONListWizard`_ -- Extends ``JSONWizard`` to return `Container`_ -- instead of *list* -- objects where possible.
+* `JSONFileWizard`_ -- Makes it easier to convert dataclass instances from/to JSON files on a local drive.
+* `YAMLWizard`_ -- Provides support to convert dataclass instances to/from YAML, using the default ``PyYAML`` parser.
 
 Wizard Mixins
 -------------
