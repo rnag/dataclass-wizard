@@ -327,6 +327,7 @@ class Container(List[T]):
         value of the generic type T.
         """
         try:
+            # noinspection PyUnresolvedReferences
             return self.__orig_class__.__args__[0]
         except AttributeError:
             cls_name = self.__class__.__qualname__
