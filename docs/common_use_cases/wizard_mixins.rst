@@ -184,6 +184,7 @@ A (mostly) complete example of using the :class:`YAMLWizard` is as follows:
     yaml_string = MyClass.list_to_yaml(objects)
 
     print(yaml_string)
+    # - nested: null
     #   str-or-num: 42
     # - nested:
     #     list-of-map:
