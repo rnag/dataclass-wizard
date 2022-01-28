@@ -2,7 +2,7 @@ Wizard Mixin Classes
 ====================
 
 In addition to the :class:`JSONWizard`, here a few extra Wizard Mixin
-classes that might prove incredibly convenient to use.
+classes that might prove to be quite convenient to use.
 
 :class:`JSONListWizard`
 ~~~~~~~~~~~~~~~~~~~~~~~
