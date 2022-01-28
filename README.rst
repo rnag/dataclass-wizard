@@ -96,7 +96,7 @@ Here are the supported features that ``dataclass-wizard`` currently provides:
 Wizard Mixins
 -------------
 
-In addition to the ``JSONWizard``, here are a few extra Mixin_ classes that might prove incredibly convenient to use.
+In addition to the ``JSONWizard``, here are a few extra Mixin_ classes that might prove quite convenient to use.
 
 * `JSONListWizard`_ -- Extends ``JSONWizard`` to return `Container`_ -- instead of *list* -- objects where possible.
 * `JSONFileWizard`_ -- Makes it easier to convert dataclass instances from/to JSON files on a local drive.
