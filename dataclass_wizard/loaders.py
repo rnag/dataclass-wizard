@@ -643,7 +643,7 @@ def load_func_for_dataclass(
             if not isinstance(o, dict):
                 e = TypeError('Incorrect type for field')
                 raise ParseError(
-                    e, o, dict,
+                    e, o, dict, cls,
                     desired_type=dict
                 ) from None
 

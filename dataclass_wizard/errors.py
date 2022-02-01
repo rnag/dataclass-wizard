@@ -40,6 +40,8 @@ class ParseError(JSONWizardError):
     def __init__(self, base_err: Exception,
                  obj: Any,
                  ann_type: Union[Type, Iterable],
+                 _default_class: Optional[type] = None,
+                 _field_name: Optional[str] = None,
                  **kwargs):
 
         super().__init__()
@@ -49,12 +51,14 @@ class ParseError(JSONWizardError):
         self.ann_type = ann_type
         self.base_error = base_err
         self.kwargs = kwargs
-        self._class_name: Optional[str] = None
-        self._field_name: Optional[str] = None
+        self._class_name = None
+        self._default_class_name = self.name(_default_class) \
+            if _default_class else None
+        self._field_name = _field_name
 
     @property
     def class_name(self) -> Optional[str]:
-        return self._class_name
+        return self._class_name or self._default_class_name
 
     @class_name.setter
     def class_name(self, cls: Optional[Type]):

@@ -75,6 +75,11 @@ def try_with_load(load_fn: Callable):
             return load_fn
 
     else:
+        # fix: avoid re-decoration when DEBUG mode is enabled multiple
+        # times (i.e. on more than one class)
+        if hasattr(load_fn, '__decorated__'):
+            return load_fn
+
         # If it's a string value, we don't know the name of the load hook
         # function (method) beforehand.
         if isinstance(single_arg_alias_func, str):
@@ -87,6 +92,7 @@ def try_with_load(load_fn: Callable):
         wrapped_fn = f'{try_with_load_with_single_arg.__name__}' \
                      f'(original_fn, {alias}, base_type)'
 
+        setattr(load_fn, '__decorated__', True)
         setattr(load_fn, SINGLE_ARG_ALIAS, wrapped_fn)
         setattr(load_fn, 'f_locals', f_locals)
 

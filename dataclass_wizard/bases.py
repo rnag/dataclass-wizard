@@ -103,7 +103,6 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
     # When merging two Meta configs for a class, these are the only
     # attributes which will *not* be merged.
     __special_attrs__ = frozenset({
-        'debug_enabled',
         'recursive',
         'json_key_to_field',
         'tag',
