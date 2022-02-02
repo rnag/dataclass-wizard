@@ -199,11 +199,13 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
     # the :func:`dataclasses.field`) in the serialization process.
     skip_defaults: ClassVar[bool] = False
 
+    # noinspection PyMethodParameters
     @cached_class_property
     def all_fields(cls) -> FrozenKeys:
         """Return a list of all class attributes"""
         return frozenset(AbstractMeta.__annotations__)
 
+    # noinspection PyMethodParameters
     @cached_class_property
     def fields_to_merge(cls) -> FrozenKeys:
         """Return a list of class attributes, minus `__special_attrs__`"""
