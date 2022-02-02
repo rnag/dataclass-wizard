@@ -2,6 +2,25 @@
 History
 =======
 
+0.22.0 (2022-02-02)
+-------------------
+
+**Features and Improvements**
+
+* Ensure that the :attr:`debug_enabled` flag now applies recursively to all
+  nested dataclasses, which is more helpful for debugging purposes.
+
+* Add new attribute :attr:`json_object` -- which contains the original JSON
+  object -- to :class:`ParseError` objects, and include it in the object representation.
+
+**Bugfixes**
+
+* Fixed an issue with the :attr:`debug_enabled` flag enabled, where some load
+  hooks were not properly decorated when *debug* mode was enabled; errors were not
+  properly formatted in these cases. To elaborate, this only affected load hooks
+  decorated with a ``@_single_arg_alias``. In particular, this affected the
+  load hooks for a few annotated types, such as ``float`` and ``enum``.
+
 0.21.0 (2022-01-23)
 -------------------
 

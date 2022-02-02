@@ -532,6 +532,11 @@ This also results in more helpful error messages during the JSON load
 i.e. they don't match the annotation for the field. This can be particularly
 useful for debugging purposes.
 
+.. note::
+  There is a minor performance impact when DEBUG mode is enabled;
+  for that reason, I would personally advise against enabling
+  this in a *production* environment.
+
 Handle Unknown JSON Keys
 ########################
 

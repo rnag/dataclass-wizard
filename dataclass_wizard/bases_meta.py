@@ -24,6 +24,10 @@ from .type_def import E
 from .utils.type_conv import date_to_timestamp, as_enum
 
 
+# global flag to determine if debug mode was ever enabled
+_debug_was_enabled = False
+
+
 class BaseJSONWizardMeta(AbstractMeta):
     """
     Superclass definition for the `JSONWizard.Meta` inner class.
@@ -79,9 +83,12 @@ class BaseJSONWizardMeta(AbstractMeta):
         cls_dumper = get_dumper(dataclass, create=create)
 
         if cls.debug_enabled:
+            global _debug_was_enabled
+            if not _debug_was_enabled:
+                _debug_was_enabled = True
+                LOG.setLevel('DEBUG')
+                LOG.info('DEBUG Mode is enabled')
 
-            LOG.setLevel('DEBUG')
-            LOG.info('DEBUG Mode is enabled')
             # Decorate all hooks so they format more helpful messages
             # on error.
             load_hooks = cls_loader.__LOAD_HOOKS__

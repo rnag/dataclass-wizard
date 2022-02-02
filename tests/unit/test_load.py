@@ -122,6 +122,87 @@ def test_fromdict_with_nested_dataclass():
 
 
 @pytest.mark.skipif(PY36, reason='requires Python 3.7 or higher')
+def test_invalid_types_with_debug_mode_enabled():
+    """
+    Passing invalid types (i.e. that *can't* be coerced into the annotated
+    field types) raises a formatted error when DEBUG mode is enabled.
+    """
+    @dataclass
+    class InnerClass:
+        my_float: float
+        my_list: List[int] = field(default_factory=list)
+
+    @dataclass
+    class MyClass(JSONWizard):
+        class _(JSONWizard.Meta):
+            debug_enabled = True
+
+        my_int: int
+        my_dict: Dict[str, datetime] = field(default_factory=dict)
+        my_inner: Optional[InnerClass] = None
+
+    with pytest.raises(ParseError) as e:
+        _ = MyClass.from_dict({'myInt': '3', 'myDict': 'string'})
+
+    err = e.value
+    assert type(err.base_error) == AttributeError
+    assert "no attribute 'items'" in str(err.base_error)
+    assert err.class_name == MyClass.__qualname__
+    assert err.field_name == 'my_dict'
+    assert (err.ann_type, err.obj_type) == (dict, str)
+
+    with pytest.raises(ParseError) as e:
+        _ = MyClass.from_dict({'myInt': '1', 'myInner': {'myFloat': '1.A'}})
+
+    err = e.value
+    assert type(err.base_error) == ValueError
+    assert "could not convert" in str(err.base_error)
+    assert err.class_name == InnerClass.__qualname__
+    assert err.field_name == 'my_float'
+    assert (err.ann_type, err.obj_type) == (float, str)
+
+    with pytest.raises(ParseError) as e:
+        _ = MyClass.from_dict({
+            'myInt': '1',
+            'myDict': {2: '2021-01-01'},
+            'myInner': {
+                'my-float': '1.23',
+                'myList': [{'key': 'value'}]
+            }
+        })
+
+    err = e.value
+    assert type(err.base_error) == TypeError
+    assert "int()" in str(err.base_error)
+    assert err.class_name == InnerClass.__qualname__
+    assert err.field_name == 'my_list'
+    assert (err.ann_type, err.obj_type) == (int, dict)
+
+
+@pytest.mark.skipif(PY36, reason='requires Python 3.7 or higher')
+def test_from_dict_called_with_incorrect_type():
+    """
+    Calling `from_dict` with a non-`dict` argument should raise a
+    formatted error, i.e. with a :class:`ParseError` object.
+    """
+    @dataclass
+    class MyClass(JSONWizard):
+        my_str: str
+
+    with pytest.raises(ParseError) as e:
+        # noinspection PyTypeChecker
+        _ = MyClass.from_dict(['my_str'])
+
+    err = e.value
+    assert e.value.field_name is None
+    assert e.value.class_name == MyClass.__qualname__
+    assert e.value.obj == ['my_str']
+    assert 'Incorrect type' in str(e.value.base_error)
+    # basically says we want a `dict`, but were passed in a `list`
+    assert (err.ann_type, err.obj_type) == (dict, list)
+
+
+@pytest.mark.skipif(PY36, reason='requires Python 3.7 or higher')
 def test_date_times_with_custom_pattern():
     """
     Date, time, and datetime objects with a custom date string
@@ -746,34 +827,44 @@ def test_time(input, expectation):
 
 
 @pytest.mark.parametrize(
-    'input,expectation',
+    'input,expectation, base_err',
     [
-        ('testing', pytest.raises(ValueError)),
-        ('23:59:59-04:00', pytest.raises(ValueError)),
-        ('32', does_not_raise()),
-        ('32.7', does_not_raise()),
-        ('32m', does_not_raise()),
-        ('2h32m', does_not_raise()),
-        ('4:13', does_not_raise()),
-        ('5hr34m56s', does_not_raise()),
-        ('1.2 minutes', does_not_raise()),
-        (12345, does_not_raise()),
-        (True, pytest.raises(TypeError)),
-        (timedelta(days=1, seconds=2), does_not_raise()),
+        ('testing', pytest.raises(ParseError), ValueError),
+        ('23:59:59-04:00', pytest.raises(ParseError), ValueError),
+        ('32', does_not_raise(), None),
+        ('32.7', does_not_raise(), None),
+        ('32m', does_not_raise(), None),
+        ('2h32m', does_not_raise(), None),
+        ('4:13', does_not_raise(), None),
+        ('5hr34m56s', does_not_raise(), None),
+        ('1.2 minutes', does_not_raise(), None),
+        (12345, does_not_raise(), None),
+        (True, pytest.raises(ParseError), TypeError),
+        (timedelta(days=1, seconds=2), does_not_raise(), None),
     ]
 )
-def test_timedelta(input, expectation):
+def test_timedelta(input, expectation, base_err):
 
     @dataclass
     class MyClass(JSONSerializable):
+
+        class _(JSONSerializable.Meta):
+            debug_enabled = True
+
         my_td: timedelta
 
     d = {'myTD': input}
 
-    with expectation:
+    with expectation as e:
         result = MyClass.from_dict(d)
         log.debug('Parsed object: %r', result)
         log.debug('timedelta string value: %s', result.my_td)
+
+    if e:  # if an error was raised, assert the underlying error type
+        # Because on 3.6, we run into a strange error (shown below)
+        #   AttributeError: 'ExitStack' object has no attribute 'value'
+        if not PY36:
+            assert type(e.value.base_error) == base_err
 
 
 @pytest.mark.parametrize(
