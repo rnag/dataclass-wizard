@@ -74,6 +74,25 @@ def try_with_load(load_fn: Callable):
             # decorate them.
             return load_fn
 
+        @wraps(load_fn)
+        def new_func(o: Any, base_type: Type, *args, **kwargs):
+            try:
+                return load_fn(o, base_type, *args, **kwargs)
+
+            except ParseError as e:
+                # This means that a nested load hook raised an exception.
+                # Therefore, to help with debugging we should print the name
+                # of the outer load hook and the original object.
+                e.kwargs['load_hook'] = load_fn.__name__
+                e.obj = o
+                # Re-raise the original error
+                raise
+
+            except Exception as e:
+                raise ParseError(e, o, base_type, load_hook=load_fn.__name__)
+
+        return new_func
+
     else:
         # fix: avoid re-decoration when DEBUG mode is enabled multiple
         # times (i.e. on more than one class)
@@ -97,25 +116,6 @@ def try_with_load(load_fn: Callable):
         setattr(load_fn, 'f_locals', f_locals)
 
         return load_fn
-
-    @wraps(load_fn)
-    def new_func(o: Any, base_type: Type, *args, **kwargs):
-        try:
-            return load_fn(o, base_type, *args, **kwargs)
-
-        except ParseError as e:
-            # This means that a nested load hook raised an exception.
-            # Therefore, to help with debugging we should print the name
-            # of the outer load hook and the original object.
-            e.kwargs['load_hook'] = load_fn.__name__
-            e.obj = o
-            # Re-raise the original error
-            raise
-
-        except Exception as e:
-            raise ParseError(e, o, base_type, load_hook=load_fn.__name__)
-
-    return new_func
 
 
 def try_with_load_with_single_arg(original_fn: Callable,

@@ -746,34 +746,41 @@ def test_time(input, expectation):
 
 
 @pytest.mark.parametrize(
-    'input,expectation',
+    'input,expectation, base_err',
     [
-        ('testing', pytest.raises(ValueError)),
-        ('23:59:59-04:00', pytest.raises(ValueError)),
-        ('32', does_not_raise()),
-        ('32.7', does_not_raise()),
-        ('32m', does_not_raise()),
-        ('2h32m', does_not_raise()),
-        ('4:13', does_not_raise()),
-        ('5hr34m56s', does_not_raise()),
-        ('1.2 minutes', does_not_raise()),
-        (12345, does_not_raise()),
-        (True, pytest.raises(TypeError)),
-        (timedelta(days=1, seconds=2), does_not_raise()),
+        ('testing', pytest.raises(ParseError), ValueError),
+        ('23:59:59-04:00', pytest.raises(ParseError), ValueError),
+        ('32', does_not_raise(), None),
+        ('32.7', does_not_raise(), None),
+        ('32m', does_not_raise(), None),
+        ('2h32m', does_not_raise(), None),
+        ('4:13', does_not_raise(), None),
+        ('5hr34m56s', does_not_raise(), None),
+        ('1.2 minutes', does_not_raise(), None),
+        (12345, does_not_raise(), None),
+        (True, pytest.raises(ParseError), TypeError),
+        (timedelta(days=1, seconds=2), does_not_raise(), None),
     ]
 )
-def test_timedelta(input, expectation):
+def test_timedelta(input, expectation, base_err):
 
     @dataclass
     class MyClass(JSONSerializable):
+
+        class _(JSONSerializable.Meta):
+            debug_enabled = True
+
         my_td: timedelta
 
     d = {'myTD': input}
 
-    with expectation:
+    with expectation as e:
         result = MyClass.from_dict(d)
         log.debug('Parsed object: %r', result)
         log.debug('timedelta string value: %s', result.my_td)
+
+    if e:  # if an error was raised, assert the underlying error type
+        assert type(e.value.base_error) == base_err
 
 
 @pytest.mark.parametrize(
