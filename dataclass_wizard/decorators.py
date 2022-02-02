@@ -249,8 +249,8 @@ def resolve_alias_func(f: Callable,
             try:
                 return _locals[single_arg_alias_func]
             except KeyError:
-                # This is the case generally when debug mode is enabled, so
-                # the string wil be like 'try_with_load(...)'
+                # This is only the case when debug mode is enabled, so the
+                # string will be like 'try_with_load_with_single_arg(...)'
                 _locals['original_fn'] = f
                 f_locals = getattr(f, 'f_locals', None)
                 if f_locals:

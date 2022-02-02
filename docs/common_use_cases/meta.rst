@@ -157,7 +157,6 @@ dataclass, priority is given to any fields explicitly set in the ``Meta``
 config for each class. In addition, the following attributes in each class's
 ``Meta`` are excluded from a merge:
 
-- :attr:`debug_enabled`
 - :attr:`recursive`
 - :attr:`json_key_to_field`
 - :attr:`tag`
