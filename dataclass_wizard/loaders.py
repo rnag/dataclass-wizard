@@ -630,6 +630,7 @@ def load_func_for_dataclass(
                     # handled by the `setter` methods.
                     e.class_name = cls
                     e.field_name = field_name
+                    e.json_object = o
                     raise
 
         except TypeError:

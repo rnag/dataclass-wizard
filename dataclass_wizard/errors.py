@@ -42,6 +42,7 @@ class ParseError(JSONWizardError):
                  ann_type: Union[Type, Iterable],
                  _default_class: Optional[type] = None,
                  _field_name: Optional[str] = None,
+                 _json_object: Any = None,
                  **kwargs):
 
         super().__init__()
@@ -55,6 +56,7 @@ class ParseError(JSONWizardError):
         self._default_class_name = self.name(_default_class) \
             if _default_class else None
         self._field_name = _field_name
+        self._json_object = _json_object
 
     @property
     def class_name(self) -> Optional[str]:
@@ -74,6 +76,15 @@ class ParseError(JSONWizardError):
         if self._field_name is None:
             self._field_name = name
 
+    @property
+    def json_object(self):
+        return self._json_object
+
+    @json_object.setter
+    def json_object(self, json_obj):
+        if self._json_object is None:
+            self._json_object = json_obj
+
     @staticmethod
     def name(obj) -> str:
         """Return the type or class name of an object"""
@@ -86,6 +97,9 @@ class ParseError(JSONWizardError):
             e=self.base_error, o=self.obj,
             ann_type=self.name(self.ann_type),
             obj_type=self.name(self.obj_type))
+
+        if self.json_object:
+            self.kwargs['json_object'] = json.dumps(self.json_object)
 
         if self.kwargs:
             sep = '\n  '
