@@ -1,4 +1,4 @@
-pip==21.3.1
+pip==22.0.3
 bump2version==1.0.1
 wheel==0.37.1
 watchdog[watchmedo]==2.1.6
