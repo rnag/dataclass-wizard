@@ -1,14 +1,19 @@
 # Recipe used to publish this package to Anaconda and Conda Forge
 #
-# Credits: https://github.com/conda-forge/staged-recipes
+# Credits:
+#   - https://github.com/conda-forge/staged-recipes
+#   - https://docs.conda.io/projects/conda-build/en/latest/resources/define-metadata.html
 
-{ % set name = "dataclass-wizard" % }
-{ % set version = "0.22.0" % }
-{ % set author = "rnag" % }
+{% set data = load_setup_py_data(from_recipe_dir=True) %}
+{% set name = data['name']  %}
+{% set version = data['version']  %}
+{% set author = "rnag" %}
+{% set repo_url = data['url']  %}
+{% set description = data['description']  %}
 
 package:
-  name: { { name|lower } }
-  version: { { version } }
+  name: {{ name|lower }}
+  version: {{ version }}
 
 source:
   url: https://pypi.io/packages/source/{{ name[0] }}/{{ name }}/{{ name }}-{{ version }}.tar.gz
@@ -22,7 +27,7 @@ build:
   number: 0
   entry_points:
     - wiz={{ name|replace('-', '_') }}.wizard_cli.cli:main
-  script: { { PYTHON } } -m pip install . -vv
+  script: {{ PYTHON }} -m pip install . -vv
   # Add the line "skip: True  # [py<35]" (for example) to limit to Python 3.5 and newer, or "skip: True  # [not win]" to limit to Windows.
   skip: True  # [py<36]
 
@@ -38,8 +43,7 @@ requirements:
 
 test:
   imports:
-    - { { name|replace('-', '_') } }
-    - tests
+    - {{ name|replace('-', '_') }}
   requires:
     - pip
   commands:
@@ -47,7 +51,7 @@ test:
     - wiz --help
 
 about:
-  home: https://github.com/{{ author }}/{{ name }}
+  home: {{ repo_url }}
   # See https://spdx.org/licenses/
   license: Apache-2.0
   # The license_family, i.e. "BSD" if license is "BSD-3-Clause". (optional)
@@ -72,10 +76,10 @@ about:
     `typing-extensions` <https://pypi.org/project/typing-extensions/>
     for Python 3.9 and below.
   doc_url: https://{{ name }}.readthedocs.io/
-  dev_url: https://github.com/{{ author }}/{{ name }}
+  dev_url: {{ repo_url }}
 
 extra:
   recipe-maintainers:
     # GitHub IDs for maintainers of the recipe.
     # Always check with the people listed below if they are OK becoming maintainers of the recipe. (There will be spam!)
-    - { { author } }
+    - {{ author }}
