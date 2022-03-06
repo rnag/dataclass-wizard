@@ -4,7 +4,7 @@
 #   - https://github.com/conda-forge/staged-recipes
 #   - https://docs.conda.io/projects/conda-build/en/latest/resources/define-metadata.html
 
-{% set data = load_setup_py_data(from_recipe_dir=True) %}
+{% set data = load_setup_py_data(setup_file='../setup.py', from_recipe_dir=True) %}
 {% set name = data['name']  %}
 {% set version = data['version']  %}
 {% set author = "rnag" %}
@@ -46,9 +46,11 @@ test:
     - {{ name|replace('-', '_') }}
   requires:
     - pip
+    # - pytest
   commands:
     - pip check
     - wiz --help
+    # - pytest -v
 
 about:
   home: {{ repo_url }}
