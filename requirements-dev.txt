@@ -4,7 +4,7 @@ wheel==0.37.1
 watchdog[watchmedo]==2.1.6
 flake8>=3  # pyup: ignore
 tox==3.24.5
-coverage==6.3.2
+coverage>=6.2
 Sphinx==4.4.0
 twine==3.8.0
 # Extras
