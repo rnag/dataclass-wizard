@@ -14,7 +14,7 @@ end_of_line = lf
 indent_style = tab
 end_of_line = crlf
 
-[.github/workflows/*.yml]
+[{*.yml, *.yaml}]
 indent_size = 2
 
 [LICENSE]
