@@ -18,7 +18,7 @@ requirements:
 label_prs: update
 # assign users to pull requests, default is not set
 assignees:
- - rnag
+  - rnag
 # configure the branch prefix the bot is using
 # default: pyup-
 branch_prefix: pyup/

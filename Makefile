@@ -88,3 +88,10 @@ dist: clean ## builds source and wheel package
 
 install: clean ## install the package to the active Python's site-packages
 	python setup.py install
+
+dist-conda: clean ## builds source and wheel package for Anaconda
+	conda build .
+
+release-conda: dist-conda ## package and upload a release to Anaconda
+	$(eval DIST_FILE=$(shell conda build . --output))
+	anaconda upload $(DIST_FILE)
