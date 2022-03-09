@@ -1,5 +1,8 @@
 # Recipe used to publish this package to Anaconda and Conda Forge
 #
+# Note:
+#   To publish, replace `source -> sha256` below, and run `make release-conda`
+#
 # Credits:
 #   - https://github.com/conda-forge/staged-recipes
 #   - https://docs.conda.io/projects/conda-build/en/latest/resources/define-metadata.html

@@ -7,6 +7,9 @@ Full documentation is available at `Read The Docs`_. (`Installation`_)
 .. image:: https://img.shields.io/pypi/v/dataclass-wizard.svg
         :target: https://pypi.org/project/dataclass-wizard
 
+.. image:: https://img.shields.io/conda/vn/conda-forge/dataclass-wizard.svg
+        :target: https://anaconda.org/conda-forge/dataclass-wizard
+
 .. image:: https://img.shields.io/pypi/pyversions/dataclass-wizard.svg
         :target: https://pypi.org/project/dataclass-wizard
 
@@ -77,8 +80,16 @@ The Dataclass Wizard library is available `on PyPI`_, and can be installed with 
 
     $ pip install dataclass-wizard
 
+Alternatively, this library is available `on conda`_ under the `conda-forge`_ channel:
+
+.. code-block:: shell
+
+    $ conda install dataclass-wizard -c conda-forge
+
 The ``dataclass-wizard`` library officially supports **Python 3.6** or higher.
 
+.. _on conda: https://anaconda.org/conda-forge/dataclass-wizard
+.. _conda-forge: https://conda-forge.org/
 
 Features
 --------
