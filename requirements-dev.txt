@@ -1,7 +1,7 @@
 pip>=21.3.1
 bump2version==1.0.1
 wheel==0.37.1
-watchdog[watchmedo]==2.1.6
+watchdog[watchmedo]==2.1.7
 flake8>=3  # pyup: ignore
 tox==3.24.5
 coverage>=6.2
