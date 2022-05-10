@@ -141,6 +141,7 @@ class MissingFields(JSONWizardError):
                                and f.default_factory is MISSING]
 
         # check if any field names match, and where the key transform could be the cause
+        # see https://github.com/rnag/dataclass-wizard/issues/54 for more info
 
         normalized_json_keys = [normalize(key) for key in obj]
         if next((f for f in self.missing_fields if normalize(f) in normalized_json_keys), None):
