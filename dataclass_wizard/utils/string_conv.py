@@ -1,4 +1,5 @@
 __all__ = ['normalize',
+           'pass_through',
            'to_camel_case',
            'to_pascal_case',
            'to_lisp_case',
@@ -16,6 +17,19 @@ def normalize(string: str) -> str:
 
     """
     return string.replace('-', '').replace('_', '').upper()
+
+
+def pass_through(string: str) -> str:
+    """
+    Pass-through the original cased string directly.
+
+    Examples::
+
+        >>> pass_through("Device_Type")
+        'Device_Type'
+
+    """
+    return string
 
 
 def to_camel_case(string: str) -> str:

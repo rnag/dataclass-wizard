@@ -144,7 +144,14 @@ class MissingFields(JSONWizardError):
 
         normalized_json_keys = [normalize(key) for key in obj]
         if next((f for f in self.missing_fields if normalize(f) in normalized_json_keys), None):
-            kwargs['cause'] = 'The default key transform for the load process is `to_snake_case`'
+            from .loaders import get_loader
+            from .enums import LetterCase
+
+            key_transform = get_loader(cls).transform_json_field
+            if isinstance(key_transform, LetterCase):
+                key_transform = key_transform.value.f
+
+            kwargs['key transform'] = f'{key_transform.__name__}()'
             kwargs['resolution'] = 'For more details, please see https://github.com/rnag/dataclass-wizard/issues/54'
 
         self.base_error = base_err

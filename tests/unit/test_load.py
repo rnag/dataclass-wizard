@@ -480,7 +480,7 @@ def test_from_dict_with_missing_fields():
 
     assert e.value.fields == ['my_str']
     assert e.value.missing_fields == ['MyBool1', 'my_int']
-    assert 'cause' not in e.value.kwargs
+    assert 'key transform' not in e.value.kwargs
     assert 'resolution' not in e.value.kwargs
 
 
@@ -505,7 +505,7 @@ def test_from_dict_with_missing_fields_with_resolution():
     assert e.value.fields == ['my_str']
     assert e.value.missing_fields == ['MyBool', 'my_int']
     # optional: these are populated in this case since this can be a somewhat common issue
-    assert e.value.kwargs['cause'] == 'The default key transform for the load process is `to_snake_case`'
+    assert e.value.kwargs['key transform'] == 'to_snake_case()'
     assert 'resolution' in e.value.kwargs
 
 
