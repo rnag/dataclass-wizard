@@ -494,6 +494,30 @@ def test_from_dict_with_missing_fields():
     @dataclass
     class MyClass(JSONSerializable):
         my_str: str
+        MyBool1: bool
+        my_int: int
+
+    value = 'Testing'
+    d = {'my_str': value, 'myBool': 'true'}
+
+    with pytest.raises(MissingFields) as e:
+        _ = MyClass.from_dict(d)
+
+    assert e.value.fields == ['my_str']
+    assert e.value.missing_fields == ['MyBool1', 'my_int']
+    assert 'key transform' not in e.value.kwargs
+    assert 'resolution' not in e.value.kwargs
+
+
+def test_from_dict_with_missing_fields_with_resolution():
+    """
+    Calling `from_dict` when required dataclass field(s) are missing in the
+    JSON object, with a more user-friendly message.
+    """
+
+    @dataclass
+    class MyClass(JSONSerializable):
+        my_str: str
         MyBool: bool
         my_int: int
 
@@ -505,6 +529,9 @@ def test_from_dict_with_missing_fields():
 
     assert e.value.fields == ['my_str']
     assert e.value.missing_fields == ['MyBool', 'my_int']
+    # optional: these are populated in this case since this can be a somewhat common issue
+    assert e.value.kwargs['key transform'] == 'to_snake_case()'
+    assert 'resolution' in e.value.kwargs
 
 
 def test_from_dict_key_transform_with_json_field():

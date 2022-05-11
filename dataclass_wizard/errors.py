@@ -4,6 +4,8 @@ from dataclasses import Field, MISSING
 from typing import (Any, Type, Dict, Tuple, ClassVar,
                     Optional, Union, Iterable)
 
+from .utils.string_conv import normalize
+
 
 # added as we can't import from `type_def`, as we run into a circular import.
 JSONObject = Dict[str, Any]
@@ -137,6 +139,22 @@ class MissingFields(JSONWizardError):
                                if f.name not in self.fields
                                and f.default is MISSING
                                and f.default_factory is MISSING]
+
+        # check if any field names match, and where the key transform could be the cause
+        # see https://github.com/rnag/dataclass-wizard/issues/54 for more info
+
+        normalized_json_keys = [normalize(key) for key in obj]
+        if next((f for f in self.missing_fields if normalize(f) in normalized_json_keys), None):
+            from .enums import LetterCase
+            from .loaders import get_loader
+
+            key_transform = get_loader(cls).transform_json_field
+            if isinstance(key_transform, LetterCase):
+                key_transform = key_transform.value.f
+
+            kwargs['key transform'] = f'{key_transform.__name__}()'
+            kwargs['resolution'] = 'For more details, please see https://github.com/rnag/dataclass-wizard/issues/54'
+
         self.base_error = base_err
         self.kwargs = kwargs
         self.class_name: str = self.name(cls)
@@ -157,7 +175,7 @@ class MissingFields(JSONWizardError):
 
         if self.kwargs:
             sep = '\n  '
-            parts = sep.join(f'{k}: {v!r}' for k, v in self.kwargs.items())
+            parts = sep.join(f'{k}: {v}' for k, v in self.kwargs.items())
             msg = f'{msg}{sep}{parts}'
 
         return msg

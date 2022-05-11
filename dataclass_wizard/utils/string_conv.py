@@ -1,4 +1,5 @@
-__all__ = ['to_camel_case',
+__all__ = ['normalize',
+           'to_camel_case',
            'to_pascal_case',
            'to_lisp_case',
            'to_snake_case',
@@ -6,6 +7,14 @@ __all__ = ['to_camel_case',
 
 import re
 from typing import Iterable, Dict, List
+
+
+def normalize(string: str) -> str:
+    """
+    Normalize a string - typically a dataclass field name - for comparison
+    purposes.
+    """
+    return string.replace('-', '').replace('_', '').upper()
 
 
 def to_camel_case(string: str) -> str:
