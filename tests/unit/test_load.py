@@ -460,10 +460,59 @@ def test_bool(input, expected):
     assert result.my_bool == expected
 
 
+def test_from_dict_handles_identical_cased_json_keys():
+    """
+    Calling `from_dict` when required JSON keys have the same casing as
+    dataclass field names, even when the field names are not "snake-cased".
+
+    See https://github.com/rnag/dataclass-wizard/issues/54 for more details.
+    """
+
+    @dataclass
+    class ExtendedFetch(JSONSerializable):
+        comments: dict
+        viewMode: str
+        my_str: str
+        MyBool: bool
+
+    j = '{"viewMode": "regular", "comments": {}, "MyBool": "true", "my_str": "Testing"}'
+
+    c = ExtendedFetch.from_json(j)
+
+    assert c.comments == {}
+    assert c.viewMode == 'regular'
+    assert c.my_str == 'Testing'
+    assert c.MyBool
+
+
 def test_from_dict_with_missing_fields():
     """
     Calling `from_dict` when required dataclass field(s) are missing in the
     JSON object.
+    """
+
+    @dataclass
+    class MyClass(JSONSerializable):
+        my_str: str
+        MyBool1: bool
+        my_int: int
+
+    value = 'Testing'
+    d = {'my_str': value, 'myBool': 'true'}
+
+    with pytest.raises(MissingFields) as e:
+        _ = MyClass.from_dict(d)
+
+    assert e.value.fields == ['my_str']
+    assert e.value.missing_fields == ['MyBool1', 'my_int']
+    assert 'key transform' not in e.value.kwargs
+    assert 'resolution' not in e.value.kwargs
+
+
+def test_from_dict_with_missing_fields_with_resolution():
+    """
+    Calling `from_dict` when required dataclass field(s) are missing in the
+    JSON object, with a more user-friendly message.
     """
 
     @dataclass
@@ -480,6 +529,9 @@ def test_from_dict_with_missing_fields():
 
     assert e.value.fields == ['my_str']
     assert e.value.missing_fields == ['MyBool', 'my_int']
+    # optional: these are populated in this case since this can be a somewhat common issue
+    assert e.value.kwargs['key transform'] == 'to_snake_case()'
+    assert 'resolution' in e.value.kwargs
 
 
 def test_from_dict_key_transform_with_json_field():

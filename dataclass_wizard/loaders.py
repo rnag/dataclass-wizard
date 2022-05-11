@@ -675,13 +675,18 @@ def load_func_for_dataclass(
           config for the class.
         """
 
+        # Short path: an identical-cased field name exists for the JSON key
+        if json_field in field_to_parser:
+            json_to_dataclass_field[json_field] = json_field
+            return json_field
+
         # Transform JSON field name (typically camel-cased) to the
         # snake-cased variant which is convention in Python.
         transformed_field = cls_loader.transform_json_field(json_field)
 
         try:
             # Do a case-insensitive lookup of the dataclass field, and
-            # cache the mapping so we have it for next time
+            # cache the mapping, so we have it for next time
             field_name = field_to_parser.get_key(transformed_field)
             json_to_dataclass_field[json_field] = field_name
 

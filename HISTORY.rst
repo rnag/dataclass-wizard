@@ -2,6 +2,26 @@
 History
 =======
 
+0.22.1 (2022-05-11)
+-------------------
+
+**Features and Improvements**
+
+* Update :class:`MissingFields` to provide a more user-friendly error message,
+  in cases where a missing dataclass field is not snake-cased, but could - with
+  the right *key transform* - map to a key in the JSON object. For example, a JSON key of ``myField`` and a field
+  named ``MyField``.
+
+**Bugfixes**
+
+* Fixed a bug in the load (or de-serialization) process with ``from_dict``, where a :class:`MissingFields` was raised
+  in cases where a dataclass field is not snake-cased, but is otherwise identical to a key in the JSON object.
+  For example, a JSON key and field |both named viewMode|_. The JSON data in such cases should now be correctly
+  de-serialized to a dataclass instance as expected.
+
+.. _both named viewMode: https://github.com/rnag/dataclass-wizard/issues/54
+.. |both named viewMode| replace:: both named ``viewMode``
+
 0.22.0 (2022-02-02)
 -------------------
 
