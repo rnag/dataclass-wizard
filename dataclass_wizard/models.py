@@ -2,7 +2,7 @@ import json
 # noinspection PyProtectedMember
 from dataclasses import MISSING, Field, _create_fn
 from datetime import date, datetime, time
-from typing import (cast, Collection, Callable,
+from typing import (cast, Collection, Callable, Dict, KT, VT,
                     Optional, List, Union, Type)
 
 from .bases import META
@@ -26,6 +26,10 @@ class Extras(PyTypedDict):
     config: META
     # noinspection PyTypedDict
     pattern: '_PatternedDT'
+
+
+class JSONDict(Dict[KT, VT]):
+    __slots__ = ()
 
 
 def json_key(*keys: str, all=False, dump=True):

@@ -1,3 +1,4 @@
+import json
 from collections import defaultdict, deque, namedtuple
 from dataclasses import is_dataclass
 from datetime import datetime, time, date, timedelta
@@ -21,7 +22,7 @@ from .constants import _LOAD_HOOKS, SINGLE_ARG_ALIAS, IDENTITY
 from .decorators import _alias, _single_arg_alias, resolve_alias_func, _identity
 from .errors import ParseError, MissingFields, UnknownJSONKey, MissingData
 from .log import LOG
-from .models import Extras, _PatternedDT
+from .models import Extras, _PatternedDT, JSONDict
 from .parsers import *
 from .type_def import (
     ExplicitNull, FrozenKeys, DefFactory, NoneType, JSONObject,
@@ -233,6 +234,10 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
         # alias: as_timedelta
         ...
 
+    @staticmethod
+    def load_to_json_dict(o: str, base_type: Type[JSONDict]):
+        return base_type(json.loads(o))
+
     @classmethod
     def get_parser_for_annotation(cls, ann_type: Type[T],
                                   base_cls: Type = None,
@@ -366,6 +371,9 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
                         cls.get_parser_for_annotation
                     )
 
+                elif issubclass(base_type, JSONDict):
+                    load_hook = cls.load_to_json_dict
+
                 elif issubclass(base_type, dict):
                     load_hook = hooks[dict]
                     return MappingParser(
@@ -401,7 +409,7 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
 
         # TODO i'll need to refactor this to remove duplicate lines above -
         # maybe merge them together.
-        elif issubclass(base_type, dict):
+        elif issubclass(base_type, dict) and not issubclass(base_type, JSONDict):
             load_hook = hooks[dict]
             return MappingParser(
                 base_cls, extras, ann_type, load_hook,
@@ -483,6 +491,8 @@ def setup_default_loader(cls=LoadMixin):
     cls.register_load_hook(time, cls.load_to_time)
     cls.register_load_hook(date, cls.load_to_date)
     cls.register_load_hook(timedelta, cls.load_to_timedelta)
+    # Custom types
+    cls.register_load_hook(JSONDict, cls.load_to_json_dict)
 
 
 def get_loader(class_or_instance=None, create=True) -> Type[LoadMixin]:

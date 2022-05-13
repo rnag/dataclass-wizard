@@ -1497,6 +1497,20 @@ def test_named_tuple_without_type_hinting(input, expectation, expected):
         assert result.my_nt == expected
 
 
+def test_load_to_json_dict():
+
+    @dataclass
+    class MyClass(JSONWizard):
+        my_str: str
+        my_dict: JSONDict[str, int]
+
+    c = MyClass.from_dict({'myStr': 'test', 'my_dict': '{"my_key": "123"}'})
+    # print(repr(c))
+
+    # TODO
+    assert c.my_dict['my_key'] == '123'
+
+
 @pytest.mark.parametrize(
     'input,expected',
     [
