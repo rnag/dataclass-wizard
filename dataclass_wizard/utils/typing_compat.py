@@ -12,8 +12,9 @@ __all__ = [
     'is_generic',
     'is_base_generic',
     'is_annotated',
+    'is_classvar',
     'eval_forward_ref',
-    'eval_forward_ref_if_needed'
+    'eval_forward_ref_if_needed',
 ]
 
 import sys
@@ -357,6 +358,18 @@ def is_annotated(cls):
     Detects a :class:`typing.Annotated` class.
     """
     return _is_annotated(cls)
+
+
+# copied from `dataclasses` module
+def is_classvar(a_type):
+    """
+    Detects a :class:`typing.ClassVar` type.
+    """
+    # This test uses a typing internal class, but it's the best way to
+    # test if this is a ClassVar.
+    return (a_type is typing.ClassVar
+            or (type(a_type) is typing._GenericAlias
+                and a_type.__origin__ is typing.ClassVar))
 
 
 def eval_forward_ref(base_type: FREF,

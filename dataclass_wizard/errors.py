@@ -4,6 +4,7 @@ from dataclasses import Field, MISSING
 from typing import (Any, Type, Dict, Tuple, ClassVar,
                     Optional, Union, Iterable)
 
+from .utils.type_helper import type_name
 
 # added as we can't import from `type_def`, as we run into a circular import.
 JSONObject = Dict[str, Any]
@@ -59,7 +60,7 @@ class ParseError(JSONWizardError):
     @class_name.setter
     def class_name(self, cls: Optional[Type]):
         if self._class_name is None:
-            self._class_name = self.name(cls)
+            self._class_name = type_name(cls)
 
     @property
     def field_name(self) -> Optional[str]:
@@ -70,18 +71,13 @@ class ParseError(JSONWizardError):
         if self._field_name is None:
             self._field_name = name
 
-    @staticmethod
-    def name(obj) -> str:
-        """Return the type or class name of an object"""
-        return getattr(obj, '__qualname__', getattr(obj, '__name__', obj))
-
     @property
     def message(self) -> str:
         msg = self._TEMPLATE.format(
             cls=self.class_name, field=self.field_name,
             e=self.base_error, o=self.obj,
-            ann_type=self.name(self.ann_type),
-            obj_type=self.name(self.obj_type))
+            ann_type=type_name(self.ann_type),
+            obj_type=type_name(self.obj_type))
 
         if self.kwargs:
             sep = '\n  '
@@ -121,12 +117,7 @@ class MissingFields(JSONWizardError):
                                and f.default_factory is MISSING]
         self.base_error = base_err
         self.kwargs = kwargs
-        self.class_name: str = self.name(cls)
-
-    @staticmethod
-    def name(obj) -> str:
-        """Return the type or class name of an object"""
-        return getattr(obj, '__qualname__', getattr(obj, '__name__', obj))
+        self.class_name: str = type_name(cls)
 
     @property
     def message(self) -> str:
@@ -170,12 +161,7 @@ class UnknownJSONKey(JSONWizardError):
         self.obj = obj
         self.fields = [f.name for f in cls_fields]
         self.kwargs = kwargs
-        self.class_name: str = self.name(cls)
-
-    @staticmethod
-    def name(obj) -> str:
-        """Return the type or class name of an object"""
-        return getattr(obj, '__qualname__', getattr(obj, '__name__', obj))
+        self.class_name: str = type_name(cls)
 
     @property
     def message(self) -> str:
@@ -208,12 +194,7 @@ class MissingData(ParseError):
 
         super().__init__(self, None, cls)
 
-        self.class_name: str = self.name(cls)
-
-    @staticmethod
-    def name(obj) -> str:
-        """Return the type or class name of an object"""
-        return getattr(obj, '__qualname__', getattr(obj, '__name__', obj))
+        self.class_name: str = type_name(cls)
 
     @property
     def message(self) -> str:

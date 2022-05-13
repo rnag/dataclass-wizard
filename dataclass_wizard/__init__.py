@@ -72,6 +72,7 @@ __all__ = [
     # Base exports
     'JSONSerializable',
     'JSONWizard',
+    'EnvWizard',
     'LoadMixin',
     'DumpMixin',
     'property_wizard',
@@ -94,7 +95,7 @@ import logging
 
 from .bases_meta import LoadMeta, DumpMeta
 from .constants import PY36
-from .environ import EnvWizard
+from .environ.env_wizard import EnvWizard
 from .dumpers import DumpMixin, setup_default_dumper, asdict
 from .loaders import LoadMixin, setup_default_loader, fromlist, fromdict
 from .models import (json_field, json_key,

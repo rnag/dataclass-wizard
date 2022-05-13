@@ -3,7 +3,7 @@ from typing import Callable, Type, Dict, Optional, ClassVar, Union, TypeVar
 
 from .constants import TAG
 from .decorators import cached_class_property
-from .enums import DateTimeTo, LetterCase
+from .enums import DateTimeTo, LetterCase, LetterCasePriority
 from .type_def import FrozenKeys
 
 
@@ -264,6 +264,11 @@ class AbstractEnvMeta:
     # Note: this is in addition to the implicit field transformations, like
     #   "myStr" -> "my_str"
     env_var_to_field: ClassVar[Dict[str, str]] = None
+
+    # The letter casing priority to use when looking up Env Var Names.
+    #
+    # The default is 'SCREAMING_SNAKE' case.
+    key_transform: ClassVar[Union[LetterCasePriority, str]] = LetterCasePriority.SCREAMING_SNAKE
 
     @cached_class_property
     def all_fields(cls) -> FrozenKeys:

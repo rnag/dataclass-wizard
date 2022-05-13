@@ -267,13 +267,13 @@ def call_meta_initializer_if_needed(cls: Type[W]):
         _META_INITIALIZER[cls_name](cls)
 
 
-def get_meta(cls: Type) -> M:
+def get_meta(cls: Type, base_cls: T = AbstractMeta) -> Union[T, M]:
     """
     Retrieves the Meta config for the :class:`AbstractJSONWizard` subclass.
 
     This config is set when the inner :class:`Meta` is sub-classed.
     """
-    return _META.get(cls, AbstractMeta)
+    return _META.get(cls, base_cls)
 
 
 def dataclass_fields(cls) -> Tuple[Field]:
