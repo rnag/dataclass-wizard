@@ -30,6 +30,7 @@ from .class_helper import (
 from .constants import _DUMP_HOOKS, TAG
 from .decorators import _alias
 from .log import LOG
+from .models import SecretString
 from .type_def import (
     ExplicitNull, NoneType, JSONObject,
     DD, LSQ, E, U, LT, NT, T
@@ -137,6 +138,10 @@ class DumpMixin(AbstractDumper, BaseDumpHook):
     def dump_with_timedelta(o: timedelta, *_):
         return str(o)
 
+    @staticmethod
+    def dump_with_secret_string(o: SecretString, _1, _2, _3, _4, _5, show_secret):
+        return o.__secret_value__ if show_secret else str(o)
+
 
 def setup_default_dumper(cls=DumpMixin):
     """
@@ -170,6 +175,8 @@ def setup_default_dumper(cls=DumpMixin):
     cls.register_dump_hook(time, cls.dump_with_time)
     cls.register_dump_hook(date, cls.dump_with_date)
     cls.register_dump_hook(timedelta, cls.dump_with_timedelta)
+    # Custom types
+    cls.register_dump_hook(SecretString, cls.dump_with_secret_string)
 
 
 def get_dumper(cls=None, create=True) -> Type[DumpMixin]:
@@ -308,7 +315,8 @@ def dump_func_for_dataclass(cls: Type[T],
 
     def cls_asdict(obj: T, dict_factory=dict,
                    exclude: List[str] = None,
-                   skip_defaults=meta.skip_defaults) -> JSONObject:
+                   skip_defaults=meta.skip_defaults,
+                   show_secret=True) -> JSONObject:
         """
         Serialize a dataclass of type `cls` to a Python dictionary object.
         """
@@ -352,7 +360,7 @@ def dump_func_for_dataclass(cls: Type[T],
                 continue
 
             value = _asdict_inner(fv, dict_factory, hooks, config,
-                                  nested_cls_to_dump_func)
+                                  nested_cls_to_dump_func, show_secret)
 
             # -- This line is *mostly* the same as in the original version --
             result.append((json_field, value))
@@ -392,11 +400,11 @@ def dump_func_for_dataclass(cls: Type[T],
 # method has also been heavily modified from the original implementation in
 # `dataclasses`. However, I will call out specific lines where it is taken
 # directly from the original version.
-def _asdict_inner(obj, dict_factory, hooks, meta, cls_to_dump_func) -> Any:
+def _asdict_inner(obj, dict_factory, hooks, meta, cls_to_dump_func, show_secret=True) -> Any:
 
     cls = type(obj)
     dump_hook = hooks.get(cls)
-    hook_args = (obj, cls, dict_factory, hooks, meta, cls_to_dump_func)
+    hook_args = (obj, cls, dict_factory, hooks, meta, cls_to_dump_func, show_secret)
 
     if dump_hook is not None:
         return dump_hook(*hook_args)

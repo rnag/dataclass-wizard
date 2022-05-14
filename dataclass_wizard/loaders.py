@@ -22,7 +22,7 @@ from .constants import _LOAD_HOOKS, SINGLE_ARG_ALIAS, IDENTITY
 from .decorators import _alias, _single_arg_alias, resolve_alias_func, _identity
 from .errors import ParseError, MissingFields, UnknownJSONKey, MissingData
 from .log import LOG
-from .models import Extras, _PatternedDT, JSONDict
+from .models import Extras, _PatternedDT, JSONDict, SecretString
 from .parsers import *
 from .type_def import (
     ExplicitNull, FrozenKeys, DefFactory, NoneType, JSONObject,
@@ -87,6 +87,12 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
     @_alias(as_int)
     def load_to_int(o: Union[str, int, bool, None], base_type: Type[N]) -> N:
         # alias: as_int
+        ...
+
+    @staticmethod
+    @_single_arg_alias('base_type')
+    def load_to_secret_string(o: str, base_type: Type[SecretString]) -> SecretString:
+        # alias: base_type(o)
         ...
 
     @staticmethod
@@ -492,6 +498,7 @@ def setup_default_loader(cls=LoadMixin):
     cls.register_load_hook(date, cls.load_to_date)
     cls.register_load_hook(timedelta, cls.load_to_timedelta)
     # Custom types
+    cls.register_load_hook(SecretString, cls.load_to_secret_string)
     cls.register_load_hook(JSONDict, cls.load_to_json_dict)
 
 

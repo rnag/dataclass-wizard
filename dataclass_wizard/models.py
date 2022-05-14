@@ -32,6 +32,16 @@ class JSONDict(Dict[KT, VT]):
     __slots__ = ()
 
 
+class SecretString:
+    __slots__ = ('__secret_value__', )
+
+    def __init__(self, password: str):
+        self.__secret_value__ = password
+
+    def __repr__(self):
+        return self.__secret_value__[:2] + '*' * 8
+
+
 def json_key(*keys: str, all=False, dump=True):
     """
     Represents a mapping of one or more JSON key names for a dataclass field.

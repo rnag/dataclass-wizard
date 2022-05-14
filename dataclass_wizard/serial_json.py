@@ -75,12 +75,13 @@ class JSONSerializable(AbstractJSONWizard):
         ...
 
     def to_json(self: W, *,
+                show_secret=True,
                 encoder: Encoder = json.dumps,
                 **encoder_kwargs) -> AnyStr:
         """
         Converts the dataclass instance to a JSON `string` representation.
         """
-        return encoder(asdict(self), **encoder_kwargs)
+        return encoder(asdict(self, show_secret=show_secret), **encoder_kwargs)
 
     @classmethod
     def list_to_json(cls: Type[W],
@@ -118,4 +119,4 @@ def _str_fn():
     """
     return _create_fn('__str__',
                       ('self', ),
-                      ['return self.to_json(indent=2)'])
+                      ['return self.to_json(indent=2, show_secret=False)'])
