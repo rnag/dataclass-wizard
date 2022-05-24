@@ -220,7 +220,8 @@ def as_datetime(o: Union[str, Number, datetime],
         if t is str:
             # Minor performance fix: if it's a string, we don't need to run
             # the other type checks.
-            pass
+            if raise_:
+                raise
 
         # Check `type` explicitly, because `bool` is a sub-class of `int`
         elif t in NUMBERS:
@@ -267,7 +268,8 @@ def as_date(o: Union[str, Number, date],
         if t is str:
             # Minor performance fix: if it's a string, we don't need to run
             # the other type checks.
-            pass
+            if raise_:
+                raise
 
         # Check `type` explicitly, because `bool` is a sub-class of `int`
         elif t in NUMBERS:
@@ -311,7 +313,8 @@ def as_time(o: Union[str, time], base_type=time, default=None, raise_=True):
         if t is str:
             # Minor performance fix: if it's a string, we don't need to run
             # the other type checks.
-            pass
+            if raise_:
+                raise
 
         elif t is base_type:
             return o

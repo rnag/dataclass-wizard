@@ -268,7 +268,14 @@ class AbstractEnvMeta:
     # The letter casing priority to use when looking up Env Var Names.
     #
     # The default is 'SCREAMING_SNAKE' case.
-    key_transform: ClassVar[Union[LetterCasePriority, str]] = LetterCasePriority.SCREAMING_SNAKE
+    key_lookup_with_load: ClassVar[Union[LetterCasePriority, str]] = LetterCasePriority.SCREAMING_SNAKE
+
+    # How `EnvWizard` fields (variables) should be transformed to JSON keys.
+    key_transform_with_dump: ClassVar[Union[LetterCase, str]] = LetterCase.SNAKE
+
+    # Determines whether we should we skip / omit fields with default values
+    # in the serialization process.
+    skip_defaults: ClassVar[bool] = False
 
     @cached_class_property
     def all_fields(cls) -> FrozenKeys:

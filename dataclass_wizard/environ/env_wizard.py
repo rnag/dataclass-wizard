@@ -1,24 +1,24 @@
 from __future__ import annotations
 
-from typing import TypeVar, Type
+import json
+from typing import Callable, Union, Dict, AnyStr
 
+from .dumpers import asdict
+from ..abstractions import AbstractEnvWizard, E
 from ..bases import AbstractEnvMeta
-from ..enums import LetterCasePriority
-from ..utils.type_conv import as_enum
-from ..utils.type_helper import type_name
-from ..utils.typing_compat import is_classvar, eval_forward_ref_if_needed
 from ..bases_meta import BaseEnvWizardMeta
 from ..class_helper import call_meta_initializer_if_needed, get_meta
+from ..decorators import cached_class_property, _alias
 from ..environ.loaders import EnvLoader
 from ..errors import ParseError
 from ..loaders import get_loader
+from ..models import Extras
+from ..type_def import JSONObject, Encoder
+from ..utils.type_helper import type_name
+from ..utils.typing_compat import is_classvar, eval_forward_ref_if_needed
 
 
-E = TypeVar('E', bound='EnvWizard')
-E = Type[E]
-
-
-class EnvWizard:
+class EnvWizard(AbstractEnvWizard):
 
     __slots__ = ()
 
@@ -37,6 +37,39 @@ class EnvWizard:
             # doesn't run for the `EnvWizard.Meta` class.
             return cls._init_subclass()
 
+    # noinspection PyMethodParameters
+    @cached_class_property
+    def __fields__(cls: E) -> Dict[str, type]:
+        cls_fields = {}
+
+        for field, ann in cls.__annotations__.items():
+            ann = eval_forward_ref_if_needed(ann, cls)
+
+            # skip any variables annotated as `ClassVar`
+            if not is_classvar(ann):
+                cls_fields[field] = ann
+
+        return cls_fields
+
+    @classmethod
+    @_alias(asdict)
+    def to_dict(cls: E) -> JSONObject:
+        """
+        Converts the `EnvWizard` subclass to a Python dictionary object that
+        is JSON serializable.
+        """
+        # alias: asdict(self)
+        ...
+
+    @classmethod
+    def to_json(cls: E, *,
+                encoder: Encoder = json.dumps,
+                **encoder_kwargs) -> AnyStr:
+        """
+        Converts the `EnvWizard` subclass to a JSON `string` representation.
+        """
+        return encoder(asdict(cls), **encoder_kwargs)
+
     def __init_subclass__(cls: E):
         super().__init_subclass__()
         # Calls the Meta initializer when inner :class:`Meta` is sub-classed.
@@ -45,46 +78,23 @@ class EnvWizard:
         meta = get_meta(cls, base_cls=AbstractEnvMeta)
         cls_loader = get_loader(cls, base_cls=EnvLoader)
 
-        get_env = as_enum(meta.key_transform, LetterCasePriority)
+        # The function to case-transform and lookup variables defined in the
+        # environment.
+        get_env: Callable[[str], Union[str, None]] = meta.key_lookup_with_load
 
         # Get type annotations for attributes in the class.
         cls_dict = cls.__dict__
+
+        # noinspection PyArgumentList
+        extras = Extras()
         missing_vars = []
 
-        for field, ann in cls.__annotations__.items():
+        for field, ann in cls.__fields__.items():
 
-            ann = eval_forward_ref_if_needed(ann, cls)
-
-            if is_classvar(ann):
-                continue
-
+            # retrieve value (if it exists) for the environment variable
             value = get_env(field)
 
-            # if value is not None:
-            #     setattr(cls, name, value)
-            #
-            # else:
-            #     if name in cls_dict:
-            #         # the default value to return, if no matching Env Var is found.
-            #         default = cls_dict[name]
-            #         setattr(cls, name, default)
-            #     else:
-            #         type_name = getattr(typ, '__qualname__', typ.__name__)
-            #         # noinspection PyBroadException
-            #         try:
-            #             suggested = typ()
-            #         except Exception:
-            #             suggested = None
-            #
-            #         raise LookupError(f'{cls.__qualname__}: No matching Env Var for field `{name}`\n'
-            #                           f'suggestion: set a default value such as below.\n'
-            #                           f'  {name}: {type_name} = {suggested!r}')
-            #
-
             if value is not None:
-
-                # TODO extras?
-                extras = {}
                 parser = cls_loader.get_parser_for_annotation(ann, cls, extras)
 
                 try:
@@ -101,27 +111,29 @@ class EnvWizard:
                 else:
                     setattr(cls, field, parsed_val)
 
-            else:
-
-                if field in cls_dict:
-                    # the default value to return, if no matching Env Var is found.
-                    default = cls_dict[field]
-                    setattr(cls, field, default)
-                else:
-                    print(ann)
-                    tn = type_name(ann)
-                    # noinspection PyBroadException
-                    try:
-                        suggested = ann()
-                    except Exception:
-                        suggested = None
-                    # TODO
-                    missing_vars.append((field, tn, suggested))
-
-            # print(field, ann)
+            elif field not in cls_dict:
+                tn = type_name(ann)
+                # noinspection PyBroadException
+                try:
+                    suggested = ann()
+                except Exception:
+                    suggested = None
+                # TODO
+                missing_vars.append((field, tn, suggested))
 
         if missing_vars:
             fields = '\n'.join([f'  - {f[0]}' for f in missing_vars])
             resolutions = '\n'.join([f'  {f}: {typ} = {default!r}' for (f, typ, default) in missing_vars])
 
-            raise ValueError(f'Following required fields in class `{cls.__qualname__}` are missing in the Environment:\n{fields}\n{resolutions}')
+            num_fields = len(missing_vars)
+            if num_fields > 1:
+                start = f'There are {len(missing_vars)} required fields'
+            else:
+                start = f'There is {len(missing_vars)} required field'
+
+            msg = f'{start} in class `{cls.__qualname__}` ' \
+                  f'missing in the Environment:\n{fields}\n\n' \
+                  f'Resolution: set a default value such as below.\n' \
+                  f'{resolutions}'
+
+            raise ValueError(msg)

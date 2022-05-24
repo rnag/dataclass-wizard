@@ -1,41 +1,27 @@
 import json
-from collections import defaultdict, namedtuple
-from dataclasses import is_dataclass
-from datetime import datetime, time, date, timedelta
-from decimal import Decimal
-from enum import Enum
+from datetime import datetime, date
 from typing import (
-    Any, Type, Dict, List, Tuple, Iterable, Sequence, Union,
-    NamedTupleMeta, SupportsFloat, AnyStr, Text, Callable
+    Type, Dict, List, Tuple, Iterable, Sequence, Union,
+    AnyStr, Callable
 )
-from uuid import UUID
 
-from ..abstractions import AbstractLoader, AbstractParser, FieldToParser
-from ..bases import BaseLoadHook
+from ..abstractions import AbstractParser, FieldToParser
 from ..class_helper import (
     get_class_name, create_new_class,
     dataclass_to_loader, set_class_loader,
     dataclass_field_to_load_parser, json_field_to_dataclass_field,
-    _CLASS_TO_LOAD_FUNC, dataclass_fields, get_meta, is_subclass_safe,
-)
-from ..constants import _LOAD_HOOKS, SINGLE_ARG_ALIAS, IDENTITY
-from ..decorators import _alias, _single_arg_alias, resolve_alias_func, _identity
+    _CLASS_TO_LOAD_FUNC, dataclass_fields, get_meta, )
+from ..constants import _LOAD_HOOKS
+from ..decorators import _single_arg_alias
 from ..errors import ParseError, MissingFields, UnknownJSONKey, MissingData
 from ..loaders import LoadMixin
 from ..log import LOG
-from ..models import Extras, _PatternedDT
-from ..parsers import *
 from ..type_def import (
-    ExplicitNull, FrozenKeys, DefFactory, NoneType, JSONObject,
-    M, N, T, E, U, DD, LSQ, NT
+    ExplicitNull, FrozenKeys, DefFactory, JSONObject,
+    M, N, T, U, DD, LSQ, NT
 )
-from ..utils.string_conv import to_snake_case
 from ..utils.type_conv import (
-    as_bool, as_str, as_datetime, as_date, as_time, as_int, as_timedelta
-)
-from ..utils.typing_compat import (
-    is_literal, is_typed_dict, get_origin, get_args, is_annotated,
-    eval_forward_ref_if_needed
+    as_datetime, as_date
 )
 
 
@@ -60,12 +46,6 @@ class EnvLoader(LoadMixin):
         cls.register_load_hook(bytearray, cls.load_to_byte_array)
 
     @staticmethod
-    @_alias(to_snake_case)
-    def transform_json_field(string: str) -> str:
-        # alias: to_snake_case
-        ...
-
-    @staticmethod
     def load_to_bytes(
             o: AnyStr, base_type: Type[bytes], encoding='utf-8') -> bytes:
 
@@ -78,30 +58,6 @@ class EnvLoader(LoadMixin):
 
         encoded_string = o.encode(encoding)
         return base_type(encoded_string)
-
-    # @staticmethod
-    # @_alias(as_int)
-    # def load_to_int(o: Union[str, int, bool, None], base_type: Type[N]) -> N:
-    #     # alias: as_int
-    #     ...
-
-    @staticmethod
-    @_single_arg_alias('base_type')
-    def load_to_float(o: Union[SupportsFloat, str], base_type: Type[N]) -> N:
-        # alias: base_type(o)
-        ...
-
-    @staticmethod
-    @_single_arg_alias(as_bool)
-    def load_to_bool(o: Union[str, bool, N], _: Type[bool]) -> bool:
-        # alias: as_bool(o)
-        ...
-
-    @staticmethod
-    @_single_arg_alias('base_type')
-    def load_to_enum(o: Union[AnyStr, N], base_type: Type[E]) -> E:
-        # alias: base_type(o)
-        ...
 
     @staticmethod
     @_single_arg_alias('base_type')

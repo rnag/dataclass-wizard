@@ -16,13 +16,32 @@ from .class_helper import (
 )
 from .decorators import try_with_load
 from .dumpers import get_dumper
-from .enums import LetterCase, DateTimeTo
+from .enums import LetterCase, DateTimeTo, LetterCasePriority
 from .environ.loaders import EnvLoader
 from .errors import ParseError
 from .loaders import get_loader
 from .log import LOG
 from .type_def import E
 from .utils.type_conv import date_to_timestamp, as_enum
+
+
+def _as_enum_safe(cls: type, name: str, base_type: Type[E]) -> Optional[E]:
+    """
+    Attempt to return the value for class attribute :attr:`attr_name` as
+    a :type:`base_type`.
+
+    :raises ParseError: If we are unable to convert the value of the class
+      attribute to an Enum of type `base_type`.
+    """
+    try:
+        return as_enum(getattr(cls, name), base_type)
+
+    except ParseError as e:
+        # We run into a parsing error while loading the enum; Add
+        # additional info on the Exception object before re-raising it
+        e.class_name = get_class_name(cls)
+        e.field_name = name
+        raise
 
 
 class BaseJSONWizardMeta(AbstractMeta):
@@ -109,7 +128,7 @@ class BaseJSONWizardMeta(AbstractMeta):
                         dataclass_to_json_field[field] = json_key
 
         if cls.marshal_date_time_as:
-            enum_val = cls._as_enum_safe('marshal_date_time_as', DateTimeTo)
+            enum_val = _as_enum_safe(cls, 'marshal_date_time_as', DateTimeTo)
 
             if enum_val is DateTimeTo.TIMESTAMP:
                 # Update dump hooks for the `datetime` and `date` types
@@ -126,12 +145,12 @@ class BaseJSONWizardMeta(AbstractMeta):
                 pass
 
         if cls.key_transform_with_load:
-            cls_loader.transform_json_field = cls._as_enum_safe(
-                'key_transform_with_load', LetterCase)
+            cls_loader.transform_json_field = _as_enum_safe(
+                cls, 'key_transform_with_load', LetterCase)
 
         if cls.key_transform_with_dump:
-            cls_dumper.transform_dataclass_field = cls._as_enum_safe(
-                'key_transform_with_dump', LetterCase)
+            cls_dumper.transform_dataclass_field = _as_enum_safe(
+                cls, 'key_transform_with_dump', LetterCase)
 
         # Finally, if needed, save the meta config for the outer class. This
         # will allow us to access this config as part of the JSON load/dump
@@ -143,25 +162,6 @@ class BaseJSONWizardMeta(AbstractMeta):
                 _META[dataclass] &= cls
             else:
                 _META[dataclass] = cls
-
-    @classmethod
-    def _as_enum_safe(cls, name: str, base_type: Type[E]) -> Optional[E]:
-        """
-        Attempt to return the value for class attribute :attr:`attr_name` as
-        a :type:`base_type`.
-
-        :raises ParseError: If we are unable to convert the value of the class
-          attribute to an Enum of type `base_type`.
-        """
-        try:
-            return as_enum(getattr(cls, name), base_type)
-
-        except ParseError as e:
-            # We run into a parsing error while loading the enum; Add
-            # additional info on the Exception object before re-raising it
-            e.class_name = get_class_name(cls)
-            e.field_name = name
-            raise
 
 
 class BaseEnvWizardMeta(AbstractEnvMeta):
@@ -197,7 +197,7 @@ class BaseEnvWizardMeta(AbstractEnvMeta):
             for attr in AbstractEnvMeta.fields_to_merge:
                 setattr(AbstractEnvMeta, attr, getattr(cls, attr, None))
             if cls.env_var_to_field:
-                AbstractEnvMeta.json_key_to_field = cls.env_var_to_field
+                AbstractEnvMeta.env_var_to_field = cls.env_var_to_field
 
             # Create a new class of `Type[W]`, and then pass `create=False` so
             # that we don't create new loader / dumper for the class.
@@ -208,6 +208,7 @@ class BaseEnvWizardMeta(AbstractEnvMeta):
     def bind_to(cls, env_class: Type, create=True):
 
         cls_loader = get_loader(env_class, create=create, base_cls=EnvLoader)
+        cls_dumper = get_dumper(env_class, create=create)
 
         if cls.debug_enabled:
 
@@ -224,6 +225,14 @@ class BaseEnvWizardMeta(AbstractEnvMeta):
             json_field_to_dataclass_field(env_class).update(
                 cls.env_var_to_field
             )
+
+        if cls.key_lookup_with_load:
+            cls.key_lookup_with_load = _as_enum_safe(
+                cls, 'key_lookup_with_load', LetterCasePriority)
+
+        if cls.key_transform_with_dump:
+            cls_dumper.transform_dataclass_field = _as_enum_safe(
+                cls, 'key_transform_with_dump', LetterCase)
 
         # Finally, if needed, save the meta config for the outer class. This
         # will allow us to access this config as part of the JSON load/dump

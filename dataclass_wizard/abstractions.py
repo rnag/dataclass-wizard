@@ -10,18 +10,52 @@ from typing import (
     Text, Sequence, Iterable
 )
 
-from .bases import META
 from .models import Extras
 from .type_def import (
     DefFactory, FrozenKeys, ListOfJSONObject, JSONObject,
-    M, N, T, NT, E, U, DD, LSQ
+    M, N, T, NT, U, DD, LSQ
 )
 
+
+# Create a generic variable that can be 'AbstractEnvWizard', or any subclass.
+E = TypeVar('E', bound='AbstractEnvWizard')
+E = Type[E]
 
 # Create a generic variable that can be 'AbstractJSONWizard', or any subclass.
 W = TypeVar('W', bound='AbstractJSONWizard')
 
 FieldToParser = Dict[str, 'AbstractParser']
+
+
+class AbstractEnvWizard(ABC):
+    """
+    Abstract class that defines the methods a sub-class must implement at a
+    minimum to be considered a "true" Environment Wizard.
+    """
+    __slots__ = ()
+
+    # Extends the `__annotations__` attribute to return only the fields
+    # (variables) of the `EnvWizard` subclass.
+    #
+    # .. NOTE::
+    #    This excludes fields marked as ``ClassVar``, or ones which are
+    #    not type-annotated.
+    __fields__: Dict[str, type]
+
+    @classmethod
+    @abstractmethod
+    def to_dict(cls: E) -> JSONObject:
+        """
+        Converts the `EnvWizard` subclass to a Python dictionary object that
+        is JSON serializable.
+        """
+
+    @classmethod
+    @abstractmethod
+    def to_json(cls: E, indent=None) -> AnyStr:
+        """
+        Converts the `EnvWizard` subclass to a JSON `string` representation.
+        """
 
 
 class AbstractJSONWizard(ABC):
