@@ -631,13 +631,25 @@ def load_func_for_dataclass(
                     # handled by the `setter` methods.
                     e.class_name = cls
                     e.field_name = field_name
+                    e.json_object = o
                     raise
 
         except TypeError:
             # If the object `o` is None, then raise an error with the relevant
-            # info included. Else, just re-raise the error.
+            # info included.
             if o is None:
                 raise MissingData(cls) from None
+
+            # Check if the object `o` is some other type than what we expect -
+            # for example, we could be passed in a `list` type instead.
+            if not isinstance(o, dict):
+                e = TypeError('Incorrect type for field')
+                raise ParseError(
+                    e, o, dict, cls,
+                    desired_type=dict
+                ) from None
+
+            #  Else, just re-raise the error.
             raise
 
         # Now pass the arguments to the constructor method, and return the new
@@ -664,13 +676,18 @@ def load_func_for_dataclass(
           config for the class.
         """
 
+        # Short path: an identical-cased field name exists for the JSON key
+        if json_field in field_to_parser:
+            json_to_dataclass_field[json_field] = json_field
+            return json_field
+
         # Transform JSON field name (typically camel-cased) to the
         # snake-cased variant which is convention in Python.
         transformed_field = cls_loader.transform_json_field(json_field)
 
         try:
             # Do a case-insensitive lookup of the dataclass field, and
-            # cache the mapping so we have it for next time
+            # cache the mapping, so we have it for next time
             field_name = field_to_parser.get_key(transformed_field)
             json_to_dataclass_field[json_field] = field_name
 

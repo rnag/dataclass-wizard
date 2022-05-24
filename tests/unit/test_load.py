@@ -17,9 +17,13 @@ import pytest
 
 from dataclass_wizard import *
 from dataclass_wizard.constants import TAG
-from dataclass_wizard.errors import ParseError, MissingFields, UnknownJSONKey
+from dataclass_wizard.errors import (
+    ParseError, MissingFields, UnknownJSONKey, MissingData
+)
 from dataclass_wizard.models import Extras, _PatternBase
-from dataclass_wizard.parsers import OptionalParser, Parser, IdentityParser, SingleArgParser
+from dataclass_wizard.parsers import (
+    OptionalParser, Parser, IdentityParser, SingleArgParser
+)
 from dataclass_wizard.type_def import NoneType, T
 from .conftest import MyUUIDSubclass
 from ..conftest import *
@@ -115,6 +119,87 @@ def test_fromdict_with_nested_dataclass():
             MyElement(order_index=111, status_code='200'),
             MyElement(order_index=222, status_code=404)
     ]
+
+
+@pytest.mark.skipif(PY36, reason='requires Python 3.7 or higher')
+def test_invalid_types_with_debug_mode_enabled():
+    """
+    Passing invalid types (i.e. that *can't* be coerced into the annotated
+    field types) raises a formatted error when DEBUG mode is enabled.
+    """
+    @dataclass
+    class InnerClass:
+        my_float: float
+        my_list: List[int] = field(default_factory=list)
+
+    @dataclass
+    class MyClass(JSONWizard):
+        class _(JSONWizard.Meta):
+            debug_enabled = True
+
+        my_int: int
+        my_dict: Dict[str, datetime] = field(default_factory=dict)
+        my_inner: Optional[InnerClass] = None
+
+    with pytest.raises(ParseError) as e:
+        _ = MyClass.from_dict({'myInt': '3', 'myDict': 'string'})
+
+    err = e.value
+    assert type(err.base_error) == AttributeError
+    assert "no attribute 'items'" in str(err.base_error)
+    assert err.class_name == MyClass.__qualname__
+    assert err.field_name == 'my_dict'
+    assert (err.ann_type, err.obj_type) == (dict, str)
+
+    with pytest.raises(ParseError) as e:
+        _ = MyClass.from_dict({'myInt': '1', 'myInner': {'myFloat': '1.A'}})
+
+    err = e.value
+    assert type(err.base_error) == ValueError
+    assert "could not convert" in str(err.base_error)
+    assert err.class_name == InnerClass.__qualname__
+    assert err.field_name == 'my_float'
+    assert (err.ann_type, err.obj_type) == (float, str)
+
+    with pytest.raises(ParseError) as e:
+        _ = MyClass.from_dict({
+            'myInt': '1',
+            'myDict': {2: '2021-01-01'},
+            'myInner': {
+                'my-float': '1.23',
+                'myList': [{'key': 'value'}]
+            }
+        })
+
+    err = e.value
+    assert type(err.base_error) == TypeError
+    assert "int()" in str(err.base_error)
+    assert err.class_name == InnerClass.__qualname__
+    assert err.field_name == 'my_list'
+    assert (err.ann_type, err.obj_type) == (int, dict)
+
+
+@pytest.mark.skipif(PY36, reason='requires Python 3.7 or higher')
+def test_from_dict_called_with_incorrect_type():
+    """
+    Calling `from_dict` with a non-`dict` argument should raise a
+    formatted error, i.e. with a :class:`ParseError` object.
+    """
+    @dataclass
+    class MyClass(JSONWizard):
+        my_str: str
+
+    with pytest.raises(ParseError) as e:
+        # noinspection PyTypeChecker
+        _ = MyClass.from_dict(['my_str'])
+
+    err = e.value
+    assert e.value.field_name is None
+    assert e.value.class_name == MyClass.__qualname__
+    assert e.value.obj == ['my_str']
+    assert 'Incorrect type' in str(e.value.base_error)
+    # basically says we want a `dict`, but were passed in a `list`
+    assert (err.ann_type, err.obj_type) == (dict, list)
 
 
 @pytest.mark.skipif(PY36, reason='requires Python 3.7 or higher')
@@ -375,10 +460,59 @@ def test_bool(input, expected):
     assert result.my_bool == expected
 
 
+def test_from_dict_handles_identical_cased_json_keys():
+    """
+    Calling `from_dict` when required JSON keys have the same casing as
+    dataclass field names, even when the field names are not "snake-cased".
+
+    See https://github.com/rnag/dataclass-wizard/issues/54 for more details.
+    """
+
+    @dataclass
+    class ExtendedFetch(JSONSerializable):
+        comments: dict
+        viewMode: str
+        my_str: str
+        MyBool: bool
+
+    j = '{"viewMode": "regular", "comments": {}, "MyBool": "true", "my_str": "Testing"}'
+
+    c = ExtendedFetch.from_json(j)
+
+    assert c.comments == {}
+    assert c.viewMode == 'regular'
+    assert c.my_str == 'Testing'
+    assert c.MyBool
+
+
 def test_from_dict_with_missing_fields():
     """
     Calling `from_dict` when required dataclass field(s) are missing in the
     JSON object.
+    """
+
+    @dataclass
+    class MyClass(JSONSerializable):
+        my_str: str
+        MyBool1: bool
+        my_int: int
+
+    value = 'Testing'
+    d = {'my_str': value, 'myBool': 'true'}
+
+    with pytest.raises(MissingFields) as e:
+        _ = MyClass.from_dict(d)
+
+    assert e.value.fields == ['my_str']
+    assert e.value.missing_fields == ['MyBool1', 'my_int']
+    assert 'key transform' not in e.value.kwargs
+    assert 'resolution' not in e.value.kwargs
+
+
+def test_from_dict_with_missing_fields_with_resolution():
+    """
+    Calling `from_dict` when required dataclass field(s) are missing in the
+    JSON object, with a more user-friendly message.
     """
 
     @dataclass
@@ -395,6 +529,9 @@ def test_from_dict_with_missing_fields():
 
     assert e.value.fields == ['my_str']
     assert e.value.missing_fields == ['MyBool', 'my_int']
+    # optional: these are populated in this case since this can be a somewhat common issue
+    assert e.value.kwargs['key transform'] == 'to_snake_case()'
+    assert 'resolution' in e.value.kwargs
 
 
 def test_from_dict_key_transform_with_json_field():
@@ -742,34 +879,44 @@ def test_time(input, expectation):
 
 
 @pytest.mark.parametrize(
-    'input,expectation',
+    'input,expectation, base_err',
     [
-        ('testing', pytest.raises(ValueError)),
-        ('23:59:59-04:00', pytest.raises(ValueError)),
-        ('32', does_not_raise()),
-        ('32.7', does_not_raise()),
-        ('32m', does_not_raise()),
-        ('2h32m', does_not_raise()),
-        ('4:13', does_not_raise()),
-        ('5hr34m56s', does_not_raise()),
-        ('1.2 minutes', does_not_raise()),
-        (12345, does_not_raise()),
-        (True, pytest.raises(TypeError)),
-        (timedelta(days=1, seconds=2), does_not_raise()),
+        ('testing', pytest.raises(ParseError), ValueError),
+        ('23:59:59-04:00', pytest.raises(ParseError), ValueError),
+        ('32', does_not_raise(), None),
+        ('32.7', does_not_raise(), None),
+        ('32m', does_not_raise(), None),
+        ('2h32m', does_not_raise(), None),
+        ('4:13', does_not_raise(), None),
+        ('5hr34m56s', does_not_raise(), None),
+        ('1.2 minutes', does_not_raise(), None),
+        (12345, does_not_raise(), None),
+        (True, pytest.raises(ParseError), TypeError),
+        (timedelta(days=1, seconds=2), does_not_raise(), None),
     ]
 )
-def test_timedelta(input, expectation):
+def test_timedelta(input, expectation, base_err):
 
     @dataclass
     class MyClass(JSONSerializable):
+
+        class _(JSONSerializable.Meta):
+            debug_enabled = True
+
         my_td: timedelta
 
     d = {'myTD': input}
 
-    with expectation:
+    with expectation as e:
         result = MyClass.from_dict(d)
         log.debug('Parsed object: %r', result)
         log.debug('timedelta string value: %s', result.my_td)
+
+    if e:  # if an error was raised, assert the underlying error type
+        # Because on 3.6, we run into a strange error (shown below)
+        #   AttributeError: 'ExitStack' object has no attribute 'value'
+        if not PY36:
+            assert type(e.value.base_error) == base_err
 
 
 @pytest.mark.parametrize(
@@ -1460,3 +1607,72 @@ def test_parser_with_unsupported_type():
 
     # with pytest.raises(ParseError):
     #     _ = mock_parser('hello world')
+
+
+def test_load_with_inner_model_when_data_is_null():
+    """
+    Test loading JSON data to an inner model dataclass, when the
+    data being de-serialized is a null, and the annotated type for
+    the field is not in the syntax `T | None`.
+    """
+
+    @dataclass
+    class Inner:
+        my_bool: bool
+        my_str: str
+
+    @dataclass
+    class Outer(JSONWizard):
+        inner: Inner
+
+    json_dict = {'inner': None}
+
+    with pytest.raises(MissingData) as exc_info:
+        _ = Outer.from_dict(json_dict)
+
+    e = exc_info.value
+    assert e.class_name == Outer.__qualname__
+    assert e.nested_class_name == Inner.__qualname__
+    assert e.field_name == 'inner'
+    # the error should mention that we want an Inner, but get a None
+    assert e.ann_type is Inner
+    assert type(None) is e.obj_type
+
+
+def test_load_with_inner_model_when_data_is_wrong_type():
+    """
+    Test loading JSON data to an inner model dataclass, when the
+    data being de-serialized is a wrong type (list).
+    """
+
+    @dataclass
+    class Inner:
+        my_bool: bool
+        my_str: str
+
+    @dataclass
+    class Outer(JSONWizard):
+        my_str: str
+        inner: Inner
+
+    json_dict = {
+        'myStr': 'testing',
+        'inner': [
+            {
+                'myStr': '123',
+                'myBool': 'false',
+                'my_val': '2',
+            }
+        ]
+    }
+
+    with pytest.raises(ParseError) as exc_info:
+        _ = Outer.from_dict(json_dict)
+
+    e = exc_info.value
+    assert e.class_name == Outer.__qualname__
+    assert e.field_name == 'inner'
+    assert e.base_error.__class__ is TypeError
+    # the error should mention that we want a dict, but get a list
+    assert e.ann_type == dict
+    assert e.obj_type == list

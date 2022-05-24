@@ -1,5 +1,5 @@
 from functools import wraps
-from typing import Any, Type, Callable, Union, TypeVar, cast
+from typing import Any, Dict, Type, Callable, Union, TypeVar, cast
 
 from .constants import SINGLE_ARG_ALIAS, IDENTITY
 from .errors import ParseError
@@ -34,24 +34,116 @@ class cached_class_property(object):
         return attr
 
 
-def try_with_load(f):
+class cached_property(object):
+    """
+    Descriptor decorator implementing an instance-level, read-only property,
+    which caches the attribute on-demand on the first use.
+    """
+    def __init__(self, func):
+        self.__func__ = func
+        self.__attr_name__ = func.__name__
 
-    @wraps(f)
-    def new_func(o: Any, ann_type: Type, *args, **kwargs):
+    def __get__(self, instance, cls=None):
+        """This method is only called the first time, to cache the value."""
+        # Build the attribute.
+        attr = self.__func__(instance)
+
+        # Cache the value; hide ourselves.
+        setattr(instance, self.__attr_name__, attr)
+
+        return attr
+
+
+def try_with_load(load_fn: Callable):
+    """Try to call a load hook, catch and re-raise errors as a ParseError.
+
+    Note: this function will be recursively called on all load hooks for a
+    dataclass, when `debug_mode` is enabled for the dataclass.
+
+    :param load_fn: The load hook, can be a regular callable, a single-arg
+      alias, or an identity function.
+    :return: The decorated load hook.
+    """
+    try:  # Check if it's a single-argument function, ex. float(...)
+        single_arg_alias_func = getattr(load_fn, SINGLE_ARG_ALIAS)
+
+    except AttributeError:
+        # Check if it's an identity function, ex. lambda o: o
+        if hasattr(load_fn, IDENTITY):
+            # These are basically do-nothing callables, so we don't need to
+            # decorate them.
+            return load_fn
+
+        @wraps(load_fn)
+        def new_func(o: Any, base_type: Type, *args, **kwargs):
+            try:
+                return load_fn(o, base_type, *args, **kwargs)
+
+            except ParseError as e:
+                # This means that a nested load hook raised an exception.
+                # Therefore, to help with debugging we should print the name
+                # of the outer load hook and the original object.
+                e.kwargs['load_hook'] = load_fn.__name__
+                e.obj = o
+                # Re-raise the original error
+                raise
+
+            except Exception as e:
+                raise ParseError(e, o, base_type, load_hook=load_fn.__name__)
+
+        return new_func
+
+    else:
+        # fix: avoid re-decoration when DEBUG mode is enabled multiple
+        # times (i.e. on more than one class)
+        if hasattr(load_fn, '__decorated__'):
+            return load_fn
+
+        # If it's a string value, we don't know the name of the load hook
+        # function (method) beforehand.
+        if isinstance(single_arg_alias_func, str):
+            alias = single_arg_alias_func
+            f_locals = {}
+        else:
+            alias = single_arg_alias_func.__name__
+            f_locals = {alias: single_arg_alias_func}
+
+        wrapped_fn = f'{try_with_load_with_single_arg.__name__}' \
+                     f'(original_fn, {alias}, base_type)'
+
+        setattr(load_fn, '__decorated__', True)
+        setattr(load_fn, SINGLE_ARG_ALIAS, wrapped_fn)
+        setattr(load_fn, 'f_locals', f_locals)
+
+        return load_fn
+
+
+def try_with_load_with_single_arg(original_fn: Callable,
+                                  single_arg_load_fn: Callable,
+                                  base_type: Type):
+    """Similar to :func:`try_with_load`, but for single-arg alias functions.
+
+    :param original_fn: The original load hook (function)
+    :param single_arg_load_fn: The single-argument load hook
+    :param base_type: The annotated (or desired) type
+    :return: The decorated load hook.
+    """
+    @wraps(single_arg_load_fn)
+    def new_func(o: Any):
         try:
-            return f(o, ann_type, *args, **kwargs)
+            return single_arg_load_fn(o)
 
         except ParseError as e:
             # This means that a nested load hook raised an exception.
             # Therefore, to help with debugging we should print the name
             # of the outer load hook and the original object.
-            e.kwargs['load_hook'] = f.__name__
+            e.kwargs['load_hook'] = original_fn.__name__
             e.obj = o
             # Re-raise the original error
             raise
 
         except Exception as e:
-            raise ParseError(e, o, ann_type, load_hook=f.__name__)
+            raise ParseError(e, o, base_type, load_hook=original_fn.__name__)
 
     return new_func
 
@@ -132,7 +224,9 @@ def _identity(_f: Callable = None, id: Union[object, str] = None):
     return new_func(_f) if _f else new_func
 
 
-def resolve_alias_func(f: Callable, _locals=None, raise_=False) -> Callable:
+def resolve_alias_func(f: Callable,
+                       _locals: Dict = None,
+                       raise_=False) -> Callable:
     """
     Resolve the underlying single-arg alias function for `f`, using the
     provided function locals (which will be a dict). If `f` does not have an
@@ -152,6 +246,16 @@ def resolve_alias_func(f: Callable, _locals=None, raise_=False) -> Callable:
 
     else:
         if isinstance(single_arg_alias_func, str) and _locals is not None:
-            return _locals[single_arg_alias_func]
+            try:
+                return _locals[single_arg_alias_func]
+            except KeyError:
+                # This is only the case when debug mode is enabled, so the
+                # string will be like 'try_with_load_with_single_arg(...)'
+                _locals['original_fn'] = f
+                f_locals = getattr(f, 'f_locals', None)
+                if f_locals:
+                    _locals.update(f_locals)
+
+                return eval(single_arg_alias_func, globals(), _locals)
 
         return single_arg_alias_func

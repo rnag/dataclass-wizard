@@ -203,7 +203,6 @@ def test_json_key_to_field_when_add_is_a_falsy_value(mock_log):
     class MyClass(JSONWizard):
 
         class Meta(JSONWizard.Meta):
-            debug_enabled = True
             json_key_to_field = {
                 '__all__': False,
                 'my_json_str': 'myCustomStr',
@@ -213,7 +212,8 @@ def test_json_key_to_field_when_add_is_a_falsy_value(mock_log):
 
         myCustomStr: str
 
-    mock_log.info.assert_called_once_with('DEBUG Mode is enabled')
+    # note: this is only expected to run at most once
+    # mock_log.info.assert_called_once_with('DEBUG Mode is enabled')
 
     string = """
     {
@@ -257,8 +257,6 @@ def test_meta_config_is_not_implicitly_shared_between_dataclasses(mock_log):
         list_of_int: List[int] = field(default_factory=list)
         is_active: bool = False
         my_dt: Optional[datetime] = None
-
-    mock_log.info.assert_called_once_with('DEBUG Mode is enabled')
 
     string = """
     {"My_Str": "hello world"}

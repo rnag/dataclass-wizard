@@ -103,7 +103,6 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
     # When merging two Meta configs for a class, these are the only
     # attributes which will *not* be merged.
     __special_attrs__ = frozenset({
-        'debug_enabled',
         'recursive',
         'json_key_to_field',
         'tag',
@@ -200,11 +199,13 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
     # the :func:`dataclasses.field`) in the serialization process.
     skip_defaults: ClassVar[bool] = False
 
+    # noinspection PyMethodParameters
     @cached_class_property
     def all_fields(cls) -> FrozenKeys:
         """Return a list of all class attributes"""
         return frozenset(AbstractMeta.__annotations__)
 
+    # noinspection PyMethodParameters
     @cached_class_property
     def fields_to_merge(cls) -> FrozenKeys:
         """Return a list of class attributes, minus `__special_attrs__`"""
@@ -267,10 +268,12 @@ class AbstractEnvMeta:
 
     # The letter casing priority to use when looking up Env Var Names.
     #
-    # The default is 'SCREAMING_SNAKE' case.
+    # The default is `SCREAMING_SNAKE_CASE`.
     key_lookup_with_load: ClassVar[Union[LetterCasePriority, str]] = LetterCasePriority.SCREAMING_SNAKE
 
     # How `EnvWizard` fields (variables) should be transformed to JSON keys.
+    #
+    # The default is 'snake_case'.
     key_transform_with_dump: ClassVar[Union[LetterCase, str]] = LetterCase.SNAKE
 
     # Determines whether we should we skip / omit fields with default values

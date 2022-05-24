@@ -7,6 +7,9 @@ Full documentation is available at `Read The Docs`_. (`Installation`_)
 .. image:: https://img.shields.io/pypi/v/dataclass-wizard.svg
         :target: https://pypi.org/project/dataclass-wizard
 
+.. image:: https://img.shields.io/conda/vn/conda-forge/dataclass-wizard.svg
+        :target: https://anaconda.org/conda-forge/dataclass-wizard
+
 .. image:: https://img.shields.io/pypi/pyversions/dataclass-wizard.svg
         :target: https://pypi.org/project/dataclass-wizard
 
@@ -77,20 +80,38 @@ The Dataclass Wizard library is available `on PyPI`_, and can be installed with 
 
     $ pip install dataclass-wizard
 
+Alternatively, this library is available `on conda`_ under the `conda-forge`_ channel:
+
+.. code-block:: shell
+
+    $ conda install dataclass-wizard -c conda-forge
+
 The ``dataclass-wizard`` library officially supports **Python 3.6** or higher.
 
+.. _on conda: https://anaconda.org/conda-forge/dataclass-wizard
+.. _conda-forge: https://conda-forge.org/
 
 Features
 --------
 
 Here are the supported features that ``dataclass-wizard`` currently provides:
 
--  *JSON (de)serialization*: marshal dataclasses to/from JSON and Python
+-  *JSON/YAML (de)serialization*: marshal dataclasses to/from JSON, YAML, and Python
    ``dict`` objects.
 -  *Field properties*: support for using properties with default
    values in dataclass instances.
 -  *JSON to Dataclass generation*: construct a dataclass schema with a JSON file
    or string input.
+
+
+Wizard Mixins
+-------------
+
+In addition to the ``JSONWizard``, here are a few extra Mixin_ classes that might prove quite convenient to use.
+
+* `JSONListWizard`_ -- Extends ``JSONWizard`` to return `Container`_ -- instead of *list* -- objects where possible.
+* `JSONFileWizard`_ -- Makes it easier to convert dataclass instances from/to JSON files on a local drive.
+* `YAMLWizard`_ -- Provides support to convert dataclass instances to/from YAML, using the default ``PyYAML`` parser.
 
 
 Supported Types
@@ -522,6 +543,11 @@ This also results in more helpful error messages during the JSON load
 i.e. they don't match the annotation for the field. This can be particularly
 useful for debugging purposes.
 
+.. note::
+  There is a minor performance impact when DEBUG mode is enabled;
+  for that reason, I would personally advise against enabling
+  this in a *production* environment.
+
 Handle Unknown JSON Keys
 ########################
 
@@ -881,6 +907,10 @@ This package was created with Cookiecutter_ and the `rnag/cookiecutter-pypackage
 .. _`rnag/cookiecutter-pypackage`: https://github.com/rnag/cookiecutter-pypackage
 .. _`Contributing`: https://dataclass-wizard.readthedocs.io/en/latest/contributing.html
 .. _`open an issue`: https://github.com/rnag/dataclass-wizard/issues
+.. _`JSONListWizard`: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/wizard_mixins.html#jsonlistwizard
+.. _`JSONFileWizard`: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/wizard_mixins.html#jsonfilewizard
+.. _`YAMLWizard`: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/wizard_mixins.html#yamlwizard
+.. _`Container`: https://dataclass-wizard.readthedocs.io/en/latest/dataclass_wizard.html#dataclass_wizard.Container
 .. _`Supported Types`: https://dataclass-wizard.readthedocs.io/en/latest/overview.html#supported-types
 .. _`Mixin`: https://stackoverflow.com/a/547714/10237506
 .. _`Meta`: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/meta.html

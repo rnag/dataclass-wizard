@@ -2,6 +2,64 @@
 History
 =======
 
+0.22.1 (2022-05-11)
+-------------------
+
+**Features and Improvements**
+
+* Update :class:`MissingFields` to provide a more user-friendly error message,
+  in cases where a missing dataclass field is not snake-cased, but could - with
+  the right *key transform* - map to a key in the JSON object. For example, a JSON key of ``myField`` and a field
+  named ``MyField``.
+
+**Bugfixes**
+
+* Fixed a bug in the load (or de-serialization) process with ``from_dict``, where a :class:`MissingFields` was raised
+  in cases where a dataclass field is not snake-cased, but is otherwise identical to a key in the JSON object.
+  For example, a JSON key and field |both named viewMode|_. The JSON data in such cases should now be correctly
+  de-serialized to a dataclass instance as expected.
+
+.. _both named viewMode: https://github.com/rnag/dataclass-wizard/issues/54
+.. |both named viewMode| replace:: both named ``viewMode``
+
+0.22.0 (2022-02-02)
+-------------------
+
+**Features and Improvements**
+
+* Ensure that the :attr:`debug_enabled` flag now applies recursively to all
+  nested dataclasses, which is more helpful for debugging purposes.
+
+* Add new attribute :attr:`json_object` -- which contains the original JSON
+  object -- to :class:`ParseError` objects, and include it in the object representation.
+
+**Bugfixes**
+
+* Fixed an issue with the :attr:`debug_enabled` flag enabled, where some load
+  hooks were not properly decorated when *debug* mode was enabled; errors were not
+  properly formatted in these cases. To elaborate, this only affected load hooks
+  decorated with a ``@_single_arg_alias``. In particular, this affected the
+  load hooks for a few annotated types, such as ``float`` and ``enum``.
+
+0.21.0 (2022-01-23)
+-------------------
+
+**Features and Improvements**
+
+* Adds few extra Wizard Mixin classes that might prove incredibly convenient to use.
+
+    - :class:`JSONListWizard` - Extends :class:`JSONWizard` to return *Container* -- instead of *list* -- objects where possible.
+    - :class:`JSONFileWizard` - Makes it easier to convert dataclass instances from/to JSON files on a local drive.
+    - :class:`YAMLWizard` - Provides support to convert dataclass instances to/from YAML, using the default PyYAML parser.
+
+* Add a new :class:`Container` model class, a *list* sub-type which acts as a convenience wrapper around a collection of dataclass instances.
+
+* The ``dataclass-wizard`` library now supports parsing of YAML data. It adds the `PyYAML`_ as an optional dependency, which is loaded when it's used for the initial time. This extra dependency can be installed via::
+
+      $ pip install dataclass-wizard[yaml]
+
+.. _PyYAML: https://pypi.org/project/PyYAML/
+
 0.20.3 (2021-11-30)
 -------------------
 

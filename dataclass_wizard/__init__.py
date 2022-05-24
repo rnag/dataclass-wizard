@@ -76,6 +76,10 @@ __all__ = [
     'LoadMixin',
     'DumpMixin',
     'property_wizard',
+    # Wizard Mixins
+    'JSONListWizard',
+    'JSONFileWizard',
+    'YAMLWizard',
     # Helper serializer functions + meta config
     'fromlist',
     'fromdict',
@@ -85,6 +89,7 @@ __all__ = [
     # Models
     'json_field',
     'json_key',
+    'Container',
     'Pattern',
     'DatePattern',
     'TimePattern',
@@ -98,10 +103,11 @@ from .constants import PY36
 from .environ.env_wizard import EnvWizard
 from .dumpers import DumpMixin, setup_default_dumper, asdict
 from .loaders import LoadMixin, setup_default_loader, fromlist, fromdict
-from .models import (json_field, json_key,
+from .models import (json_field, json_key, Container,
                      Pattern, DatePattern, TimePattern, DateTimePattern)
 from .property_wizard import property_wizard
 from .serial_json import JSONSerializable
+from .wizard_mixins import JSONListWizard, JSONFileWizard, YAMLWizard
 
 
 # Set up logging to ``/dev/null`` like a library is supposed to.
@@ -121,5 +127,7 @@ setup_default_dumper()
 
 if PY36:    # pragma: no cover
     # Python 3.6 requires a backport for `datetime.fromisoformat()`
+    # noinspection PyPackageRequirements
+    # noinspection PyUnresolvedReferences
     from backports.datetime_fromisoformat import MonkeyPatch
     MonkeyPatch.patch_fromisoformat()

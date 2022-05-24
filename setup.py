@@ -73,7 +73,8 @@ setup(
     test_suite='tests',
     tests_require=test_requirements,
     extras_require={
-        'timedelta': ['pytimeparse>=1.1.7']
+        'timedelta': ['pytimeparse>=1.1.7'],
+        'yaml': ['PyYAML>=5.3']
     },
     zip_safe=False
 )

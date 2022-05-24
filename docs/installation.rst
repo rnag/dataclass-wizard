@@ -19,9 +19,16 @@ This is the preferred method to install Dataclass Wizard, as it will always inst
 If you don't have `pip`_ installed, this `Python installation guide`_ can guide
 you through the process.
 
+Dataclass Wizard is also available on `conda`_ under the `conda-forge`_ channel:
+
+.. code-block:: console
+
+    $ conda install dataclass-wizard -c conda-forge
+
 .. _pip: https://pip.pypa.io
 .. _Python installation guide: http://docs.python-guide.org/en/latest/starting/installation/
-
+.. _conda: https://www.anaconda.com/
+.. _conda-forge: https://conda-forge.org/
 
 From sources
 ------------

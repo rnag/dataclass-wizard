@@ -5,6 +5,8 @@ from typing import (Any, Type, Dict, Tuple, ClassVar,
                     Optional, Union, Iterable)
 
 from .utils.type_helper import type_name
+from .utils.string_conv import normalize
+
 
 # added as we can't import from `type_def`, as we run into a circular import.
 JSONObject = Dict[str, Any]
@@ -41,6 +43,9 @@ class ParseError(JSONWizardError):
     def __init__(self, base_err: Exception,
                  obj: Any,
                  ann_type: Union[Type, Iterable],
+                 _default_class: Optional[type] = None,
+                 _field_name: Optional[str] = None,
+                 _json_object: Any = None,
                  **kwargs):
 
         super().__init__()
@@ -50,12 +55,15 @@ class ParseError(JSONWizardError):
         self.ann_type = ann_type
         self.base_error = base_err
         self.kwargs = kwargs
-        self._class_name: Optional[str] = None
-        self._field_name: Optional[str] = None
+        self._class_name = None
+        self._default_class_name = type_name(_default_class) \
+            if _default_class else None
+        self._field_name = _field_name
+        self._json_object = _json_object
 
     @property
     def class_name(self) -> Optional[str]:
-        return self._class_name
+        return self._class_name or self._default_class_name
 
     @class_name.setter
     def class_name(self, cls: Optional[Type]):
@@ -72,12 +80,24 @@ class ParseError(JSONWizardError):
             self._field_name = name
 
     @property
+    def json_object(self):
+        return self._json_object
+
+    @json_object.setter
+    def json_object(self, json_obj):
+        if self._json_object is None:
+            self._json_object = json_obj
+
+    @property
     def message(self) -> str:
         msg = self._TEMPLATE.format(
             cls=self.class_name, field=self.field_name,
             e=self.base_error, o=self.obj,
             ann_type=type_name(self.ann_type),
             obj_type=type_name(self.obj_type))
+
+        if self.json_object:
+            self.kwargs['json_object'] = json.dumps(self.json_object)
 
         if self.kwargs:
             sep = '\n  '
@@ -115,6 +135,22 @@ class MissingFields(JSONWizardError):
                                if f.name not in self.fields
                                and f.default is MISSING
                                and f.default_factory is MISSING]
+
+        # check if any field names match, and where the key transform could be the cause
+        # see https://github.com/rnag/dataclass-wizard/issues/54 for more info
+
+        normalized_json_keys = [normalize(key) for key in obj]
+        if next((f for f in self.missing_fields if normalize(f) in normalized_json_keys), None):
+            from .enums import LetterCase
+            from .loaders import get_loader
+
+            key_transform = get_loader(cls).transform_json_field
+            if isinstance(key_transform, LetterCase):
+                key_transform = key_transform.value.f
+
+            kwargs['key transform'] = f'{key_transform.__name__}()'
+            kwargs['resolution'] = 'For more details, please see https://github.com/rnag/dataclass-wizard/issues/54'
+
         self.base_error = base_err
         self.kwargs = kwargs
         self.class_name: str = type_name(cls)
@@ -130,7 +166,7 @@ class MissingFields(JSONWizardError):
 
         if self.kwargs:
             sep = '\n  '
-            parts = sep.join(f'{k}: {v!r}' for k, v in self.kwargs.items())
+            parts = sep.join(f'{k}: {v}' for k, v in self.kwargs.items())
             msg = f'{msg}{sep}{parts}'
 
         return msg
@@ -188,18 +224,18 @@ class MissingData(ParseError):
     _TEMPLATE = ('Failure loading class `{cls}`. '
                  'Missing value for field (expected a dict, got None)\n'
                  '  dataclass field: {field!r}\n'
-                 '  resolution: annotate the field as an `Optional[{cls}]`')
+                 '  resolution: annotate the field as '
+                 '`Optional[{nested_cls}]` or `{nested_cls} | None`')
 
-    def __init__(self, cls: Type, **kwargs):
-
-        super().__init__(self, None, cls)
-
-        self.class_name: str = type_name(cls)
+    def __init__(self, nested_cls: Type, **kwargs):
+        super().__init__(self, None, nested_cls, **kwargs)
+        self.nested_class_name: str = type_name(nested_cls)
 
     @property
     def message(self) -> str:
         msg = self._TEMPLATE.format(
             cls=self.class_name,
+            nested_cls=self.nested_class_name,
             json_string=json.dumps(self.obj),
             field=self.field_name,
             o=self.obj,

@@ -1,6 +1,8 @@
 """
 Contains implementations for Abstract Base Classes
 """
+import json
+
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, InitVar
 from datetime import datetime, time, date, timedelta
@@ -12,7 +14,7 @@ from typing import (
 
 from .models import Extras
 from .type_def import (
-    DefFactory, FrozenKeys, ListOfJSONObject, JSONObject,
+    DefFactory, FrozenKeys, ListOfJSONObject, JSONObject, Encoder,
     M, N, T, NT, U, DD, LSQ
 )
 
@@ -100,14 +102,21 @@ class AbstractJSONWizard(ABC):
         """
 
     @abstractmethod
-    def to_json(self: W, indent=None) -> AnyStr:
+    def to_json(self: W, *,
+                encoder: Encoder = json.dumps,
+                indent=None,
+                **encoder_kwargs) -> AnyStr:
         """
         Converts the dataclass instance to a JSON `string` representation.
         """
 
     @classmethod
     @abstractmethod
-    def list_to_json(cls: Type[W], instances: List[W], indent=None) -> AnyStr:
+    def list_to_json(cls: Type[W],
+                     instances: List[W],
+                     encoder: Encoder = json.dumps,
+                     indent=None,
+                     **encoder_kwargs) -> AnyStr:
         """
         Converts a ``list`` of dataclass instances to a JSON `string`
         representation.

@@ -15,7 +15,9 @@ __all__ = [
     'ListOfJSONObject',
     'JSONValue',
     'Encoder',
+    'FileEncoder',
     'Decoder',
+    'FileDecoder',
     'NUMBERS',
     'T',
     'E',
@@ -35,8 +37,8 @@ from collections import deque
 from datetime import date, time, datetime
 from enum import Enum
 from typing import (
-    Type, TypeVar, Sequence, Mapping,
-    List, DefaultDict, FrozenSet, NamedTuple, Callable, AnyStr, Dict, Any, Union
+    Any, Type, TypeVar, Sequence, Mapping, List, Dict, DefaultDict, FrozenSet,
+    Union, NamedTuple, Callable, AnyStr, TextIO, BinaryIO
 )
 from uuid import UUID
 
@@ -196,6 +198,18 @@ class Encoder(PyProtocol):
         ...
 
 
+class FileEncoder(PyProtocol):
+    """
+    Represents an encoder for Python object -> JSON file, e.g. analogous to
+    `json.dump`
+    """
+
+    def __call__(self, obj: Union[JSONObject, JSONList],
+                 file: Union[TextIO, BinaryIO],
+                 **kwargs) -> AnyStr:
+        ...
+
+
 class Decoder(PyProtocol):
     """
     Represents a decoder for JSON -> Python object, e.g. analogous to
@@ -203,5 +217,15 @@ class Decoder(PyProtocol):
     """
 
     def __call__(self, s: AnyStr,
+                 **kwargs) -> Union[JSONObject, ListOfJSONObject]:
+        ...
+
+
+class FileDecoder(PyProtocol):
+    """
+    Represents a decoder for JSON file -> Python object, e.g. analogous to
+    `json.load`
+    """
+    def __call__(self, file: Union[TextIO, BinaryIO],
                  **kwargs) -> Union[JSONObject, ListOfJSONObject]:
         ...

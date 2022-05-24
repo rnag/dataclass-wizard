@@ -202,6 +202,7 @@ def get_dumper(cls=None, create=True) -> Type[DumpMixin]:
 def asdict(obj: T,
            *, cls=None, dict_factory=dict,
            exclude: List[str] = None, **kwargs) -> JSONObject:
+    # noinspection PyUnresolvedReferences
     """Return the fields of a dataclass instance as a new dictionary mapping
     field names to field values.
 
@@ -233,7 +234,6 @@ def asdict(obj: T,
     # if not _is_dataclass_instance(obj):
     #     raise TypeError("asdict() should be called on dataclass instances")
 
-    # -- The following lines are added, and are not present in original implementation. --
     cls = cls or type(obj)
 
     try:
@@ -242,7 +242,6 @@ def asdict(obj: T,
         dump = dump_func_for_dataclass(cls)
 
     return dump(obj, dict_factory, exclude, **kwargs)
-    # -- END --
 
 
 def dump_func_for_dataclass(cls: Type[T],
