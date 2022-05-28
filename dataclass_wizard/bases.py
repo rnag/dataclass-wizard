@@ -270,11 +270,12 @@ class AbstractEnvMeta:
     # directory), until it locates the given file.
     env_file: ClassVar[Union[bool, FileType]] = None
 
-    # A customized mapping of environment variables to dataclass fields.
+    # A customized mapping of field in the `EnvWizard` subclass to its
+    # corresponding environment variable to search for.
     #
     # Note: this is in addition to the implicit field transformations, like
     #   "myStr" -> "my_str"
-    env_var_to_field: ClassVar[Dict[str, str]] = None
+    field_to_env_var: ClassVar[Dict[str, str]] = None
 
     # The letter casing priority to use when looking up Env Var Names.
     #

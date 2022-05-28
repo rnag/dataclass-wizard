@@ -2,10 +2,12 @@ import json
 from typing import Callable, Union, Dict, AnyStr
 
 from .dumpers import asdict
+from .lookups import lookup_exact
 from ..abstractions import AbstractEnvWizard, E
 from ..bases import AbstractEnvMeta
 from ..bases_meta import BaseEnvWizardMeta
-from ..class_helper import call_meta_initializer_if_needed, get_meta
+from ..class_helper import (call_meta_initializer_if_needed, get_meta,
+                            field_to_env_var)
 from ..decorators import cached_class_property, _alias
 from ..environ.loaders import EnvLoader
 from ..errors import ParseError
@@ -76,6 +78,11 @@ class EnvWizard(AbstractEnvWizard):
         meta = get_meta(cls, base_cls=AbstractEnvMeta)
         cls_loader = get_loader(cls, base_cls=EnvLoader)
 
+        # A cached mapping of each key in a JSON or dictionary object to the
+        # resolved dataclass field name; useful so we don't need to do a case
+        # transformation (via regex) each time.
+        field_to_var = field_to_env_var(cls)
+
         # The function to case-transform and lookup variables defined in the
         # environment.
         get_env: Callable[[str], Union[str, None]] = meta.key_lookup_with_load
@@ -90,7 +97,11 @@ class EnvWizard(AbstractEnvWizard):
         for field, ann in cls.__fields__.items():
 
             # retrieve value (if it exists) for the environment variable
-            value = get_env(field)
+            if field in field_to_var:
+                env_var = field_to_var[field]
+                value = lookup_exact(env_var)
+            else:
+                value = get_env(field)
 
             if value is not None:
                 parser = cls_loader.get_parser_for_annotation(ann, cls, extras)

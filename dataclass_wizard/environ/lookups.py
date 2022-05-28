@@ -51,6 +51,21 @@ def try_cleaned(key: str) -> Optional[str]:
     return None
 
 
+def lookup_exact(var: str):
+    """
+    Lookup with *exact* letter casing, and return `None` if not found
+    in the environment.
+
+    :param var: The variable name to lookup in the environment.
+    :return: The value of the matched environment variable, if one is found in
+      the environment.
+    """
+    if var in Env.var_names:
+        return environ[var]
+
+    return None
+
+
 def with_screaming_snake_case(field_name: str) -> Optional[str]:
     """
     Lookup with `SCREAMING_SNAKE_CASE` letter casing first - this is the

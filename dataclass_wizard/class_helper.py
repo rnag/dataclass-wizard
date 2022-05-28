@@ -47,6 +47,9 @@ _JSON_FIELD_TO_DATACLASS_FIELD: Dict[
 # A cached mapping, per dataclass, of instance field name to JSON field
 _DATACLASS_FIELD_TO_JSON_FIELD: Dict[Type, Dict[str, str]] = defaultdict(dict)
 
+# A cached mapping, per `EnvWizard` subclass, of field name to env variable
+_FIELD_TO_ENV_VAR: Dict[Type, Dict[str, str]] = defaultdict(dict)
+
 # A mapping of dataclass name to its Meta initializer (defined in
 # :class:`bases.BaseJSONWizardMeta`), which is only set when the
 # :class:`JSONSerializable.Meta` is sub-classed.
@@ -106,6 +109,13 @@ def dataclass_field_to_json_field(cls):
     Returns a mapping of dataclass field to JSON field.
     """
     return _DATACLASS_FIELD_TO_JSON_FIELD[cls]
+
+
+def field_to_env_var(cls):
+    """
+    Returns a mapping of field in the `EnvWizard` subclass to env variable.
+    """
+    return _FIELD_TO_ENV_VAR[cls]
 
 
 def dataclass_field_to_load_parser(

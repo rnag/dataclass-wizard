@@ -12,7 +12,8 @@ from .bases import AbstractMeta, M, AbstractEnvMeta
 from .class_helper import (
     _META_INITIALIZER, _META,
     get_outer_class_name, get_class_name, create_new_class,
-    json_field_to_dataclass_field, dataclass_field_to_json_field
+    json_field_to_dataclass_field, dataclass_field_to_json_field,
+    field_to_env_var,
 )
 from .decorators import try_with_load
 from .dumpers import get_dumper
@@ -204,8 +205,8 @@ class BaseEnvWizardMeta(AbstractEnvMeta):
             # Copy over global defaults to the :class:`AbstractMeta`
             for attr in AbstractEnvMeta.fields_to_merge:
                 setattr(AbstractEnvMeta, attr, getattr(cls, attr, None))
-            if cls.env_var_to_field:
-                AbstractEnvMeta.env_var_to_field = cls.env_var_to_field
+            if cls.field_to_env_var:
+                AbstractEnvMeta.field_to_env_var = cls.field_to_env_var
 
             # Create a new class of `Type[W]`, and then pass `create=False` so
             # that we don't create new loader / dumper for the class.
@@ -228,10 +229,9 @@ class BaseEnvWizardMeta(AbstractEnvMeta):
             for typ in load_hooks:
                 load_hooks[typ] = try_with_load(load_hooks[typ])
 
-        if cls.env_var_to_field:
-
-            json_field_to_dataclass_field(env_class).update(
-                cls.env_var_to_field
+        if cls.field_to_env_var:
+            field_to_env_var(env_class).update(
+                cls.field_to_env_var
             )
 
         if cls.key_lookup_with_load:
