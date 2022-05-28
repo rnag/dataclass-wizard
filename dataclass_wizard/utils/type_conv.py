@@ -2,6 +2,7 @@ __all__ = ['as_bool',
            'as_int',
            'as_str',
            'as_list',
+           'as_dict',
            'as_enum',
            'as_datetime',
            'as_date',
@@ -12,7 +13,7 @@ __all__ = ['as_bool',
 import json
 from datetime import datetime, time, date, timedelta
 from numbers import Number
-from typing import Union, List, Type, AnyStr, Optional
+from typing import Union, List, Type, AnyStr, Optional, Iterable
 
 from ..errors import ParseError
 from ..lazy_imports import pytimeparse
@@ -106,23 +107,34 @@ def as_str(o: Union[str, None], base_type=str, raise_=True):
         return base_type()
 
 
-def as_list(o: Union[str, List[str]], sep=','):
+def as_list(o: Union[str, Iterable], sep=','):
     """
-    Return `o` if already a list. If `o` is None or an empty string,
-    return an empty list. Otherwise, split the string on `sep` and
+    Return `o` if already a list. If `o` is a string, split it on `sep` and
     return the list result.
 
     """
-    o = o.lstrip()
-
-    if not o:
-        return []
-
     if isinstance(o, str):
         if o.lstrip().startswith('['):
             return json.loads(o)
         else:
             return [e.strip() for e in o.split(sep)]
+
+    return o
+
+
+def as_dict(o: Union[str, Iterable], kv_sep='=', sep=','):
+    """
+    Return `o` if already a dict. If `o` is a string, split it on `sep` and
+    then split each result by `kv_sep`, and return the dict result.
+
+    """
+    if isinstance(o, str):
+        if o.lstrip().startswith('{'):
+            return json.loads(o)
+        else:
+            # noinspection PyTypeChecker
+            return dict(map(str.strip, pair.split(kv_sep, 1))
+                        for pair in o.split(sep))
 
     return o
 

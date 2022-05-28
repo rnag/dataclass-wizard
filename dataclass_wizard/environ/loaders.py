@@ -17,7 +17,7 @@ from ..type_def import (
     FrozenKeys, DefFactory, M, N, U, DD, LSQ, NT
 )
 from ..utils.type_conv import (
-    as_datetime, as_date
+    as_datetime, as_date, as_list, as_dict
 )
 
 
@@ -66,14 +66,8 @@ class EnvLoader(LoadMixin):
             o: Iterable, base_type: Type[LSQ],
             elem_parser: AbstractParser) -> LSQ:
 
-        if isinstance(o, str):
-            if o.lstrip().startswith('['):
-                o = json.loads(o)
-            else:
-                o = map(str.strip, o.split(','))
-
         return super(EnvLoader, EnvLoader).load_to_iterable(
-            o, base_type, elem_parser)
+            as_list(o), base_type, elem_parser)
 
     @staticmethod
     def load_to_tuple(
@@ -81,7 +75,7 @@ class EnvLoader(LoadMixin):
             elem_parsers: Sequence[AbstractParser]) -> Tuple:
 
         return super(EnvLoader, EnvLoader).load_to_tuple(
-            o, base_type, elem_parsers)
+            as_list(o), base_type, elem_parsers)
 
     @staticmethod
     def load_to_named_tuple(
@@ -92,7 +86,7 @@ class EnvLoader(LoadMixin):
         # TODO check for both list and dict
 
         return super(EnvLoader, EnvLoader).load_to_named_tuple(
-            o, base_type, field_to_parser, field_parsers)
+            as_list(o), base_type, field_to_parser, field_parsers)
 
     @staticmethod
     def load_to_named_tuple_untyped(
@@ -100,7 +94,7 @@ class EnvLoader(LoadMixin):
             dict_parser: AbstractParser, list_parser: AbstractParser) -> NT:
 
         return super(EnvLoader, EnvLoader).load_to_named_tuple_untyped(
-            o, base_type, dict_parser, list_parser)
+            as_list(o), base_type, dict_parser, list_parser)
 
     @staticmethod
     def load_to_dict(
@@ -109,7 +103,7 @@ class EnvLoader(LoadMixin):
             val_parser: AbstractParser) -> M:
 
         return super(EnvLoader, EnvLoader).load_to_dict(
-            o, base_type, key_parser, val_parser)
+            as_dict(o), base_type, key_parser, val_parser)
 
     @staticmethod
     def load_to_defaultdict(
@@ -119,7 +113,7 @@ class EnvLoader(LoadMixin):
             val_parser: AbstractParser) -> DD:
 
         return super(EnvLoader, EnvLoader).load_to_defaultdict(
-            o, base_type, default_factory, key_parser, val_parser)
+            as_dict(o), base_type, default_factory, key_parser, val_parser)
 
     @staticmethod
     def load_to_typed_dict(
@@ -129,7 +123,7 @@ class EnvLoader(LoadMixin):
             optional_keys: FrozenKeys) -> M:
 
         return super(EnvLoader, EnvLoader).load_to_typed_dict(
-            o, base_type, key_to_parser, required_keys, optional_keys)
+            as_dict(o), base_type, key_to_parser, required_keys, optional_keys)
 
     @staticmethod
     def load_to_datetime(
