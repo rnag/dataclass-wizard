@@ -120,6 +120,17 @@ if not PY36:    # pragma: no cover
 
             return frozenset(), frozenset(cls.__annotations__)
 
+    # copied from `dataclasses` module
+    def is_classvar(a_type):
+        """
+        Detects a :class:`typing.ClassVar` type.
+        """
+        # This test uses a typing internal class, but it's the best way to
+        # test if this is a ClassVar.
+        return (a_type is typing.ClassVar
+                or (type(a_type) is typing._GenericAlias
+                    and a_type.__origin__ is typing.ClassVar))
+
     def is_literal(cls) -> bool:
         try:
             return cls.__origin__ is PyLiteral
@@ -221,6 +232,12 @@ else:   # pragma: no cover
         return isinstance(cls, AnnotatedMeta)
 
     # Ref: https://github.com/python/typing/blob/master/typing_extensions/src_py3/typing_extensions.py#L572
+
+    # copied from `dataclasses` module
+    def is_classvar(a_type):
+        # This test uses a typing internal class, but it's the best way to
+        # test if this is a ClassVar.
+        return type(a_type) is typing._ClassVar
 
     def is_literal(cls) -> bool:
         try:
@@ -358,18 +375,6 @@ def is_annotated(cls):
     Detects a :class:`typing.Annotated` class.
     """
     return _is_annotated(cls)
-
-
-# copied from `dataclasses` module
-def is_classvar(a_type):
-    """
-    Detects a :class:`typing.ClassVar` type.
-    """
-    # This test uses a typing internal class, but it's the best way to
-    # test if this is a ClassVar.
-    return (a_type is typing.ClassVar
-            or (type(a_type) is typing._GenericAlias
-                and a_type.__origin__ is typing.ClassVar))
 
 
 def eval_forward_ref(base_type: FREF,

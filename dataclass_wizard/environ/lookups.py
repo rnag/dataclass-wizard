@@ -1,21 +1,39 @@
 from os import environ
-
-from typing import FrozenSet, Dict, Optional
+from typing import Dict, Optional, Set
 
 from ..decorators import cached_class_property
+from ..lazy_imports import dotenv
 from ..utils.string_conv import to_snake_case
+
+
+# Type of `os.environ` or `DotEnv` dict
+Environ = Dict[str, Optional[str]]
+
+# Type of (unique) environment variable names
+EnvVars = Set[str]
 
 
 # noinspection PyMethodParameters
 class Env:
 
     @cached_class_property
-    def var_names(cls) -> FrozenSet[str]:
+    def var_names(cls) -> EnvVars:
         """"""
-        return frozenset(environ.keys())
+        return set(environ.keys())
+
+    @classmethod
+    def update_with_dotenv_file(cls, filename='.env'):
+        env_vars: EnvVars = Env.var_names
+        dotenv_path = dotenv.find_dotenv(filename)
+        # take environment variables from `.env` file
+        env: Environ = dotenv.dotenv_values(dotenv_path)
+        # update names of environment variables
+        env_vars.update(env)
+        # update `os.environ` with new environment variable
+        environ.update(env)
 
     @cached_class_property
-    def cleaned_to_env(cls) -> Dict[str, str]:
+    def cleaned_to_env(cls) -> Environ:
         return {clean(var): var for var in cls.var_names}
 
 

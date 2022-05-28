@@ -45,6 +45,19 @@ class AbstractEnvWizard(ABC):
     __fields__: Dict[str, type]
 
     @classmethod
+    def dict(cls: E) -> JSONObject:
+        """
+        Same as ``__dict__``, but only returns values for fields defined
+        on the `EnvWizard` subclass. See :attr:`__fields__` for more info.
+
+        .. NOTE::
+           The values in the returned dictionary object are not needed to be
+           JSON serializable. Use :meth:`to_dict` if this is required.
+        """
+        cls_dict = cls.__dict__
+        return {field: cls_dict[field] for field in cls.__fields__}
+
+    @classmethod
     @abstractmethod
     def to_dict(cls: E) -> JSONObject:
         """

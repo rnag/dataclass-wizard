@@ -73,6 +73,7 @@ setup(
     test_suite='tests',
     tests_require=test_requirements,
     extras_require={
+        'dotenv': ['python-dotenv>=0.19.0'],
         'timedelta': ['pytimeparse>=1.1.7'],
         'yaml': ['PyYAML>=5.3']
     },

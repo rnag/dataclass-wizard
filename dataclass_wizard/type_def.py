@@ -114,7 +114,7 @@ ListOfJSONObject = List[JSONObject]
 JSONValue = Union[None, str, bool, int, float, JSONList, JSONObject]
 
 # File-type argument, compatible with the type of `file` for `open`
-FileType = Union[str, bytes, PathLike[str], PathLike[bytes], int]
+FileType = Union[str, bytes, PathLike, int]
 
 
 if PY38_OR_ABOVE:  # pragma: no cover

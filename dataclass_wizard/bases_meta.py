@@ -18,6 +18,7 @@ from .decorators import try_with_load
 from .dumpers import get_dumper
 from .enums import LetterCase, DateTimeTo, LetterCasePriority
 from .environ.loaders import EnvLoader
+from .environ.lookups import Env
 from .errors import ParseError
 from .loaders import get_loader
 from .log import LOG
@@ -240,6 +241,13 @@ class BaseEnvWizardMeta(AbstractEnvMeta):
         if cls.key_transform_with_dump:
             cls_dumper.transform_dataclass_field = _as_enum_safe(
                 cls, 'key_transform_with_dump', LetterCase)
+
+        if cls.env_file:
+            env_file = cls.env_file
+            if env_file is True:
+                env_file = '.env'
+            # Update environment with values in the "dot env" file
+            Env.update_with_dotenv_file(env_file)
 
         # Finally, if needed, save the meta config for the outer class. This
         # will allow us to access this config as part of the JSON load/dump

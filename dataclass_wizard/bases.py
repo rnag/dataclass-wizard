@@ -4,7 +4,7 @@ from typing import Callable, Type, Dict, Optional, ClassVar, Union, TypeVar
 from .constants import TAG
 from .decorators import cached_class_property
 from .enums import DateTimeTo, LetterCase, LetterCasePriority
-from .type_def import FrozenKeys
+from .type_def import FrozenKeys, FileType
 
 
 # Create a generic variable that can be 'AbstractMeta', or any subclass.
@@ -275,6 +275,17 @@ class AbstractEnvMeta:
     #
     # The default is 'snake_case'.
     key_transform_with_dump: ClassVar[Union[LetterCase, str]] = LetterCase.SNAKE
+
+    # True to update the environment with variables from an `.env` file
+    #
+    # This can also be a custom path to a dotenv file, for example:
+    #   `path/to/.env.prod`
+    #
+    # Note that lookup is recursive working backwards, so `.env.prod` will
+    # search the current directory as well as any parent directories until
+    # it locates the file.
+    #
+    env_file: ClassVar[Union[bool, FileType]] = None
 
     # Determines whether we should we skip / omit fields with default values
     # in the serialization process.
