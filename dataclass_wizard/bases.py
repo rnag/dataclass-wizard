@@ -260,6 +260,16 @@ class AbstractEnvMeta:
     # Note there is a minor performance impact when DEBUG mode is enabled.
     debug_enabled: ClassVar[bool] = False
 
+    # `True` to load environment variables from an `.env` file
+    #
+    # This can also be set to a path to a custom dotenv file, for example:
+    #   `path/to/.env.prod`
+    #
+    # Simply passing in a filename such as `.env.prod` will search the current
+    # directory, as well as any parent folders (working backwards to the root
+    # directory), until it locates the given file.
+    env_file: ClassVar[Union[bool, FileType]] = None
+
     # A customized mapping of environment variables to dataclass fields.
     #
     # Note: this is in addition to the implicit field transformations, like
@@ -275,17 +285,6 @@ class AbstractEnvMeta:
     #
     # The default is 'snake_case'.
     key_transform_with_dump: ClassVar[Union[LetterCase, str]] = LetterCase.SNAKE
-
-    # True to update the environment with variables from an `.env` file
-    #
-    # This can also be a custom path to a dotenv file, for example:
-    #   `path/to/.env.prod`
-    #
-    # Note that lookup is recursive working backwards, so `.env.prod` will
-    # search the current directory as well as any parent directories until
-    # it locates the file.
-    #
-    env_file: ClassVar[Union[bool, FileType]] = None
 
     # Determines whether we should we skip / omit fields with default values
     # in the serialization process.
