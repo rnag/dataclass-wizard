@@ -152,7 +152,7 @@ if not PY36:    # pragma: no cover
         _TYPING_LOCALS = None
 
         def _process_forward_annotation(base_type):
-            return PyForwardRef(base_type, is_argument=False)
+            return PyForwardRef(base_type, is_argument=False, is_class=True)
 
 
         def _get_origin(cls, raise_=False):

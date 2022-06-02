@@ -809,7 +809,7 @@ def test_forward_refs_are_resolved():
 @pytest.mark.parametrize(
     'input,expectation',
     [
-        ('testing', pytest.raises(TypeError)),
+        ('testing', pytest.raises(ValueError)),
         ('2020-01-02T01:02:03Z', does_not_raise()),
         ('2010-12-31 23:59:59-04:00', does_not_raise()),
         (123456789, does_not_raise()),
@@ -833,7 +833,7 @@ def test_datetime(input, expectation):
 @pytest.mark.parametrize(
     'input,expectation',
     [
-        ('testing', pytest.raises(TypeError)),
+        ('testing', pytest.raises(ValueError)),
         ('2020-01-02', does_not_raise()),
         ('2010-12-31', does_not_raise()),
         (123456789, does_not_raise()),
@@ -857,7 +857,7 @@ def test_date(input, expectation):
 @pytest.mark.parametrize(
     'input,expectation',
     [
-        ('testing', pytest.raises(TypeError)),
+        ('testing', pytest.raises(ValueError)),
         ('01:02:03Z', does_not_raise()),
         ('23:59:59-04:00', does_not_raise()),
         (123456789, pytest.raises(TypeError)),
