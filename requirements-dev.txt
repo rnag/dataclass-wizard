@@ -3,7 +3,7 @@ bump2version==1.0.1
 wheel==0.37.1
 watchdog[watchmedo]==2.1.9
 flake8>=3  # pyup: ignore
-tox==3.24.5
+tox==3.25.1
 coverage>=6.2
 Sphinx==4.4.0
 twine==3.8.0
