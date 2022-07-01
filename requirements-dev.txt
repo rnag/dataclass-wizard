@@ -10,7 +10,7 @@ twine==4.0.1
 # Extras
 pytimeparse==1.1.8
 # Test requirements
-pytest==7.0.1
+pytest==7.1.2
 pytest-mock>=3.6.1
 pytest-cov==3.0.0
 # pytest-runner==5.3.1
