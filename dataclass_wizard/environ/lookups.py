@@ -18,8 +18,18 @@ class Env:
 
     @cached_class_property
     def var_names(cls) -> EnvVars:
-        """"""
+        """
+        Cached mapping of `os.environ` key names. This can be refreshed with
+        :meth:`reload` as needed.
+        """
         return set(environ.keys())
+
+    @classmethod
+    def reload(cls):
+        """Refresh cached environment variable names."""
+        env_vars: EnvVars = Env.var_names
+        # update names of environment variables
+        env_vars.update(environ)
 
     @classmethod
     def update_with_dotenv_file(cls, filename='.env'):
@@ -38,7 +48,11 @@ class Env:
 
 
 def clean(s: str) -> str:
-    # TODO: see https://stackoverflow.com/questions/1276764/stripping-everything-but-alphanumeric-chars-from-a-string-in-python
+    """
+    TODO:
+        see https://stackoverflow.com/questions/1276764/stripping-everything-but-alphanumeric-chars-from-a-string-in-python
+        also, see if we can refactor to use something like Rust and `pyo3` for a slight performance improvement.
+    """
     return s.replace('-', '').replace('_', '').lower()
 
 

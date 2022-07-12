@@ -2,7 +2,7 @@ import json
 from typing import Callable, Union, Dict, AnyStr
 
 from .dumpers import asdict
-from .lookups import lookup_exact
+from .lookups import Env, lookup_exact
 from ..abstractions import AbstractEnvWizard, E
 from ..bases import AbstractEnvMeta
 from ..bases_meta import BaseEnvWizardMeta
@@ -70,8 +70,12 @@ class EnvWizard(AbstractEnvWizard):
         """
         return encoder(asdict(cls), **encoder_kwargs)
 
-    def __init_subclass__(cls: E):
+    def __init_subclass__(cls: E, reload_env=False):
         super().__init_subclass__()
+
+        if reload_env:
+            Env.reload()
+
         # Calls the Meta initializer when inner :class:`Meta` is sub-classed.
         call_meta_initializer_if_needed(cls)
 

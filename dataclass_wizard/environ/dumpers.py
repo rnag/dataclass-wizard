@@ -56,13 +56,15 @@ def dump_func_for_env_subclass(cls: E,
     # Get the dumper for the class, or create a new one as needed.
     cls_dumper = get_dumper(cls)
 
+    # Get the meta config for the class, or the default config otherwise.
+    #
     # Only add the key transform if Meta config has not been specified
     # for the `EnvWizard` subclass.
-    if cls not in _META:
+    if cls in _META:
+        meta = _META[cls]
+    else:
+        meta = AbstractEnvMeta
         cls_dumper.transform_dataclass_field = to_snake_case
-
-    # Get the meta config for the class, or the default config otherwise.
-    meta = get_meta(cls, base_cls=AbstractEnvMeta)
 
     # This contains the dump hooks for the Env subclass. If the class
     # sub-classes from `DumpMixIn`, these hooks could be customized.
