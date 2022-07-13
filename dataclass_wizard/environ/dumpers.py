@@ -5,7 +5,7 @@ from ..abstractions import E
 from ..bases import META, AbstractEnvMeta
 from ..class_helper import (
     dataclass_field_to_json_field,
-    _CLASS_TO_DUMP_FUNC, get_meta, _META,
+    _CLASS_TO_DUMP_FUNC, _META,
 )
 from ..dumpers import get_dumper, _asdict_inner
 from ..type_def import (

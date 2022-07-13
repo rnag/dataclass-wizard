@@ -3,13 +3,14 @@ from __future__ import annotations
 import logging
 import os
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, time, date
+from pathlib import Path
 from textwrap import dedent
 from typing import ClassVar
 
 import pytest
 
-from dataclass_wizard.errors import MissingVars
+from dataclass_wizard.errors import MissingVars, ParseError
 
 try:
     from typing import TypedDict
@@ -144,3 +145,54 @@ def test_load_with_missing_env_variables():
         missing_field_2: datetime = None
         missing_field_3: dict = {}
     """.rstrip())
+
+
+def test_load_with_parse_error():
+    os.environ.update(MY_STR='abc')
+
+    with pytest.raises(ParseError) as e:
+
+        class MyClass(EnvWizard, reload_env=True):
+
+            class _(EnvWizard.Meta):
+                debug_enabled = True
+
+            my_str: int
+
+    assert str(e.value.base_error) == "invalid literal for int() with base 10: 'abc'"
+    assert e.value.kwargs['env_variable'] == 'MY_STR'
+
+
+def test_load_with_dotenv_file():
+    """Test reading from the `.env` file in project root directory."""
+
+    class MyClass(EnvWizard):
+        class _(EnvWizard.Meta):
+            env_file = True
+
+        my_str: int
+        my_time: time
+        my_date: date = None
+
+    assert MyClass.dict() == {'my_str': 42,
+                              'my_time': time(15, 20),
+                              'my_date': date(2022, 1, 21)}
+
+    print(date(2022, 1, 21).ctime())
+
+
+def test_load_with_dotenv_file_with_path():
+    """Test reading from the `.env.test` file in `tests/unit` directory."""
+
+    class MyClass(EnvWizard):
+        class _(EnvWizard.Meta):
+            env_file = Path(__file__).parent / '.env.test'
+            key_lookup_with_load = 'PASCAL'
+
+        my_value: float
+        my_dt: datetime
+        another_date: date
+
+    assert MyClass.dict() == {'my_value': 1.23,
+                              'my_dt': datetime(2022, 4, 27, 12, 30, 45),
+                              'another_date': date(2021, 12, 17)}

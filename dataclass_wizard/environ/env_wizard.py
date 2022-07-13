@@ -2,7 +2,7 @@ import json
 from typing import Callable, Union, Dict, AnyStr
 
 from .dumpers import asdict
-from .lookups import Env, lookup_exact
+from .lookups import Env, lookup_exact, clean
 from ..abstractions import AbstractEnvWizard, E
 from ..bases import AbstractEnvMeta
 from ..bases_meta import BaseEnvWizardMeta
@@ -119,8 +119,9 @@ class EnvWizard(AbstractEnvWizard):
                     # before re-raising it.
                     e.class_name = cls
                     e.field_name = field
-                    # TODO
-                    e.kwargs['env_variable'] = field
+                    var_name = Env.cleaned_to_env.get(clean(field)) \
+                               or field_to_var.get(field, field)
+                    e.kwargs['env_variable'] = var_name
                     raise
                 else:
                     setattr(cls, field, parsed_val)

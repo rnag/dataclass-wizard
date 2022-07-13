@@ -7,7 +7,7 @@ from unittest.mock import ANY
 import pytest
 from pytest_mock import MockerFixture
 
-from dataclass_wizard import JSONWizard
+from dataclass_wizard import JSONWizard, EnvWizard
 from dataclass_wizard.bases import M
 from dataclass_wizard.bases_meta import BaseJSONWizardMeta
 from dataclass_wizard.enums import LetterCase, DateTimeTo
@@ -32,6 +32,12 @@ def mock_meta_initializers(mocker: MockerFixture):
 def mock_bind_to(mocker: MockerFixture):
     return mocker.patch(
         'dataclass_wizard.bases_meta.BaseJSONWizardMeta.bind_to')
+
+
+@pytest.fixture
+def mock_env_bind_to(mocker: MockerFixture):
+    return mocker.patch(
+        'dataclass_wizard.bases_meta.BaseEnvWizardMeta.bind_to')
 
 
 @pytest.fixture
@@ -321,6 +327,20 @@ def test_meta_initializer_is_called_when_meta_is_an_inner_class(
             debug_enabled = True
 
     mock_meta_initializers.__setitem__.assert_called_once()
+
+
+def test_env_meta_initializer_not_called_when_meta_is_not_an_inner_class(
+        mock_meta_initializers, mock_env_bind_to):
+    """
+    Meta Initializer `dict` should *not* be updated when `Meta` has no outer
+    class.
+    """
+
+    class _(EnvWizard.Meta):
+        debug_enabled = True
+
+    mock_meta_initializers.__setitem__.assert_not_called()
+    mock_env_bind_to.assert_called_once_with(ANY, create=False)
 
 
 def test_meta_initializer_not_called_when_meta_is_not_an_inner_class(
