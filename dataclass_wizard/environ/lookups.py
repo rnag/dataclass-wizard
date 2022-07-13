@@ -1,5 +1,5 @@
 from os import environ
-from typing import Dict, Optional, Set
+from typing import ClassVar, Dict, Optional, Set
 
 from ..decorators import cached_class_property
 from ..lazy_imports import dotenv
@@ -16,6 +16,10 @@ EnvVars = Set[str]
 # noinspection PyMethodParameters
 class Env:
 
+    __slots__ = ()
+
+    _accessed_cleaned_to_env: ClassVar[bool] = False
+
     @cached_class_property
     def var_names(cls) -> EnvVars:
         """
@@ -25,25 +29,34 @@ class Env:
         return set(environ.keys())
 
     @classmethod
-    def reload(cls):
+    def reload(cls, env: dict = environ):
         """Refresh cached environment variable names."""
-        env_vars: EnvVars = Env.var_names
+        env_vars: EnvVars = cls.var_names
+        new_vars = env.keys() - env_vars
+
         # update names of environment variables
-        env_vars.update(environ)
+        env_vars.update(new_vars)
+
+        # update mapping of cleaned environment variables (if needed)
+        if cls._accessed_cleaned_to_env:
+            cls.cleaned_to_env.update(
+                (clean(var), var) for var in new_vars
+            )
 
     @classmethod
     def update_with_dotenv_file(cls, filename='.env'):
-        env_vars: EnvVars = Env.var_names
         dotenv_path = dotenv.find_dotenv(filename)
         # take environment variables from `.env` file
         env: Environ = dotenv.dotenv_values(dotenv_path)
-        # update names of environment variables
-        env_vars.update(env)
-        # update `os.environ` with new environment variable
+        # reload cached mapping of environment variables
+        cls.reload(env)
+        # update `os.environ` with new environment variables
         environ.update(env)
 
+    # noinspection PyDunderSlots,PyUnresolvedReferences
     @cached_class_property
     def cleaned_to_env(cls) -> Environ:
+        cls._accessed_cleaned_to_env = True
         return {clean(var): var for var in cls.var_names}
 
 

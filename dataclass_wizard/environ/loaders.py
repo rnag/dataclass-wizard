@@ -128,17 +128,25 @@ class EnvLoader(LoadMixin):
     @staticmethod
     def load_to_datetime(
             o: Union[str, N], base_type: Type[datetime]) -> datetime:
-        # Check if it's a string in numeric format, like '1.23'
-        if isinstance(o, str) and o.replace('.', '', 1).isdigit():
-            return base_type.fromtimestamp(float(o))
+        if isinstance(o, str):
+            # Check if it's a string in numeric format, like '1.23'
+            if o.replace('.', '', 1).isdigit():
+                return base_type.fromtimestamp(float(o))
+
+            return base_type.fromisoformat(o.replace('Z', '+00:00', 1))
+
         # default: as_datetime
         return as_datetime(o, base_type)
 
     @staticmethod
     def load_to_date(o: Union[str, N], base_type: Type[date]) -> date:
-        # Check if it's a string in numeric format, like '1.23'
-        if isinstance(o, str) and o.replace('.', '', 1).isdigit():
-            return base_type.fromtimestamp(float(o))
+        if isinstance(o, str):
+            # Check if it's a string in numeric format, like '1.23'
+            if o.replace('.', '', 1).isdigit():
+                return base_type.fromtimestamp(float(o))
+
+            return base_type.fromisoformat(o)
+
         # default: as_date
         return as_date(o, base_type)
 

@@ -2,7 +2,7 @@ import json
 from abc import ABC, abstractmethod
 from dataclasses import Field, MISSING
 from typing import (Any, Type, Dict, Tuple, ClassVar,
-                    Optional, Union, Iterable)
+                    Optional, Union, Iterable, Sequence)
 
 from .utils.type_helper import type_name
 from .utils.string_conv import normalize
@@ -245,5 +245,47 @@ class MissingData(ParseError):
             sep = '\n  '
             parts = sep.join(f'{k}: {v!r}' for k, v in self.kwargs.items())
             msg = f'{msg}{sep}{parts}'
+
+        return msg
+
+
+class MissingVars(JSONWizardError):
+    """
+    Error raised when unable to create an EnvWizard subclass (most likely
+    due to missing environment variables in the Environment)
+    """
+    _TEMPLATE = ('{prefix} in class `{cls}` missing in the Environment:\n'
+                 '{fields}\n\n'
+                 'Resolution: set a default value for any optional fields, as below.\n\n'
+                 '{resolutions}')
+
+    def __init__(self,
+                 cls: Type,
+                 missing_vars: Sequence[Tuple[str, str, Any]]):
+
+        super().__init__()
+
+        indent = ' ' * 4
+
+        self.class_name: str = type_name(cls)
+        self.fields = '\n'.join([f'{indent}- {f[0]}' for f in missing_vars])
+        self.resolutions = '\n'.join([f'class {self.class_name}:'] +
+                                     [f'{indent}{f}: {typ} = {default!r}'
+                                      for (f, typ, default) in missing_vars])
+
+        num_fields = len(missing_vars)
+        if num_fields > 1:
+            self.prefix = f'There are {len(missing_vars)} required fields'
+        else:
+            self.prefix = f'There is {len(missing_vars)} required field'
+
+    @property
+    def message(self) -> str:
+        msg = self._TEMPLATE.format(
+            cls=self.class_name,
+            prefix=self.prefix,
+            fields=self.fields,
+            resolutions=self.resolutions
+        )
 
         return msg

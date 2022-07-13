@@ -10,7 +10,7 @@ from ..class_helper import (call_meta_initializer_if_needed, get_meta,
                             field_to_env_var)
 from ..decorators import cached_class_property, _alias
 from ..environ.loaders import EnvLoader
-from ..errors import ParseError
+from ..errors import MissingVars, ParseError
 from ..loaders import get_loader
 from ..models import Extras
 from ..type_def import JSONObject, Encoder
@@ -73,7 +73,7 @@ class EnvWizard(AbstractEnvWizard):
     def __init_subclass__(cls: E, reload_env=False):
         super().__init_subclass__()
 
-        if reload_env:
+        if reload_env:  # reload cached var names from `os.environ` as needed.
             Env.reload()
 
         # Calls the Meta initializer when inner :class:`Meta` is sub-classed.
@@ -108,6 +108,7 @@ class EnvWizard(AbstractEnvWizard):
                 value = get_env(field)
 
             if value is not None:
+                # noinspection PyTypeChecker
                 parser = cls_loader.get_parser_for_annotation(ann, cls, extras)
 
                 try:
@@ -131,22 +132,8 @@ class EnvWizard(AbstractEnvWizard):
                     suggested = ann()
                 except Exception:
                     suggested = None
-                # TODO
+
                 missing_vars.append((field, tn, suggested))
 
         if missing_vars:
-            fields = '\n'.join([f'  - {f[0]}' for f in missing_vars])
-            resolutions = '\n'.join([f'  {f}: {typ} = {default!r}' for (f, typ, default) in missing_vars])
-
-            num_fields = len(missing_vars)
-            if num_fields > 1:
-                start = f'There are {len(missing_vars)} required fields'
-            else:
-                start = f'There is {len(missing_vars)} required field'
-
-            msg = f'{start} in class `{cls.__qualname__}` ' \
-                  f'missing in the Environment:\n{fields}\n\n' \
-                  f'Resolution: set a default value such as below.\n' \
-                  f'{resolutions}'
-
-            raise ValueError(msg)
+            raise MissingVars(cls, missing_vars) from None
