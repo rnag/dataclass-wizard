@@ -52,6 +52,7 @@ NUMBERS = int, float
 
 # Generic type
 T = TypeVar('T')
+TT = TypeVar('TT')
 
 # Enum subclass type
 E = TypeVar('E', bound=Enum)

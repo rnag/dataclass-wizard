@@ -8,13 +8,13 @@ from datetime import datetime, time, date, timedelta
 from decimal import Decimal
 from typing import (
     Any, Type, TypeVar, Union, List, Tuple, Dict, SupportsFloat, AnyStr,
-    Text, Sequence, Iterable
+    Text, Sequence, Iterable, Generic
 )
 
 from .models import Extras
 from .type_def import (
     DefFactory, FrozenKeys, ListOfJSONObject, JSONObject, Encoder,
-    M, N, T, NT, E, U, DD, LSQ
+    M, N, T, TT, NT, E, U, DD, LSQ
 )
 
 
@@ -88,7 +88,7 @@ class AbstractJSONWizard(ABC):
 
 
 @dataclass
-class AbstractParser(ABC):
+class AbstractParser(ABC, Generic[T, TT]):
     """
     Abstract parsers, which will ideally act as dispatchers to route objects
     to the `load` or `dump` hook methods responsible for transforming the
@@ -119,7 +119,7 @@ class AbstractParser(ABC):
     # This is usually the underlying base type of the annotation (for example,
     # for `List[str]` it will be `list`), though in some cases this will be
     # the annotation itself.
-    base_type: Type[T]
+    base_type: T
 
     def __contains__(self, item) -> bool:
         """
@@ -130,7 +130,7 @@ class AbstractParser(ABC):
         return type(item) is self.base_type
 
     @abstractmethod
-    def __call__(self, o: Any):
+    def __call__(self, o: Any) -> TT:
         """
         Parse object `o`
         """
