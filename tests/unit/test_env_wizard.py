@@ -178,8 +178,6 @@ def test_load_with_dotenv_file():
                               'my_time': time(15, 20),
                               'my_date': date(2022, 1, 21)}
 
-    print(date(2022, 1, 21).ctime())
-
 
 def test_load_with_dotenv_file_with_path():
     """Test reading from the `.env.test` file in `tests/unit` directory."""
@@ -196,3 +194,36 @@ def test_load_with_dotenv_file_with_path():
     assert MyClass.dict() == {'my_value': 1.23,
                               'my_dt': datetime(2022, 4, 27, 12, 30, 45),
                               'another_date': date(2021, 12, 17)}
+
+    expected_json = '{"another_date": "2021-12-17", "my_dt": "2022-04-27T12:30:45", "my_value": 1.23}'
+    assert MyClass.to_json(sort_keys=True) == expected_json
+
+
+def test_load_with_constructor_when_init_is_true():
+    """
+    Using the constructor method of an `EnvWizard` subclass raises an error
+    when `init` is not disabled.
+    """
+    os.environ.update(MY_STRING_VAR='hello world')
+
+    class MyTestClass(EnvWizard, reload_env=True):
+        my_string_var: str
+
+    with pytest.raises(ValueError) as e:
+        _ = MyTestClass()
+
+    assert f'class `{MyTestClass.__qualname__}` is already initialized' in str(e.value)
+
+
+def test_load_with_constructor():
+    """
+    Using the constructor method of an `EnvWizard` subclass raises an error
+    when `init` is not disabled.
+    """
+    os.environ.update(MY_STRING_VAR='hello world')
+
+    class MyTestClass(EnvWizard, reload_env=True, init=False):
+        my_string_var: str
+
+    env = MyTestClass()
+    assert env.to_json() == '{"my_string_var": "hello world"}'

@@ -1,5 +1,5 @@
 import json
-from typing import Callable, Union, Dict, AnyStr
+from typing import Callable, ClassVar, Union, Dict, AnyStr
 
 from .dumpers import asdict
 from .lookups import Env, lookup_exact, clean
@@ -19,8 +19,9 @@ from ..utils.typing_compat import is_classvar, eval_forward_ref_if_needed
 
 
 class EnvWizard(AbstractEnvWizard):
-
     __slots__ = ()
+
+    __initialized: ClassVar[bool] = True
 
     class Meta(BaseEnvWizardMeta):
         """
@@ -70,8 +71,25 @@ class EnvWizard(AbstractEnvWizard):
         """
         return encoder(asdict(cls), **encoder_kwargs)
 
-    def __init_subclass__(cls: E, reload_env=False):
+    def __init__(self, *, reload_env=False):
+        if self.__initialized:
+            cls_name = self.__class__.__qualname__
+
+            msg = f'class `{cls_name}` is already initialized. Disable `init`, as ' \
+                  f'shown below, to use the `__init__()` method.\n\n' \
+                  f'class {cls_name}(EnvWizard, init=False):\n' \
+                  f'    ...'
+
+            raise ValueError(msg)
+
+        self.__init_subclass__(reload_env=reload_env)
+
+    def __init_subclass__(cls: E, *, init=True, reload_env=False):
         super().__init_subclass__()
+
+        if not init:  # skip logic in `__init_subclass__()` if needed.
+            cls.__initialized = False
+            return
 
         if reload_env:  # reload cached var names from `os.environ` as needed.
             Env.reload()
