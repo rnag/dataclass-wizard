@@ -14,7 +14,7 @@ from .utils.typing_compat import (
 
 # A cached mapping of dataclass to the list of fields, as returned by
 # `dataclasses.fields()`.
-_FIELDS: Dict[Type, Tuple[Field]] = {}
+_FIELDS: Dict[Type, Tuple[Field, ...]] = {}
 
 # Mapping of main dataclass to its `load` function.
 _CLASS_TO_LOAD_FUNC: Dict[Type, Any] = {}
@@ -276,7 +276,7 @@ def get_meta(cls: Type) -> META:
     return _META.get(cls, AbstractMeta)
 
 
-def dataclass_fields(cls) -> Tuple[Field]:
+def dataclass_fields(cls) -> Tuple[Field, ...]:
     """
     Cache the `dataclasses.fields()` call for each class, as overall that
     ends up around 5x faster than making a fresh call each time.
@@ -288,7 +288,7 @@ def dataclass_fields(cls) -> Tuple[Field]:
     return _FIELDS[cls]
 
 
-def dataclass_init_fields(cls) -> Tuple[Field]:
+def dataclass_init_fields(cls) -> Tuple[Field, ...]:
     """Get only the dataclass fields that would be passed into the constructor."""
     return tuple(f for f in dataclass_fields(cls) if f.init)
 
