@@ -3,7 +3,7 @@ from dataclasses import MISSING, Field, fields
 from typing import Dict, Tuple, Type, Union, Callable, Optional, Any
 
 from .abstractions import W, AbstractLoader, AbstractDumper, AbstractParser
-from .bases import M, AbstractMeta
+from .bases import AbstractMeta, META
 from .models import JSONField, JSON, Extras, _PatternedDT
 from .type_def import ExplicitNull, ExplicitNullType, T
 from .utils.dict_helper import DictWithLowerStore
@@ -56,7 +56,7 @@ _META_INITIALIZER: Dict[
 
 # Mapping of dataclass to its Meta inner class, which will only be set when
 # the :class:`JSONSerializable.Meta` is sub-classed.
-_META: Dict[Type, M] = {}
+_META: Dict[Type, META] = {}
 
 
 def dataclass_to_loader(cls):
@@ -111,7 +111,7 @@ def dataclass_field_to_json_field(cls):
 def dataclass_field_to_load_parser(
         cls_loader: Type[AbstractLoader],
         cls: Type,
-        config: M,
+        config: META,
         save: bool = True) -> 'DictWithLowerStore[str, AbstractParser]':
     """
     Returns a mapping of each lower-cased field name to its annotated type.
@@ -124,7 +124,7 @@ def dataclass_field_to_load_parser(
 
 def _setup_load_config_for_cls(cls_loader: Type[AbstractLoader],
                                cls: Type,
-                               config: M,
+                               config: META,
                                save: bool = True
                                ) -> 'DictWithLowerStore[str, AbstractParser]':
     """
@@ -267,7 +267,7 @@ def call_meta_initializer_if_needed(cls: Type[W]):
         _META_INITIALIZER[cls_name](cls)
 
 
-def get_meta(cls: Type) -> M:
+def get_meta(cls: Type) -> META:
     """
     Retrieves the Meta config for the :class:`AbstractJSONWizard` subclass.
 
