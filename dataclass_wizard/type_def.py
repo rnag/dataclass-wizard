@@ -72,7 +72,7 @@ DT = TypeVar('DT', date, time, datetime)
 DD = TypeVar('DD', bound=DefaultDict)
 
 # Numeric type
-N = TypeVar('N', int, float, complex)
+N = Union[int, float]
 
 # Sequence type
 S = TypeVar('S', bound=Sequence)
