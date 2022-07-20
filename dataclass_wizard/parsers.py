@@ -27,7 +27,7 @@ from .errors import ParseError
 from .models import _PatternedDT, Extras
 from .type_def import (
     FrozenKeys, NoneType, DefFactory,
-    T, M, S, DD, LSQ, N, NT
+    T, M, S, DD, LSQ, N, NT, DT
 )
 from .utils.typing_compat import (
     get_origin, get_args, get_named_tuple_field_types,
@@ -40,7 +40,7 @@ TupleOfParsers = Tuple[AbstractParser, ...]
 
 
 @dataclass
-class IdentityParser(AbstractParser):
+class IdentityParser(AbstractParser[Type[T], T]):
     __slots__ = ()
 
     def __call__(self, o: Any) -> T:
@@ -48,7 +48,7 @@ class IdentityParser(AbstractParser):
 
 
 @dataclass
-class SingleArgParser(AbstractParser):
+class SingleArgParser(AbstractParser[Type[T], T]):
     __slots__ = ('hook', )
 
     hook: Callable[[Any], T]
@@ -63,7 +63,7 @@ class SingleArgParser(AbstractParser):
 
 
 @dataclass
-class Parser(AbstractParser):
+class Parser(AbstractParser[Type[T], T]):
     __slots__ = ('hook', )
 
     hook: Callable[[Any, Type[T]], T]
@@ -73,7 +73,7 @@ class Parser(AbstractParser):
 
 
 @dataclass
-class LiteralParser(AbstractParser):
+class LiteralParser(AbstractParser[Type[M], M]):
     __slots__ = ('value_to_type', )
 
     base_type: Type[M]
@@ -84,7 +84,7 @@ class LiteralParser(AbstractParser):
             val: type(val) for val in get_args(self.base_type)
         }
 
-    def __call__(self, o: Any):
+    def __call__(self, o: Any) -> M:
         """
         Checks for Literal equivalence, as mentioned here:
           https://www.python.org/dev/peps/pep-0586/#equivalence-of-two-literals
@@ -95,7 +95,7 @@ class LiteralParser(AbstractParser):
 
         except KeyError:
             # No such Literal with the value of `o`
-            e = ValueError('Value not in expected Literal values')
+            e: Exception = ValueError('Value not in expected Literal values')
             raise ParseError(
                 e, o, self.base_type,
                 allowed_values=list(self.value_to_type))
@@ -119,7 +119,7 @@ class LiteralParser(AbstractParser):
 
 
 @dataclass
-class PatternedDTParser(AbstractParser):
+class PatternedDTParser(AbstractParser[_PatternedDT, DT]):
     __slots__ = ('hook', )
 
     base_type: _PatternedDT
@@ -133,7 +133,7 @@ class PatternedDTParser(AbstractParser):
 
         self.hook = self.base_type.get_transform_func()
 
-    def __call__(self, date_string: str):
+    def __call__(self, date_string: str) -> DT:
         try:
             return self.hook(date_string)
         except ValueError as e:
@@ -144,7 +144,7 @@ class PatternedDTParser(AbstractParser):
 
 
 @dataclass
-class OptionalParser(AbstractParser):
+class OptionalParser(AbstractParser[Type[T], Optional[T]]):
     __slots__ = ('parser', )
 
     get_parser: InitVar[GetParserType]
@@ -162,7 +162,7 @@ class OptionalParser(AbstractParser):
 
         return super().__contains__(item)
 
-    def __call__(self, o: Any):
+    def __call__(self, o: Any) -> Optional[T]:
         if o is None:
             return o
 
@@ -170,7 +170,7 @@ class OptionalParser(AbstractParser):
 
 
 @dataclass
-class UnionParser(AbstractParser):
+class UnionParser(AbstractParser[Tuple[Type[T], ...], Optional[T]]):
     __slots__ = ('parsers', 'tag_to_parser', 'tag_key')
 
     base_type: Tuple[Type[T], ...]
@@ -221,7 +221,7 @@ class UnionParser(AbstractParser):
         """Check if parser is expected to handle the specified item type."""
         return type(item) in self.base_type
 
-    def __call__(self, o: Any):
+    def __call__(self, o: Any) -> Optional[T]:
         if o is None:
             return o
 
@@ -255,7 +255,7 @@ class UnionParser(AbstractParser):
 
 
 @dataclass
-class IterableParser(AbstractParser):
+class IterableParser(AbstractParser[Type[LSQ], LSQ]):
     """
     Parser for a :class:`list`, :class:`set`, :class:`frozenset`,
     :class:`deque`, or a subclass of either type.
@@ -304,7 +304,7 @@ class IterableParser(AbstractParser):
 
 
 @dataclass
-class TupleParser(AbstractParser):
+class TupleParser(AbstractParser[Type[S], S]):
     """
     Parser for subscripted and un-subscripted :class:`Tuple`'s.
 
@@ -319,7 +319,7 @@ class TupleParser(AbstractParser):
     # Base type of the object which is instantiable
     #   ex. `Tuple[bool, int]` -> `tuple`
     base_type: Type[S]
-    hook: Callable[[Any, Type[S], TupleOfParsers], S]
+    hook: Callable[[Any, Type[S], Optional[TupleOfParsers]], S]
     get_parser: InitVar[GetParserType]
 
     def __post_init__(self, cls: Type,
@@ -331,21 +331,21 @@ class TupleParser(AbstractParser):
         elem_types = get_args(self.base_type)
         self.base_type = get_origin(self.base_type)
         # A collection with a parser for each type argument
-        self.elem_parsers = tuple(get_parser(t, cls, extras)
-                                  for t in elem_types)
+        elem_parsers = tuple(get_parser(t, cls, extras)
+                             for t in elem_types)
         # Total count is generally the number of type arguments to `Tuple`, but
         # can be `Infinity` when a `Tuple` appears in its un-subscripted form.
-        self.total_count: N = len(self.elem_parsers) or float('inf')
+        self.total_count: N = len(elem_parsers) or float('inf')
         # Minimum number of *required* type arguments
         #   Check for the count of parsers which don't handle `NoneType` -
         #   this should exclude the parsers for `Optional` or `Union` types
         #   that have `None` in the list of args.
-        self.required_count: int = len(tuple(p for p in self.elem_parsers
+        self.required_count: int = len(tuple(p for p in elem_parsers
                                              if None not in p))
-        if not self.elem_parsers:
-            self.elem_parsers = None
 
-    def __call__(self, o: M) -> M:
+        self.elem_parsers = elem_parsers or None
+
+    def __call__(self, o: S) -> S:
         """
         Load an object `o` into a new object of type `base_type` (generally a
         :class:`tuple` or a sub-class of one)
@@ -357,10 +357,14 @@ class TupleParser(AbstractParser):
             if self.required_count != self.total_count:
                 desired_count = f'{self.required_count} - {self.total_count}'
             else:
-                desired_count = self.total_count
+                desired_count = str(self.total_count)
+
+            # self.elem_parsers can be None at this moment
+            elem_parsers_types = [p.base_type for p in self.elem_parsers] \
+                if self.elem_parsers else []
 
             raise ParseError(
-                e, o, [p.base_type for p in self.elem_parsers],
+                e, o, elem_parsers_types,
                 desired_count=desired_count,
                 actual_count=len(o))
 
@@ -416,12 +420,12 @@ class VariadicTupleParser(TupleParser):
 
 
 @dataclass
-class NamedTupleParser(AbstractParser):
+class NamedTupleParser(AbstractParser[Type[NT], NT]):
     __slots__ = ('hook',
                  'field_to_parser',
                  'field_parsers')
 
-    base_type: Type[S]
+    base_type: Type[NT]
     hook: Callable[
         [Any, Type[NT], Optional[FieldToParser], List[AbstractParser]],
         NT
@@ -433,7 +437,7 @@ class NamedTupleParser(AbstractParser):
                       get_parser: GetParserType):
 
         # Get the field annotations for the `NamedTuple` type
-        type_anns: Dict[str, Type[T]] = get_named_tuple_field_types(
+        type_anns: Dict[str, Type[Any]] = get_named_tuple_field_types(
             self.base_type
         )
 
@@ -444,7 +448,7 @@ class NamedTupleParser(AbstractParser):
 
         self.field_parsers = list(self.field_to_parser.values())
 
-    def __call__(self, o: Any):
+    def __call__(self, o: Any) -> NT:
         """
         Load a dictionary or list to a `NamedTuple` sub-class (or an
         un-annotated `namedtuple`)
@@ -454,12 +458,12 @@ class NamedTupleParser(AbstractParser):
 
 
 @dataclass
-class NamedTupleUntypedParser(AbstractParser):
+class NamedTupleUntypedParser(AbstractParser[Type[NT], NT]):
     __slots__ = ('hook',
                  'dict_parser',
                  'list_parser')
 
-    base_type: Type[S]
+    base_type: Type[NT]
     hook: Callable[[Any, Type[NT], AbstractParser, AbstractParser], NT]
     get_parser: InitVar[GetParserType]
 
@@ -470,7 +474,7 @@ class NamedTupleUntypedParser(AbstractParser):
         self.dict_parser = get_parser(dict, cls, extras)
         self.list_parser = get_parser(list, cls, extras)
 
-    def __call__(self, o: Any):
+    def __call__(self, o: Any) -> NT:
         """
         Load a dictionary or list to a `NamedTuple` sub-class (or an
         un-annotated `namedtuple`)
@@ -480,7 +484,7 @@ class NamedTupleUntypedParser(AbstractParser):
 
 
 @dataclass
-class MappingParser(AbstractParser):
+class MappingParser(AbstractParser[Type[M], M]):
     __slots__ = ('hook',
                  'key_parser',
                  'val_parser')
@@ -509,7 +513,7 @@ class MappingParser(AbstractParser):
 
 
 @dataclass
-class DefaultDictParser(MappingParser):
+class DefaultDictParser(MappingParser[DD]):
     __slots__ = ('default_factory', )
 
     # Override the type annotations here
@@ -525,19 +529,19 @@ class DefaultDictParser(MappingParser):
         # The default factory argument to pass to the `defaultdict` subclass
         self.default_factory: DefFactory = self.val_parser.base_type
 
-    def __call__(self, o: M) -> M:
+    def __call__(self, o: DD) -> DD:
         return self.hook(o, self.base_type, self.default_factory,
                          self.key_parser, self.val_parser)
 
 
 @dataclass
-class TypedDictParser(AbstractParser):
+class TypedDictParser(AbstractParser[Type[M], M]):
     __slots__ = ('hook',
                  'key_to_parser',
                  'required_keys',
                  'optional_keys')
 
-    base_type: Type[S]
+    base_type: Type[M]
     hook: Callable[[Any, Type[M], FieldToParser, FrozenKeys, FrozenKeys], M]
     get_parser: InitVar[GetParserType]
 
@@ -560,13 +564,13 @@ class TypedDictParser(AbstractParser):
                              self.required_keys, self.optional_keys)
 
         except KeyError as e:
-            e = KeyError(f'Missing required key: {e.args[0]}')
-            raise ParseError(e, o, self.base_type)
+            err: Exception = KeyError(f'Missing required key: {e.args[0]}')
+            raise ParseError(err, o, self.base_type)
 
         except Exception:
             if not isinstance(o, dict):
-                e = TypeError('Incorrect type for object')
+                err = TypeError('Incorrect type for object')
                 raise ParseError(
-                    e, o, self.base_type, desired_type=self.base_type)
+                    err, o, self.base_type, desired_type=self.base_type)
             else:
                 raise
