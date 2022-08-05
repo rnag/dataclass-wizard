@@ -102,6 +102,8 @@ Here are the supported features that ``dataclass-wizard`` currently provides:
    values in dataclass instances.
 -  *JSON to Dataclass generation*: construct a dataclass schema with a JSON file
    or string input.
+-  *Environment support*: easily load ``dotenv`` files and environment variables
+   as strongly-typed class fields.
 
 
 Wizard Mixins
@@ -109,6 +111,7 @@ Wizard Mixins
 
 In addition to the ``JSONWizard``, here are a few extra Mixin_ classes that might prove quite convenient to use.
 
+* `EnvWizard`_ -- Enables loading of Environment variables and ``.env`` files into strongly-typed class schemas.
 * `JSONListWizard`_ -- Extends ``JSONWizard`` to return `Container`_ -- instead of *list* -- objects where possible.
 * `JSONFileWizard`_ -- Makes it easier to convert dataclass instances from/to JSON files on a local drive.
 * `YAMLWizard`_ -- Provides support to convert dataclass instances to/from YAML, using the default ``PyYAML`` parser.
@@ -907,6 +910,7 @@ This package was created with Cookiecutter_ and the `rnag/cookiecutter-pypackage
 .. _`rnag/cookiecutter-pypackage`: https://github.com/rnag/cookiecutter-pypackage
 .. _`Contributing`: https://dataclass-wizard.readthedocs.io/en/latest/contributing.html
 .. _`open an issue`: https://github.com/rnag/dataclass-wizard/issues
+.. _`EnvWizard`: TODO
 .. _`JSONListWizard`: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/wizard_mixins.html#jsonlistwizard
 .. _`JSONFileWizard`: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/wizard_mixins.html#jsonfilewizard
 .. _`YAMLWizard`: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/wizard_mixins.html#yamlwizard

@@ -72,11 +72,11 @@ __all__ = [
     # Base exports
     'JSONSerializable',
     'JSONWizard',
-    'EnvWizard',
     'LoadMixin',
     'DumpMixin',
     'property_wizard',
     # Wizard Mixins
+    'EnvWizard',
     'JSONListWizard',
     'JSONFileWizard',
     'YAMLWizard',
