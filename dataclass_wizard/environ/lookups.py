@@ -1,4 +1,4 @@
-from os import environ
+from os import environ, name
 from typing import ClassVar, Dict, Optional, Set
 
 from ..decorators import cached_class_property
@@ -78,19 +78,31 @@ def try_cleaned(key: str) -> Optional[str]:
     return None
 
 
-def lookup_exact(var: str):
-    """
-    Lookup with *exact* letter casing, and return `None` if not found
-    in the environment.
+if name == 'nt':
+    # Where Env Var Names Must Be UPPERCASE
+    def lookup_exact(var: str):
+        """
+        Lookup by variable name with *exact* letter casing, and return `None`
+        if not found in the environment.
+        """
+        var = var.upper()
 
-    :param var: The variable name to lookup in the environment.
-    :return: The value of the matched environment variable, if one is found in
-      the environment.
-    """
-    if var in Env.var_names:
-        return environ[var]
+        if var in Env.var_names:
+            return environ[var]
 
-    return None
+        return None
+
+else:
+    # Where Env Var Names Can Be Mixed Case
+    def lookup_exact(var: str):
+        """
+        Lookup by variable name with *exact* letter casing, and return `None`
+        if not found in the environment.
+        """
+        if var in Env.var_names:
+            return environ[var]
+
+        return None
 
 
 def with_screaming_snake_case(field_name: str) -> Optional[str]:

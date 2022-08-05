@@ -1,12 +1,10 @@
-from __future__ import annotations
-
 import logging
 import os
 from collections import defaultdict
 from datetime import datetime, time, date
 from pathlib import Path
 from textwrap import dedent
-from typing import ClassVar
+from typing import ClassVar, List, Dict, Union, DefaultDict
 
 import pytest
 
@@ -40,8 +38,8 @@ def test_load_and_dump():
 
         my_str: str
         this_num: int
-        my_list: list[int]
-        my_other_list: list[str]
+        my_list: List[int]
+        my_other_list: List[str]
         my_test_value123: int = 21
         # missing from environment
         my_field_not_in_env: str = 'testing'
@@ -89,9 +87,9 @@ def test_load_and_dump_with_dict():
         class _(EnvWizard.Meta):
             field_to_env_var = {'my_other_dict': 'My.Other.Dict'}
 
-        my_dict: dict[int, bool]
-        my_other_dict: dict[str, int | str]
-        my_default_dict: defaultdict[float, datetime]
+        my_dict: Dict[int, bool]
+        my_other_dict: Dict[str, Union[int, str]]
+        my_default_dict: DefaultDict[float, datetime]
         my_typed_dict: MyTypedDict
 
     log.debug(ClassWithDict.dict())
@@ -130,7 +128,7 @@ def test_load_with_missing_env_variables():
         class MyClass(EnvWizard):
             missing_field_1: str
             missing_field_2: datetime
-            missing_field_3: dict[str, int]
+            missing_field_3: Dict[str, int]
 
     assert str(e.value) == dedent("""\
     There are 3 required fields in class `test_load_with_missing_env_variables.<locals>.MyClass` missing in the Environment:
@@ -143,7 +141,7 @@ def test_load_with_missing_env_variables():
     class test_load_with_missing_env_variables.<locals>.MyClass:
         missing_field_1: str = ''
         missing_field_2: datetime = None
-        missing_field_3: dict = {}
+        missing_field_3: Dict = None
     """.rstrip())
 
 
