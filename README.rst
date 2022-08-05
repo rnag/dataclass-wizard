@@ -910,7 +910,7 @@ This package was created with Cookiecutter_ and the `rnag/cookiecutter-pypackage
 .. _`rnag/cookiecutter-pypackage`: https://github.com/rnag/cookiecutter-pypackage
 .. _`Contributing`: https://dataclass-wizard.readthedocs.io/en/latest/contributing.html
 .. _`open an issue`: https://github.com/rnag/dataclass-wizard/issues
-.. _`EnvWizard`: TODO
+.. _`EnvWizard`: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/wizard_mixins.html#envwizard
 .. _`JSONListWizard`: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/wizard_mixins.html#jsonlistwizard
 .. _`JSONFileWizard`: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/wizard_mixins.html#jsonfilewizard
 .. _`YAMLWizard`: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/wizard_mixins.html#yamlwizard
