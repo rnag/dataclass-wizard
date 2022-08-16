@@ -266,3 +266,33 @@ class MissingData(ParseError):
             msg = f'{msg}{sep}{parts}'
 
         return msg
+
+
+class RecursiveClassError(JSONWizardError):
+    """
+    Error raised when we encounter a `RecursionError` due to cyclic
+    or self-referential dataclasses.
+    """
+
+    _TEMPLATE = ('Failure parsing class `{cls}`. '
+                 'Consider updating the Meta config to enable '
+                 'the `recursive_classes` flag.\n\n'
+                 'Example with `dataclass_wizard.LoadMeta`:\n'
+                 ' >>> LoadMeta(recursive_classes=True).bind_to({cls})\n\n'
+                 'For more info, please see:\n'
+                 '  https://github.com/rnag/dataclass-wizard/issues/62')
+
+    def __init__(self, cls: Type):
+        super().__init__()
+
+        self.class_name: str = self.name(cls)
+
+    # TODO: update to use `type_name` once changes are merged
+    @staticmethod
+    def name(obj) -> str:
+        """Return the type or class name of an object"""
+        return getattr(obj, '__qualname__', getattr(obj, '__name__', obj))
+
+    @property
+    def message(self) -> str:
+        return self._TEMPLATE.format(cls=self.class_name)

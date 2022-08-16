@@ -37,6 +37,7 @@ from .utils.typing_compat import (
 
 # Type defs
 GetParserType = Callable[[Type[T], Type, Extras], AbstractParser]
+LoadHookType = Callable[[Any], T]
 TupleOfParsers = Tuple[AbstractParser, ...]
 
 
@@ -52,7 +53,7 @@ class IdentityParser(AbstractParser[Type[T], T]):
 class SingleArgParser(AbstractParser[Type[T], T]):
     __slots__ = ('hook', )
 
-    hook: Callable[[Any], T]
+    hook: LoadHookType
 
     # noinspection PyDataclass
     def __post_init__(self, *_):
@@ -89,9 +90,9 @@ class RecursionSafeParser(AbstractParser):
     __slots__ = ('extras', 'hook')
 
     extras: Extras
-    hook: Optional[Callable]
+    hook: Optional[LoadHookType]
 
-    def load_hook_func(self) -> Callable[[Any], T]:
+    def load_hook_func(self) -> LoadHookType:
         from .loaders import load_func_for_dataclass
 
         return load_func_for_dataclass(

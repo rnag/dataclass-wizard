@@ -20,7 +20,8 @@ from .class_helper import (
 )
 from .constants import _LOAD_HOOKS, SINGLE_ARG_ALIAS, IDENTITY
 from .decorators import _alias, _single_arg_alias, resolve_alias_func, _identity
-from .errors import ParseError, MissingFields, UnknownJSONKey, MissingData
+from .errors import (ParseError, MissingFields, UnknownJSONKey,
+                     MissingData, RecursiveClassError)
 from .log import LOG
 from .models import Extras, _PatternedDT
 from .parsers import *
@@ -606,11 +607,7 @@ def load_func_for_dataclass(
     try:
         field_to_parser = dataclass_field_to_load_parser(cls_loader, cls, config)
     except RecursionError as e:
-        msg = (f'Update the Meta config for `{cls.__qualname__}` to enable '
-               f'`recursive_classes` flag')
-
-        # TODO
-        raise ParseError(e, None, None, _default_class=cls, resolution=msg) from None
+        raise RecursiveClassError(cls) from None
 
     # A cached mapping of each key in a JSON or dictionary object to the
     # resolved dataclass field name; useful so we don't need to do a case
