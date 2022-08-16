@@ -100,11 +100,11 @@ import logging
 
 from .bases_meta import LoadMeta, DumpMeta
 from .constants import PY36
-from .environ.env_wizard import EnvWizard
 from .dumpers import DumpMixin, setup_default_dumper, asdict
 from .loaders import LoadMixin, setup_default_loader, fromlist, fromdict
 from .models import (json_field, json_key, Container,
                      Pattern, DatePattern, TimePattern, DateTimePattern)
+from .environ.wizard import EnvWizard
 from .property_wizard import property_wizard
 from .serial_json import JSONSerializable
 from .wizard_mixins import JSONListWizard, JSONFileWizard, YAMLWizard
