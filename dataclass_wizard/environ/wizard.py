@@ -87,12 +87,12 @@ class EnvWizard(AbstractEnvWizard):
     def __init_subclass__(cls: E, *, init=True, reload_env=False):
         super().__init_subclass__()
 
+        if reload_env:  # reload cached var names from `os.environ` as needed.
+            Env.reload()
+
         if not init:  # skip logic in `__init_subclass__()` if needed.
             cls.__initialized = False
             return
-
-        if reload_env:  # reload cached var names from `os.environ` as needed.
-            Env.reload()
 
         # Calls the Meta initializer when inner :class:`Meta` is sub-classed.
         call_meta_initializer_if_needed(cls)
