@@ -50,13 +50,18 @@ class CSVWizard:
 
     @classmethod
     def from_csv_file(cls: Type[T], file: str,
+                      encoding=None, newline: Optional[str] = '',
+                      fieldnames=None, restkey=None, restval=None, dialect='excel',
                       *decoder_args, **decoder_kwargs) -> Container[T]:
         """
         Reads in the CSV file contents and converts to a container (list)
         of the dataclass instances.
         """
-        with open(file) as in_file:
-            return cls.from_csv(in_file, *decoder_args, **decoder_kwargs)
+        with open(file, encoding=encoding, newline=newline) as in_file:
+            return cls.from_csv(
+                in_file, fieldnames, restkey, restval, dialect,
+                *decoder_args, **decoder_kwargs,
+            )
 
     @classmethod
     def from_csv(cls: Type[T],
@@ -77,16 +82,28 @@ class CSVWizard:
         return Container[cls](fromlist(cls, reader))
 
     def append_to_csv_file(self, file: str, mode: str = 'a+',
-                           newline: Optional[str] = '', restval='',
-                           extrasaction='ignore', dialect='excel',
+                           encoding=None, newline: Optional[str] = '',
+                           check_ends_with_newline=True,
+                           restval='', extrasaction='ignore', dialect='excel',
                            *encoder_args, **encoder_kwargs) -> None:
         """
         Serializes the dataclass instance, and appends the data as
         a new row in the CSV file.
         """
-        with open(file, mode, newline=newline) as out_file:
+        with open(file, mode, encoding=encoding, newline=newline) as out_file:
+            # confirm file ends with a newline (if needed)
+            if check_ends_with_newline:
+                # get current file position
+                curr_pos = out_file.tell()
+                # seek to one character back
+                out_file.seek(curr_pos - 1)
+                # read in last character
+                c = out_file.read(1)
+                # add a newline if needed
+                if c != '\n':
+                    out_file.write('\n')
             # retrieve field names (CSV file headers)
-            reader = csv.reader(out_file)
+            reader = csv.reader(out_file, dialect=dialect)
             out_file.seek(0)
             field_names = next(reader, None)
             # add new row to the CSV file
