@@ -76,6 +76,7 @@ __all__ = [
     'DumpMixin',
     'property_wizard',
     # Wizard Mixins
+    'CSVWizard',
     'JSONListWizard',
     'JSONFileWizard',
     'YAMLWizard',
@@ -105,7 +106,8 @@ from .models import (json_field, json_key, Container,
                      Pattern, DatePattern, TimePattern, DateTimePattern)
 from .property_wizard import property_wizard
 from .serial_json import JSONSerializable
-from .wizard_mixins import JSONListWizard, JSONFileWizard, YAMLWizard
+from .wizard_mixins import (CSVWizard, JSONListWizard, JSONFileWizard,
+                            YAMLWizard)
 
 
 # Set up logging to ``/dev/null`` like a library is supposed to.

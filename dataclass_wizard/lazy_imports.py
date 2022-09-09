@@ -8,6 +8,9 @@ Lazy Import definitions. Generally, these imports will be available when any
 from .utils.lazy_loader import LazyLoader
 
 
+# csv: to add support for (de)serializing CSV data to dataclass instances
+csv = LazyLoader(globals(), 'csv')
+
 # pytimeparse: for parsing JSON string values as a `datetime.timedelta`
 pytimeparse = LazyLoader(globals(), 'pytimeparse', 'timedelta')
 

@@ -3,11 +3,12 @@ import json
 from dataclasses import MISSING, Field, _create_fn
 from datetime import date, datetime, time
 from typing import (cast, Collection, Callable,
-                    Optional, List, Union, Type)
+                    Optional, List, Union, Type, TextIO, BinaryIO)
 
 from .bases import META
 from .constants import PY310_OR_ABOVE
 from .decorators import cached_property
+from .lazy_imports import csv
 from .type_def import T, DT, Encoder, PyTypedDict, FileEncoder
 from .utils.type_conv import as_datetime, as_time, as_date
 
@@ -357,6 +358,36 @@ class Container(List[T]):
             ensure_ascii=ensure_ascii,
             **encoder_kwargs
         )
+
+    def to_csv_file(self, file: str, mode: str = 'w',
+                    newline: Optional[str] = '',
+                    *encoder_args, **encoder_kwargs) -> None:
+        """
+        Serializes the list of instances and writes it to a CSV file.
+        """
+        with open(file, mode, newline=newline) as f:
+            self.to_csv(f, *encoder_args, **encoder_kwargs)
+
+    def to_csv(self, file_obj: Union[TextIO, BinaryIO],
+               restval='', extrasaction='ignore', dialect='excel',
+               *encoder_args, **encoder_kwargs) -> None:
+        """
+        Serialize the list of instances as CSV data, and write it to a
+        file-like object.
+        """
+        from .dumpers import asdict
+
+        cls = self.__model__
+        list_of_dict = [asdict(o, cls=cls) for o in self]
+        field_names = list_of_dict[0].keys()
+
+        writer = csv.DictWriter(
+            file_obj, field_names, restval, extrasaction,
+            dialect, *encoder_args, **encoder_kwargs,
+        )
+
+        writer.writeheader()
+        writer.writerows(list_of_dict)
 
     def to_json(self, encoder: Encoder = json.dumps,
                 **encoder_kwargs) -> str:

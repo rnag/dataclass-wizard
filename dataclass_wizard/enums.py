@@ -27,6 +27,9 @@ class LetterCase(Enum):
     # Converts strings (generally in camel case) to snake case.
     #   ex: `myFieldName` -> `my_field_name`
     SNAKE = FuncWrapper(to_snake_case)
+    # Converts strings (generally in snake case) to title case.
+    #   ex: `my_field_name` -> `My Field Name`
+    TITLE = FuncWrapper(to_title_case)
 
     def __call__(self, *args):
         return self.value.f(*args)

@@ -3,6 +3,7 @@ __all__ = ['normalize',
            'to_pascal_case',
            'to_lisp_case',
            'to_snake_case',
+           'to_title_case',
            'repl_or_with_union']
 
 import re
@@ -93,6 +94,19 @@ def to_snake_case(string: str) -> str:
         r'((?!^)(?<!_)[A-Z][a-z]+|(?<=[a-z0-9])[A-Z])', r'_\1', string)
 
     return replace_multi_with_single(result.lower())
+
+
+def to_title_case(string: str) -> str:
+    """
+    Converts a string to Title Case.
+
+    Examples::
+
+        >>> to_title_case("device_type")
+        'Device Type'
+
+    """
+    return string.replace('_', ' ').title()
 
 
 def replace_multi_with_single(string: str, char='_') -> str:

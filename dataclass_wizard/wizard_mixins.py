@@ -1,24 +1,101 @@
 """
 Helper Wizard Mixin classes.
 """
-__all__ = ['JSONListWizard',
+__all__ = ['CSVWizard',
+           'JSONListWizard',
            'JSONFileWizard',
            'YAMLWizard']
 
 import json
-from typing import Type, Union, AnyStr, List, Optional, TextIO, BinaryIO
+from typing import (Iterable, Type, Union, AnyStr, List, Optional,
+                    TextIO, BinaryIO)
 
 from .abstractions import W
 from .bases_meta import DumpMeta
 from .class_helper import _META
 from .dumpers import asdict
 from .enums import LetterCase
-from .lazy_imports import yaml
+from .lazy_imports import yaml, csv
 from .loaders import fromdict, fromlist
 from .models import Container
 from .serial_json import JSONSerializable
 from .type_def import (T, ListOfJSONObject,
                        Encoder, Decoder, FileDecoder, FileEncoder)
+
+
+class CSVWizard:
+    # noinspection PyUnresolvedReferences
+    """
+    A Mixin class that makes it easier to interact with CSV data.
+
+    .. NOTE::
+      The default key transform used in the CSV dump process is `Title Case`,
+      however this can easily be customized without the need to sub-class
+      from :class:`JSONWizard`.
+
+    For example:
+
+        >>> @dataclass
+        >>> class MyClass(CSVWizard, key_transform='CAMEL'):
+        >>>     ...
+
+    """
+    def __init_subclass__(cls, key_transform=LetterCase.TITLE):
+        """Allow easy setup of common config, such as key casing transform."""
+
+        # Only add the key transform if Meta config has not been specified
+        # for the dataclass.
+        if key_transform and cls not in _META:
+            DumpMeta(key_transform=key_transform).bind_to(cls)
+
+    @classmethod
+    def from_csv_file(cls: Type[T], file: str,
+                      *decoder_args, **decoder_kwargs) -> Container[T]:
+        """
+        Reads in the CSV file contents and converts to a container (list)
+        of the dataclass instances.
+        """
+        with open(file) as in_file:
+            return cls.from_csv(in_file, *decoder_args, **decoder_kwargs)
+
+    @classmethod
+    def from_csv(cls: Type[T],
+                 iterable_or_stream: Union[Iterable[str], TextIO, BinaryIO],
+                 fieldnames=None, restkey=None, restval=None, dialect='excel',
+                 *decoder_args, **decoder_kwargs) -> Container[T]:
+        """
+        Converts CSV data (either from an iterable of strings, or a file-like
+        object) to a container or list of dataclass instances.
+        """
+        reader = csv.DictReader(
+            iterable_or_stream, fieldnames, restkey, restval,
+            dialect, *decoder_args, **decoder_kwargs,
+        )
+
+        # technically reader is an `iterable` and not a `list`, however
+        # functionally, there should be no real difference.
+        return Container[cls](fromlist(cls, reader))
+
+    def append_to_csv_file(self, file: str, mode: str = 'a+',
+                           newline: Optional[str] = '', restval='',
+                           extrasaction='ignore', dialect='excel',
+                           *encoder_args, **encoder_kwargs) -> None:
+        """
+        Serializes the dataclass instance, and appends the data as
+        a new row in the CSV file.
+        """
+        with open(file, mode, newline=newline) as out_file:
+            # retrieve field names (CSV file headers)
+            reader = csv.reader(out_file)
+            out_file.seek(0)
+            field_names = next(reader, None)
+            # add new row to the CSV file
+            writer = csv.DictWriter(
+                out_file, field_names, restval, extrasaction,
+                dialect, *encoder_args, **encoder_kwargs,
+            )
+            row = asdict(self)
+            writer.writerow(row)
 
 
 class JSONListWizard(JSONSerializable, str=False):
@@ -32,6 +109,12 @@ class JSONListWizard(JSONSerializable, str=False):
 
         * ``prettify`` - Convert the list of instances to a *prettified* JSON
           string.
+
+        * ``to_csv`` - Serialize the list of instances as CSV data and write
+          it to a file-like object.
+
+        * ``to_csv_file`` - Serialize the list of instances and write it to a
+          CSV file.
 
         * ``to_json`` - Convert the list of instances to a JSON string.
 
