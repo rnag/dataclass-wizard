@@ -1,7 +1,7 @@
 import json
 # noinspection PyProtectedMember
 import warnings
-from dataclasses import MISSING, Field, _create_fn
+from dataclasses import MISSING, Field as DataclassField, _create_fn
 from datetime import date, datetime, time
 from typing import (cast, Collection, Callable,
                     Optional, List, Union, Type, TextIO, BinaryIO)
@@ -55,11 +55,12 @@ def alias_key(*keys: str, all=False, dump=True):
     return Alias(*keys, all=all, dump=dump)
 
 
-def alias_field(keys: _STR_COLLECTION, *,
-                all=False, dump=True,
-                default=MISSING, default_factory=MISSING,
-                init=True, repr=True,
-                hash=None, compare=True, metadata=None):
+# noinspection PyPep8Naming
+def Field(keys: _STR_COLLECTION, *,
+          all=False, dump=True,
+          default=MISSING, default_factory=MISSING,
+          init=True, repr=True,
+          hash=None, compare=True, metadata=None):
     """
     This is a helper function that sets the same defaults for keyword
     arguments as the ``dataclasses.field`` function. It can be thought of as
@@ -111,12 +112,12 @@ class Alias:
         self.dump = dump
 
 
-class AliasField(Field):
+class AliasField(DataclassField):
     """
     Alias to a :class:`dataclasses.Field`, but one which also represents a
     mapping of one or more JSON key names to a dataclass field.
 
-    See the docs on the :func:`alias_field` function for more info.
+    See the docs on the :func:`Field` function for more info.
     """
     __slots__ = ('alias', )
 
@@ -158,17 +159,22 @@ def json_key(*args, **kwargs):
     deprecated, will be removed in a future release -- please switch
     to use :func:`alias_key` instead.
     """
-    warnings.warn('`json_key()` is deprecated, please use `alias_key()` instead.')
+    msg = '`json_key()` is deprecated, please use `Alias()` ' \
+          'or `alias_key()` instead.'
+    warnings.warn(msg)
+
     return alias_key(*args, **kwargs)
 
 
 def json_field(*args, **kwargs):
     """
     deprecated, will be removed in a future release -- please switch
-    to use :func:`alias_field` instead.
+    to use :func:`Field` instead.
     """
-    warnings.warn('`json_field()` is deprecated, please use `alias_field()` instead.')
-    return alias_field(*args, **kwargs)
+    msg = '`json_field()` is deprecated, please use `Field()` instead.'
+    warnings.warn(msg)
+
+    return Field(*args, **kwargs)
 
 
 JSON = Alias

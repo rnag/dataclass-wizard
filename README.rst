@@ -447,7 +447,7 @@ Custom Key Mappings
 -------------------
 
 If you ever find the need to add a `custom mapping`_ of a JSON key to a dataclass
-field (or vice versa), the helper function ``json_field`` -- which can be
+field (or vice versa), the helper function ``Field`` -- which can be
 considered an alias to ``dataclasses.field()`` -- is one approach that can
 resolve this.
 
@@ -457,13 +457,12 @@ Example below:
 
     from dataclasses import dataclass
 
-    from dataclass_wizard import JSONSerializable, json_field
+    from dataclass_wizard import JSONSerializable, Field
 
 
     @dataclass
     class MyClass(JSONSerializable):
-
-        my_str: str = json_field('myString1', all=True)
+        my_str: str = Field('myString1', all=True)
 
 
     # De-serialize a dictionary object with the newly mapped JSON key.
@@ -816,7 +815,7 @@ Exclude Fields
 You can also exclude specific dataclass fields (and their values) from the serialization
 process. There are two approaches that can be used for this purpose:
 
-* The argument ``dump=False`` can be passed in to the ``json_key`` and ``json_field``
+* The argument ``dump=False`` can be passed in to the ``Alias`` and ``Field``
   helper functions. Note that this is a more permanent option, as opposed to the one
   below.
 
@@ -831,7 +830,7 @@ Additionally, here is an example to demonstrate usage of both these approaches:
     from dataclasses import dataclass
     from typing import Annotated
 
-    from dataclass_wizard import JSONWizard, json_key, json_field
+    from dataclass_wizard import JSONWizard, Alias, Field
 
 
     @dataclass
@@ -839,8 +838,8 @@ Additionally, here is an example to demonstrate usage of both these approaches:
 
         my_str: str
         my_int: int
-        other_str: Annotated[str, json_key('AnotherStr', dump=False)]
-        my_bool: bool = json_field('TestBool', dump=False)
+        other_str: Annotated[str, Alias('AnotherStr', dump=False)]
+        my_bool: bool = Field('TestBool', dump=False)
 
 
     data = {'MyStr': 'my string',

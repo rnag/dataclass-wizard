@@ -537,13 +537,13 @@ def test_from_dict_with_missing_fields_with_resolution():
 def test_from_dict_key_transform_with_json_field():
     """
     Specifying a custom mapping of JSON key to dataclass field, via the
-    `json_field` helper function.
+    `Field` helper function.
     """
 
     @dataclass
     class MyClass(JSONSerializable):
-        my_str: str = alias_field('myCustomStr')
-        my_bool: bool = alias_field(('my_json_bool', 'myTestBool'))
+        my_str: str = Field('myCustomStr')
+        my_bool: bool = Field(('my_json_bool', 'myTestBool'))
 
     value = 'Testing'
     d = {'myCustomStr': value, 'myTestBool': 'true'}

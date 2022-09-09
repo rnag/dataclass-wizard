@@ -38,7 +38,7 @@ with IDEs in general.
     from dataclasses import dataclass, field
     from typing_extensions import Annotated
 
-    from dataclass_wizard import JSONSerializable, json_field, json_key
+    from dataclass_wizard import JSONSerializable, Alias, Field
 
 
     @dataclass
@@ -51,17 +51,17 @@ with IDEs in general.
                 'myJSONKey': 'my_str'
             }
 
-        # 2-- Using a sub-class of `Field`. This can be considered as an
-        #     alias to the helper function `dataclasses.field`.
-        my_str: str = json_field(["myField", "myJSONKey"])
+        # 2-- Using a sub-class of `dataclasses.Field`. This can be considered as
+        #     an alias to the helper function `dataclasses.field`.
+        my_str: str = Field(["myField", "myJSONKey"])
 
-        # 3-- Using `Annotated` with a `json_key` (or :class:`JSON`) argument.
-        my_str: Annotated[str, json_key('myField', 'myJSONKey')]
+        # 3-- Using `Annotated` with a `alias_key` (or :class:`Alias`) argument.
+        my_str: Annotated[str, Alias('myField', 'myJSONKey')]
 
         # 4-- Defining a value for `__remapping__` in the metadata stored
         #     within a `dataclasses.Field` class.
         my_str: str = field(metadata={
-            '__remapping__': json_key('myField', 'myJSONKey')
+            '__remapping__': Alias('myField', 'myJSONKey')
         })
 
 One thing to note is that the mapping to each JSON key name is case-sensitive,
@@ -140,27 +140,28 @@ Using a :func:`dataclasses.Field` subclass
 
 .. code:: python3
 
-    from typing import Union
+    from __future__ import annotations  # can be removed in Python 3.10+
+
     from dataclasses import dataclass
 
-    from dataclass_wizard import JSONSerializable, json_field
+    from dataclass_wizard import JSONSerializable, Field
 
 
     @dataclass
     class MyClass(JSONSerializable):
-        my_str: str = json_field(
+        my_str: str = Field(
             ('myJSONKey',
              'myField'),
             # Pass `all` so the inverse mapping is also added.
             all=True
         )
 
-        my_bool: Union[bool, str] = json_field(
+        my_bool: bool | str = Field(
             'someBoolValue', all=True
         )
 
-Using Annotated with a :func:`json_key` argument
-------------------------------------------------
+Using Annotated with an :class:`Alias` argument
+-----------------------------------------------
 
 .. code:: python3
 
@@ -168,7 +169,7 @@ Using Annotated with a :func:`json_key` argument
     from typing import Union
     from typing_extensions import Annotated
 
-    from dataclass_wizard import JSONSerializable, json_key
+    from dataclass_wizard import JSONSerializable, Alias
 
 
     @dataclass
@@ -178,10 +179,10 @@ Using Annotated with a :func:`json_key` argument
                           # If there are multiple JSON keys listed for a
                           # dataclass field, the one that is defined first
                           # will be used.
-                          json_key('myJSONKey', 'myField', all=True)]
+                          Alias('myJSONKey', 'myField', all=True)]
 
         my_bool: Annotated[Union[bool, str],
-                           json_key('someBoolValue', all=True)]
+                           Alias('someBoolValue', all=True)]
 
 
 In all the above cases, the custom key mappings apply for both the *load*

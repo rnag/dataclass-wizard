@@ -59,7 +59,7 @@ Exclude Fields
 You can also exclude specific dataclass fields (and their values) from the serialization
 process. There are two approaches that can be used for this purpose:
 
-* The argument ``dump=False`` can be passed in to the :func:`json_key` and :func:`json_field`
+* The argument ``dump=False`` can be passed in to the :func:`Alias` and :func:`Field`
   helper functions. Note that this is a more permanent option, as opposed to the one
   below.
 
@@ -74,7 +74,7 @@ Additionally, here is an example to demonstrate usage of both these approaches:
     from dataclasses import dataclass
     from typing import Annotated
 
-    from dataclass_wizard import JSONWizard, json_key, json_field
+    from dataclass_wizard import JSONWizard, Alias, Field
 
 
     @dataclass
@@ -82,8 +82,8 @@ Additionally, here is an example to demonstrate usage of both these approaches:
 
         my_str: str
         my_int: int
-        other_str: Annotated[str, json_key('AnotherStr', dump=False)]
-        my_bool: bool = json_field('TestBool', dump=False)
+        other_str: Annotated[str, Alias('AnotherStr', dump=False)]
+        my_bool: bool = Field('TestBool', dump=False)
 
 
     data = {'MyStr': 'my string',

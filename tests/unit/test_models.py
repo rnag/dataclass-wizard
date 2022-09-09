@@ -2,7 +2,7 @@ import pytest
 from pytest_mock import MockerFixture
 
 from dataclass_wizard import fromlist
-from dataclass_wizard.models import Container, alias_field
+from dataclass_wizard.models import Container, Field
 from .conftest import SampleClass
 
 
@@ -14,10 +14,10 @@ def mock_open(mocker: MockerFixture):
 def test_json_field_does_not_allow_both_default_and_default_factory():
     """
     Confirm we can't specify both `default` and `default_factory` when
-    calling the :func:`json_field` helper function.
+    calling the :func:`Field` helper function.
     """
     with pytest.raises(ValueError):
-        _ = alias_field((), default=None, default_factory=None)
+        _ = Field((), default=None, default_factory=None)
 
 
 def test_container_with_incorrect_usage():

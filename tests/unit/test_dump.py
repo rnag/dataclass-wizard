@@ -164,13 +164,13 @@ def test_tag_field_is_used_in_dump_process():
 def test_to_dict_key_transform_with_json_field():
     """
     Specifying a custom mapping of JSON key to dataclass field, via the
-    `json_field` helper function.
+    `Field` helper function.
     """
 
     @dataclass
     class MyClass(JSONSerializable):
-        my_str: str = alias_field('myCustomStr', all=True)
-        my_bool: bool = alias_field(('my_json_bool', 'myTestBool'), all=True)
+        my_str: str = Field('myCustomStr', all=True)
+        my_bool: bool = Field(('my_json_bool', 'myTestBool'), all=True)
 
     value = 'Testing'
     expected = {'myCustomStr': value, 'my_json_bool': True}
@@ -245,7 +245,7 @@ def test_to_dict_with_excluded_fields():
 
         my_str: str
         other_str: Annotated[str, alias_key('AnotherStr', dump=False)]
-        my_bool: bool = alias_field('TestBool', dump=False)
+        my_bool: bool = Field('TestBool', dump=False)
         my_int: int = 3
 
     data = {'MyStr': 'my string',

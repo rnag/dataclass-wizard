@@ -143,7 +143,7 @@ def _setup_load_config_for_cls(cls_loader: Type[AbstractLoader],
           passed in to this object.
 
         * Check if the field type is a :class:`AliasField` object (this can
-          also be set by the helper function ``alias_field``). Assuming this is
+          also be set by the helper function ``Field``). Assuming this is
           the case, the class-specific mapping of JSON key to dataclass field
           name is then updated with the input passed in to the :class:`Alias`
           attribute.
@@ -212,7 +212,7 @@ def setup_dump_config_for_cls_if_needed(cls: Type):
           passed in to this object.
 
         * Check if the field type is a :class:`AliasField` object (this can
-          also be set by the helper function ``alias_field``). Assuming this is
+          also be set by the helper function ``Field``). Assuming this is
           the case, the class-specific mapping of dataclass field name to JSON
           key is then updated with the input passed in to the :class:`Alias`
           attribute.

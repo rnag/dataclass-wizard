@@ -87,9 +87,9 @@ __all__ = [
     'LoadMeta',
     'DumpMeta',
     # Models
-    'Alias',
-    'alias_field',
     'alias_key',
+    'Alias',
+    'Field',
     # TODO: deprecated
     'json_field',
     'json_key',
@@ -107,7 +107,7 @@ from .bases_meta import LoadMeta, DumpMeta
 from .constants import PY36
 from .dumpers import DumpMixin, setup_default_dumper, asdict
 from .loaders import LoadMixin, setup_default_loader, fromlist, fromdict
-from .models import (Alias, alias_field, alias_key,
+from .models import (Alias, Field, alias_key,
                      # Deprecated aliases to above
                      json_field, json_key,
                      # END aliases
