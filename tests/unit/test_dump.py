@@ -169,8 +169,8 @@ def test_to_dict_key_transform_with_json_field():
 
     @dataclass
     class MyClass(JSONSerializable):
-        my_str: str = json_field('myCustomStr', all=True)
-        my_bool: bool = json_field(('my_json_bool', 'myTestBool'), all=True)
+        my_str: str = alias_field('myCustomStr', all=True)
+        my_bool: bool = alias_field(('my_json_bool', 'myTestBool'), all=True)
 
     value = 'Testing'
     expected = {'myCustomStr': value, 'my_json_bool': True}
@@ -191,8 +191,8 @@ def test_to_dict_key_transform_with_json_key():
 
     @dataclass
     class MyClass(JSONSerializable):
-        my_str: Annotated[str, json_key('myCustomStr', all=True)]
-        my_bool: Annotated[bool, json_key(
+        my_str: Annotated[str, alias_key('myCustomStr', all=True)]
+        my_bool: Annotated[bool, alias_key(
             'my_json_bool', 'myTestBool', all=True)]
 
     value = 'Testing'
@@ -244,8 +244,8 @@ def test_to_dict_with_excluded_fields():
     class MyClass(JSONWizard):
 
         my_str: str
-        other_str: Annotated[str, json_key('AnotherStr', dump=False)]
-        my_bool: bool = json_field('TestBool', dump=False)
+        other_str: Annotated[str, alias_key('AnotherStr', dump=False)]
+        my_bool: bool = alias_field('TestBool', dump=False)
         my_int: int = 3
 
     data = {'MyStr': 'my string',

@@ -4,7 +4,7 @@ from typing import Dict, Tuple, Type, Union, Callable, Optional, Any
 
 from .abstractions import W, AbstractLoader, AbstractDumper, AbstractParser
 from .bases import M, AbstractMeta
-from .models import JSONField, JSON, Extras, _PatternedDT
+from .models import AliasField, Alias, Extras, _PatternedDT
 from .type_def import ExplicitNull, ExplicitNullType, T
 from .utils.dict_helper import DictWithLowerStore
 from .utils.typing_compat import (
@@ -137,15 +137,15 @@ def _setup_load_config_for_cls(cls_loader: Type[AbstractLoader],
 
         * Check if the field's annotation is of type ``Annotated``. If so,
           we iterate over each ``Annotated`` argument and find any special
-          :class:`JSON` objects (this can also be set via the helper function
-          ``json_key``). Assuming we find it, the class-specific mapping of
+          :class:`Alias` objects (this can also be set via the helper function
+          ``alias_key``). Assuming we find it, the class-specific mapping of
           JSON key to dataclass field name is then updated with the input
           passed in to this object.
 
-        * Check if the field type is a :class:`JSONField` object (this can
-          also be set by the helper function ``json_field``). Assuming this is
+        * Check if the field type is a :class:`AliasField` object (this can
+          also be set by the helper function ``alias_field``). Assuming this is
           the case, the class-specific mapping of JSON key to dataclass field
-          name is then updated with the input passed in to the :class:`JSON`
+          name is then updated with the input passed in to the :class:`Alias`
           attribute.
     """
     json_to_dataclass_field = _JSON_FIELD_TO_DATACLASS_FIELD[cls]
@@ -161,13 +161,13 @@ def _setup_load_config_for_cls(cls_loader: Type[AbstractLoader],
         # the class-specific mapping of JSON key to dataclass field name.
         if isinstance(f, Field):
 
-            if isinstance(f, JSONField):
-                for key in f.json.keys:
+            if isinstance(f, AliasField):
+                for key in f.alias.keys:
                     json_to_dataclass_field[key] = f.name
 
             else:
                 value = f.metadata.get('__remapping__')
-                if value and isinstance(value, JSON):
+                if value and isinstance(value, Alias):
                     for key in value.keys:
                         json_to_dataclass_field[key] = f.name
 
@@ -178,7 +178,7 @@ def _setup_load_config_for_cls(cls_loader: Type[AbstractLoader],
         if is_annotated(field_type):
             ann_type, *extras = get_args(field_type)
             for extra in extras:
-                if isinstance(extra, JSON):
+                if isinstance(extra, Alias):
                     for key in extra.keys:
                         json_to_dataclass_field[key] = f.name
                 elif isinstance(extra, _PatternedDT):
@@ -206,15 +206,15 @@ def setup_dump_config_for_cls_if_needed(cls: Type):
 
         * Check if the field's annotation is of type ``Annotated``. If so,
           we iterate over each ``Annotated`` argument and find any special
-          :class:`JSON` objects (this can also be set via the helper function
-          ``json_key``). Assuming we find it, the class-specific mapping of
+          :class:`Alias` objects (this can also be set via the helper function
+          ``alias_key``). Assuming we find it, the class-specific mapping of
           dataclass field name to JSON key is then updated with the input
           passed in to this object.
 
-        * Check if the field type is a :class:`JSONField` object (this can
-          also be set by the helper function ``json_field``). Assuming this is
+        * Check if the field type is a :class:`AliasField` object (this can
+          also be set by the helper function ``alias_field``). Assuming this is
           the case, the class-specific mapping of dataclass field name to JSON
-          key is then updated with the input passed in to the :class:`JSON`
+          key is then updated with the input passed in to the :class:`Alias`
           attribute.
     """
 
@@ -229,15 +229,15 @@ def setup_dump_config_for_cls_if_needed(cls: Type):
         # the class-specific mapping of dataclass field name to JSON key.
         if isinstance(f, Field):
 
-            if isinstance(f, JSONField):
-                if not f.json.dump:
+            if isinstance(f, AliasField):
+                if not f.alias.dump:
                     dataclass_to_json_field[f.name] = ExplicitNull
-                elif f.json.all:
-                    dataclass_to_json_field[f.name] = f.json.keys[0]
+                elif f.alias.all:
+                    dataclass_to_json_field[f.name] = f.alias.keys[0]
 
             else:
                 value = f.metadata.get('__remapping__')
-                if value and isinstance(value, JSON) and value.all:
+                if value and isinstance(value, Alias) and value.all:
                     dataclass_to_json_field[f.name] = value.keys[0]
 
         # Check if the field annotation is an `Annotated` type. If so,
@@ -247,7 +247,7 @@ def setup_dump_config_for_cls_if_needed(cls: Type):
         f.type = eval_forward_ref_if_needed(f.type, cls)
         if is_annotated(f.type):
             for extra in get_args(f.type)[1:]:
-                if isinstance(extra, JSON):
+                if isinstance(extra, Alias):
                     if not extra.dump:
                         dataclass_to_json_field[f.name] = ExplicitNull
                     elif extra.all:

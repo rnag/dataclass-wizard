@@ -1,5 +1,6 @@
 import json
 # noinspection PyProtectedMember
+import warnings
 from dataclasses import MISSING, Field, _create_fn
 from datetime import date, datetime, time
 from typing import (cast, Collection, Callable,
@@ -29,7 +30,7 @@ class Extras(PyTypedDict):
     pattern: '_PatternedDT'
 
 
-def json_key(*keys: str, all=False, dump=True):
+def alias_key(*keys: str, all=False, dump=True):
     """
     Represents a mapping of one or more JSON key names for a dataclass field.
 
@@ -51,14 +52,14 @@ def json_key(*keys: str, all=False, dump=True):
       JSON. By default, this field and its value is included.
     """
 
-    return JSON(*keys, all=all, dump=dump)
+    return Alias(*keys, all=all, dump=dump)
 
 
-def json_field(keys: _STR_COLLECTION, *,
-               all=False, dump=True,
-               default=MISSING, default_factory=MISSING,
-               init=True, repr=True,
-               hash=None, compare=True, metadata=None):
+def alias_field(keys: _STR_COLLECTION, *,
+                all=False, dump=True,
+                default=MISSING, default_factory=MISSING,
+                init=True, repr=True,
+                hash=None, compare=True, metadata=None):
     """
     This is a helper function that sets the same defaults for keyword
     arguments as the ``dataclasses.field`` function. It can be thought of as
@@ -89,15 +90,16 @@ def json_field(keys: _STR_COLLECTION, *,
     if default is not MISSING and default_factory is not MISSING:
         raise ValueError('cannot specify both default and default_factory')
 
-    return JSONField(keys, all, dump, default, default_factory, init, repr,
-                     hash, compare, metadata)
+    return AliasField(keys, all, dump, default, default_factory, init, repr,
+                      hash, compare, metadata)
 
 
-class JSON:
+class Alias:
     """
-    Represents one or more mappings of JSON keys.
+    Represents one or more mappings of "alias" keys, i.e. ones defined in
+    the data to be (de)serialized, such as JSON string data.
 
-    See the docs on the :func:`json_key` function for more info.
+    See the docs on the :func:`alias_key` function for more info.
     """
     __slots__ = ('keys',
                  'all',
@@ -109,14 +111,14 @@ class JSON:
         self.dump = dump
 
 
-class JSONField(Field):
+class AliasField(Field):
     """
     Alias to a :class:`dataclasses.Field`, but one which also represents a
     mapping of one or more JSON key names to a dataclass field.
 
-    See the docs on the :func:`json_field` function for more info.
+    See the docs on the :func:`alias_field` function for more info.
     """
-    __slots__ = ('json', )
+    __slots__ = ('alias', )
 
     # In Python 3.10, dataclasses adds a new parameter to the :class:`Field`
     # constructor: `kw_only`
@@ -133,7 +135,7 @@ class JSONField(Field):
             if isinstance(keys, str):
                 keys = (keys, )
 
-            self.json = JSON(*keys, all=all, dump=dump)
+            self.alias = Alias(*keys, all=all, dump=dump)
 
     else:  # pragma: no cover
         def __init__(self, keys: _STR_COLLECTION, all: bool, dump: bool,
@@ -146,8 +148,33 @@ class JSONField(Field):
             if isinstance(keys, str):
                 keys = (keys, )
 
-            self.json = JSON(*keys, all=all, dump=dump)
+            self.alias = Alias(*keys, all=all, dump=dump)
 
+
+# -- TODO: deprecated alias(es), to be removed in ~= v0.30.0 --
+#
+def json_key(*args, **kwargs):
+    """
+    deprecated, will be removed in a future release -- please switch
+    to use :func:`alias_key` instead.
+    """
+    warnings.warn('`json_key()` is deprecated, please use `alias_key()` instead.')
+    return alias_key(*args, **kwargs)
+
+
+def json_field(*args, **kwargs):
+    """
+    deprecated, will be removed in a future release -- please switch
+    to use :func:`alias_field` instead.
+    """
+    warnings.warn('`json_field()` is deprecated, please use `alias_field()` instead.')
+    return alias_field(*args, **kwargs)
+
+
+JSON = Alias
+JSONField = AliasField
+
+# -- END: deprecated aliases
 
 # noinspection PyPep8Naming
 def Pattern(pattern: str):

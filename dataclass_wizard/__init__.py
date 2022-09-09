@@ -87,8 +87,13 @@ __all__ = [
     'LoadMeta',
     'DumpMeta',
     # Models
+    'Alias',
+    'alias_field',
+    'alias_key',
+    # TODO: deprecated
     'json_field',
     'json_key',
+    # END
     'Container',
     'Pattern',
     'DatePattern',
@@ -102,8 +107,12 @@ from .bases_meta import LoadMeta, DumpMeta
 from .constants import PY36
 from .dumpers import DumpMixin, setup_default_dumper, asdict
 from .loaders import LoadMixin, setup_default_loader, fromlist, fromdict
-from .models import (json_field, json_key, Container,
-                     Pattern, DatePattern, TimePattern, DateTimePattern)
+from .models import (Alias, alias_field, alias_key,
+                     # Deprecated aliases to above
+                     json_field, json_key,
+                     # END aliases
+                     Container, Pattern, DatePattern, TimePattern,
+                     DateTimePattern)
 from .property_wizard import property_wizard
 from .serial_json import JSONSerializable
 from .wizard_mixins import (CSVWizard, JSONListWizard, JSONFileWizard,

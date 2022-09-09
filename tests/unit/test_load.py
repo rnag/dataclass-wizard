@@ -542,8 +542,8 @@ def test_from_dict_key_transform_with_json_field():
 
     @dataclass
     class MyClass(JSONSerializable):
-        my_str: str = json_field('myCustomStr')
-        my_bool: bool = json_field(('my_json_bool', 'myTestBool'))
+        my_str: str = alias_field('myCustomStr')
+        my_bool: bool = alias_field(('my_json_bool', 'myTestBool'))
 
     value = 'Testing'
     d = {'myCustomStr': value, 'myTestBool': 'true'}
@@ -563,8 +563,8 @@ def test_from_dict_key_transform_with_json_key():
 
     @dataclass
     class MyClass(JSONSerializable):
-        my_str: Annotated[str, json_key('myCustomStr')]
-        my_bool: Annotated[bool, json_key('my_json_bool', 'myTestBool')]
+        my_str: Annotated[str, alias_key('myCustomStr')]
+        my_bool: Annotated[bool, alias_key('my_json_bool', 'myTestBool')]
 
     value = 'Testing'
     d = {'myCustomStr': value, 'myTestBool': 'true'}
