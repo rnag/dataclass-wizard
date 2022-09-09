@@ -393,13 +393,17 @@ class Container(List[T]):
         )
 
     def to_csv_file(self, file: str, mode: str = 'w',
-                    newline: Optional[str] = '',
+                    encoding=None, newline: Optional[str] = '',
+                    restval='', extrasaction='ignore', dialect='excel',
                     *encoder_args, **encoder_kwargs) -> None:
         """
         Serializes the list of instances and writes it to a CSV file.
         """
-        with open(file, mode, newline=newline) as f:
-            self.to_csv(f, *encoder_args, **encoder_kwargs)
+        with open(file, mode, encoding=encoding, newline=newline) as f:
+            self.to_csv(
+                f, restval, extrasaction, dialect,
+                *encoder_args, **encoder_kwargs,
+            )
 
     def to_csv(self, file_obj: Union[TextIO, BinaryIO],
                restval='', extrasaction='ignore', dialect='excel',
