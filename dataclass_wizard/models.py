@@ -2,18 +2,14 @@ import json
 # noinspection PyProtectedMember
 from dataclasses import MISSING, Field, _create_fn
 from datetime import date, datetime, time
-from typing import (cast, Collection, Callable,
-                    Optional, List, Union, Type)
+from typing import cast, Callable, Optional, List, Type
 
 from .bases import META
 from .constants import PY310_OR_ABOVE
 from .decorators import cached_property
-from .type_def import T, DT, Encoder, PyTypedDict, FileEncoder
+from .type_def import T, DT, Encoder, PyTypedDict, FileEncoder, StrCollection
 from .utils.type_conv import as_datetime, as_time, as_date
 
-
-# Type for a string or a collection of strings.
-_STR_COLLECTION = Union[str, Collection[str]]
 
 # A date, time, datetime sub type, or None.
 DT_OR_NONE = Optional[DT]
@@ -53,7 +49,7 @@ def json_key(*keys: str, all=False, dump=True):
     return JSON(*keys, all=all, dump=dump)
 
 
-def json_field(keys: _STR_COLLECTION, *,
+def json_field(keys: StrCollection, *,
                all=False, dump=True,
                default=MISSING, default_factory=MISSING,
                init=True, repr=True,
@@ -122,7 +118,7 @@ class JSONField(Field):
     #
     # Ref: https://docs.python.org/3.10/library/dataclasses.html#dataclasses.dataclass
     if PY310_OR_ABOVE:  # pragma: no cover
-        def __init__(self, keys: _STR_COLLECTION, all: bool, dump: bool,
+        def __init__(self, keys: StrCollection, all: bool, dump: bool,
                      default, default_factory, init, repr, hash, compare,
                      metadata):
 

@@ -3,6 +3,7 @@ from typing import ClassVar, Dict, Optional, Set
 
 from ..decorators import cached_class_property
 from ..lazy_imports import dotenv
+from ..type_def import StrCollection
 from ..utils.string_conv import to_snake_case
 
 
@@ -80,27 +81,41 @@ def try_cleaned(key: str) -> Optional[str]:
 
 if name == 'nt':
     # Where Env Var Names Must Be UPPERCASE
-    def lookup_exact(var: str):
+    def lookup_exact(var: StrCollection):
         """
-        Lookup by variable name with *exact* letter casing, and return `None`
-        if not found in the environment.
+        Lookup by variable name(s) with *exact* letter casing, and return
+        `None` if not found in the environment.
         """
-        var = var.upper()
+        if isinstance(var, str):
+            var = var.upper()
 
-        if var in Env.var_names:
-            return environ[var]
+            if var in Env.var_names:
+                return environ[var]
+
+        else:  # a collection of env variable names.
+            for v in var:
+                v = v.upper()
+
+                if v in Env.var_names:
+                    return environ[v]
 
         return None
 
 else:
     # Where Env Var Names Can Be Mixed Case
-    def lookup_exact(var: str):
+    def lookup_exact(var: StrCollection):
         """
-        Lookup by variable name with *exact* letter casing, and return `None`
-        if not found in the environment.
+        Lookup by variable name(s) with *exact* letter casing, and return
+        `None` if not found in the environment.
         """
-        if var in Env.var_names:
-            return environ[var]
+        if isinstance(var, str):
+            if var in Env.var_names:
+                return environ[var]
+
+        else:  # a collection of env variable names.
+            for v in var:
+                if v in Env.var_names:
+                    return environ[v]
 
         return None
 

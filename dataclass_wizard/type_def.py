@@ -15,6 +15,7 @@ __all__ = [
     'ListOfJSONObject',
     'JSONValue',
     'FileType',
+    'StrCollection',
     'Encoder',
     'FileEncoder',
     'Decoder',
@@ -39,7 +40,8 @@ from datetime import date, time, datetime
 from enum import Enum
 from os import PathLike
 from typing import (
-    Any, Type, TypeVar, Sequence, Mapping, List, Dict, DefaultDict, FrozenSet,
+    Any, Type, TypeVar, Collection, Sequence, Mapping,
+    List, Dict, DefaultDict, FrozenSet,
     Union, NamedTuple, Callable, AnyStr, TextIO, BinaryIO
 )
 from uuid import UUID
@@ -115,6 +117,9 @@ JSONValue = Union[None, str, bool, int, float, JSONList, JSONObject]
 
 # File-type argument, compatible with the type of `file` for `open`
 FileType = Union[str, bytes, PathLike, int]
+
+# Type for a string or a collection of strings.
+StrCollection = Union[str, Collection[str]]
 
 
 if PY38_OR_ABOVE:  # pragma: no cover
