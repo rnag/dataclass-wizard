@@ -46,7 +46,7 @@ class AbstractEnvWizard(ABC):
     def dict(self: E) -> JSONObject:
         """
         Same as ``__dict__``, but only returns values for fields defined
-        on the `EnvWizard` subclass. See :attr:`__fields__` for more info.
+        on the `EnvWizard` instance. See :attr:`__fields__` for more info.
 
         .. NOTE::
            The values in the returned dictionary object are not needed to be

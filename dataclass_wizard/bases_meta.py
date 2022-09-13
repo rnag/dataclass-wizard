@@ -17,7 +17,7 @@ from .class_helper import (
 )
 from .decorators import try_with_load
 from .dumpers import get_dumper
-from .enums import LetterCase, DateTimeTo, LetterCasePriority
+from .enums import DateTimeTo, Extra, LetterCase, LetterCasePriority
 from .environ.loaders import EnvLoader
 from .environ.lookups import Env
 from .errors import ParseError
@@ -249,9 +249,13 @@ class BaseEnvWizardMeta(AbstractEnvMeta):
             # Update environment with values in the "dot env" file
             Env.update_with_dotenv_file(env_file)
 
+        if cls.extra:
+            cls.extra = _as_enum_safe(cls, 'extra', Extra)
+
         # Finally, if needed, save the meta config for the outer class. This
         # will allow us to access this config as part of the JSON load/dump
         # process if needed.
+        # noinspection PyTypeChecker
         _META[env_class] = cls
 
 

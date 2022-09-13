@@ -14,6 +14,19 @@ class DateTimeTo(Enum):
     TIMESTAMP = 1
 
 
+class Extra(Enum):
+    # Allow extra keyword arguments - these attributes will be set on an
+    # instance, if the instance's `__setattr__()` method allows it.
+    ALLOW = 'allow'
+
+    # Deny extra keyword arguments - passing in extra keywords to the
+    # constructor method will result in an error.
+    DENY = 'deny'
+
+    # Ignore extra keyword arguments.
+    IGNORE = 'ignore'
+
+
 class LetterCase(Enum):
 
     # Converts strings (generally in snake case) to camel case.

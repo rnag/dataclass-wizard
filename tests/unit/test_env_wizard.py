@@ -7,7 +7,7 @@ from typing import ClassVar, List, Dict, Union, DefaultDict
 
 import pytest
 
-from dataclass_wizard.errors import MissingVars, ParseError
+from dataclass_wizard.errors import MissingVars, ParseError, ExtraData
 
 try:
     from typing import TypedDict
@@ -139,12 +139,17 @@ def test_load_with_missing_env_variables():
         - missing_field_2
         - missing_field_3
 
-    Resolution: set a default value for any optional fields, as below.
+    resolution #1: set a default value for any optional fields, as below.
 
     class test_load_with_missing_env_variables.<locals>.MyClass:
         missing_field_1: str = ''
         missing_field_2: datetime = None
         missing_field_3: Dict = None
+
+    ...
+    resolution #2: pass in values for required fields to test_load_with_missing_env_variables.<locals>.MyClass.__init__():
+
+        instance = test_load_with_missing_env_variables.<locals>.MyClass(missing_field_1='', missing_field_2=None, missing_field_3=None)
     """.rstrip())
 
 
@@ -219,15 +224,67 @@ def test_load_when_constructor_kwargs_are_passed():
     assert c.my_string_var == 'hello world'
 
 
-def test_load_with_constructor():
+def test_extra_keyword_arguments_when_deny_extra():
     """
-    Using the constructor method of an `EnvWizard` subclass raises an error
-    when `init` is not disabled.
+    Passing extra keyword arguments to the constructor method of an `EnvWizard`
+    subclass raises an error by default, as `Extra.DENY` is the default behavior.
     """
-    os.environ.update(MY_STRING_VAR='hello world')
 
-    class MyTestClass(EnvWizard, reload_env=True, init=False):
-        my_string_var: str
+    os.environ['A_FIELD'] = 'hello world!'
 
-    env = MyTestClass()
-    assert env.to_json() == '{"my_string_var": "hello world"}'
+    class MyClass(EnvWizard, reload_env=True):
+        a_field: str
+
+    with pytest.raises(ExtraData) as e:
+        _ = MyClass(another_field=123, third_field=None)
+
+    log.error(e.value)
+
+
+def test_extra_keyword_arguments_when_allow_extra():
+    """
+    Passing extra keyword arguments to the constructor method of an `EnvWizard`
+    subclass does not raise an error and instead accepts or "passes through"
+    extra keyword arguments, when `Extra.ALLOW` is specified for the
+    `extra` Meta field.
+    """
+
+    os.environ['A_FIELD'] = 'hello world!'
+
+    class MyClass(EnvWizard, reload_env=True):
+
+        class _(EnvWizard.Meta):
+            extra = 'ALLOW'
+
+        a_field: str
+
+    c = MyClass(another_field=123, third_field=None)
+
+    assert getattr(c, 'another_field') == 123
+    assert hasattr(c, 'third_field')
+
+    assert c.to_json() == '{"a_field": "hello world!"}'
+
+
+def test_extra_keyword_arguments_when_ignore_extra():
+    """
+    Passing extra keyword arguments to the constructor method of an `EnvWizard`
+    subclass does not raise an error and instead ignores extra keyword
+    arguments, when `Extra.IGNORE` is specified for the `extra` Meta field.
+    """
+
+    os.environ['A_FIELD'] = 'hello world!'
+
+    class MyClass(EnvWizard, reload_env=True):
+
+        class _(EnvWizard.Meta):
+            extra = 'IGNORE'
+
+        a_field: str
+
+    c = MyClass(another_field=123, third_field=None)
+
+    assert not hasattr(c, 'another_field')
+    assert not hasattr(c, 'third_field')
+
+    assert c.to_json() == '{"a_field": "hello world!"}'
