@@ -7,9 +7,6 @@ tox==3.24.5
 coverage>=6.2
 Sphinx==4.4.0
 twine==3.8.0
-# Extras
-pytimeparse==1.1.8
-python-dotenv>=0.19.0
 # Test requirements
 pytest==7.0.1
 pytest-mock>=3.6.1

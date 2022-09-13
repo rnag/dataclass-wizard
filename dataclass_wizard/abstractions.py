@@ -4,7 +4,7 @@ Contains implementations for Abstract Base Classes
 import json
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, InitVar
+from dataclasses import dataclass, InitVar, Field
 from datetime import datetime, time, date, timedelta
 from decimal import Decimal
 from typing import (
@@ -21,7 +21,6 @@ from .type_def import (
 
 # Create a generic variable that can be 'AbstractEnvWizard', or any subclass.
 E = TypeVar('E', bound='AbstractEnvWizard')
-E = Type[E]
 
 # Create a generic variable that can be 'AbstractJSONWizard', or any subclass.
 W = TypeVar('W', bound='AbstractJSONWizard')
@@ -42,10 +41,9 @@ class AbstractEnvWizard(ABC):
     # .. NOTE::
     #    This excludes fields marked as ``ClassVar``, or ones which are
     #    not type-annotated.
-    __fields__: Dict[str, type]
+    __fields__: Dict[str, Field]
 
-    @classmethod
-    def dict(cls: E) -> JSONObject:
+    def dict(self: E) -> JSONObject:
         """
         Same as ``__dict__``, but only returns values for fields defined
         on the `EnvWizard` subclass. See :attr:`__fields__` for more info.
@@ -54,22 +52,20 @@ class AbstractEnvWizard(ABC):
            The values in the returned dictionary object are not needed to be
            JSON serializable. Use :meth:`to_dict` if this is required.
         """
-        cls_dict = cls.__dict__
-        return {field: cls_dict[field] for field in cls.__fields__}
+        return {f: getattr(self, f) for f in self.__class__.__fields__}
 
-    @classmethod
     @abstractmethod
-    def to_dict(cls: E) -> JSONObject:
+    def to_dict(self: E) -> JSONObject:
         """
-        Converts the `EnvWizard` subclass to a Python dictionary object that
-        is JSON serializable.
+        Converts an instance of a `EnvWizard` subclass to a Python dictionary
+        object that is JSON serializable.
         """
 
-    @classmethod
     @abstractmethod
-    def to_json(cls: E, indent=None) -> AnyStr:
+    def to_json(self: E, indent=None) -> AnyStr:
         """
-        Converts the `EnvWizard` subclass to a JSON `string` representation.
+        Converts an instance of a `EnvWizard` subclass to a JSON `string`
+        representation.
         """
 
 

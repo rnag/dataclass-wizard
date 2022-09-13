@@ -1,4 +1,5 @@
 """The setup script."""
+import itertools
 import pathlib
 
 from setuptools import setup, find_packages
@@ -22,6 +23,15 @@ test_requirements = [
     'pytest-cov~=2.12.1',
     'pytest-runner~=5.3.1'
 ]
+
+extras_require = {
+    'dotenv': ['python-dotenv>=0.19.0'],
+    'timedelta': ['pytimeparse>=1.1.7'],
+    'yaml': ['PyYAML>=5.3'],
+}
+
+# Ref: https://stackoverflow.com/a/71166228/10237506
+extras_require['all'] = list(itertools.chain.from_iterable(extras_require.values()))
 
 about = {}
 exec((here / package_name / '__version__.py').read_text(), about)
@@ -72,10 +82,6 @@ setup(
     ],
     test_suite='tests',
     tests_require=test_requirements,
-    extras_require={
-        'dotenv': ['python-dotenv>=0.19.0'],
-        'timedelta': ['pytimeparse>=1.1.7'],
-        'yaml': ['PyYAML>=5.3']
-    },
+    extras_require=extras_require,
     zip_safe=False
 )

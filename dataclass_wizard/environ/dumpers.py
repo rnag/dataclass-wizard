@@ -4,6 +4,7 @@ from typing import List, Any, Optional, Callable
 from ..abstractions import E
 from ..bases import META, AbstractEnvMeta
 from ..class_helper import (
+    dataclass_field_to_default,
     dataclass_field_to_json_field,
     _CLASS_TO_DUMP_FUNC, _META,
 )
@@ -14,11 +15,11 @@ from ..type_def import (
 from ..utils.string_conv import to_snake_case
 
 
-def asdict(cls: E,
-           *, dict_factory=dict,
+def asdict(obj: T,
+           *, cls=None, dict_factory=dict,
            exclude: List[str] = None, **kwargs) -> JSONObject:
-    """Return the fields of an `EnvWizard` subclass as a new dictionary
-    mapping field names to field values.
+    """Return the fields of an instance of a `EnvWizard` subclass as a new
+    dictionary mapping field names to field values.
 
     Example usage::
 
@@ -26,7 +27,8 @@ def asdict(cls: E,
           x: int
           y: str
 
-      serialized = asdict(MyEnv)
+      env = MyEnv()
+      serialized = asdict(env)
 
     When directly invoking this function, an optional Meta configuration for
     the `EnvWizard` subclass can be specified via ``DumpMeta``; by default,
@@ -41,15 +43,17 @@ def asdict(cls: E,
     `EnvWizard` subclasses. This will also look into built-in containers:
     tuples, lists, and dicts.
     """
+    cls = cls or type(obj)
+
     try:
         dump = _CLASS_TO_DUMP_FUNC[cls]
     except KeyError:
         dump = dump_func_for_env_subclass(cls)
 
-    return dump(cls, dict_factory, exclude, None, **kwargs)
+    return dump(obj, dict_factory, exclude, **kwargs)
 
 
-def dump_func_for_env_subclass(cls: E,
+def dump_func_for_env_subclass(cls: 'type[E]',
                                config: Optional[META] = None,
                                ) -> Callable[[E, Any, Any, Any], JSONObject]:
 
@@ -75,10 +79,9 @@ def dump_func_for_env_subclass(cls: E,
     # transformation (via regex) each time.
     env_subclass_to_json_field = dataclass_field_to_json_field(cls)
 
-    # A cached mapping of `EnvWizard` field name to its default value, either
+    # A cached mapping of dataclass field name to its default value, either
     # via a `default` or `default_factory` argument.
-    cls_dict = cls.__dict__
-    field_to_default = {f: cls_dict[f] for f in cls.__fields__ if f in cls_dict}
+    field_to_default = dataclass_field_to_default(cls)
 
     # A collection of field names in the dataclass.
     field_names = cls.__fields__.keys()

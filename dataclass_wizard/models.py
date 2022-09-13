@@ -131,7 +131,7 @@ class JSONField(Field):
             self.json = JSON(*keys, all=all, dump=dump)
 
     else:  # pragma: no cover
-        def __init__(self, keys: _STR_COLLECTION, all: bool, dump: bool,
+        def __init__(self, keys: StrCollection, all: bool, dump: bool,
                      default, default_factory, init, repr, hash, compare,
                      metadata):
 

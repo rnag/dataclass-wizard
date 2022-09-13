@@ -1,6 +1,5 @@
 import logging
 import os
-from collections import defaultdict
 from datetime import datetime, time, date
 from pathlib import Path
 from textwrap import dedent
@@ -44,19 +43,20 @@ def test_load_and_dump():
         # missing from environment
         my_field_not_in_env: str = 'testing'
 
-    log.debug(MyClass.dict())
+    e = MyClass()
+    log.debug(e.dict())
 
-    assert not hasattr(MyClass, 'my_cls_var')
-    assert MyClass.other_var == 21
+    assert not hasattr(e, 'my_cls_var')
+    assert e.other_var == 21
 
-    assert MyClass.my_str == 'This STRING'
-    assert MyClass.this_num == 23
-    assert MyClass.my_list == [1, 2, 3, 4, 6]
-    assert MyClass.my_other_list == ['rob@test.org', 'this@email.com', 'hello-world_123@tst.org', 'z@ab.c']
-    assert MyClass.my_test_value123 == 11
-    assert MyClass.my_field_not_in_env == 'testing'
+    assert e.my_str == 'This STRING'
+    assert e.this_num == 23
+    assert e.my_list == [1, 2, 3, 4, 6]
+    assert e.my_other_list == ['rob@test.org', 'this@email.com', 'hello-world_123@tst.org', 'z@ab.c']
+    assert e.my_test_value123 == 11
+    assert e.my_field_not_in_env == 'testing'
 
-    assert MyClass.to_dict() == {
+    assert e.to_dict() == {
         'my_str': 'This STRING',
         'this_num': 23,
         'my_list': [1, 2, 3, 4, 6],
@@ -92,23 +92,24 @@ def test_load_and_dump_with_dict():
         my_default_dict: DefaultDict[float, datetime]
         my_typed_dict: MyTypedDict
 
-    log.debug(ClassWithDict.dict())
+    c = ClassWithDict()
+    log.debug(c.dict())
 
-    assert ClassWithDict.my_dict == {123: True, 5: False}
+    assert c.my_dict == {123: True, 5: False}
 
     # note that the value for 'anotherKey' is a string value ('123') here,
     # but we might want to see if we can update it to a numeric value (123)
     # instead.
-    assert ClassWithDict.my_other_dict == {
+    assert c.my_other_dict == {
         'some_key': 'value',
         'anotherKey': '123',
         'LastKey': 'just a test~',
     }
 
-    assert ClassWithDict.my_default_dict == {1.2: datetime(2021, 1, 2, 13, 57, 21)}
-    assert ClassWithDict.my_typed_dict == {'my_bool': True}
+    assert c.my_default_dict == {1.2: datetime(2021, 1, 2, 13, 57, 21)}
+    assert c.my_typed_dict == {'my_bool': True}
 
-    assert ClassWithDict.to_dict() == {
+    assert c.to_dict() == {
         'my_dict': {5: False, 123: True},
         'my_other_dict': {'LastKey': 'just a test~',
                           'anotherKey': '123',
@@ -120,15 +121,17 @@ def test_load_and_dump_with_dict():
 
 def test_load_with_missing_env_variables():
     """
-    Test loading a `EnvWizard` subclass when the associated vars are missing
-    in the Environment.
+    Test calling the constructor of an `EnvWizard` subclass when the
+    associated vars are missing in the Environment.
     """
-    with pytest.raises(MissingVars) as e:
 
-        class MyClass(EnvWizard):
-            missing_field_1: str
-            missing_field_2: datetime
-            missing_field_3: Dict[str, int]
+    class MyClass(EnvWizard):
+        missing_field_1: str
+        missing_field_2: datetime
+        missing_field_3: Dict[str, int]
+
+    with pytest.raises(MissingVars) as e:
+        _ = MyClass()
 
     assert str(e.value) == dedent("""\
     There are 3 required fields in class `test_load_with_missing_env_variables.<locals>.MyClass` missing in the Environment:
@@ -148,14 +151,14 @@ def test_load_with_missing_env_variables():
 def test_load_with_parse_error():
     os.environ.update(MY_STR='abc')
 
+    class MyClass(EnvWizard, reload_env=True):
+        class _(EnvWizard.Meta):
+            debug_enabled = True
+
+        my_str: int
+
     with pytest.raises(ParseError) as e:
-
-        class MyClass(EnvWizard, reload_env=True):
-
-            class _(EnvWizard.Meta):
-                debug_enabled = True
-
-            my_str: int
+        _ = MyClass()
 
     assert str(e.value.base_error) == "invalid literal for int() with base 10: 'abc'"
     assert e.value.kwargs['env_variable'] == 'MY_STR'
@@ -172,9 +175,9 @@ def test_load_with_dotenv_file():
         my_time: time
         my_date: date = None
 
-    assert MyClass.dict() == {'my_str': 42,
-                              'my_time': time(15, 20),
-                              'my_date': date(2022, 1, 21)}
+    assert MyClass().dict() == {'my_str': 42,
+                                'my_time': time(15, 20),
+                                'my_date': date(2022, 1, 21)}
 
 
 def test_load_with_dotenv_file_with_path():
@@ -189,28 +192,31 @@ def test_load_with_dotenv_file_with_path():
         my_dt: datetime
         another_date: date
 
-    assert MyClass.dict() == {'my_value': 1.23,
-                              'my_dt': datetime(2022, 4, 27, 12, 30, 45),
-                              'another_date': date(2021, 12, 17)}
+    c = MyClass()
+
+    assert c.dict() == {'my_value': 1.23,
+                        'my_dt': datetime(2022, 4, 27, 12, 30, 45),
+                        'another_date': date(2021, 12, 17)}
 
     expected_json = '{"another_date": "2021-12-17", "my_dt": "2022-04-27T12:30:45", "my_value": 1.23}'
-    assert MyClass.to_json(sort_keys=True) == expected_json
+    assert c.to_json(sort_keys=True) == expected_json
 
 
-def test_load_with_constructor_when_init_is_true():
+def test_load_when_constructor_kwargs_are_passed():
     """
-    Using the constructor method of an `EnvWizard` subclass raises an error
-    when `init` is not disabled.
+    Using the constructor method of an `EnvWizard` subclass when
+    passing keyword arguments instead of the Environment.
     """
     os.environ.update(MY_STRING_VAR='hello world')
 
     class MyTestClass(EnvWizard, reload_env=True):
         my_string_var: str
 
-    with pytest.raises(ValueError) as e:
-        _ = MyTestClass()
+    c = MyTestClass(my_string_var='test!!')
+    assert c.my_string_var == 'test!!'
 
-    assert f'class `{MyTestClass.__qualname__}` is already initialized' in str(e.value)
+    c = MyTestClass()
+    assert c.my_string_var == 'hello world'
 
 
 def test_load_with_constructor():
