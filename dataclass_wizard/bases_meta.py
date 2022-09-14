@@ -233,13 +233,11 @@ class BaseEnvWizardMeta(AbstractEnvMeta):
                 cls.field_to_env_var
             )
 
-        if cls.key_lookup_with_load:
-            cls.key_lookup_with_load = _as_enum_safe(
-                cls, 'key_lookup_with_load', LetterCasePriority)
+        cls.key_lookup_with_load = _as_enum_safe(
+            cls, 'key_lookup_with_load', LetterCasePriority)
 
-        if cls.key_transform_with_dump:
-            cls_dumper.transform_dataclass_field = _as_enum_safe(
-                cls, 'key_transform_with_dump', LetterCase)
+        cls_dumper.transform_dataclass_field = _as_enum_safe(
+            cls, 'key_transform_with_dump', LetterCase)
 
         if cls.extra:
             cls.extra = _as_enum_safe(cls, 'extra', Extra)

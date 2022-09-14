@@ -1,20 +1,17 @@
 import logging
 import os
+from dataclasses import field
 from datetime import datetime, time, date
 from pathlib import Path
 from textwrap import dedent
-from typing import ClassVar, List, Dict, Union, DefaultDict
+from typing import ClassVar, List, Dict, Union, DefaultDict, Set
 
 import pytest
 
+from dataclass_wizard import EnvWizard, json_field
 from dataclass_wizard.errors import MissingVars, ParseError, ExtraData
 
-try:
-    from typing import TypedDict
-except ImportError:
-    from typing_extensions import TypedDict
-
-from dataclass_wizard import EnvWizard
+from ..conftest import *
 
 
 log = logging.getLogger(__name__)
@@ -24,6 +21,8 @@ here = Path(__file__).parent
 
 
 def test_load_and_dump():
+    """Basic example with simple types (str, int) and collection types such as list."""
+
     os.environ.update({
         'hello_world': 'Test',
         'MyStr': 'This STRING',
@@ -73,6 +72,8 @@ def test_load_and_dump():
 
 
 def test_load_and_dump_with_dict():
+    """Example with more complex types such as dict, TypedDict, and defaultdict."""
+
     os.environ.update({
         'MY_DICT': '{"123": "True", "5": "false"}',
         'My.Other.Dict': 'some_key=value,  anotherKey=123 ,LastKey=just a test~',
@@ -122,6 +123,56 @@ def test_load_and_dump_with_dict():
     }
 
 
+def test_load_and_dump_with_aliases():
+    """
+    Example with fields that are aliased to differently-named env variables
+    in the Environment.
+    """
+
+    os.environ.update({
+        'hello_world': 'Test',
+        'MY_TEST_VALUE123': '11',
+        'the_number': '42',
+        'my_list': '3, 2,  1,0',
+        'My_Other_List': 'rob@test.org, this@email.com , hello-world_123@tst.org,z@ab.c'
+    })
+
+    class MyClass(EnvWizard, reload_env=True):
+        class _(EnvWizard.Meta):
+            field_to_env_var = {
+                'answer_to_life': 'the_number',
+                'emails': ('EMAILS', 'My_Other_List'),
+            }
+
+        my_str: str = json_field(('the_string', 'hello_world'))
+        answer_to_life: int
+        list_of_nums: List[int] = json_field('my_list')
+        emails: List[str]
+        # added for code coverage.
+        # case where `json_field` is used, but an alas is not defined.
+        my_test_value123: int = json_field(..., default=21)
+
+    c = MyClass()
+    log.debug(c.dict())
+
+    assert c.my_str == 'Test'
+    assert c.answer_to_life == 42
+    assert c.list_of_nums == [3, 2, 1, 0]
+    assert c.emails == ['rob@test.org', 'this@email.com', 'hello-world_123@tst.org', 'z@ab.c']
+    assert c.my_test_value123 == 11
+
+    assert c.to_dict() == {
+        'answer_to_life': 42,
+        'emails': ['rob@test.org',
+                   'this@email.com',
+                   'hello-world_123@tst.org',
+                   'z@ab.c'],
+        'list_of_nums': [3, 2, 1, 0],
+        'my_str': 'Test',
+        'my_test_value123': 11,
+    }
+
+
 def test_load_with_missing_env_variables():
     """
     Test calling the constructor of an `EnvWizard` subclass when the
@@ -132,6 +183,7 @@ def test_load_with_missing_env_variables():
         missing_field_1: str
         missing_field_2: datetime
         missing_field_3: Dict[str, int]
+        default_field: Set[str] = field(default_factory=set)
 
     with pytest.raises(MissingVars) as e:
         _ = MyClass()
@@ -154,6 +206,15 @@ def test_load_with_missing_env_variables():
 
         instance = test_load_with_missing_env_variables.<locals>.MyClass(missing_field_1='', missing_field_2=None, missing_field_3=None)
     """.rstrip())
+
+    # added for code coverage.
+    # test when only missing a single (1) required field.
+    with pytest.raises(MissingVars) as e:
+        _ = MyClass(missing_field_1='test', missing_field_3='key=123')
+
+    error_info = str(e.value)
+    assert '1 required field' in error_info
+    assert 'missing_field_2' in error_info
 
 
 def test_load_with_parse_error():

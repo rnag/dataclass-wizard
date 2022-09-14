@@ -47,13 +47,14 @@ class EnvWizard(AbstractEnvWizard):
         field_to_var = field_to_env_var(cls)
 
         for field in fields(cls):
-            cls_fields[field.name] = field
+            name = field.name
+            cls_fields[name] = field
 
             if isinstance(field, JSONField):
                 keys = field.json.keys
                 if keys:
                     # minor optimization: convert a one-element tuple of `str` to `str`
-                    field_to_var[field] = keys[0] if len(keys) == 1 else keys
+                    field_to_var[name] = keys[0] if len(keys) == 1 else keys
 
         return cls_fields
 
@@ -158,7 +159,7 @@ class EnvWizard(AbstractEnvWizard):
                 else:
                     value = get_env(name)
 
-                if value is not None:
+                if value is not MISSING:
                     parser = cls_loader.get_parser_for_annotation(tp, cls, extras)
 
                     try:

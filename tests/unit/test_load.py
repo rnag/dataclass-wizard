@@ -25,6 +25,7 @@ from dataclass_wizard.parsers import (
     OptionalParser, Parser, IdentityParser, SingleArgParser
 )
 from dataclass_wizard.type_def import NoneType, T
+
 from .conftest import MyUUIDSubclass
 from ..conftest import *
 

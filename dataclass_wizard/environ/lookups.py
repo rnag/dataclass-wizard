@@ -1,4 +1,5 @@
 import os
+from dataclasses import MISSING
 from os import environ, name
 from typing import ClassVar, Dict, Optional, Set
 
@@ -94,13 +95,17 @@ def clean(s: str) -> str:
     return s.replace('-', '').replace('_', '').lower()
 
 
-def try_cleaned(key: str) -> Optional[str]:
+def try_cleaned(key: str):
+    """
+    Return the value of the env variable as a *string* if present in
+    the Environment, or `MISSING` otherwise.
+    """
     key = Env.cleaned_to_env.get(clean(key))
 
     if key is not None:
         return environ[key]
 
-    return None
+    return MISSING
 
 
 if name == 'nt':
@@ -123,7 +128,7 @@ if name == 'nt':
                 if v in Env.var_names:
                     return environ[v]
 
-        return None
+        return MISSING
 
 else:
     # Where Env Var Names Can Be Mixed Case
@@ -141,7 +146,7 @@ else:
                 if v in Env.var_names:
                     return environ[v]
 
-        return None
+        return MISSING
 
 
 def with_screaming_snake_case(field_name: str) -> Optional[str]:
