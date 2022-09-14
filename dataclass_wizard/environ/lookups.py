@@ -1,9 +1,10 @@
+import os
 from os import environ, name
 from typing import ClassVar, Dict, Optional, Set
 
 from ..decorators import cached_class_property
 from ..lazy_imports import dotenv
-from ..type_def import StrCollection
+from ..type_def import StrCollection, EnvFileType
 from ..utils.string_conv import to_snake_case
 
 
@@ -27,13 +28,13 @@ class Env:
         Cached mapping of `os.environ` key names. This can be refreshed with
         :meth:`reload` as needed.
         """
-        return set(environ.keys())
+        return set(environ)
 
     @classmethod
     def reload(cls, env: dict = environ):
         """Refresh cached environment variable names."""
         env_vars: EnvVars = cls.var_names
-        new_vars = env.keys() - env_vars
+        new_vars = set(env) - env_vars
 
         # update names of environment variables
         env_vars.update(new_vars)
@@ -45,14 +46,37 @@ class Env:
             )
 
     @classmethod
-    def update_with_dotenv_file(cls, filename='.env'):
-        dotenv_path = dotenv.find_dotenv(filename)
-        # take environment variables from `.env` file
-        env: Environ = dotenv.dotenv_values(dotenv_path)
+    def dotenv_values(cls, files: EnvFileType) -> Environ:
+        """
+        Retrieve the values (environment variables) from a dotenv file,
+        or a list/tuple of dotenv files.
+        """
+        if isinstance(files, (str, os.PathLike)):
+            files = [files]
+        elif files is True:
+            files = ['.env']
+
+        env: Environ = {}
+
+        for f in files:
+            # iterate backwards (from current directory) to find the
+            # dotenv file
+            dotenv_path = dotenv.find_dotenv(f)
+            # take environment variables from `.env` file
+            dotenv_values = dotenv.dotenv_values(dotenv_path)
+            env.update(dotenv_values)
+
+        return env
+
+    @classmethod
+    def update_with_dotenv(cls, files: EnvFileType = '.env', dotenv_values=None):
+        if dotenv_values is None:
+            dotenv_values = cls.dotenv_values(files)
+
         # reload cached mapping of environment variables
-        cls.reload(env)
+        cls.reload(dotenv_values)
         # update `os.environ` with new environment variables
-        environ.update(env)
+        environ.update(dotenv_values)
 
     # noinspection PyDunderSlots,PyUnresolvedReferences
     @cached_class_property

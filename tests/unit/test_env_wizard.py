@@ -19,6 +19,9 @@ from dataclass_wizard import EnvWizard
 
 log = logging.getLogger(__name__)
 
+# quick access to the `tests/unit` directory
+here = Path(__file__).parent
+
 
 def test_load_and_dump():
     os.environ.update({
@@ -190,7 +193,7 @@ def test_load_with_dotenv_file_with_path():
 
     class MyClass(EnvWizard):
         class _(EnvWizard.Meta):
-            env_file = Path(__file__).parent / '.env.test'
+            env_file = here / '.env.test'
             key_lookup_with_load = 'PASCAL'
 
         my_value: float
@@ -205,6 +208,52 @@ def test_load_with_dotenv_file_with_path():
 
     expected_json = '{"another_date": "2021-12-17", "my_dt": "2022-04-27T12:30:45", "my_value": 1.23}'
     assert c.to_json(sort_keys=True) == expected_json
+
+
+def test_load_with_tuple_of_dotenv_and_env_file_param_to_init():
+    """
+    Test when `env_file` is specified as a tuple of dotenv files, and
+    the `_env_file` parameter is also passed in to the constructor
+    or __init__() method.
+    """
+
+    os.environ.update(
+        MY_STR='default from env',
+        myValue='3322.11',
+        Other_Key='5',
+    )
+
+    class MyClass(EnvWizard):
+        class _(EnvWizard.Meta):
+            env_file = '.env', here / '.env.test'
+            key_lookup_with_load = 'PASCAL'
+
+        my_value: float
+        my_str: str
+        other_key: int = 3
+
+    # pass `_env_file=False` so we don't load the Meta `env_file`
+    c = MyClass(_env_file=False, _reload_env=True)
+
+    assert c.dict() == {'my_str': 'default from env',
+                        'my_value': 3322.11,
+                        'other_key': 5}
+
+    # load variables from the Meta `env_file` tuple, and also pass
+    # in `other_key` to the constructor method.
+    c = MyClass(other_key=7)
+
+    assert c.dict() == {'my_str': '42',
+                        'my_value': 1.23,
+                        'other_key': 7}
+
+    # load variables from the `_env_file` argument to the constructor
+    # method, overriding values from `env_file` in the Meta config.
+    c = MyClass(_env_file=here / '.env.prod')
+
+    assert c.dict() == {'my_str': 'hello world!',
+                        'my_value': 3.21,
+                        'other_key': 5}
 
 
 def test_load_when_constructor_kwargs_are_passed():

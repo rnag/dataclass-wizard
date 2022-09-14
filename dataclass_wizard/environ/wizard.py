@@ -15,7 +15,7 @@ from ..environ.loaders import EnvLoader
 from ..errors import ExtraData, MissingVars, ParseError
 from ..loaders import get_loader
 from ..models import Extras, JSONField
-from ..type_def import JSONObject, Encoder
+from ..type_def import JSONObject, Encoder, EnvFileType
 from ..utils.type_helper import type_name
 
 
@@ -76,7 +76,10 @@ class EnvWizard(AbstractEnvWizard):
         return encoder(asdict(self), **encoder_kwargs)
 
     # stub for type hinting purposes.
-    def __init__(self, *, _reload_env=False, **init_kwargs):
+    def __init__(self, *,
+                 _env_file: EnvFileType = None,
+                 _reload_env: bool = False,
+                 **init_kwargs) -> None:
         ...
 
     def __init_subclass__(cls: 'type[E]', *, reload_env=False):
@@ -121,13 +124,26 @@ class EnvWizard(AbstractEnvWizard):
         cls_fields: 'dict[str, Field]' = cls.__fields__
         field_names = frozenset(cls_fields)
 
-        def __init__(self, *, _reload_env=False,
-                     _extra=meta.extra,
-                     **init_kwargs):
+        _extra = meta.extra
+        _meta_env_file = meta.env_file
 
-            if _reload_env:  # reload cached var names from `os.environ` as needed.
+        _dotenv_values = Env.dotenv_values(_meta_env_file) if _meta_env_file else None
+
+        def __init__(self, *, _env_file=None, _reload_env=False, **init_kwargs):
+
+            # reload cached var names from `os.environ` as needed.
+            if _reload_env:
                 Env.reload()
 
+            # update environment with values in the "dot env" files as needed.
+            if _env_file:
+                Env.update_with_dotenv(_env_file)
+
+            elif _meta_env_file and _env_file is not False:
+                Env.update_with_dotenv(dotenv_values=_dotenv_values)
+
+            # iterate over the dataclass fields and (attempt to) resolve
+            # each one.
             missing_vars = []
 
             for name, field in cls_fields.items():

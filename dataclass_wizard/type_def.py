@@ -15,6 +15,7 @@ __all__ = [
     'ListOfJSONObject',
     'JSONValue',
     'FileType',
+    'EnvFileType',
     'StrCollection',
     'Encoder',
     'FileEncoder',
@@ -40,7 +41,8 @@ from datetime import date, time, datetime
 from enum import Enum
 from os import PathLike
 from typing import (
-    Any, Type, TypeVar, Collection, Sequence, Mapping,
+    Any, Type, TypeVar,
+    Collection, Iterable, Sequence, Mapping,
     List, Dict, DefaultDict, FrozenSet,
     Union, NamedTuple, Callable, AnyStr, TextIO, BinaryIO
 )
@@ -117,6 +119,9 @@ JSONValue = Union[None, str, bool, int, float, JSONList, JSONObject]
 
 # File-type argument, compatible with the type of `file` for `open`
 FileType = Union[str, bytes, PathLike, int]
+
+# DotEnv file-type argument (string, tuple of string, boolean, or None)
+EnvFileType = Union[bool, FileType, Iterable[FileType], None]
 
 # Type for a string or a collection of strings.
 StrCollection = Union[str, Collection[str]]

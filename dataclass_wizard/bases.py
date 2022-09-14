@@ -4,7 +4,7 @@ from typing import Callable, Type, Dict, Optional, ClassVar, Union, TypeVar
 from .constants import TAG
 from .decorators import cached_class_property
 from .enums import DateTimeTo, Extra, LetterCase, LetterCasePriority
-from .type_def import FrozenKeys, FileType
+from .type_def import FrozenKeys, EnvFileType
 
 
 # Create a generic variable that can be 'AbstractMeta', or any subclass.
@@ -260,7 +260,8 @@ class AbstractEnvMeta:
     # Note there is a minor performance impact when DEBUG mode is enabled.
     debug_enabled: ClassVar[bool] = False
 
-    # `True` to load environment variables from an `.env` file
+    # `True` to load environment variables from an `.env` file, or a
+    # list/tuple of dotenv files.
     #
     # This can also be set to a path to a custom dotenv file, for example:
     #   `path/to/.env.prod`
@@ -268,7 +269,13 @@ class AbstractEnvMeta:
     # Simply passing in a filename such as `.env.prod` will search the current
     # directory, as well as any parent folders (working backwards to the root
     # directory), until it locates the given file.
-    env_file: ClassVar[Union[bool, FileType]] = None
+    #
+    # If multiple files are passed in, later files in the list/tuple will take
+    # priority over earlier files.
+    #
+    # For example, in below the '.env.last' file takes priority over '.env':
+    #   env_file = '.env', '.env.last'
+    env_file: ClassVar[EnvFileType] = None
 
     # How extra keyword arguments (**kwargs) to the constructor or
     # `__init__()` method should be handled. Note that "extra" keywords are

@@ -242,13 +242,6 @@ class BaseEnvWizardMeta(AbstractEnvMeta):
             cls_dumper.transform_dataclass_field = _as_enum_safe(
                 cls, 'key_transform_with_dump', LetterCase)
 
-        if cls.env_file:
-            env_file = cls.env_file
-            if env_file is True:
-                env_file = '.env'
-            # Update environment with values in the "dot env" file
-            Env.update_with_dotenv_file(env_file)
-
         if cls.extra:
             cls.extra = _as_enum_safe(cls, 'extra', Extra)
 
