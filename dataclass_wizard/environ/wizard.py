@@ -82,7 +82,7 @@ class EnvWizard(AbstractEnvWizard):
                  **init_kwargs) -> None:
         ...
 
-    def __init_subclass__(cls: 'type[E]', *, reload_env=False):
+    def __init_subclass__(cls, *, reload_env=False):
 
         if reload_env:  # reload cached var names from `os.environ` as needed.
             Env.reload()
@@ -93,11 +93,11 @@ class EnvWizard(AbstractEnvWizard):
         # Calls the Meta initializer when inner :class:`Meta` is sub-classed.
         call_meta_initializer_if_needed(cls)
 
-        # generate and set the `__init__()` method.
-        cls.__init__ = cls._generate_init_fn()
+        # create and set the `__init__()` method.
+        cls.__init__ = cls._init_fn()
 
     @classmethod
-    def _generate_init_fn(cls) -> Callable:
+    def _init_fn(cls) -> Callable:
         """
         Returns an ``__init__()`` constructor method for the
         :class:`EnvWizard` subclass.
@@ -159,7 +159,6 @@ class EnvWizard(AbstractEnvWizard):
                     value = get_env(name)
 
                 if value is not None:
-                    # noinspection PyTypeChecker
                     parser = cls_loader.get_parser_for_annotation(tp, cls, extras)
 
                     try:

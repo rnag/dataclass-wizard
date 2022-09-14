@@ -2,7 +2,7 @@ from collections import defaultdict
 from dataclasses import MISSING, Field, fields
 from typing import Dict, Tuple, Type, Union, Callable, Optional, Any
 
-from .abstractions import W, AbstractLoader, AbstractDumper, AbstractParser
+from .abstractions import W, E, AbstractLoader, AbstractDumper, AbstractParser
 from .bases import M, AbstractMeta
 from .models import JSONField, JSON, Extras, _PatternedDT
 from .type_def import ExplicitNull, ExplicitNullType, T
@@ -14,7 +14,7 @@ from .utils.typing_compat import (
 
 # A cached mapping of dataclass to the list of fields, as returned by
 # `dataclasses.fields()`.
-_FIELDS: Dict[Type, Tuple[Field]] = {}
+_FIELDS: Dict[Type, Tuple[Field, ...]] = {}
 
 # Mapping of main dataclass to its `load` function.
 _CLASS_TO_LOAD_FUNC: Dict[Type, Any] = {}
@@ -267,7 +267,7 @@ def setup_dump_config_for_cls_if_needed(cls: Type):
     _IS_DUMP_CONFIG_SETUP[cls] = True
 
 
-def call_meta_initializer_if_needed(cls: Type[W]):
+def call_meta_initializer_if_needed(cls: Type[Union[W, E]]):
     """
     Calls the Meta initializer when the inner :class:`Meta` is sub-classed.
     """
@@ -286,7 +286,7 @@ def get_meta(cls: Type, base_cls: T = AbstractMeta) -> Union[T, M]:
     return _META.get(cls, base_cls)
 
 
-def dataclass_fields(cls) -> Tuple[Field]:
+def dataclass_fields(cls) -> Tuple[Field, ...]:
     """
     Cache the `dataclasses.fields()` call for each class, as overall that
     ends up around 5x faster than making a fresh call each time.
@@ -298,7 +298,7 @@ def dataclass_fields(cls) -> Tuple[Field]:
     return _FIELDS[cls]
 
 
-def dataclass_init_fields(cls) -> Tuple[Field]:
+def dataclass_init_fields(cls) -> Tuple[Field, ...]:
     """Get only the dataclass fields that would be passed into the constructor."""
     return tuple(f for f in dataclass_fields(cls) if f.init)
 

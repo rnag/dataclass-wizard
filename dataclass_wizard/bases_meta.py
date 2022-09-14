@@ -19,7 +19,6 @@ from .decorators import try_with_load
 from .dumpers import get_dumper
 from .enums import DateTimeTo, Extra, LetterCase, LetterCasePriority
 from .environ.loaders import EnvLoader
-from .environ.lookups import Env
 from .errors import ParseError
 from .loaders import get_loader
 from .log import LOG
@@ -248,6 +247,8 @@ class BaseEnvWizardMeta(AbstractEnvMeta):
         # Finally, if needed, save the meta config for the outer class. This
         # will allow us to access this config as part of the JSON load/dump
         # process if needed.
+
+        # TODO fix type issue (should be straightforward)
         # noinspection PyTypeChecker
         _META[env_class] = cls
 
@@ -259,6 +260,7 @@ def LoadMeta(*, debug_enabled: bool = False,
              json_key_to_field: Dict[str, str] = None,
              key_transform: Union[LetterCase, str] = None,
              tag: str = None) -> M:
+    # noinspection PyUnresolvedReferences
     """
     Helper function to setup the ``Meta`` Config for the JSON load
     (de-serialization) process, which is intended for use alongside the
@@ -299,6 +301,7 @@ def DumpMeta(*, debug_enabled: bool = False,
              key_transform: Union[LetterCase, str] = None,
              tag: str = None,
              skip_defaults: bool = False) -> M:
+    # noinspection PyUnresolvedReferences
     """
     Helper function to setup the ``Meta`` Config for the JSON dump
     (serialization) process, which is intended for use alongside the
