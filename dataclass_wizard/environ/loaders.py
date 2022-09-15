@@ -1,15 +1,9 @@
 from datetime import datetime, date
 from typing import (
-    Type, Dict, List, Tuple, Iterable, Sequence, Union,
-    AnyStr
+    Type, Dict, List, Tuple, Iterable, Sequence, Union, AnyStr,
 )
 
 from ..abstractions import AbstractParser, FieldToParser
-from ..class_helper import (
-    create_new_class,
-    dataclass_to_loader, set_class_loader,
-)
-from ..constants import _LOAD_HOOKS
 from ..decorators import _single_arg_alias
 from ..loaders import LoadMixin
 from ..type_def import (
@@ -148,30 +142,3 @@ class EnvLoader(LoadMixin):
 
         # default: as_date
         return as_date(o, base_type)
-
-
-def get_loader(class_or_instance=None, create=True) -> Type[EnvLoader]:
-    """
-    Get the loader for the class, using the following logic:
-
-        * Return the class if it's already a sub-class of :class:`LoadMixin`
-        * If `create` is enabled (which is the default), a new sub-class of
-          :class:`LoadMixin` for the class will be generated and cached on the
-          initial run.
-        * Otherwise, we will return the base loader, :class:`LoadMixin`, which
-          can potentially be shared by more than one dataclass.
-
-    """
-    try:
-        return dataclass_to_loader(class_or_instance)
-
-    except KeyError:
-
-        if hasattr(class_or_instance, _LOAD_HOOKS):
-            return set_class_loader(class_or_instance, class_or_instance)
-
-        elif create:
-            cls_loader = create_new_class(class_or_instance, (EnvLoader, ))
-            return set_class_loader(class_or_instance, cls_loader)
-
-        return set_class_loader(class_or_instance, EnvLoader)
