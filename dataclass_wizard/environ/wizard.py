@@ -8,14 +8,14 @@ from ..abstractions import AbstractEnvWizard, E
 from ..bases import AbstractEnvMeta
 from ..bases_meta import BaseEnvWizardMeta
 from ..class_helper import (call_meta_initializer_if_needed, get_meta,
-                            field_to_env_var)
+                            field_to_env_var, dataclass_field_to_json_field)
 from ..decorators import cached_class_property, _alias
 from ..enums import Extra
 from ..environ.loaders import EnvLoader
 from ..errors import ExtraData, MissingVars, ParseError
 from ..loaders import get_loader
 from ..models import Extras, JSONField
-from ..type_def import JSONObject, Encoder, EnvFileType
+from ..type_def import JSONObject, Encoder, EnvFileType, ExplicitNull
 from ..utils.type_helper import type_name
 
 
@@ -51,6 +51,10 @@ class EnvWizard(AbstractEnvWizard):
             cls_fields[name] = field
 
             if isinstance(field, JSONField):
+                if not field.json.dump:
+                    field_to_json_key = dataclass_field_to_json_field(cls)
+                    field_to_json_key[name] = ExplicitNull
+
                 keys = field.json.keys
                 if keys:
                     # minor optimization: convert a one-element tuple of `str` to `str`

@@ -45,8 +45,7 @@ class EnvLoader(LoadMixin):
             o: AnyStr, base_type: Type[bytearray],
             encoding='utf-8') -> bytearray:
 
-        encoded_string = o.encode(encoding)
-        return base_type(encoded_string)
+        return base_type(o, encoding) if isinstance(o, str) else base_type(o)
 
     @staticmethod
     @_single_arg_alias('base_type')

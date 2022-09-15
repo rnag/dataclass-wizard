@@ -27,8 +27,14 @@ def test_lookup_exact():
 
 
 def test_reload_when_not_accessed_cleaned_to_env():
+    # save current value
+    current_val = Env._accessed_cleaned_to_env
+
     Env._accessed_cleaned_to_env = False
     Env.reload()
+
+    # don't forget to reset it
+    Env._accessed_cleaned_to_env = current_val
 
 
 def test_with_snake_case():

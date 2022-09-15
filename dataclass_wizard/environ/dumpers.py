@@ -9,9 +9,7 @@ from ..class_helper import (
     _CLASS_TO_DUMP_FUNC, _META,
 )
 from ..dumpers import get_dumper, _asdict_inner
-from ..type_def import (
-    ExplicitNull, JSONObject, T
-)
+from ..type_def import ExplicitNull, JSONObject, T
 from ..utils.string_conv import to_snake_case
 
 
