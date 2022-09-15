@@ -18,7 +18,7 @@ requires = [
 ]
 
 test_requirements = [
-    'pytest~=6.2.4',
+    'pytest~=7.0.1',
     'pytest-mock~=3.6.1',
     'pytest-cov~=2.12.1',
     'pytest-runner~=5.3.1'

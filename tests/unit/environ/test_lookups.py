@@ -62,6 +62,11 @@ def test_with_pascal_or_camel_case():
     Env.reload()
     assert with_pascal_or_camel_case(var) == 'hello world'
 
+    if os.name == 'nt':
+        # Windows: var names are automatically converted
+        # to upper case when saved to `os.environ`
+        return
+
     os.environ[var] = 'hello world !!'
     Env.reload()
     assert with_pascal_or_camel_case(var) == 'hello world !!'
