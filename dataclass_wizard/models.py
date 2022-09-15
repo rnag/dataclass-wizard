@@ -142,6 +142,8 @@ class JSONField(Field):
 
             if isinstance(keys, str):
                 keys = (keys, )
+            elif keys is Ellipsis:
+                keys = ()
 
             self.json = JSON(*keys, all=all, dump=dump)
 
