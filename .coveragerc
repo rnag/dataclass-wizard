@@ -9,6 +9,9 @@ exclude_lines =
     # Have to re-enable the standard pragma
     pragma: no cover
 
+    # Conditional code which is dependent on the OS, or `os.name`
+    if name == 'nt':
+
     # Don't complain if tests don't hit defensive assertion code:
     raise AssertionError
     raise NotImplementedError

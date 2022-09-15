@@ -11,7 +11,7 @@ import pytest
 from dataclass_wizard import EnvWizard, json_field
 from dataclass_wizard.errors import MissingVars, ParseError, ExtraData
 
-from ..conftest import *
+from ...conftest import *
 
 
 log = logging.getLogger(__name__)
@@ -32,7 +32,7 @@ def test_load_and_dump():
         'my_other_list': 'rob@test.org, this@email.com , hello-world_123@tst.org,z@ab.c'
     })
 
-    class MyClass(EnvWizard):
+    class MyClass(EnvWizard, reload_env=True):
         # these are class-level fields, and should be ignored
         my_cls_var: ClassVar[str]
         other_var = 21
