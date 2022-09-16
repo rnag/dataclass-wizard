@@ -1,5 +1,5 @@
 import json
-from dataclasses import MISSING, dataclass, fields, Field
+from dataclasses import MISSING, dataclass, fields, Field, _create_fn
 from typing import AnyStr, Callable
 
 from .dumpers import asdict
@@ -104,11 +104,9 @@ class EnvWizard(AbstractEnvWizard):
     @classmethod
     def _init_fn(cls) -> Callable:
         """
-        Returns an ``__init__()`` constructor method for the
-        :class:`EnvWizard` subclass.
-
-        TODO: might be a good idea to dynamically generate an __init__() here,
-          as `dataclasses` does.
+        Returns a generated ``__init__()`` constructor method for the
+        :class:`EnvWizard` subclass, vis-à-vis how the ``dataclasses``
+        module does it, with a few noticeable differences.
         """
 
         meta = get_meta(cls, base_cls=AbstractEnvMeta)
@@ -124,7 +122,7 @@ class EnvWizard(AbstractEnvWizard):
         get_env: 'Callable[[str], str | None]' = meta.key_lookup_with_load
 
         # noinspection PyArgumentList
-        extras = Extras()
+        extras = Extras(config=None)
 
         cls_fields: 'dict[str, Field]' = cls.__fields__
         field_names = frozenset(cls_fields)
@@ -132,93 +130,129 @@ class EnvWizard(AbstractEnvWizard):
         _extra = meta.extra
         _meta_env_file = meta.env_file
 
-        _dotenv_values = Env.dotenv_values(_meta_env_file) if _meta_env_file else None
+        locals = {'Env': Env,
+                  'MISSING': MISSING,
+                  'MissingVars': MissingVars,
+                  'ParseError': ParseError,
+                  'get_env': get_env,
+                  'lookup_exact': lookup_exact}
 
-        def __init__(self, *, _env_file=None, _reload_env=False, **init_kwargs):
+        globals = {'cls': cls,
+                   'field_names': field_names,
+                   'fields_ordered': cls_fields.keys(),
+                   'handle_parse_error': _handle_parse_error}
 
+        init_body_lines = [
             # reload cached var names from `os.environ` as needed.
-            if _reload_env:
-                Env.reload()
-
+            'if _reload_env:',
+            '  Env.reload()',
             # update environment with values in the "dot env" files as needed.
-            if _env_file:
-                Env.update_with_dotenv(_env_file)
+            'if _env_file:',
+            '  Env.update_with_dotenv(_env_file)',
+        ]
 
-            elif _meta_env_file and _env_file is not False:
-                Env.update_with_dotenv(dotenv_values=_dotenv_values)
+        add_line = init_body_lines.append
 
-            # iterate over the dataclass fields and (attempt to) resolve
-            # each one.
-            missing_vars = []
+        if _meta_env_file:
+            globals['_dotenv_values'] = Env.dotenv_values(_meta_env_file)
+            add_line('elif _env_file is not False:')
+            add_line('  Env.update_with_dotenv(dotenv_values=_dotenv_values)')
 
-            for name, field in cls_fields.items():
-                tp = field.type
+        # iterate over the dataclass fields and (attempt to) resolve
+        # each one.
+        add_line('missing_vars = []')
 
-                # retrieve value (if it exists) for the environment variable
-                if name in init_kwargs:
-                    value = init_kwargs[name]
-                elif name in field_to_var:
-                    env_var = field_to_var[name]
-                    value = lookup_exact(env_var)
-                else:
-                    value = get_env(name)
+        for name, f in cls_fields.items():
+            tp = globals[f'_type_{name}'] = f.type
 
-                if value is not MISSING:
-                    parser = cls_loader.get_parser_for_annotation(tp, cls, extras)
+            # retrieve value (if it exists) for the environment variable
+            add_line(f"if {name!r} in init_kwargs:")
+            add_line('  in_kwargs = True')
+            add_line(f'  value = init_kwargs[{name!r}]')
+            add_line('else:')
+            add_line('  in_kwargs = False')
+            env_var = field_to_var.get(name)
+            if env_var:
+                var_name = f'_var_{name}'
+                globals[var_name] = env_var
+                add_line(f'  value = lookup_exact({var_name})')
+            else:
+                add_line(f'  value = get_env({name!r})')
+            add_line('if in_kwargs or value is not MISSING:')
+            parser_name = f'_parser_{name}'
+            globals[parser_name] = cls_loader.get_parser_for_annotation(
+                tp, cls, extras)
+            add_line('  try:')
+            add_line(f'    parsed_val = {parser_name}(value)')
+            add_line('  except ParseError as e:')
+            add_line(f'    handle_parse_error(e, cls, {name!r}, {env_var!r})')
+            add_line('  else:')
+            add_line(f'    self.{name} = parsed_val')
+            # this `else` block means that a value was not received for the
+            # field, either via keyword arguments or Environment.
+            add_line('else:')
+            # check if the field defines a `default` or `default_factory`
+            # value; note this is similar to how `dataclasses` does it.
+            default_name = f'_dflt_{name}'
+            if f.default is not MISSING:
+                globals[default_name] = f.default
+                add_line(f'  self.{name} = {default_name}')
+            elif f.default_factory is not MISSING:
+                globals[default_name] = f.default_factory
+                add_line(f'  self.{name} = {default_name}()')
+            else:
+                tn = type_name(tp)
+                # noinspection PyBroadException
+                add_line('  try:')
+                add_line(f'    suggested = _type_{name}()')
+                add_line('  except Exception:')
+                add_line('    suggested = None')
+                add_line(f'  missing_vars.append(({name!r}, {tn!r}, suggested))')
+        # check for any required fields with missing values
+        add_line('if missing_vars:')
+        add_line(f'  raise MissingVars(cls, missing_vars) from None')
 
-                    try:
-                        parsed_val = parser(value)
-                    except ParseError as e:
-                        # We run into a parsing error while loading the field
-                        # value; Add additional info on the Exception object
-                        # before re-raising it.
-                        e.class_name = cls
-                        e.field_name = name
-                        var_name = (Env.cleaned_to_env.get(clean(name))
-                                    or field_to_var.get(name, name))
-                        e.kwargs['env_variable'] = var_name
+        # if keyword arguments are passed in, confirm that all there
+        # aren't any "extra" keyword arguments
+        if _extra is not Extra.IGNORE:
+            add_line('if init_kwargs:')
+            # get a list of keyword arguments that don't map to any fields
+            add_line('  extra_kwargs = set(init_kwargs) - field_names')
+            add_line('  if extra_kwargs:')
+            # the default behavior is "DENY", so an error will be raised here.
+            if _extra is None or _extra is Extra.DENY:
+                globals['ExtraData'] = ExtraData
+                add_line('    raise ExtraData(cls, extra_kwargs, list(fields_ordered)) from None')
+            else:  # Extra.ALLOW
+                # else, if we want to "ALLOW" extra keyword arguments, we need to
+                # store those attributes in the instance.
+                add_line('    for attr in extra_kwargs:')
+                add_line('      setattr(self, attr, init_kwargs[attr])')
 
-                        raise
-                    else:
-                        setattr(self, name, parsed_val)
+        # TODO see if we can copy over the version of `dataclasses._create_fn`
+        #   since it has issues with different PY versions.
+        return _create_fn('__init__',
+                          ('self', '*',
+                           '_env_file=None',
+                           '_reload_env=False',
+                           '**init_kwargs'),
+                          init_body_lines,
+                          locals=locals,
+                          globals=globals,
+                          return_type=None)
 
-                elif field.default is not MISSING:
-                    setattr(self, name, field.default)
 
-                elif field.default_factory is not MISSING:
-                    setattr(self, name, field.default_factory())
+def _handle_parse_error(e: ParseError,
+                        cls: type, name: str,
+                        var_name: 'str | None'):
 
-                else:
-                    tn = type_name(tp)
-                    # noinspection PyBroadException
-                    try:
-                        suggested = tp()
-                    except Exception:
-                        suggested = None
+    # We run into a parsing error while loading the field
+    # value; Add additional info on the Exception object
+    # before re-raising it.
+    e.class_name = cls
+    e.field_name = name
+    if var_name is None:
+        var_name = Env.cleaned_to_env.get(clean(name), name)
+    e.kwargs['env_variable'] = var_name
 
-                    missing_vars.append((name, tn, suggested))
-
-            # check for any required fields with missing values
-            if missing_vars:
-                raise MissingVars(cls, missing_vars) from None
-
-            # if keyword arguments are passed in, confirm that all there
-            # aren't any "extra" keyword arguments
-            if init_kwargs:
-
-                # get a list of keyword arguments that don't map to any fields
-                extra_kwargs = set(init_kwargs) - field_names
-
-                if extra_kwargs:
-
-                    # the default behavior is "DENY", so an error will be raised here.
-                    if _extra is None or _extra is Extra.DENY:
-                        raise ExtraData(cls, extra_kwargs, list(cls_fields)) from None
-                    # else, if we want to "ALLOW" extra keyword arguments, we need to
-                    # store those attributes in the instance.
-                    elif _extra is Extra.ALLOW:
-                        for attr in extra_kwargs:
-                            setattr(self, attr, init_kwargs[attr])
-                    # else, we ignore any extra keyword arguments that are passed in.
-
-        return __init__
+    raise
