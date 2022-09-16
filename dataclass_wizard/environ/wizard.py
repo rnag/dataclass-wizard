@@ -166,7 +166,7 @@ class EnvWizard(AbstractEnvWizard):
             tp = globals[f'_type_{name}'] = f.type
 
             # retrieve value (if it exists) for the environment variable
-            add_line(f"if {name!r} in init_kwargs:")
+            add_line(f'if {name!r} in init_kwargs:')
             add_line('  in_kwargs = True')
             add_line(f'  value = init_kwargs[{name!r}]')
             add_line('else:')
@@ -210,7 +210,7 @@ class EnvWizard(AbstractEnvWizard):
                 add_line(f'  missing_vars.append(({name!r}, {tn!r}, suggested))')
         # check for any required fields with missing values
         add_line('if missing_vars:')
-        add_line(f'  raise MissingVars(cls, missing_vars) from None')
+        add_line('  raise MissingVars(cls, missing_vars) from None')
 
         # if keyword arguments are passed in, confirm that all there
         # aren't any "extra" keyword arguments
