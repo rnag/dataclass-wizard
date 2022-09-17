@@ -14,6 +14,7 @@ from ..enums import Extra
 from ..environ.loaders import EnvLoader
 from ..errors import ExtraData, MissingVars, ParseError
 from ..loaders import get_loader
+from ..log import LOG
 from ..models import Extras, JSONField
 from ..type_def import JSONObject, Encoder, EnvFileType, ExplicitNull
 from ..utils.type_helper import type_name
@@ -131,6 +132,7 @@ class EnvWizard(AbstractEnvWizard):
         _meta_env_file = meta.env_file
 
         locals = {'Env': Env,
+                  'EnvFileType': EnvFileType,
                   'MISSING': MISSING,
                   'MissingVars': MissingVars,
                   'ParseError': ParseError,
@@ -140,7 +142,14 @@ class EnvWizard(AbstractEnvWizard):
         globals = {'cls': cls,
                    'field_names': field_names,
                    'fields_ordered': cls_fields.keys(),
-                   'handle_parse_error': _handle_parse_error}
+                   'handle_parse_error': _handle_parse_error,
+                   'type_name': type_name}
+
+        # parameters to the `__init__()` method.
+        init_params = ('self', '*',
+                       '_env_file: EnvFileType = None',
+                       '_reload_env: bool = False',
+                       '**init_kwargs')
 
         init_body_lines = [
             # reload cached var names from `os.environ` as needed.
@@ -201,13 +210,13 @@ class EnvWizard(AbstractEnvWizard):
                 globals[default_name] = f.default_factory
                 add_line(f'  self.{name} = {default_name}()')
             else:
-                tn = type_name(tp)
-                # noinspection PyBroadException
                 add_line('  try:')
                 add_line(f'    suggested = _type_{name}()')
                 add_line('  except Exception:')
                 add_line('    suggested = None')
-                add_line(f'  missing_vars.append(({name!r}, {tn!r}, suggested))')
+                add_line(f'  tn = type_name(_type_{name})')
+                add_line(f'  missing_vars.append(({name!r}, tn, suggested))')
+
         # check for any required fields with missing values
         add_line('if missing_vars:')
         add_line('  raise MissingVars(cls, missing_vars) from None')
@@ -229,13 +238,18 @@ class EnvWizard(AbstractEnvWizard):
                 add_line('    for attr in extra_kwargs:')
                 add_line('      setattr(self, attr, init_kwargs[attr])')
 
+        # log the generated `__init__()` method definition, if the Meta's
+        # `debug_enabled` flag is enabled.
+        if meta.debug_enabled:
+            LOG.info('%s.__init__() definition:\n---\ndef __init__(%s):\n  %s',
+                     cls.__qualname__,
+                     ', '.join(init_params),
+                     '\n  '.join(init_body_lines))
+
         # TODO see if we can copy over the version of `dataclasses._create_fn`
         #   since it has issues with different PY versions.
         return _create_fn('__init__',
-                          ('self', '*',
-                           '_env_file=None',
-                           '_reload_env=False',
-                           '**init_kwargs'),
+                          init_params,
                           init_body_lines,
                           locals=locals,
                           globals=globals,

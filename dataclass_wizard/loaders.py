@@ -233,6 +233,15 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
         # alias: as_timedelta
         ...
 
+    @staticmethod
+    def load_func_for_dataclass(
+        cls: Type[T],
+        config: Optional[META],
+    ) -> Callable[[JSONObject], T]:
+
+        return load_func_for_dataclass(
+            cls, is_main_class=False, config=config)
+
     @classmethod
     def get_parser_for_annotation(cls, ann_type: Type[T],
                                   base_cls: Type = None,
@@ -280,9 +289,8 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
 
                     if is_dataclass(base_type):
                         base_type: Type[T]
-                        load_hook = load_func_for_dataclass(
+                        load_hook = cls.load_func_for_dataclass(
                             base_type,
-                            is_main_class=False,
                             config=extras['config']
                         )
 
@@ -556,10 +564,12 @@ def fromlist(cls: Type[T], list_of_dict: List[JSONObject]) -> List[T]:
 def load_func_for_dataclass(
         cls: Type[T],
         is_main_class: bool = True,
-        config: Optional[META] = None) -> Callable[[JSONObject], T]:
+        config: Optional[META] = None,
+        loader_cls=LoadMixin,
+) -> Callable[[JSONObject], T]:
 
     # Get the loader for the class, or create a new one as needed.
-    cls_loader = get_loader(cls)
+    cls_loader = get_loader(cls, base_cls=loader_cls)
 
     # Get the meta config for the class, or the default config otherwise.
     meta = get_meta(cls)

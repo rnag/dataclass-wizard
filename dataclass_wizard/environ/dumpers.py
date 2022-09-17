@@ -1,14 +1,16 @@
 
-from typing import List, Any, Optional, Callable
+from typing import List, Any, Optional, Callable, Dict, Type
 
+from .. import DumpMeta
 from ..abstractions import E
-from ..bases import META, AbstractEnvMeta
+from ..bases import META
 from ..class_helper import (
     dataclass_field_to_default,
     dataclass_field_to_json_field,
     _CLASS_TO_DUMP_FUNC, _META,
 )
 from ..dumpers import get_dumper, _asdict_inner
+from ..enums import LetterCase
 from ..type_def import ExplicitNull, JSONObject, T
 from ..utils.string_conv import to_snake_case
 
@@ -53,6 +55,7 @@ def asdict(obj: T,
 
 def dump_func_for_env_subclass(cls: 'type[E]',
                                config: Optional[META] = None,
+                               nested_cls_to_dump_func: Dict[Type, Any] = None,
                                ) -> Callable[[E, Any, Any, Any], JSONObject]:
 
     # Get the dumper for the class, or create a new one as needed.
@@ -64,9 +67,25 @@ def dump_func_for_env_subclass(cls: 'type[E]',
     # for the `EnvWizard` subclass.
     if cls in _META:
         meta = _META[cls]
+        # TODO check if there a way to avoid this. The reason we are calling
+        #   `DumpMeta` here is we have an `AbstractEnvMeta` type, which is not
+        #   compatible with `AbstractMeta`. The `_asdict_inner` function calls
+        #   `__or__` when it sees a nested dataclass type, which requires two
+        #   `AbstractMeta` sub-types.
+        meta = DumpMeta(key_transform=meta.key_transform_with_dump,
+                        skip_defaults=meta.skip_defaults)
+
     else:
-        meta = AbstractEnvMeta
+        # see the note above - converting to `DumpMeta` is not ideal.
+        meta = DumpMeta(key_transform=LetterCase.SNAKE)
         cls_dumper.transform_dataclass_field = to_snake_case
+
+    # we assume we're being run for the main dataclass (an `EnvWizard` subclass)
+    nested_cls_to_dump_func = {}
+
+    # If the `recursive` flag is enabled and a Meta config is provided,
+    # apply the Meta recursively to any nested classes.
+    config = meta
 
     # This contains the dump hooks for the Env subclass. If the class
     # sub-classes from `DumpMixIn`, these hooks could be customized.
@@ -129,7 +148,8 @@ def dump_func_for_env_subclass(cls: 'type[E]',
                     and fv == field_to_default[field]:
                 continue
 
-            value = _asdict_inner(fv, dict_factory, hooks, config, None)
+            value = _asdict_inner(fv, dict_factory, hooks, config,
+                                  nested_cls_to_dump_func)
 
             # -- This line is *mostly* the same as in the original version --
             result.append((json_field, value))

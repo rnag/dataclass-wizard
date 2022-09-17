@@ -1,13 +1,15 @@
 from datetime import datetime, date
 from typing import (
-    Type, Dict, List, Tuple, Iterable, Sequence, Union, AnyStr,
+    Type, Dict, List, Tuple, Iterable, Sequence,
+    Union, AnyStr, Optional, Callable,
 )
 
 from ..abstractions import AbstractParser, FieldToParser
+from ..bases import META
 from ..decorators import _single_arg_alias
-from ..loaders import LoadMixin
+from ..loaders import LoadMixin, load_func_for_dataclass
 from ..type_def import (
-    FrozenKeys, DefFactory, M, N, U, DD, LSQ, NT
+    FrozenKeys, DefFactory, M, N, U, DD, LSQ, NT, T, JSONObject
 )
 from ..utils.type_conv import (
     as_datetime, as_date, as_list, as_dict
@@ -141,3 +143,27 @@ class EnvLoader(LoadMixin):
 
         # default: as_date
         return as_date(o, base_type)
+
+    @staticmethod
+    def load_func_for_dataclass(
+        cls: Type[T],
+        config: Optional[META],
+        is_main_class: bool = False,
+    ) -> Callable[[JSONObject], T]:
+
+        load = load_func_for_dataclass(
+            cls,
+            is_main_class=False,
+            config=config,
+            # override the loader class
+            loader_cls=EnvLoader,
+        )
+
+        def load_to_dataclass(o: 'str | JSONObject', *_):
+            """
+            Receives either a string or a `dict` as an input, and return a
+            dataclass instance of type `cls`.
+            """
+            return load(as_dict(o))
+
+        return load_to_dataclass

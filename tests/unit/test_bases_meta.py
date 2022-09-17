@@ -1,7 +1,7 @@
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime, date
-from typing import Optional, List, Type
+from typing import Optional, List
 from unittest.mock import ANY
 
 import pytest
@@ -16,11 +16,6 @@ from dataclass_wizard.utils.type_conv import date_to_timestamp
 
 
 log = logging.getLogger(__name__)
-
-
-@pytest.fixture
-def mock_log(mocker: MockerFixture):
-    return mocker.patch('dataclass_wizard.bases_meta.LOG')
 
 
 @pytest.fixture
@@ -156,7 +151,7 @@ def test_meta_initializer_runs_as_expected(mock_log):
         isActive: bool = False
         myDt: Optional[datetime] = None
 
-    mock_log.info.assert_called_once_with('DEBUG Mode is enabled')
+    assert 'DEBUG Mode is enabled' in mock_log.text
 
     string = """
     {
@@ -197,7 +192,7 @@ def test_meta_initializer_runs_as_expected(mock_log):
     assert d['my_dt'] == round(expected_dt.timestamp())
 
 
-def test_json_key_to_field_when_add_is_a_falsy_value(mock_log):
+def test_json_key_to_field_when_add_is_a_falsy_value():
     """
     The `json_key_to_field` attribute is specified when subclassing
     :class:`JSONWizard.Meta`, but the `__all__` field a falsy value.
@@ -219,7 +214,7 @@ def test_json_key_to_field_when_add_is_a_falsy_value(mock_log):
         myCustomStr: str
 
     # note: this is only expected to run at most once
-    # mock_log.info.assert_called_once_with('DEBUG Mode is enabled')
+    # assert 'DEBUG Mode is enabled' in mock_log.text
 
     string = """
     {
@@ -242,7 +237,7 @@ def test_json_key_to_field_when_add_is_a_falsy_value(mock_log):
     assert d['my_custom_str'] == "test that this is mapped to 'myCustomStr'"
 
 
-def test_meta_config_is_not_implicitly_shared_between_dataclasses(mock_log):
+def test_meta_config_is_not_implicitly_shared_between_dataclasses():
 
     @dataclass
     class MyFirstClass(JSONWizard):
@@ -357,8 +352,7 @@ def test_meta_initializer_not_called_when_meta_is_not_an_inner_class(
     mock_bind_to.assert_called_once_with(ANY, create=False)
 
 
-def test_meta_initializer_errors_when_key_transform_with_load_is_invalid(
-        mock_log):
+def test_meta_initializer_errors_when_key_transform_with_load_is_invalid():
     """
     Test when an invalid value for the ``key_transform_with_load`` attribute
     is specified when sub-classing from :class:`JSONWizard.Meta`.
@@ -375,8 +369,7 @@ def test_meta_initializer_errors_when_key_transform_with_load_is_invalid(
             list_of_int: List[int] = field(default_factory=list)
 
 
-def test_meta_initializer_errors_when_key_transform_with_dump_is_invalid(
-        mock_log):
+def test_meta_initializer_errors_when_key_transform_with_dump_is_invalid():
     """
     Test when an invalid value for the ``key_transform_with_dump`` attribute
     is specified when sub-classing from :class:`JSONWizard.Meta`.
@@ -393,8 +386,7 @@ def test_meta_initializer_errors_when_key_transform_with_dump_is_invalid(
             list_of_int: List[int] = field(default_factory=list)
 
 
-def test_meta_initializer_errors_when_marshal_date_time_as_is_invalid(
-        mock_log):
+def test_meta_initializer_errors_when_marshal_date_time_as_is_invalid():
     """
     Test when an invalid value for the ``marshal_date_time_as`` attribute
     is specified when sub-classing from :class:`JSONWizard.Meta`.
@@ -411,8 +403,7 @@ def test_meta_initializer_errors_when_marshal_date_time_as_is_invalid(
             list_of_int: List[int] = field(default_factory=list)
 
 
-def test_meta_initializer_is_noop_when_marshal_date_time_as_is_iso_format(
-        mock_log, mock_get_dumper):
+def test_meta_initializer_is_noop_when_marshal_date_time_as_is_iso_format(mock_get_dumper):
     """
     Test that it's a noop when the value for ``marshal_date_time_as``
     is `ISO_FORMAT`, which is the default conversion method for the dumper

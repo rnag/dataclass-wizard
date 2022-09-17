@@ -9,9 +9,10 @@ from datetime import datetime, time, date, timedelta
 from decimal import Decimal
 from typing import (
     Any, Type, TypeVar, Union, List, Tuple, Dict, SupportsFloat, AnyStr,
-    Text, Sequence, Iterable
+    Text, Sequence, Iterable, Optional, Callable,
 )
 
+from .bases import META
 from .models import Extras
 from .type_def import (
     DefFactory, FrozenKeys, ListOfJSONObject, JSONObject, Encoder,
@@ -384,6 +385,17 @@ class AbstractLoader(ABC):
         """
         Load a string or number (int or float) into a new object of type
         `base_type` (generally a :class:`timedelta` or a sub-class of one)
+        """
+
+    @staticmethod
+    @abstractmethod
+    def load_func_for_dataclass(
+        cls: Type[T],
+        config: Optional[META],
+    ) -> Callable[[JSONObject], T]:
+        """
+        Generate and return the load function for a (nested) dataclass of
+        type `cls`.
         """
 
     @classmethod

@@ -1,7 +1,8 @@
 import os
 from collections import namedtuple
+from dataclasses import dataclass
 from datetime import datetime, date
-from typing import Tuple, NamedTuple
+from typing import Tuple, NamedTuple, List
 
 import pytest
 
@@ -50,6 +51,45 @@ def test_load_to_tuple_and_named_tuple():
     assert c.to_dict() == {'my_nt': MyNT(my_float=1.23, my_str='string'),
                            'my_tup': (1, 2, 3),
                            'my_untyped_nt': untyped_tup(a='hello', b='world', c='123')}
+
+
+def test_load_to_dataclass():
+    """When an `EnvWizard` subclass has a nested dataclass schema."""
+
+    os.environ['inner_cls_1'] = 'my_bool=false, my_string=test'
+    os.environ['inner_cls_2'] = '{"answerToLife": "42", "MyList": "testing, 123 , hello!"}'
+
+    @dataclass
+    class Inner1:
+        my_bool: bool
+        my_string: str
+
+    @dataclass
+    class Inner2:
+        answer_to_life: int
+        my_list: List[str]
+
+    class MyClass(EnvWizard, reload_env=True):
+
+        inner_cls_1: Inner1
+        inner_cls_2: Inner2
+
+    c = MyClass()
+    print(c)
+
+    assert c.dict() == {
+        'inner_cls_1': Inner1(my_bool=False,
+                              my_string='test'),
+        'inner_cls_2': Inner2(answer_to_life=42,
+                              my_list=['testing', '123', 'hello!']),
+    }
+
+    assert c.to_dict() == {
+        'inner_cls_1': {'my_bool': False,
+                        'my_string': 'test'},
+        'inner_cls_2': {'answer_to_life': 42,
+                        'my_list': ['testing', '123', 'hello!']}
+    }
 
 
 @pytest.mark.parametrize(

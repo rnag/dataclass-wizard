@@ -199,7 +199,7 @@ def test_load_with_missing_env_variables():
     class test_load_with_missing_env_variables.<locals>.MyClass:
         missing_field_1: str = ''
         missing_field_2: datetime = None
-        missing_field_3: Dict = None
+        missing_field_3: typing.Dict[str, int] = None
 
     ...
     resolution #2: pass in values for required fields to test_load_with_missing_env_variables.<locals>.MyClass.__init__():
@@ -225,6 +225,27 @@ def test_load_with_parse_error():
             debug_enabled = True
 
         my_str: int
+
+    with pytest.raises(ParseError) as e:
+        _ = MyClass()
+
+    assert str(e.value.base_error) == "invalid literal for int() with base 10: 'abc'"
+    assert e.value.kwargs['env_variable'] == 'MY_STR'
+
+
+def test_load_with_parse_error_when_env_var_is_specified():
+    """
+    Raising `ParseError` when a dataclass field to env var mapping is
+    specified. Added for code coverage.
+    """
+
+    os.environ.update(MY_STR='abc')
+
+    class MyClass(EnvWizard, reload_env=True):
+        class _(EnvWizard.Meta):
+            debug_enabled = True
+
+        a_string: int = json_field('MY_STR')
 
     with pytest.raises(ParseError) as e:
         _ = MyClass()
@@ -398,3 +419,21 @@ def test_extra_keyword_arguments_when_ignore_extra():
     assert not hasattr(c, 'third_field')
 
     assert c.to_json() == '{"a_field": "hello world!"}'
+
+
+def test_init_method_declaration_is_logged_when_debug_mode_is_enabled(mock_log):
+
+    class _EnvSettings(EnvWizard):
+
+        class _(EnvWizard.Meta):
+            debug_enabled = True
+            extra = 'ALLOW'
+
+        auth_key: str = json_field('my_auth_key')
+        api_key: str = json_field(('hello', 'test'))
+        domains: Set[str] = field(default_factory=set)
+        answer_to_life: int = 42
+
+    # assert that the __init__() method declaration is logged
+    assert mock_log.records[-1].levelname == 'INFO'
+    assert '_EnvSettings.__init__()' in mock_log.records[-1].message
