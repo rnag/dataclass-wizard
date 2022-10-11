@@ -11,9 +11,9 @@ __all__ = ['as_bool',
            'date_to_timestamp']
 
 import json
-from datetime import datetime, time, date, timedelta
+from datetime import datetime, time, date, timedelta, timezone
 from numbers import Number
-from typing import Union, List, Type, AnyStr, Optional, Iterable
+from typing import Union, Type, AnyStr, Optional, Iterable
 
 from ..errors import ParseError
 from ..lazy_imports import pytimeparse
@@ -210,7 +210,7 @@ def as_datetime(o: Union[str, Number, datetime],
         * ``str``: convert datetime strings (in ISO format) via the built-in
           ``fromisoformat`` method.
         * ``Number`` (int or float): Convert a numeric timestamp via the
-            built-in ``fromtimestamp`` method.
+            built-in ``fromtimestamp`` method, and return a UTC datetime.
         * ``datetime``: Return object `o` if it's already of this type or
             sub-type.
 
@@ -238,7 +238,7 @@ def as_datetime(o: Union[str, Number, datetime],
         # Check `type` explicitly, because `bool` is a sub-class of `int`
         elif t in NUMBERS:
             # noinspection PyTypeChecker
-            return base_type.fromtimestamp(o)
+            return base_type.fromtimestamp(o, tz=timezone.utc)
 
         elif t is base_type:
             return o

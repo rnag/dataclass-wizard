@@ -1,7 +1,7 @@
 import os
 from collections import namedtuple
 from dataclasses import dataclass
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 from typing import Tuple, NamedTuple, List
 
 import pytest
@@ -96,7 +96,7 @@ def test_load_to_dataclass():
     'input,expected',
     [
         ('2021-11-28T17:35:55', datetime(2021, 11, 28, 17, 35, 55)),
-        (1577952245, datetime(2020, 1, 2, 3, 4, 5)),
+        (1577952245, datetime(2020, 1, 2, 8, 4, 5, tzinfo=timezone.utc)),
         (datetime.min, datetime.min)
     ]
 )

@@ -1,4 +1,4 @@
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 from typing import (
     Type, Dict, List, Tuple, Iterable, Sequence,
     Union, AnyStr, Optional, Callable,
@@ -125,7 +125,7 @@ class EnvLoader(LoadMixin):
         if isinstance(o, str):
             # Check if it's a string in numeric format, like '1.23'
             if o.replace('.', '', 1).isdigit():
-                return base_type.fromtimestamp(float(o))
+                return base_type.fromtimestamp(float(o), tz=timezone.utc)
 
             return base_type.fromisoformat(o.replace('Z', '+00:00', 1))
 

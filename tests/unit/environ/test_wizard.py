@@ -1,7 +1,7 @@
 import logging
 import os
 from dataclasses import field
-from datetime import datetime, time, date
+from datetime import datetime, time, date, timezone
 from pathlib import Path
 from textwrap import dedent
 from typing import ClassVar, List, Dict, Union, DefaultDict, Set
@@ -285,10 +285,10 @@ def test_load_with_dotenv_file_with_path():
     c = MyClass()
 
     assert c.dict() == {'my_value': 1.23,
-                        'my_dt': datetime(2022, 4, 27, 12, 30, 45),
+                        'my_dt': datetime(2022, 4, 27, 16, 30, 45, tzinfo=timezone.utc),
                         'another_date': date(2021, 12, 17)}
 
-    expected_json = '{"another_date": "2021-12-17", "my_dt": "2022-04-27T12:30:45", "my_value": 1.23}'
+    expected_json = '{"another_date": "2021-12-17", "my_dt": "2022-04-27T16:30:45Z", "my_value": 1.23}'
     assert c.to_json(sort_keys=True) == expected_json
 
 
