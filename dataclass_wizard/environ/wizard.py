@@ -134,16 +134,16 @@ class EnvWizard(AbstractEnvWizard):
         locals = {'Env': Env,
                   'EnvFileType': EnvFileType,
                   'MISSING': MISSING,
-                  'MissingVars': MissingVars,
                   'ParseError': ParseError,
+                  'field_names': field_names,
                   'get_env': get_env,
                   'lookup_exact': lookup_exact}
 
-        globals = {'cls': cls,
-                   'field_names': field_names,
+        globals = {'MissingVars': MissingVars,
+                   'add_missing_var': _add_missing_var,
+                   'cls': cls,
                    'fields_ordered': cls_fields.keys(),
-                   'handle_parse_error': _handle_parse_error,
-                   'type_name': type_name}
+                   'handle_parse_error': _handle_parse_error}
 
         # parameters to the `__init__()` method.
         init_params = ('self', '*',
@@ -170,16 +170,16 @@ class EnvWizard(AbstractEnvWizard):
         # iterate over the dataclass fields and (attempt to) resolve
         # each one.
         add_line('missing_vars = []')
+        add_line('has_kwargs = True if init_kwargs else False')
 
         for name, f in cls_fields.items():
             tp = globals[f'_type_{name}'] = f.type
 
             # retrieve value (if it exists) for the environment variable
-            add_line(f'if {name!r} in init_kwargs:')
-            add_line('  in_kwargs = True')
+            add_line(f'if has_kwargs and {name!r} in init_kwargs:')
             add_line(f'  value = init_kwargs[{name!r}]')
+            add_line('  has_value = True')
             add_line('else:')
-            add_line('  in_kwargs = False')
             env_var = field_to_var.get(name)
             if env_var:
                 var_name = f'_var_{name}'
@@ -187,16 +187,15 @@ class EnvWizard(AbstractEnvWizard):
                 add_line(f'  value = lookup_exact({var_name})')
             else:
                 add_line(f'  value = get_env({name!r})')
-            add_line('if in_kwargs or value is not MISSING:')
+            add_line('  has_value = value is not MISSING')
+            add_line('if has_value:')
             parser_name = f'_parser_{name}'
             globals[parser_name] = cls_loader.get_parser_for_annotation(
                 tp, cls, extras)
             add_line('  try:')
-            add_line(f'    parsed_val = {parser_name}(value)')
+            add_line(f'    self.{name} = {parser_name}(value)')
             add_line('  except ParseError as e:')
             add_line(f'    handle_parse_error(e, cls, {name!r}, {env_var!r})')
-            add_line('  else:')
-            add_line(f'    self.{name} = parsed_val')
             # this `else` block means that a value was not received for the
             # field, either via keyword arguments or Environment.
             add_line('else:')
@@ -210,12 +209,7 @@ class EnvWizard(AbstractEnvWizard):
                 globals[default_name] = f.default_factory
                 add_line(f'  self.{name} = {default_name}()')
             else:
-                add_line('  try:')
-                add_line(f'    suggested = _type_{name}()')
-                add_line('  except Exception:')
-                add_line('    suggested = None')
-                add_line(f'  tn = type_name(_type_{name})')
-                add_line(f'  missing_vars.append(({name!r}, tn, suggested))')
+                add_line(f'  add_missing_var(missing_vars, {name!r}, _type_{name})')
 
         # check for any required fields with missing values
         add_line('if missing_vars:')
@@ -224,7 +218,7 @@ class EnvWizard(AbstractEnvWizard):
         # if keyword arguments are passed in, confirm that all there
         # aren't any "extra" keyword arguments
         if _extra is not Extra.IGNORE:
-            add_line('if init_kwargs:')
+            add_line('if has_kwargs:')
             # get a list of keyword arguments that don't map to any fields
             add_line('  extra_kwargs = set(init_kwargs) - field_names')
             add_line('  if extra_kwargs:')
@@ -252,6 +246,16 @@ class EnvWizard(AbstractEnvWizard):
                          locals=locals,
                          globals=globals,
                          return_type=None)
+
+
+def _add_missing_var(missing_vars: list, name: str, tp: type):
+    # noinspection PyBroadException
+    try:
+        suggested = tp()
+    except Exception:
+        suggested = None
+    tn = type_name(tp)
+    missing_vars.append((name, tn, suggested))
 
 
 def _handle_parse_error(e: ParseError,
