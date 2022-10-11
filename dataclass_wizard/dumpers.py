@@ -9,11 +9,12 @@ obtained from http://www.apache.org/licenses/LICENSE-2.0.
 See the end of this file for the original Apache license from this library.
 """
 from collections import defaultdict, deque
-# noinspection PyProtectedMember
+# noinspection PyProtectedMember, PyUnresolvedReferences
 from dataclasses import _is_dataclass_instance
 from datetime import datetime, time, date, timedelta
 from decimal import Decimal
 from enum import Enum
+# noinspection PyProtectedMember, PyUnresolvedReferences
 from typing import Type, List, Dict, Any, NamedTupleMeta, Optional, Callable
 from uuid import UUID
 

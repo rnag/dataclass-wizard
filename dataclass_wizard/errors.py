@@ -4,7 +4,7 @@ from dataclasses import Field, MISSING
 from typing import (Any, Type, Dict, Tuple, ClassVar,
                     Optional, Union, Iterable, Sequence, Collection)
 
-from .utils.type_helper import type_name
+from .helpers import type_name
 from .utils.string_conv import normalize
 
 

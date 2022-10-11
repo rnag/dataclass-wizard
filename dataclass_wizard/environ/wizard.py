@@ -1,5 +1,5 @@
 import json
-from dataclasses import MISSING, dataclass, fields, Field, _create_fn
+from dataclasses import MISSING, dataclass, fields, Field
 from typing import AnyStr, Callable
 
 from .dumpers import asdict
@@ -17,7 +17,7 @@ from ..loaders import get_loader
 from ..log import LOG
 from ..models import Extras, JSONField
 from ..type_def import JSONObject, Encoder, EnvFileType, ExplicitNull
-from ..utils.type_helper import type_name
+from ..helpers import create_fn, type_name
 
 
 _to_dataclass = dataclass(init=False)
@@ -246,14 +246,12 @@ class EnvWizard(AbstractEnvWizard):
                      ', '.join(init_params),
                      '\n  '.join(init_body_lines))
 
-        # TODO see if we can copy over the version of `dataclasses._create_fn`
-        #   since it has issues with different PY versions.
-        return _create_fn('__init__',
-                          init_params,
-                          init_body_lines,
-                          locals=locals,
-                          globals=globals,
-                          return_type=None)
+        return create_fn('__init__',
+                         init_params,
+                         init_body_lines,
+                         locals=locals,
+                         globals=globals,
+                         return_type=None)
 
 
 def _handle_parse_error(e: ParseError,

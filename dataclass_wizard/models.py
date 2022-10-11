@@ -1,12 +1,12 @@
 import json
-# noinspection PyProtectedMember
-from dataclasses import MISSING, Field, _create_fn
+from dataclasses import MISSING, Field
 from datetime import date, datetime, time
 from typing import cast, Callable, Optional, List, Type
 
 from .bases import META
 from .constants import PY310_OR_ABOVE
 from .decorators import cached_property
+from .helpers import create_fn
 from .type_def import T, DT, Encoder, PyTypedDict, FileEncoder, StrCollection
 from .utils.type_conv import as_datetime, as_time, as_date
 
@@ -285,13 +285,11 @@ class _PatternedDT:
 
         locals_ns['default_load_func'] = default_load_func
 
-        # TODO This approach unfortunately won't work in Python 3.6. To fix
-        #   it, we'll need to pass `globals` instead of `locals` here.
-        return _create_fn('pattern_to_dt',
-                          ('date_string', ),
-                          body_lines,
-                          locals=locals_ns,
-                          return_type=DT)
+        return create_fn('pattern_to_dt',
+                         ('date_string', ),
+                         body_lines,
+                         locals=locals_ns,
+                         return_type=DT)
 
     def __repr__(self):
         repr_val = [f'{k}={getattr(self, k)!r}' for k in self.__slots__]
