@@ -419,16 +419,23 @@ def _asdict_inner(obj, dict_factory, hooks, meta, cls_to_dump_func) -> Any:
             # treated (see below), but we just need to create them
             # differently because a namedtuple's __init__ needs to be
             # called differently (see bpo-34363).
-            return hooks[NamedTupleMeta](*hook_args)
+            dump_hook = hooks[NamedTupleMeta]
 
         else:
             for t in hooks:
                 if isinstance(obj, t):
-                    return hooks[t](*hook_args)
+                    # cache the hook for the subtype, so that next time this
+                    # logic isn't run again.
+                    dump_hook = hooks[cls] = hooks[t]
+                    break
+            else:
+                LOG.warning('Using default dumper, object=%r, type=%r', obj, cls)
 
-        LOG.warning('Using default dumper, object=%r, type=%r', obj, cls)
+                # cache the hook for the custom type, so that next time this
+                # logic isn't run again.
+                dump_hook = hooks[cls] = DumpMixin.default_dump_with
 
-        return DumpMixin.default_dump_with(*hook_args)
+        return dump_hook(*hook_args)
 
 
 # Copyright 2017-2018 Eric V. Smith

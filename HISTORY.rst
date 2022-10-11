@@ -2,6 +2,15 @@
 History
 =======
 
+0.22.2 (2022-10-11)
+-------------------
+
+**Features and Improvements**
+
+* Minor performance improvement when dumping custom sub-types
+  or unhandled types, such that we cache the dump hook
+  for the type so that subsequent lookups are faster overall.
+
 0.22.1 (2022-05-11)
 -------------------
 
