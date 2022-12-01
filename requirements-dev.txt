@@ -5,7 +5,7 @@ watchdog[watchmedo]==2.1.9
 flake8>=3  # pyup: ignore
 tox==3.27.1
 coverage>=6.2
-Sphinx==4.4.0
+Sphinx==5.3.0
 twine==3.8.0
 # Extras
 pytimeparse==1.1.8
