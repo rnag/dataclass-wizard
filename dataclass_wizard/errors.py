@@ -1,4 +1,3 @@
-import json
 from abc import ABC, abstractmethod
 from dataclasses import Field, MISSING
 from typing import (Any, Type, Dict, Tuple, ClassVar,
@@ -97,7 +96,8 @@ class ParseError(JSONWizardError):
             obj_type=type_name(self.obj_type))
 
         if self.json_object:
-            self.kwargs['json_object'] = json.dumps(self.json_object)
+            from .utils.json_util import safe_dumps
+            self.kwargs['json_object'] = safe_dumps(self.json_object)
 
         if self.kwargs:
             sep = '\n  '
@@ -195,9 +195,11 @@ class MissingFields(JSONWizardError):
 
     @property
     def message(self) -> str:
+        from .utils.json_util import safe_dumps
+
         msg = self._TEMPLATE.format(
             cls=self.class_name,
-            json_string=json.dumps(self.obj),
+            json_string=safe_dumps(self.obj),
             e=self.base_error,
             fields=self.fields,
             missing_fields=self.missing_fields)
@@ -239,9 +241,11 @@ class UnknownJSONKey(JSONWizardError):
 
     @property
     def message(self) -> str:
+        from .utils.json_util import safe_dumps
+
         msg = self._TEMPLATE.format(
             cls=self.class_name,
-            json_string=json.dumps(self.obj),
+            json_string=safe_dumps(self.obj),
             fields=self.fields,
             json_key=self.json_key)
 
@@ -271,10 +275,12 @@ class MissingData(ParseError):
 
     @property
     def message(self) -> str:
+        from .utils.json_util import safe_dumps
+
         msg = self._TEMPLATE.format(
             cls=self.class_name,
             nested_cls=self.nested_class_name,
-            json_string=json.dumps(self.obj),
+            json_string=safe_dumps(self.obj),
             field=self.field_name,
             o=self.obj,
         )
