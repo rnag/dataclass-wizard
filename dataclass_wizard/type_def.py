@@ -14,6 +14,9 @@ __all__ = [
     'JSONObject',
     'ListOfJSONObject',
     'JSONValue',
+    'FileType',
+    'EnvFileType',
+    'StrCollection',
     'Encoder',
     'FileEncoder',
     'Decoder',
@@ -36,8 +39,11 @@ __all__ = [
 from collections import deque
 from datetime import date, time, datetime
 from enum import Enum
+from os import PathLike
 from typing import (
-    Any, Type, TypeVar, Sequence, Mapping, List, Dict, DefaultDict, FrozenSet,
+    Any, Type, TypeVar,
+    Collection, Iterable, Sequence, Mapping,
+    List, Dict, DefaultDict, FrozenSet,
     Union, NamedTuple, Callable, AnyStr, TextIO, BinaryIO
 )
 from uuid import UUID
@@ -110,6 +116,15 @@ ListOfJSONObject = List[JSONObject]
 
 # Valid value types in JSON.
 JSONValue = Union[None, str, bool, int, float, JSONList, JSONObject]
+
+# File-type argument, compatible with the type of `file` for `open`
+FileType = Union[str, bytes, PathLike, int]
+
+# DotEnv file-type argument (string, tuple of string, boolean, or None)
+EnvFileType = Union[bool, FileType, Iterable[FileType], None]
+
+# Type for a string or a collection of strings.
+StrCollection = Union[str, Collection[str]]
 
 
 if PY38_OR_ABOVE:  # pragma: no cover

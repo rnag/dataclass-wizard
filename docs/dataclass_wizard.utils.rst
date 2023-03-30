@@ -20,14 +20,6 @@ dataclass\_wizard.utils.string\_conv module
    :undoc-members:
    :show-inheritance:
 
-dataclass\_wizard.utils.type\_check module
-------------------------------------------
-
-.. automodule:: dataclass_wizard.utils.type_check
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 dataclass\_wizard.utils.type\_conv module
 -----------------------------------------
 

@@ -1,6 +1,6 @@
 import json
-# noinspection PyProtectedMember
-from dataclasses import _create_fn, _set_new_attribute
+# noinspection PyProtectedMember, PyUnresolvedReferences
+from dataclasses import _set_new_attribute
 from typing import Type, List, Union, AnyStr
 
 from .abstractions import AbstractJSONWizard, W
@@ -8,6 +8,7 @@ from .bases_meta import BaseJSONWizardMeta
 from .class_helper import call_meta_initializer_if_needed
 from .decorators import _alias
 from .dumpers import asdict
+from .helpers import create_fn
 from .loaders import fromdict, fromlist
 from .type_def import Decoder, Encoder, JSONObject, ListOfJSONObject
 
@@ -116,6 +117,6 @@ def _str_fn():
     Converts the dataclass instance to a *prettified* JSON string
     representation, when the `str()` method is invoked.
     """
-    return _create_fn('__str__',
-                      ('self', ),
-                      ['return self.to_json(indent=2)'])
+    return create_fn('__str__',
+                     ('self', ),
+                     ['return self.to_json(indent=2)'])

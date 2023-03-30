@@ -290,17 +290,7 @@ class IterableParser(AbstractParser):
 
         See the declaration of :var:`LSQ` for more info.
         """
-        try:
-            return self.hook(o, self.base_type, self.elem_parser)
-        # TODO
-        except Exception:
-            if not isinstance(o, self.base_type):
-                e = TypeError('Incorrect type for field')
-                raise ParseError(
-                    e, o, self.base_type,
-                    desired_type=self.base_type)
-            else:
-                raise
+        return self.hook(o, self.base_type, self.elem_parser)
 
 
 @dataclass

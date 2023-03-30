@@ -7,6 +7,7 @@ Subpackages
 .. toctree::
    :maxdepth: 4
 
+   dataclass_wizard.environ
    dataclass_wizard.utils
    dataclass_wizard.wizard_cli
 
@@ -81,6 +82,14 @@ dataclass\_wizard.errors module
 -------------------------------
 
 .. automodule:: dataclass_wizard.errors
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+dataclass\_wizard.helpers module
+--------------------------------
+
+.. automodule:: dataclass_wizard.helpers
    :members:
    :undoc-members:
    :show-inheritance:

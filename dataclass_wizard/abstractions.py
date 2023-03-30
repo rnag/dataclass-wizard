@@ -2,26 +2,72 @@
 Contains implementations for Abstract Base Classes
 """
 import json
+
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, InitVar
+from dataclasses import dataclass, InitVar, Field
 from datetime import datetime, time, date, timedelta
 from decimal import Decimal
 from typing import (
     Any, Type, TypeVar, Union, List, Tuple, Dict, SupportsFloat, AnyStr,
-    Text, Sequence, Iterable
+    Text, Sequence, Iterable, Optional, Callable,
 )
 
+from .bases import META
 from .models import Extras
 from .type_def import (
     DefFactory, FrozenKeys, ListOfJSONObject, JSONObject, Encoder,
-    M, N, T, NT, E, U, DD, LSQ
+    M, N, T, NT, U, DD, LSQ
 )
 
+
+# Create a generic variable that can be 'AbstractEnvWizard', or any subclass.
+E = TypeVar('E', bound='AbstractEnvWizard')
 
 # Create a generic variable that can be 'AbstractJSONWizard', or any subclass.
 W = TypeVar('W', bound='AbstractJSONWizard')
 
 FieldToParser = Dict[str, 'AbstractParser']
+
+
+class AbstractEnvWizard(ABC):
+    """
+    Abstract class that defines the methods a sub-class must implement at a
+    minimum to be considered a "true" Environment Wizard.
+    """
+    __slots__ = ()
+
+    # Extends the `__annotations__` attribute to return only the fields
+    # (variables) of the `EnvWizard` subclass.
+    #
+    # .. NOTE::
+    #    This excludes fields marked as ``ClassVar``, or ones which are
+    #    not type-annotated.
+    __fields__: Dict[str, Field]
+
+    def dict(self: E) -> JSONObject:
+        """
+        Same as ``__dict__``, but only returns values for fields defined
+        on the `EnvWizard` instance. See :attr:`__fields__` for more info.
+
+        .. NOTE::
+           The values in the returned dictionary object are not needed to be
+           JSON serializable. Use :meth:`to_dict` if this is required.
+        """
+        return {f: getattr(self, f) for f in self.__class__.__fields__}
+
+    @abstractmethod
+    def to_dict(self: E) -> JSONObject:
+        """
+        Converts an instance of a `EnvWizard` subclass to a Python dictionary
+        object that is JSON serializable.
+        """
+
+    @abstractmethod
+    def to_json(self: E, indent=None) -> AnyStr:
+        """
+        Converts an instance of a `EnvWizard` subclass to a JSON `string`
+        representation.
+        """
 
 
 class AbstractJSONWizard(ABC):
@@ -339,6 +385,17 @@ class AbstractLoader(ABC):
         """
         Load a string or number (int or float) into a new object of type
         `base_type` (generally a :class:`timedelta` or a sub-class of one)
+        """
+
+    @staticmethod
+    @abstractmethod
+    def load_func_for_dataclass(
+        cls: Type[T],
+        config: Optional[META],
+    ) -> Callable[[JSONObject], T]:
+        """
+        Generate and return the load function for a (nested) dataclass of
+        type `cls`.
         """
 
     @classmethod

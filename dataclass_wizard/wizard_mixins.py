@@ -17,7 +17,7 @@ from .lazy_imports import yaml
 from .loaders import fromdict, fromlist
 from .models import Container
 from .serial_json import JSONSerializable
-from .type_def import (T, ListOfJSONObject,
+from .type_def import (T, ListOfJSONObject, FileType,
                        Encoder, Decoder, FileDecoder, FileEncoder)
 
 
@@ -72,7 +72,7 @@ class JSONFileWizard:
 
     """
     @classmethod
-    def from_json_file(cls: Type[T], file: str, *,
+    def from_json_file(cls: Type[T], file: FileType, *,
                        decoder: FileDecoder = json.load,
                        **decoder_kwargs) -> Union[T, List[T]]:
         """
@@ -84,7 +84,7 @@ class JSONFileWizard:
 
         return fromdict(cls, o) if isinstance(o, dict) else fromlist(cls, o)
 
-    def to_json_file(self: T, file: str, mode: str = 'w',
+    def to_json_file(self: T, file: FileType, mode: str = 'w',
                      encoder: FileEncoder = json.dump,
                      **encoder_kwargs) -> None:
         """
@@ -136,7 +136,7 @@ class YAMLWizard:
         return fromdict(cls, o) if isinstance(o, dict) else fromlist(cls, o)
 
     @classmethod
-    def from_yaml_file(cls: Type[T], file: str, *,
+    def from_yaml_file(cls: Type[T], file: FileType, *,
                        decoder: Optional[FileDecoder] = None,
                        **decoder_kwargs) -> Union[T, List[T]]:
         """
@@ -158,7 +158,7 @@ class YAMLWizard:
 
         return encoder(asdict(self), **encoder_kwargs)
 
-    def to_yaml_file(self: T, file: str, mode: str = 'w',
+    def to_yaml_file(self: T, file: FileType, mode: str = 'w',
                      encoder: Optional[FileEncoder] = None,
                      **encoder_kwargs) -> None:
         """

@@ -1,9 +1,9 @@
-import json
 from abc import ABC, abstractmethod
 from dataclasses import Field, MISSING
 from typing import (Any, Type, Dict, Tuple, ClassVar,
-                    Optional, Union, Iterable)
+                    Optional, Union, Iterable, Sequence, Collection)
 
+from .helpers import type_name
 from .utils.string_conv import normalize
 
 
@@ -55,7 +55,7 @@ class ParseError(JSONWizardError):
         self.base_error = base_err
         self.kwargs = kwargs
         self._class_name = None
-        self._default_class_name = self.name(_default_class) \
+        self._default_class_name = type_name(_default_class) \
             if _default_class else None
         self._field_name = _field_name
         self._json_object = _json_object
@@ -67,7 +67,7 @@ class ParseError(JSONWizardError):
     @class_name.setter
     def class_name(self, cls: Optional[Type]):
         if self._class_name is None:
-            self._class_name = self.name(cls)
+            self._class_name = type_name(cls)
 
     @property
     def field_name(self) -> Optional[str]:
@@ -87,26 +87,60 @@ class ParseError(JSONWizardError):
         if self._json_object is None:
             self._json_object = json_obj
 
-    @staticmethod
-    def name(obj) -> str:
-        """Return the type or class name of an object"""
-        return getattr(obj, '__qualname__', getattr(obj, '__name__', obj))
-
     @property
     def message(self) -> str:
         msg = self._TEMPLATE.format(
             cls=self.class_name, field=self.field_name,
             e=self.base_error, o=self.obj,
-            ann_type=self.name(self.ann_type),
-            obj_type=self.name(self.obj_type))
+            ann_type=type_name(self.ann_type),
+            obj_type=type_name(self.obj_type))
 
         if self.json_object:
-            self.kwargs['json_object'] = json.dumps(self.json_object)
+            from .utils.json_util import safe_dumps
+            self.kwargs['json_object'] = safe_dumps(self.json_object)
 
         if self.kwargs:
             sep = '\n  '
             parts = sep.join(f'{k}: {v!r}' for k, v in self.kwargs.items())
             msg = f'{msg}{sep}{parts}'
+
+        return msg
+
+
+class ExtraData(JSONWizardError):
+    """
+    Error raised when extra keyword arguments are passed in to the constructor
+    or `__init__()` method of an `EnvWizard` subclass.
+
+    Note that this error class is raised by default, unless a value for the
+    `extra` field is specified in the :class:`Meta` class.
+    """
+
+    _TEMPLATE = ('{cls}.__init__() received extra keyword arguments:\n'
+                 '  extras: {extra_kwargs!r}\n'
+                 '  fields: {field_names!r}\n'
+                 '  resolution: specify a value for `extra` in the Meta '
+                 'config for the class, to control how extra keyword '
+                 'arguments are handled.')
+
+    def __init__(self,
+                 cls: Type,
+                 extra_kwargs: Collection[str],
+                 field_names: Collection[str]):
+
+        super().__init__()
+
+        self.class_name: str = type_name(cls)
+        self.extra_kwargs = extra_kwargs
+        self.field_names = field_names
+
+    @property
+    def message(self) -> str:
+        msg = self._TEMPLATE.format(
+            cls=self.class_name,
+            extra_kwargs=self.extra_kwargs,
+            field_names=self.field_names,
+        )
 
         return msg
 
@@ -157,18 +191,15 @@ class MissingFields(JSONWizardError):
 
         self.base_error = base_err
         self.kwargs = kwargs
-        self.class_name: str = self.name(cls)
-
-    @staticmethod
-    def name(obj) -> str:
-        """Return the type or class name of an object"""
-        return getattr(obj, '__qualname__', getattr(obj, '__name__', obj))
+        self.class_name: str = type_name(cls)
 
     @property
     def message(self) -> str:
+        from .utils.json_util import safe_dumps
+
         msg = self._TEMPLATE.format(
             cls=self.class_name,
-            json_string=json.dumps(self.obj),
+            json_string=safe_dumps(self.obj),
             e=self.base_error,
             fields=self.fields,
             missing_fields=self.missing_fields)
@@ -206,18 +237,15 @@ class UnknownJSONKey(JSONWizardError):
         self.obj = obj
         self.fields = [f.name for f in cls_fields]
         self.kwargs = kwargs
-        self.class_name: str = self.name(cls)
-
-    @staticmethod
-    def name(obj) -> str:
-        """Return the type or class name of an object"""
-        return getattr(obj, '__qualname__', getattr(obj, '__name__', obj))
+        self.class_name: str = type_name(cls)
 
     @property
     def message(self) -> str:
+        from .utils.json_util import safe_dumps
+
         msg = self._TEMPLATE.format(
             cls=self.class_name,
-            json_string=json.dumps(self.obj),
+            json_string=safe_dumps(self.obj),
             fields=self.fields,
             json_key=self.json_key)
 
@@ -243,19 +271,16 @@ class MissingData(ParseError):
 
     def __init__(self, nested_cls: Type, **kwargs):
         super().__init__(self, None, nested_cls, **kwargs)
-        self.nested_class_name: str = self.name(nested_cls)
-
-    @staticmethod
-    def name(obj) -> str:
-        """Return the type or class name of an object"""
-        return getattr(obj, '__qualname__', getattr(obj, '__name__', obj))
+        self.nested_class_name: str = type_name(nested_cls)
 
     @property
     def message(self) -> str:
+        from .utils.json_util import safe_dumps
+
         msg = self._TEMPLATE.format(
             cls=self.class_name,
             nested_cls=self.nested_class_name,
-            json_string=json.dumps(self.obj),
+            json_string=safe_dumps(self.obj),
             field=self.field_name,
             o=self.obj,
         )
@@ -264,5 +289,55 @@ class MissingData(ParseError):
             sep = '\n  '
             parts = sep.join(f'{k}: {v!r}' for k, v in self.kwargs.items())
             msg = f'{msg}{sep}{parts}'
+
+        return msg
+
+
+class MissingVars(JSONWizardError):
+    """
+    Error raised when unable to create an instance of a EnvWizard subclass
+    (most likely due to missing environment variables in the Environment)
+
+    """
+    _TEMPLATE = ('{prefix} in class `{cls}` missing in the Environment:\n'
+                 '{fields}\n\n'
+                 'resolution #1: set a default value for any optional fields, as below.\n\n'
+                 '{def_resolution}'
+                 '\n\n...\n'
+                 'resolution #2: pass in values for required fields to {cls}.__init__():\n\n'
+                 '    {init_resolution}')
+
+    def __init__(self,
+                 cls: Type,
+                 missing_vars: Sequence[Tuple[str, str, Any]]):
+
+        super().__init__()
+
+        indent = ' ' * 4
+
+        self.class_name: str = type_name(cls)
+        self.fields = '\n'.join([f'{indent}- {f[0]}' for f in missing_vars])
+        self.def_resolution = '\n'.join([f'class {self.class_name}:'] +
+                                        [f'{indent}{f}: {typ} = {default!r}'
+                                         for (f, typ, default) in missing_vars])
+
+        init_vars = ', '.join([f'{f}={default!r}' for (f, typ, default) in missing_vars])
+        self.init_resolution = f'instance = {self.class_name}({init_vars})'
+
+        num_fields = len(missing_vars)
+        if num_fields > 1:
+            self.prefix = f'There are {len(missing_vars)} required fields'
+        else:
+            self.prefix = f'There is {len(missing_vars)} required field'
+
+    @property
+    def message(self) -> str:
+        msg = self._TEMPLATE.format(
+            cls=self.class_name,
+            prefix=self.prefix,
+            fields=self.fields,
+            def_resolution=self.def_resolution,
+            init_resolution=self.init_resolution,
+        )
 
         return msg

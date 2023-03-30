@@ -3,8 +3,8 @@ from typing import Callable, Type, Dict, Optional, ClassVar, Union, TypeVar
 
 from .constants import TAG
 from .decorators import cached_class_property
-from .enums import DateTimeTo, LetterCase
-from .type_def import FrozenKeys
+from .enums import DateTimeTo, Extra, LetterCase, LetterCasePriority
+from .type_def import FrozenKeys, EnvFileType
 
 
 # Create a generic variable that can be 'AbstractMeta', or any subclass.
@@ -226,6 +226,108 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
           dataclasses that use the JSON load/dump process.
         :param is_default: When enabled, the Meta will be cached as the
           default Meta config for the dataclass. Defaults to true.
+
+        """
+
+
+class AbstractEnvMeta:
+    """
+    Base class definition for the `EnvWizard.Meta` inner class.
+    """
+    __slots__ = ()
+
+    # A list of class attributes that are exclusive to the Meta config.
+    # When merging two Meta configs for a class, these are the only
+    # attributes which will *not* be merged.
+    __special_attrs__ = frozenset({
+        'debug_enabled',
+        'env_var_to_field',
+    })
+
+    # Class attribute which enables us to detect a `EnvWizard.Meta` subclass.
+    __is_inner_meta__ = False
+
+    # True to enable Debug mode for additional (more verbose) log output.
+    #
+    # For example, a message is logged with the environment variable that is
+    # mapped to each attribute.
+    #
+    # This also results in more helpful messages during error handling, which
+    # can be useful when debugging the cause when values are an invalid type
+    # (i.e. they don't match the annotation for the field) when unmarshalling
+    # a environ variable values to attributes in an EnvWizard subclass.
+    #
+    # Note there is a minor performance impact when DEBUG mode is enabled.
+    debug_enabled: ClassVar[bool] = False
+
+    # `True` to load environment variables from an `.env` file, or a
+    # list/tuple of dotenv files.
+    #
+    # This can also be set to a path to a custom dotenv file, for example:
+    #   `path/to/.env.prod`
+    #
+    # Simply passing in a filename such as `.env.prod` will search the current
+    # directory, as well as any parent folders (working backwards to the root
+    # directory), until it locates the given file.
+    #
+    # If multiple files are passed in, later files in the list/tuple will take
+    # priority over earlier files.
+    #
+    # For example, in below the '.env.last' file takes priority over '.env':
+    #   env_file = '.env', '.env.last'
+    env_file: ClassVar[EnvFileType] = None
+
+    # How extra keyword arguments (**kwargs) to the constructor or
+    # `__init__()` method should be handled. Note that "extra" keywords are
+    # ones that don't exactly match the field names of an EnvWizard subclass.
+    #
+    # The default behavior is to raise an error if any extra keywords are
+    # passed in to the constructor method.
+    extra: ClassVar[Extra] = None
+
+    # A customized mapping of field in the `EnvWizard` subclass to its
+    # corresponding environment variable to search for.
+    #
+    # Note: this is in addition to the implicit field transformations, like
+    #   "myStr" -> "my_str"
+    field_to_env_var: ClassVar[Dict[str, str]] = None
+
+    # The letter casing priority to use when looking up Env Var Names.
+    #
+    # The default is `SCREAMING_SNAKE_CASE`.
+    key_lookup_with_load: ClassVar[Union[LetterCasePriority, str]] = LetterCasePriority.SCREAMING_SNAKE
+
+    # How `EnvWizard` fields (variables) should be transformed to JSON keys.
+    #
+    # The default is 'snake_case'.
+    key_transform_with_dump: ClassVar[Union[LetterCase, str]] = LetterCase.SNAKE
+
+    # Determines whether we should we skip / omit fields with default values
+    # in the serialization process.
+    skip_defaults: ClassVar[bool] = False
+
+    @cached_class_property
+    def all_fields(cls) -> FrozenKeys:
+        """Return a list of all class attributes"""
+        return frozenset(AbstractEnvMeta.__annotations__)
+
+    @cached_class_property
+    def fields_to_merge(cls) -> FrozenKeys:
+        """Return a list of class attributes, minus `__special_attrs__`"""
+        return cls.all_fields - cls.__special_attrs__
+
+    @classmethod
+    @abstractmethod
+    def bind_to(cls, env_class: Type, create=True):
+        """
+        Initialize hook which applies the Meta config to `env_class`, which is
+        typically a subclass of :class:`EnvWizard`.
+
+        :param env_class: A sub-class of :class:`EnvWizard`.
+        :param create: When true, a separate loader/dumper will be created
+          for the class. If disabled, this will access the root loader/dumper,
+          so modifying this should affect global settings across all
+          dataclasses that use the JSON load/dump process.
 
         """
 

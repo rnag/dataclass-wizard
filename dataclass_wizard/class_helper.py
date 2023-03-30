@@ -2,7 +2,7 @@ from collections import defaultdict
 from dataclasses import MISSING, Field, fields
 from typing import Dict, Tuple, Type, Union, Callable, Optional, Any
 
-from .abstractions import W, AbstractLoader, AbstractDumper, AbstractParser
+from .abstractions import W, E, AbstractLoader, AbstractDumper, AbstractParser
 from .bases import M, AbstractMeta
 from .models import JSONField, JSON, Extras, _PatternedDT
 from .type_def import ExplicitNull, ExplicitNullType, T
@@ -14,7 +14,7 @@ from .utils.typing_compat import (
 
 # A cached mapping of dataclass to the list of fields, as returned by
 # `dataclasses.fields()`.
-_FIELDS: Dict[Type, Tuple[Field]] = {}
+_FIELDS: Dict[Type, Tuple[Field, ...]] = {}
 
 # Mapping of main dataclass to its `load` function.
 _CLASS_TO_LOAD_FUNC: Dict[Type, Any] = {}
@@ -46,6 +46,9 @@ _JSON_FIELD_TO_DATACLASS_FIELD: Dict[
 
 # A cached mapping, per dataclass, of instance field name to JSON field
 _DATACLASS_FIELD_TO_JSON_FIELD: Dict[Type, Dict[str, str]] = defaultdict(dict)
+
+# A cached mapping, per `EnvWizard` subclass, of field name to env variable
+_FIELD_TO_ENV_VAR: Dict[Type, Dict[str, str]] = defaultdict(dict)
 
 # A mapping of dataclass name to its Meta initializer (defined in
 # :class:`bases.BaseJSONWizardMeta`), which is only set when the
@@ -106,6 +109,13 @@ def dataclass_field_to_json_field(cls):
     Returns a mapping of dataclass field to JSON field.
     """
     return _DATACLASS_FIELD_TO_JSON_FIELD[cls]
+
+
+def field_to_env_var(cls):
+    """
+    Returns a mapping of field in the `EnvWizard` subclass to env variable.
+    """
+    return _FIELD_TO_ENV_VAR[cls]
 
 
 def dataclass_field_to_load_parser(
@@ -257,7 +267,7 @@ def setup_dump_config_for_cls_if_needed(cls: Type):
     _IS_DUMP_CONFIG_SETUP[cls] = True
 
 
-def call_meta_initializer_if_needed(cls: Type[W]):
+def call_meta_initializer_if_needed(cls: Type[Union[W, E]]):
     """
     Calls the Meta initializer when the inner :class:`Meta` is sub-classed.
     """
@@ -267,16 +277,16 @@ def call_meta_initializer_if_needed(cls: Type[W]):
         _META_INITIALIZER[cls_name](cls)
 
 
-def get_meta(cls: Type) -> M:
+def get_meta(cls: Type, base_cls: T = AbstractMeta) -> Union[T, M]:
     """
     Retrieves the Meta config for the :class:`AbstractJSONWizard` subclass.
 
     This config is set when the inner :class:`Meta` is sub-classed.
     """
-    return _META.get(cls, AbstractMeta)
+    return _META.get(cls, base_cls)
 
 
-def dataclass_fields(cls) -> Tuple[Field]:
+def dataclass_fields(cls) -> Tuple[Field, ...]:
     """
     Cache the `dataclasses.fields()` call for each class, as overall that
     ends up around 5x faster than making a fresh call each time.
@@ -288,7 +298,7 @@ def dataclass_fields(cls) -> Tuple[Field]:
     return _FIELDS[cls]
 
 
-def dataclass_init_fields(cls) -> Tuple[Field]:
+def dataclass_init_fields(cls) -> Tuple[Field, ...]:
     """Get only the dataclass fields that would be passed into the constructor."""
     return tuple(f for f in dataclass_fields(cls) if f.init)
 

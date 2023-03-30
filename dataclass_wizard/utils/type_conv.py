@@ -2,6 +2,7 @@ __all__ = ['as_bool',
            'as_int',
            'as_str',
            'as_list',
+           'as_dict',
            'as_enum',
            'as_datetime',
            'as_date',
@@ -9,9 +10,10 @@ __all__ = ['as_bool',
            'as_timedelta',
            'date_to_timestamp']
 
-from datetime import datetime, time, date, timedelta
+import json
+from datetime import datetime, time, date, timedelta, timezone
 from numbers import Number
-from typing import Union, List, Type, AnyStr, Optional
+from typing import Union, Type, AnyStr, Optional, Iterable
 
 from ..errors import ParseError
 from ..lazy_imports import pytimeparse
@@ -105,20 +107,36 @@ def as_str(o: Union[str, None], base_type=str, raise_=True):
         return base_type()
 
 
-def as_list(o: Union[str, List[str]], sep=','):
+def as_list(o: Union[str, Iterable], sep=','):
     """
-    Return `o` if already a list. If `o` is None or an empty string,
-    return an empty list. Otherwise, split the string on `sep` and
+    Return `o` if already a list. If `o` is a string, split it on `sep` and
     return the list result.
 
     """
-    if not o:
-        return []
+    if isinstance(o, str):
+        if o.lstrip().startswith('['):
+            return json.loads(o)
+        else:
+            return [e.strip() for e in o.split(sep)]
 
-    if isinstance(o, list):
-        return o
+    return o
 
-    return o.split(sep)
+
+def as_dict(o: Union[str, Iterable], kv_sep='=', sep=','):
+    """
+    Return `o` if already a dict. If `o` is a string, split it on `sep` and
+    then split each result by `kv_sep`, and return the dict result.
+
+    """
+    if isinstance(o, str):
+        if o.lstrip().startswith('{'):
+            return json.loads(o)
+        else:
+            # noinspection PyTypeChecker
+            return dict(map(str.strip, pair.split(kv_sep, 1))
+                        for pair in o.split(sep))
+
+    return o
 
 
 def as_enum(o: Union[AnyStr, N],
@@ -192,7 +210,7 @@ def as_datetime(o: Union[str, Number, datetime],
         * ``str``: convert datetime strings (in ISO format) via the built-in
           ``fromisoformat`` method.
         * ``Number`` (int or float): Convert a numeric timestamp via the
-            built-in ``fromtimestamp`` method.
+            built-in ``fromtimestamp`` method, and return a UTC datetime.
         * ``datetime``: Return object `o` if it's already of this type or
             sub-type.
 
@@ -214,12 +232,13 @@ def as_datetime(o: Union[str, Number, datetime],
         if t is str:
             # Minor performance fix: if it's a string, we don't need to run
             # the other type checks.
-            pass
+            if raise_:
+                raise
 
         # Check `type` explicitly, because `bool` is a sub-class of `int`
         elif t in NUMBERS:
             # noinspection PyTypeChecker
-            return base_type.fromtimestamp(o)
+            return base_type.fromtimestamp(o, tz=timezone.utc)
 
         elif t is base_type:
             return o
@@ -261,7 +280,8 @@ def as_date(o: Union[str, Number, date],
         if t is str:
             # Minor performance fix: if it's a string, we don't need to run
             # the other type checks.
-            pass
+            if raise_:
+                raise
 
         # Check `type` explicitly, because `bool` is a sub-class of `int`
         elif t in NUMBERS:
@@ -305,7 +325,8 @@ def as_time(o: Union[str, time], base_type=time, default=None, raise_=True):
         if t is str:
             # Minor performance fix: if it's a string, we don't need to run
             # the other type checks.
-            pass
+            if raise_:
+                raise
 
         elif t is base_type:
             return o
