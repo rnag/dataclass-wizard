@@ -276,7 +276,11 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
             # class or a non-generic sub-type.
             except AttributeError:
 
-                if isinstance(base_type, type):
+                # https://stackoverflow.com/questions/76520264/dataclasswizard-after-upgrading-to-python3-11-is-not-working-as-expected
+                if base_type is Any:
+                    load_hook = cls.default_load_to
+
+                elif isinstance(base_type, type):
 
                     if is_dataclass(base_type):
                         base_type: Type[T]
@@ -316,9 +320,6 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
                             base_cls, extras, base_type, load_hook,
                             cls.get_parser_for_annotation
                         )
-
-                elif base_type is Any:
-                    load_hook = cls.default_load_to
 
                 elif isinstance(base_type, _PatternedDT):
                     # Check for a field that was initially annotated like:
