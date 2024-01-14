@@ -95,3 +95,6 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+
+# File created by pytest
+testing.json

@@ -401,10 +401,7 @@ class VariadicTupleParser(TupleParser):
         # Total count should be `Infinity` here, since the variadic form
         # accepts any number of possible arguments.
         self.total_count: N = float('inf')
-        # Check for the count of parsers which don't handle `NoneType` - this
-        # should exclude the parsers for `Union` types that have `None` in the
-        # list of args.
-        self.required_count = 0 if None in self.first_elem_parser[0] else 1
+        self.required_count = 0
 
     def __call__(self, o: M) -> M:
         """

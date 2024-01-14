@@ -1151,6 +1151,8 @@ def test_tuple_without_type_hinting(input, expectation, expected):
             # behavior later if needed.
             [{}], does_not_raise(), (0, )),
         (
+            [], does_not_raise(), tuple()),
+        (
             [True, False, True], pytest.raises(TypeError), None),
         (
             # Raises a `ValueError` because `hello` cannot be converted to int
