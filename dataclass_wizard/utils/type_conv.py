@@ -17,6 +17,7 @@ from numbers import Number
 from typing import Union, List, Type, AnyStr, Optional
 
 from ..errors import ParseError
+from ..constants import PY311_OR_ABOVE
 from ..lazy_imports import pytimeparse
 from ..type_def import E, N, NUMBERS
 
@@ -302,10 +303,13 @@ def as_time(o: Union[str, time], base_type=time, default=None, raise_=True):
     try:
         # We can assume that `o` is a string, as generally this will be the
         # case. Also, :func:`fromisoformat` does an instance check separately.
-        if o.find("Z") > -1 or re.search(r"(\d+[\+\-]\d{1,2}:)", o):
-            return base_type.fromisoformat(o)
+        if PY311_OR_ABOVE:
+            if o.find("Z") > -1 or re.search(r"(\d+[\+\-]\d{1,2}:)", o):
+                return base_type.fromisoformat(o)
+            else:
+                return base_type.fromisoformat(o + "Z").replace(tzinfo=None)
         else:
-            return base_type.fromisoformat(o + "Z").replace(tzinfo=None)
+            return base_type.fromisoformat(o.replace("Z", "+00:00", 1))
 
     except Exception:
         t = type(o)

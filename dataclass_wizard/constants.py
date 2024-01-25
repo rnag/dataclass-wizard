@@ -23,6 +23,8 @@ PY39 = _PY_VERSION == (3, 9)
 # Check if currently running Python 3.10 or higher
 PY310_OR_ABOVE = _PY_VERSION >= (3, 10)
 
+PY311_OR_ABOVE = _PY_VERSION >= (3, 11)
+
 # The name of the dictionary object that contains `load` hooks for each
 # object type. Also used to check if a class is a :class:`BaseLoadHook`
 _LOAD_HOOKS = "__LOAD_HOOKS__"
