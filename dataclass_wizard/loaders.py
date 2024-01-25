@@ -308,7 +308,10 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
             # If we can't access this property, it's likely a non-generic
             # class or a non-generic sub-type.
             except AttributeError:
-                if isinstance(base_type, type):
+                if base_type is Any:
+                    load_hook = cls.default_load_to
+
+                elif isinstance(base_type, type):
                     if is_dataclass(base_type):
                         base_type: Type[T]
                         load_hook = load_func_for_dataclass(
@@ -352,9 +355,6 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
                             load_hook,
                             cls.get_parser_for_annotation,
                         )
-
-                elif base_type is Any:
-                    load_hook = cls.default_load_to
 
                 elif isinstance(base_type, _PatternedDT):
                     # Check for a field that was initially annotated like:
