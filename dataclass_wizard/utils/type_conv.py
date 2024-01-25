@@ -11,6 +11,7 @@ __all__ = [
     "date_to_timestamp",
 ]
 
+import re
 from datetime import datetime, time, date, timedelta
 from numbers import Number
 from typing import Union, List, Type, AnyStr, Optional
@@ -301,7 +302,10 @@ def as_time(o: Union[str, time], base_type=time, default=None, raise_=True):
     try:
         # We can assume that `o` is a string, as generally this will be the
         # case. Also, :func:`fromisoformat` does an instance check separately.
-        return base_type.fromisoformat(o.replace("Z", "+00:00", 1))
+        if o.find("Z") > -1 or re.search(r"(\d+[\+\-]\d{1,2}:)", o):
+            return base_type.fromisoformat(o)
+        else:
+            return base_type.fromisoformat(o + "Z").replace(tzinfo=None)
 
     except Exception:
         t = type(o)
