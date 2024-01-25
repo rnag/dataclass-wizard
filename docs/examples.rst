@@ -4,8 +4,7 @@ Examples
 Simple
 ~~~~~~
 
-The following example has been tested on **Python 3.7+**. See below for an
-alternate version that is supported in Python 3.6+.
+The following example has been tested on **Python 3.7+**
 
 .. code:: python3
 
@@ -45,25 +44,6 @@ alternate version that is supported in Python 3.6+.
 
     # True
     assert c == c.from_dict(c.to_dict())
-
-Using Typing Imports
---------------------
-
-This approach is supported in **Python 3.6+**. Usage is the same as above.
-
-.. code:: python3
-
-    from dataclasses import dataclass, field
-    from typing import Optional, List, Tuple
-
-    from dataclass_wizard import JSONWizard
-
-
-    @dataclass
-    class MyClass(JSONWizard):
-        my_str: Optional[str]
-        is_active_tuple: Tuple[bool, ...]
-        list_of_int: List[int] = field(default_factory=list)
 
 
 A (More) Complete Example

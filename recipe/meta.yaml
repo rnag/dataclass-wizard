@@ -41,8 +41,6 @@ requirements:
     - pip
   run:
     - python
-    - backports-datetime-fromisoformat ==1.0.0  # [py==36]
-    - dataclasses  # [py==36]
     - typing-extensions >=3.7.4.2  # [py<=39]
 
 test:
@@ -71,16 +69,14 @@ about:
   description: |
     The dataclass-wizard library provides a set of simple, yet
     elegant *wizarding* tools for interacting with the Python
-    `dataclasses` module in Python 3.6+.
+    `dataclasses` module in Python 3.9+.
 
     The primary use is as a fast serialization framework that enables
     dataclass instances to be converted to/from JSON; this works well
     in particular with a *nested dataclass* model.
 
     The dataclass-wizard is pure Python code that relies entirely on
-    stdlib, with the only added dependency being
-    `typing-extensions` <https://pypi.org/project/typing-extensions/>
-    for Python 3.9 and below.
+    stdlib.
   doc_url: https://{{ name }}.readthedocs.io/
   dev_url: {{ repo_url }}
 

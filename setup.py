@@ -10,11 +10,7 @@ package_name = "dataclass_wizard"
 
 packages = find_packages(include=[package_name, f"{package_name}.*"])
 
-requires = [
-    'typing-extensions>=3.7.4.2; python_version <= "3.9"',
-    'dataclasses; python_version == "3.6"',
-    'backports-datetime-fromisoformat==1.0.0; python_version == "3.6"',
-]
+requires = []
 
 test_requirements = [
     "pytest~=6.2.4",
@@ -68,10 +64,6 @@ setup(
         "License :: OSI Approved :: Apache Software License",
         "Natural Language :: English",
         "Programming Language :: Python :: 3 :: Only",
-        "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.6",
-        "Programming Language :: Python :: 3.7",
-        "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",

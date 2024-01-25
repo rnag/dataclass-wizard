@@ -55,7 +55,6 @@ from typing import (
 )
 from uuid import UUID
 
-from .constants import PY36, PY38_OR_ABOVE
 from .decorators import discard_kwargs
 
 
@@ -124,63 +123,26 @@ ListOfJSONObject = List[JSONObject]
 # Valid value types in JSON.
 JSONValue = Union[None, str, bool, int, float, JSONList, JSONObject]
 
+from typing import ForwardRef as PyForwardRef
+from typing import Literal as PyLiteral
+from typing import Protocol as PyProtocol
+from typing import TypedDict as PyTypedDict
+from typing import Deque as PyDeque
 
-if PY38_OR_ABOVE:  # pragma: no cover
-    from typing import ForwardRef as PyForwardRef
-    from typing import Literal as PyLiteral
-    from typing import Protocol as PyProtocol
-    from typing import TypedDict as PyTypedDict
-    from typing import Deque as PyDeque
-
-    PyTypedDicts.append(PyTypedDict)
-    # Python 3.8+ users might import from either `typing` or
-    # `typing_extensions`, so check for both types.
-    try:
-        # noinspection PyUnresolvedReferences
-        from typing_extensions import TypedDict as PyTypedDict
-
-        PyTypedDicts.append(PyTypedDict)
-    except ImportError:
-        pass
-else:  # pragma: no cover
-    from typing_extensions import Literal as PyLiteral
-    from typing_extensions import Protocol as PyProtocol
+PyTypedDicts.append(PyTypedDict)
+# Python 3.8+ users might import from either `typing` or
+# `typing_extensions`, so check for both types.
+try:
+    # noinspection PyUnresolvedReferences
     from typing_extensions import TypedDict as PyTypedDict
 
-    # Seems like `Deque` was only introduced to `typing` in 3.6.1, so Python
-    # 3.6.0 won't have it; to be safe, we'll instead import from the
-    # `typing_extensions` module here.
-    from typing_extensions import Deque as PyDeque
-
     PyTypedDicts.append(PyTypedDict)
+except ImportError:
+    pass
 
-    if PY36:
-        import typing
-        from typing import _ForwardRef as PyForwardRef
-        from functools import wraps
+PyTypedDicts.append(PyTypedDict)
 
-        # Need to wrap the constructor to discard arguments like `is_argument`
-        PyForwardRef.__init__ = discard_kwargs(PyForwardRef.__init__)
-
-        # This is needed to avoid an`AttributeError` when using PyForwardRef
-        # as an argument to `TypeVar`, as we do below.
-        #
-        # See https://stackoverflow.com/a/69436981/10237506.
-        _old_type_check = typing._type_check
-
-        @wraps(_old_type_check)
-        def _new_type_check(arg, message):
-            if arg is PyForwardRef:
-                return arg
-            return _old_type_check(arg, message)
-
-        typing._type_check = _new_type_check
-        # ensure the global namespace is the same for users
-        # regardless of the version of Python they're using
-        del _new_type_check, typing, wraps
-
-    else:
-        from typing import ForwardRef as PyForwardRef
+from typing import ForwardRef as PyForwardRef
 
 
 # Forward references can be either strings or explicit `ForwardRef` objects.

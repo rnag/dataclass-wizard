@@ -138,7 +138,6 @@ def test_fromdict_with_nested_dataclass():
     ]
 
 
-@pytest.mark.skipif(PY36, reason="requires Python 3.7 or higher")
 def test_invalid_types_with_debug_mode_enabled():
     """
     Passing invalid types (i.e. that *can't* be coerced into the annotated
@@ -196,7 +195,6 @@ def test_invalid_types_with_debug_mode_enabled():
     assert (err.ann_type, err.obj_type) == (int, dict)
 
 
-@pytest.mark.skipif(PY36, reason="requires Python 3.7 or higher")
 def test_from_dict_called_with_incorrect_type():
     """
     Calling `from_dict` with a non-`dict` argument should raise a
@@ -220,7 +218,6 @@ def test_from_dict_called_with_incorrect_type():
     assert (err.ann_type, err.obj_type) == (dict, list)
 
 
-@pytest.mark.skipif(PY36, reason="requires Python 3.7 or higher")
 def test_date_times_with_custom_pattern():
     """
     Date, time, and datetime objects with a custom date string
@@ -314,7 +311,6 @@ def test_date_times_with_custom_pattern():
     assert fromdict(MyClass, serialized_dict) == expected_obj
 
 
-@pytest.mark.skipif(PY36, reason="requires Python 3.7 or higher")
 def test_date_times_with_custom_pattern_when_input_is_invalid():
     """
     Date, time, and datetime objects with a custom date string
@@ -331,7 +327,6 @@ def test_date_times_with_custom_pattern_when_input_is_invalid():
         _ = fromdict(MyClass, data)
 
 
-@pytest.mark.skipif(PY36, reason="requires Python 3.7 or higher")
 def test_date_times_with_custom_pattern_when_annotation_is_invalid():
     """
     Date, time, and datetime objects with a custom date string
@@ -755,14 +750,10 @@ def test_optional(input, expectation, expected):
         # The actual value would end up being 0 (int) if we checked the type
         # using `isinstance` instead. However, we do an exact `type` check for
         # :class:`Union` types.
-        #
-        # NOTE: This is an xfail on Python 3.6 as mentioned below.
-        # https://stackoverflow.com/q/60154326/10237506
         pytest.param(
             False,
             does_not_raise(),
             False,
-            marks=pytest.mark.skipif(PY36, reason="requires python 3.7 or higher"),
         ),
         (0, does_not_raise(), 0),
         (None, does_not_raise(), None),
@@ -919,10 +910,7 @@ def test_timedelta(input, expectation, base_err):
         log.debug("timedelta string value: %s", result.my_td)
 
     if e:  # if an error was raised, assert the underlying error type
-        # Because on 3.6, we run into a strange error (shown below)
-        #   AttributeError: 'ExitStack' object has no attribute 'value'
-        if not PY36:
-            assert type(e.value.base_error) == base_err
+        assert type(e.value.base_error) == base_err
 
 
 @pytest.mark.parametrize(

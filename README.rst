@@ -86,7 +86,7 @@ Alternatively, this library is available `on conda`_ under the `conda-forge`_ ch
 
     $ conda install dataclass-wizard -c conda-forge
 
-The ``dataclass-wizard`` library officially supports **Python 3.6** or higher.
+The ``dataclass-wizard`` library officially supports **Python 3.9** or higher.
 
 .. _on conda: https://anaconda.org/conda-forge/dataclass-wizard
 .. _conda-forge: https://conda-forge.org/

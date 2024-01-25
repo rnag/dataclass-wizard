@@ -22,12 +22,12 @@ jobs:
 
     strategy:
       matrix:
-        python-versions: [3.8]
+        python-versions: [9]
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       # Temporarily disable this - I want it to trigger on merge, but it doesn't
       # work (at least not on a tagged commit too)
@@ -35,7 +35,7 @@ jobs:
 #        if: endsWith(github.ref, 'main') == false
 #        run: exit -1
 
-      - uses: actions/setup-python@v2
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-versions }}
 

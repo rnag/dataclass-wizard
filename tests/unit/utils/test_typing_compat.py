@@ -1,4 +1,4 @@
-from typing import ClassVar, Generic, Union, List, Tuple, Dict, Callable
+from typing import Literal, ClassVar, Generic, Union, List, Tuple, Dict, Callable
 
 import pytest
 
@@ -30,16 +30,13 @@ def test_get_origin(tp, expected):
         (Dict[str, int], (str, int)),
         (int, ()),
         (Callable[[], T][int], ([], int)),
-        # The following cases are an `xfail` on Python 3.6
         pytest.param(
             Union[int, Union[T, int], str][int],
             (int, str),
-            marks=pytest.mark.skipif(PY36, reason="requires python 3.7 or higher"),
         ),
         pytest.param(
             Union[int, Tuple[T, int]][str],
             (int, Tuple[str, int]),
-            marks=pytest.mark.skipif(PY36, reason="requires python 3.7 or higher"),
         ),
     ],
 )

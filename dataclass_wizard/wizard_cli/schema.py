@@ -153,11 +153,7 @@ class PyCodeGenerator:
 
 # Global flags (generally passed in via command-line) which are shared by
 # classes and functions.
-#
-# Note: unfortunately we can't annotate it as below, because Python 3.6
-# complains.
-#   Globals: '_Globals' = None
-Globals = None
+Globals: "_Globals" = None
 
 
 @dataclass
@@ -504,9 +500,7 @@ class ModuleImporter:
             return cls._name
 
         except AttributeError:
-            # Useful to strip underscores from the start, for example
-            # in Python 3.6 which doesn't have a `_name` attribute for the
-            # `Union` type, and the class name is returned as `_Union`.
+            # Useful to strip underscores from the start
             return get_class_name(cls).lstrip("_")
 
 
