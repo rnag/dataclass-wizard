@@ -25,8 +25,9 @@ class Data1:
     Top-level dataclass for the majority of the cases.
 
     """
-    instance: 'Instance'
-    result: 'Result'
+
+    instance: "Instance"
+    result: "Result"
 
 
 @dataclass
@@ -35,8 +36,9 @@ class Instance:
     Instance dataclass
 
     """
+
     name: str
-    data: 'Data2'
+    data: "Data2"
 
 
 @dataclass
@@ -45,6 +47,7 @@ class Data2:
     Data dataclass
 
     """
+
     date: date
     owner: str
 
@@ -55,8 +58,9 @@ class Result:
     Result dataclass
 
     """
+
     status: str
-    iteration_results: 'IterationResults'
+    iteration_results: "IterationResults"
 
 
 @dataclass
@@ -65,7 +69,8 @@ class IterationResults:
     IterationResults dataclass
 
     """
-    iterations: List['Iteration']
+
+    iterations: List["Iteration"]
 
 
 @dataclass
@@ -74,8 +79,9 @@ class Iteration:
     Iteration dataclass
 
     """
+
     name: str
-    data: 'Data3'
+    data: "Data3"
 
 
 @dataclass
@@ -84,6 +90,7 @@ class Data3:
     Data dataclass
 
     """
+
     question1: str
     question2: str
 
@@ -96,8 +103,9 @@ class MyClassDJ(DataClassJsonMixin):
     no way to decode `date` fields automatically by default.
 
     """
-    instance: 'InstanceJD'
-    result: 'Result'
+
+    instance: "InstanceJD"
+    result: "Result"
 
 
 @dataclass
@@ -106,8 +114,9 @@ class InstanceJD:
     Instance dataclass for `dataclasses-json`
 
     """
+
     name: str
-    data: 'Data2JD'
+    data: "Data2JD"
 
 
 @dataclass
@@ -119,74 +128,61 @@ class Data2JD:
     a `date` type.
 
     """
+
     date: date = field(
         metadata=config(
             encoder=date.isoformat,
             decoder=as_date,
-            mm_field=marshmallow.fields.Date(format='iso')
+            mm_field=marshmallow.fields.Date(format="iso"),
         )
     )
     owner: str
 
 
 # Model for `dataclass-wizard`
-WizType = TypeVar('WizType', Data1, JSONWizard)
+WizType = TypeVar("WizType", Data1, JSONWizard)
 # Model for `jsons`
-JsonsType = TypeVar('JsonsType', Data1, JsonSerializable)
+JsonsType = TypeVar("JsonsType", Data1, JsonSerializable)
 # Model for `dataclasses-json`
-DJType = TypeVar('DJType', Data1, DataClassJsonMixin)
+DJType = TypeVar("DJType", Data1, DataClassJsonMixin)
 # Factory for `dataclass-factory`
 factory = dataclass_factory.Factory()
 
 MyClassWizard: WizType = create_new_class(
-    Data1, (Data1, JSONWizard), 'Wizard',
-    attr_dict=vars(Data1).copy())
+    Data1, (Data1, JSONWizard), "Wizard", attr_dict=vars(Data1).copy()
+)
 MyClassJsons: JsonsType = create_new_class(
-    Data1, (Data1, JsonSerializable), 'Jsons',
-    attr_dict=vars(Data1).copy())
+    Data1, (Data1, JsonSerializable), "Jsons", attr_dict=vars(Data1).copy()
+)
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope="session")
 def data():
     return {
         "instance": {
             "name": "example1",
-            "data": {
-                "date": "2021-01-01",
-                "owner": "Maciek"
-            }
+            "data": {"date": "2021-01-01", "owner": "Maciek"},
         },
         "result": {
             "status": "complete",
             "iteration_results": {
                 "iterations": [
-                    {
-                        "name": "first",
-                        "data": {
-                            "question1": "yes",
-                            "question2": "no"
-                        }
-                    }
+                    {"name": "first", "data": {"question1": "yes", "question2": "no"}}
                 ]
-            }
-        }
+            },
+        },
     }
 
 
 dt_iso_format_schema = dataclass_factory.Schema(
-    parser=as_datetime,
-    serializer=datetime.isoformat
+    parser=as_datetime, serializer=datetime.isoformat
 )
 
 date_iso_format_schema = dataclass_factory.Schema(
-    parser=as_date,
-    serializer=date.isoformat
+    parser=as_date, serializer=date.isoformat
 )
 
-factory.schemas = {
-    datetime: dt_iso_format_schema,
-    date: date_iso_format_schema
-}
+factory.schemas = {datetime: dt_iso_format_schema, date: date_iso_format_schema}
 
 
 def test_load(data, n):
@@ -194,24 +190,34 @@ def test_load(data, n):
     g.update(locals())
 
     # Result: 0.811
-    log.info('dataclass-wizard     %f',
-             timeit('MyClassWizard.from_dict(data)', globals=g, number=n))
+    log.info(
+        "dataclass-wizard     %f",
+        timeit("MyClassWizard.from_dict(data)", globals=g, number=n),
+    )
 
     # Result: 0.795
-    log.info('dataclass-factory    %f',
-            timeit('factory.load(data, Data1)', globals=g, number=n))
+    log.info(
+        "dataclass-factory    %f",
+        timeit("factory.load(data, Data1)", globals=g, number=n),
+    )
 
     # Result: 20.571
-    log.info('dataclasses-json     %f',
-             timeit('MyClassDJ.from_dict(data)', globals=g, number=n))
+    log.info(
+        "dataclasses-json     %f",
+        timeit("MyClassDJ.from_dict(data)", globals=g, number=n),
+    )
 
     # Result: 45.352
-    log.info('jsons                %f',
-             timeit('MyClassJsons.load(data)', globals=g, number=n))
+    log.info(
+        "jsons                %f",
+        timeit("MyClassJsons.load(data)", globals=g, number=n),
+    )
 
     # Result: 62.501
-    log.info('jsons (strict)       %f',
-             timeit('MyClassJsons.load(data, strict=True)', globals=g, number=n))
+    log.info(
+        "jsons (strict)       %f",
+        timeit("MyClassJsons.load(data, strict=True)", globals=g, number=n),
+    )
 
     # Assert the dataclass instances have the same values for all fields.
 
@@ -236,28 +242,27 @@ def test_dump(data, n):
     g.update(locals())
 
     # Result: 1.096
-    log.info('dataclass-wizard     %f',
-             timeit('c1.to_dict()', globals=g, number=n))
+    log.info("dataclass-wizard     %f", timeit("c1.to_dict()", globals=g, number=n))
 
     # Result: 1.754
-    log.info('asdict (dataclasses) %f',
-             timeit('asdict(c1)', globals=g, number=n))
+    log.info("asdict (dataclasses) %f", timeit("asdict(c1)", globals=g, number=n))
 
     # Result: 0.597
-    log.info('dataclass-factory    %f',
-             timeit('factory.dump(c2, Data1)', globals=g, number=n))
+    log.info(
+        "dataclass-factory    %f",
+        timeit("factory.dump(c2, Data1)", globals=g, number=n),
+    )
 
     # Result: 7.514
-    log.info('dataclasses-json     %f',
-             timeit('c3.to_dict()', globals=g, number=n))
+    log.info("dataclasses-json     %f", timeit("c3.to_dict()", globals=g, number=n))
 
     # Result: 54.996
-    log.info('jsons                %f',
-             timeit('c4.dump()', globals=g, number=n))
+    log.info("jsons                %f", timeit("c4.dump()", globals=g, number=n))
 
     # Result: 51.893
-    log.info('jsons (strict)       %f',
-             timeit('c4.dump(strict=True)', globals=g, number=n))
+    log.info(
+        "jsons (strict)       %f", timeit("c4.dump(strict=True)", globals=g, number=n)
+    )
 
     # Assert the dict objects which are the result of `to_dict` are all equal.
 

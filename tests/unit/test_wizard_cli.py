@@ -18,7 +18,7 @@ def gen_schema(filename: str):
     file in the `testdata` directory.
     """
 
-    main(['gs', data_file_path(filename), '-'])
+    main(["gs", data_file_path(filename), "-"])
 
 
 def assert_py_code(expected, capfd=None, py_code=None):
@@ -29,8 +29,7 @@ def assert_py_code(expected, capfd=None, py_code=None):
         py_code = _get_captured_py_code(capfd)
 
     # TODO update to `info` level to see the output in terminal.
-    log.debug('Generated Python code:\n%s\n%s',
-              '-' * 20, py_code)
+    log.debug("Generated Python code:\n%s\n%s", "-" * 20, py_code)
 
     assert py_code == dedent(expected).lstrip()
 
@@ -40,25 +39,25 @@ def _get_captured_py_code(capfd) -> str:
     out, err = capfd.readouterr()
     assert not err
 
-    py_code_lines = out.split('\n')[4:]
-    py_code = '\n'.join(py_code_lines)
+    py_code_lines = out.split("\n")[4:]
+    py_code = "\n".join(py_code_lines)
 
     return py_code
 
 
 @pytest.fixture
 def mock_path(mocker: MockerFixture):
-    return mocker.patch('dataclass_wizard.wizard_cli.schema.Path')
+    return mocker.patch("dataclass_wizard.wizard_cli.schema.Path")
 
 
 @pytest.fixture
 def mock_stdin(mocker: MockerFixture):
-    return mocker.patch('sys.stdin')
+    return mocker.patch("sys.stdin")
 
 
 @pytest.fixture
 def mock_open(mocker: MockerFixture):
-    return mocker.patch('dataclass_wizard.wizard_cli.cli.open')
+    return mocker.patch("dataclass_wizard.wizard_cli.cli.open")
 
 
 def test_call_py_code_generator_with_file_name(mock_path):
@@ -85,8 +84,7 @@ def test_call_py_code_generator_with_file_name(mock_path):
         second_key: Any
     '''
 
-    code_gen = PyCodeGenerator(file_name='my_file.txt',
-                               force_strings=True)
+    code_gen = PyCodeGenerator(file_name="my_file.txt", force_strings=True)
 
     assert_py_code(expected, py_code=code_gen.py_code)
 
@@ -135,9 +133,9 @@ def test_call_py_code_generator_with_experimental_features():
         key2: str | None
     '''
 
-    code_gen = PyCodeGenerator(file_contents=string,
-                               experimental=True,
-                               force_strings=True)
+    code_gen = PyCodeGenerator(
+        file_contents=string, experimental=True, force_strings=True
+    )
 
     assert_py_code(expected, py_code=code_gen.py_code)
 
@@ -158,14 +156,14 @@ def test_call_wiz_cli_with_invalid_json_input(capsys, mock_stdin):
     """
     invalid_json = '{"key": "value"'
 
-    mock_stdin.name = '<stdin>'
+    mock_stdin.name = "<stdin>"
     mock_stdin.read.return_value = invalid_json
 
     with capsys.disabled():
         with pytest.raises(SystemExit) as e:
-            main(['gs', '-', '-'])
+            main(["gs", "-", "-"])
 
-        assert 'JSONDecodeError' in e.value.code
+        assert "JSONDecodeError" in e.value.code
 
 
 def test_call_wiz_cli_with_invalid_json_type(capsys, mock_stdin):
@@ -175,18 +173,17 @@ def test_call_wiz_cli_with_invalid_json_type(capsys, mock_stdin):
     """
     invalid_json = '"my string value"'
 
-    mock_stdin.name = '<stdin>'
+    mock_stdin.name = "<stdin>"
     mock_stdin.read.return_value = invalid_json
 
     with capsys.disabled():
         with pytest.raises(SystemExit) as e:
-            main(['gs', '-', '-'])
+            main(["gs", "-", "-"])
 
-        assert 'TypeError' in e.value.code
+        assert "TypeError" in e.value.code
 
 
-def test_call_wiz_cli_when_double_quotes_are_used_to_wrap_input(
-        capsys, mock_stdin):
+def test_call_wiz_cli_when_double_quotes_are_used_to_wrap_input(capsys, mock_stdin):
     """
     Calling wiz-cli when input is piped via stdin and the string is wrapped
     with double quotes instead of single quotes. Added for code coverage.
@@ -194,17 +191,17 @@ def test_call_wiz_cli_when_double_quotes_are_used_to_wrap_input(
 
     # Note: this can be the result of the following command:
     #   echo "{"key": "value"}" | wiz gs
-    invalid_json = '\"{"key": "value"}\"'
+    invalid_json = '"{"key": "value"}"'
 
-    mock_stdin.name = '<stdin>'
+    mock_stdin.name = "<stdin>"
     mock_stdin.read.return_value = invalid_json
 
     with capsys.disabled():
         with pytest.raises(SystemExit) as e:
-            main(['gs', '-'])
+            main(["gs", "-"])
 
         log.debug(e.value.code)
-        assert 'double quotes' in e.value.code
+        assert "double quotes" in e.value.code
 
 
 def test_call_wiz_cli_with_mock_stdout(capsys, mock_stdin, mocker):
@@ -213,21 +210,20 @@ def test_call_wiz_cli_with_mock_stdout(capsys, mock_stdin, mocker):
     """
     valid_json = '{"key": "value"}'
 
-    mock_stdin.name = '<stdin>'
+    mock_stdin.name = "<stdin>"
     mock_stdin.read.return_value = valid_json
 
     with capsys.disabled():
-        mock_stdout = mocker.patch('sys.stdout')
-        mock_stdout.name = '<stdout>'
+        mock_stdout = mocker.patch("sys.stdout")
+        mock_stdout.name = "<stdout>"
         mock_stdout.isatty.return_value = False
 
-        main(['gs', '-', '-'])
+        main(["gs", "-", "-"])
 
     mock_stdout.write.assert_called()
 
 
-def test_call_wiz_cli_with_output_filename_without_ext(
-        mocker, mock_stdin, mock_open):
+def test_call_wiz_cli_with_output_filename_without_ext(mocker, mock_stdin, mock_open):
     """
     Calling wiz-cli with an output filename without an extension. The
     extension should automatically be added.
@@ -235,24 +231,22 @@ def test_call_wiz_cli_with_output_filename_without_ext(
     valid_json = '{"key": "value"}'
 
     mock_out = mocker.Mock()
-    mock_out.name = 'testing'
+    mock_out.name = "testing"
     mock_out.fileno.return_value = 0
 
     mock_open.return_value = mock_out
 
-    mock_stdin.name = '<stdin>'
+    mock_stdin.name = "<stdin>"
     mock_stdin.read.return_value = valid_json
 
-    main(['gs', '-', 'testing'])
+    main(["gs", "-", "testing"])
 
-    mock_open.assert_called_once_with(
-        'testing.py', 'w', ANY, ANY, ANY)
+    mock_open.assert_called_once_with("testing.py", "w", ANY, ANY, ANY)
 
     mock_out.write.assert_called_once()
 
 
-def test_call_wiz_cli_when_open_raises_error(
-        mocker, mock_stdin, mock_open):
+def test_call_wiz_cli_when_open_raises_error(mocker, mock_stdin, mock_open):
     """
     Calling wiz-cli with an error is raised opening the JSON file.
     """
@@ -260,17 +254,16 @@ def test_call_wiz_cli_when_open_raises_error(
 
     mock_open.side_effect = OSError
 
-    mock_stdin.name = '<stdin>'
+    mock_stdin.name = "<stdin>"
     mock_stdin.read.return_value = valid_json
 
     with pytest.raises(SystemExit) as e:
-        main(['gs', '-', 'testing'])
+        main(["gs", "-", "testing"])
 
     mock_open.assert_called_once()
 
 
 def test_star_wars(capfd):
-
     expected = '''
     from dataclasses import dataclass
     from datetime import datetime
@@ -301,13 +294,12 @@ def test_star_wars(capfd):
         url: str
     '''
 
-    gen_schema('star_wars.json')
+    gen_schema("star_wars.json")
 
     assert_py_code(expected, capfd)
 
 
 def test_input_1(capfd):
-
     expected = '''
     from dataclasses import dataclass
 
@@ -335,13 +327,12 @@ def test_input_1(capfd):
         key2: str
     '''
 
-    gen_schema('test1.json')
+    gen_schema("test1.json")
 
     assert_py_code(expected, capfd)
 
 
 def test_input_2(capfd):
-
     expected = '''
     from dataclasses import dataclass
     from datetime import datetime
@@ -384,13 +375,12 @@ def test_input_2(capfd):
         pass
     '''
 
-    gen_schema('test2.json')
+    gen_schema("test2.json")
 
     assert_py_code(expected, capfd)
 
 
 def test_input_3(capfd):
-
     expected = '''
     from dataclasses import dataclass
     from typing import List, Union
@@ -431,13 +421,12 @@ def test_input_3(capfd):
         hey: str
     '''
 
-    gen_schema('test3.json')
+    gen_schema("test3.json")
 
     assert_py_code(expected, capfd)
 
 
 def test_input_4(capfd):
-
     expected = '''
     from dataclasses import dataclass
     from typing import Union
@@ -524,13 +513,12 @@ def test_input_4(capfd):
         active: Union[bool, str]
     '''
 
-    gen_schema('test4.json')
+    gen_schema("test4.json")
 
     assert_py_code(expected, capfd)
 
 
 def test_input_5(capfd):
-
     expected = '''
     from dataclasses import dataclass
     from typing import List, Union
@@ -587,13 +575,12 @@ def test_input_5(capfd):
         testing: str
     '''
 
-    gen_schema('test5.json')
+    gen_schema("test5.json")
 
     assert_py_code(expected, capfd)
 
 
 def test_input_6(capfd):
-
     expected = '''
     from dataclasses import dataclass
     from datetime import date, time
@@ -632,13 +619,12 @@ def test_input_6(capfd):
         my_time: time
     '''
 
-    gen_schema('test6.json')
+    gen_schema("test6.json")
 
     assert_py_code(expected, capfd)
 
 
 def test_input_7(capfd):
-
     expected = '''
     from dataclasses import dataclass
     from typing import List, Union
@@ -738,13 +724,12 @@ def test_input_7(capfd):
         testing: str
     '''
 
-    gen_schema('test7.json')
+    gen_schema("test7.json")
 
     assert_py_code(expected, capfd)
 
 
 def test_input_8(capfd):
-
     expected = '''
     from dataclasses import dataclass
     from typing import List, Optional, Union
@@ -823,6 +808,6 @@ def test_input_8(capfd):
         explanation: str
     '''
 
-    gen_schema('test8.json')
+    gen_schema("test8.json")
 
     assert_py_code(expected, capfd)

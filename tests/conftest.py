@@ -1,14 +1,14 @@
 __all__ = [
-    'does_not_raise',
-    'data_file_path',
-    'PY36',
-    'PY39_OR_ABOVE',
-    'PY310_OR_ABOVE',
+    "does_not_raise",
+    "data_file_path",
+    "PY36",
+    "PY39_OR_ABOVE",
+    "PY310_OR_ABOVE",
     # For compatibility with Python 3.6 and 3.7
-    'Literal',
-    'TypedDict',
-    'Annotated',
-    'Deque'
+    "Literal",
+    "TypedDict",
+    "Annotated",
+    "Deque",
 ]
 
 import sys
@@ -16,7 +16,7 @@ from pathlib import Path
 
 
 # Directory for test files
-TEST_DATA_DIR = Path(__file__).resolve().parent / 'testdata'
+TEST_DATA_DIR = Path(__file__).resolve().parent / "testdata"
 
 # Check if we are running Python 3.6
 PY36 = sys.version_info[:2] == (3, 6)

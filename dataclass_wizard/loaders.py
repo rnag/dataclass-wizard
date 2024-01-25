@@ -4,18 +4,36 @@ from datetime import datetime, time, date, timedelta
 from decimal import Decimal
 from enum import Enum
 from typing import (
-    Any, Type, Dict, List, Tuple, Iterable, Sequence, Union,
-    NamedTupleMeta, SupportsFloat, AnyStr, Text, Callable, Optional
+    Any,
+    Type,
+    Dict,
+    List,
+    Tuple,
+    Iterable,
+    Sequence,
+    Union,
+    NamedTupleMeta,
+    SupportsFloat,
+    AnyStr,
+    Text,
+    Callable,
+    Optional,
 )
 from uuid import UUID
 
 from .abstractions import AbstractLoader, AbstractParser, FieldToParser
 from .bases import BaseLoadHook, AbstractMeta, META
 from .class_helper import (
-    get_class_name, create_new_class,
-    dataclass_to_loader, set_class_loader,
-    dataclass_field_to_load_parser, json_field_to_dataclass_field,
-    _CLASS_TO_LOAD_FUNC, dataclass_fields, get_meta, is_subclass_safe,
+    get_class_name,
+    create_new_class,
+    dataclass_to_loader,
+    set_class_loader,
+    dataclass_field_to_load_parser,
+    json_field_to_dataclass_field,
+    _CLASS_TO_LOAD_FUNC,
+    dataclass_fields,
+    get_meta,
+    is_subclass_safe,
 )
 from .constants import _LOAD_HOOKS, SINGLE_ARG_ALIAS, IDENTITY
 from .decorators import _alias, _single_arg_alias, resolve_alias_func, _identity
@@ -24,16 +42,37 @@ from .log import LOG
 from .models import Extras, _PatternedDT
 from .parsers import *
 from .type_def import (
-    ExplicitNull, FrozenKeys, DefFactory, NoneType, JSONObject,
-    M, N, T, E, U, DD, LSQ, NT
+    ExplicitNull,
+    FrozenKeys,
+    DefFactory,
+    NoneType,
+    JSONObject,
+    M,
+    N,
+    T,
+    E,
+    U,
+    DD,
+    LSQ,
+    NT,
 )
 from .utils.string_conv import to_snake_case
 from .utils.type_conv import (
-    as_bool, as_str, as_datetime, as_date, as_time, as_int, as_timedelta
+    as_bool,
+    as_str,
+    as_datetime,
+    as_date,
+    as_time,
+    as_int,
+    as_timedelta,
 )
 from .utils.typing_compat import (
-    is_literal, is_typed_dict, get_origin, get_args, is_annotated,
-    eval_forward_ref_if_needed
+    is_literal,
+    is_typed_dict,
+    get_origin,
+    get_args,
+    is_annotated,
+    eval_forward_ref_if_needed,
 )
 
 
@@ -49,6 +88,7 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
     implemented methods.
 
     """
+
     __slots__ = ()
 
     def __init_subclass__(cls, **kwargs):
@@ -69,11 +109,10 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
 
     @staticmethod
     def load_after_type_check(o: Any, base_type: Type[T]) -> T:
-
         if isinstance(o, base_type):
             return o
 
-        e = ValueError(f'data type is not a {base_type!s}')
+        e = ValueError(f"data type is not a {base_type!s}")
         raise ParseError(e, o, base_type)
 
     @staticmethod
@@ -89,7 +128,7 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
         ...
 
     @staticmethod
-    @_single_arg_alias('base_type')
+    @_single_arg_alias("base_type")
     def load_to_float(o: Union[SupportsFloat, str], base_type: Type[N]) -> N:
         # alias: base_type(o)
         ...
@@ -101,29 +140,29 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
         ...
 
     @staticmethod
-    @_single_arg_alias('base_type')
+    @_single_arg_alias("base_type")
     def load_to_enum(o: Union[AnyStr, N], base_type: Type[E]) -> E:
         # alias: base_type(o)
         ...
 
     @staticmethod
-    @_single_arg_alias('base_type')
+    @_single_arg_alias("base_type")
     def load_to_uuid(o: Union[AnyStr, U], base_type: Type[U]) -> U:
         # alias: base_type(o)
         ...
 
     @staticmethod
     def load_to_iterable(
-            o: Iterable, base_type: Type[LSQ],
-            elem_parser: AbstractParser) -> LSQ:
-
+        o: Iterable, base_type: Type[LSQ], elem_parser: AbstractParser
+    ) -> LSQ:
         return base_type([elem_parser(elem) for elem in o])
 
     @staticmethod
     def load_to_tuple(
-            o: Union[List, Tuple], base_type: Type[Tuple],
-            elem_parsers: Sequence[AbstractParser]) -> Tuple:
-
+        o: Union[List, Tuple],
+        base_type: Type[Tuple],
+        elem_parsers: Sequence[AbstractParser],
+    ) -> Tuple:
         try:
             zipped = zip(elem_parsers, o)
         except TypeError:
@@ -133,26 +172,27 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
 
     @staticmethod
     def load_to_named_tuple(
-            o: Union[Dict, List, Tuple], base_type: Type[NT],
-            field_to_parser: FieldToParser,
-            field_parsers: List[AbstractParser]) -> NT:
-
+        o: Union[Dict, List, Tuple],
+        base_type: Type[NT],
+        field_to_parser: FieldToParser,
+        field_parsers: List[AbstractParser],
+    ) -> NT:
         if isinstance(o, dict):
             # Convert the values of all fields in the NamedTuple, using
             # their type annotations. The keys in a dictionary object
             # (assuming it was loaded from JSON) are required to be
             # strings, so we don't need to convert them.
-            return base_type(
-                **{k: field_to_parser[k](o[k]) for k in o})
+            return base_type(**{k: field_to_parser[k](o[k]) for k in o})
         # We're passed in a list or a tuple.
-        return base_type(
-            *[parser(elem) for parser, elem in zip(field_parsers, o)])
+        return base_type(*[parser(elem) for parser, elem in zip(field_parsers, o)])
 
     @staticmethod
     def load_to_named_tuple_untyped(
-            o: Union[Dict, List, Tuple], base_type: Type[NT],
-            dict_parser: AbstractParser, list_parser: AbstractParser) -> NT:
-
+        o: Union[Dict, List, Tuple],
+        base_type: Type[NT],
+        dict_parser: AbstractParser,
+        list_parser: AbstractParser,
+    ) -> NT:
         if isinstance(o, dict):
             return base_type(**dict_parser(o))
         # We're passed in a list or a tuple.
@@ -160,35 +200,33 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
 
     @staticmethod
     def load_to_dict(
-            o: Dict, base_type: Type[M],
-            key_parser: AbstractParser,
-            val_parser: AbstractParser) -> M:
-
-        return base_type(
-            (key_parser(k), val_parser(v))
-            for k, v in o.items()
-        )
+        o: Dict,
+        base_type: Type[M],
+        key_parser: AbstractParser,
+        val_parser: AbstractParser,
+    ) -> M:
+        return base_type((key_parser(k), val_parser(v)) for k, v in o.items())
 
     @staticmethod
     def load_to_defaultdict(
-            o: Dict, base_type: Type[DD],
-            default_factory: DefFactory,
-            key_parser: AbstractParser,
-            val_parser: AbstractParser) -> DD:
-
+        o: Dict,
+        base_type: Type[DD],
+        default_factory: DefFactory,
+        key_parser: AbstractParser,
+        val_parser: AbstractParser,
+    ) -> DD:
         return base_type(
-            default_factory,
-            {key_parser(k): val_parser(v)
-             for k, v in o.items()}
+            default_factory, {key_parser(k): val_parser(v) for k, v in o.items()}
         )
 
     @staticmethod
     def load_to_typed_dict(
-            o: Dict, base_type: Type[M],
-            key_to_parser: FieldToParser,
-            required_keys: FrozenKeys,
-            optional_keys: FrozenKeys) -> M:
-
+        o: Dict,
+        base_type: Type[M],
+        key_to_parser: FieldToParser,
+        required_keys: FrozenKeys,
+        optional_keys: FrozenKeys,
+    ) -> M:
         kwargs = {}
 
         # Set required keys for the `TypedDict`
@@ -204,13 +242,11 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
 
     @staticmethod
     def load_to_decimal(o: N, base_type: Type[Decimal]) -> Decimal:
-
         return base_type(str(o))
 
     @staticmethod
     @_alias(as_datetime)
-    def load_to_datetime(
-            o: Union[str, N], base_type: Type[datetime]) -> datetime:
+    def load_to_datetime(o: Union[str, N], base_type: Type[datetime]) -> datetime:
         # alias: as_datetime
         ...
 
@@ -228,15 +264,14 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
 
     @staticmethod
     @_alias(as_timedelta)
-    def load_to_timedelta(
-            o: Union[str, N], base_type: Type[timedelta]) -> timedelta:
+    def load_to_timedelta(o: Union[str, N], base_type: Type[timedelta]) -> timedelta:
         # alias: as_timedelta
         ...
 
     @classmethod
-    def get_parser_for_annotation(cls, ann_type: Type[T],
-                                  base_cls: Type = None,
-                                  extras: Extras = None) -> AbstractParser:
+    def get_parser_for_annotation(
+        cls, ann_type: Type[T], base_cls: Type = None, extras: Extras = None
+    ) -> AbstractParser:
         """Returns the Parser (dispatcher) for a given annotation type."""
         hooks = cls.__LOAD_HOOKS__
         ann_type = eval_forward_ref_if_needed(ann_type, base_cls)
@@ -248,8 +283,7 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
         #   unseemly and there's really no need for that, as any such
         #   performance gains (if they do exist) are minimal at best.
 
-        if 'pattern' in extras and is_subclass_safe(
-                ann_type, (date, time, datetime)):
+        if "pattern" in extras and is_subclass_safe(ann_type, (date, time, datetime)):
             # Check for a field that was initially annotated like:
             #   Annotated[List[time], Pattern('%H:%M:%S')]
             return PatternedDTParser(base_cls, extras, base_type)
@@ -264,8 +298,7 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
             if is_annotated(ann_type):
                 # Given `Annotated[T, MaxValue(10), ...]`, we only need `T`
                 ann_type = get_args(ann_type)[0]
-                return cls.get_parser_for_annotation(
-                    ann_type, base_cls, extras)
+                return cls.get_parser_for_annotation(ann_type, base_cls, extras)
 
             # This property will be available for most generic types in the
             # `typing` library.
@@ -275,15 +308,11 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
             # If we can't access this property, it's likely a non-generic
             # class or a non-generic sub-type.
             except AttributeError:
-
                 if isinstance(base_type, type):
-
                     if is_dataclass(base_type):
                         base_type: Type[T]
                         load_hook = load_func_for_dataclass(
-                            base_type,
-                            is_main_class=False,
-                            config=extras['config']
+                            base_type, is_main_class=False, config=extras["config"]
                         )
 
                     elif issubclass(base_type, Enum):
@@ -292,29 +321,36 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
                     elif issubclass(base_type, UUID):
                         load_hook = hooks.get(UUID)
 
-                    elif issubclass(base_type, tuple) \
-                            and hasattr(base_type, '_fields'):
-
-                        if getattr(base_type, '__annotations__', None):
+                    elif issubclass(base_type, tuple) and hasattr(base_type, "_fields"):
+                        if getattr(base_type, "__annotations__", None):
                             # Annotated as a `typing.NamedTuple` subtype
                             load_hook = hooks.get(NamedTupleMeta)
                             return NamedTupleParser(
-                                base_cls, extras, base_type, load_hook,
-                                cls.get_parser_for_annotation
+                                base_cls,
+                                extras,
+                                base_type,
+                                load_hook,
+                                cls.get_parser_for_annotation,
                             )
                         else:
                             # Annotated as a `collections.namedtuple` subtype
                             load_hook = hooks.get(namedtuple)
                             return NamedTupleUntypedParser(
-                                base_cls, extras, base_type, load_hook,
-                                cls.get_parser_for_annotation
+                                base_cls,
+                                extras,
+                                base_type,
+                                load_hook,
+                                cls.get_parser_for_annotation,
                             )
 
                     elif is_typed_dict(base_type):
                         load_hook = cls.load_to_typed_dict
                         return TypedDictParser(
-                            base_cls, extras, base_type, load_hook,
-                            cls.get_parser_for_annotation
+                            base_cls,
+                            extras,
+                            base_type,
+                            load_hook,
+                            cls.get_parser_for_annotation,
                         )
 
                 elif base_type is Any:
@@ -332,7 +368,7 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
                 # should emit a warning for awareness.
                 else:
                     load_hook = cls.default_load_to
-                    LOG.warning('Using default loader, type=%r', ann_type)
+                    LOG.warning("Using default loader, type=%r", ann_type)
 
             # Else, it's annotated with a generic type like Union or List -
             # basically anything that's subscriptable.
@@ -349,35 +385,45 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
                     elif NoneType in base_types and len(base_types) == 2:
                         # Special case for Optional[x], which is actually Union[x, None]
                         return OptionalParser(
-                            base_cls, extras, base_types[0],
-                            cls.get_parser_for_annotation
+                            base_cls,
+                            extras,
+                            base_types[0],
+                            cls.get_parser_for_annotation,
                         )
 
                     else:
                         return UnionParser(
-                            base_cls, extras, base_types,
-                            cls.get_parser_for_annotation
+                            base_cls, extras, base_types, cls.get_parser_for_annotation
                         )
 
                 elif issubclass(base_type, defaultdict):
                     load_hook = hooks[defaultdict]
                     return DefaultDictParser(
-                        base_cls, extras, ann_type, load_hook,
-                        cls.get_parser_for_annotation
+                        base_cls,
+                        extras,
+                        ann_type,
+                        load_hook,
+                        cls.get_parser_for_annotation,
                     )
 
                 elif issubclass(base_type, dict):
                     load_hook = hooks[dict]
                     return MappingParser(
-                        base_cls, extras, ann_type, load_hook,
-                        cls.get_parser_for_annotation
+                        base_cls,
+                        extras,
+                        ann_type,
+                        load_hook,
+                        cls.get_parser_for_annotation,
                     )
 
                 elif issubclass(base_type, LSQ.__constraints__):
                     load_hook = cls.load_to_iterable
                     return IterableParser(
-                        base_cls, extras, ann_type, load_hook,
-                        cls.get_parser_for_annotation
+                        base_cls,
+                        extras,
+                        ann_type,
+                        load_hook,
+                        cls.get_parser_for_annotation,
                     )
 
                 elif issubclass(base_type, tuple):
@@ -392,8 +438,11 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
                         parser = VariadicTupleParser
 
                     return parser(
-                        base_cls, extras, ann_type, load_hook,
-                        cls.get_parser_for_annotation
+                        base_cls,
+                        extras,
+                        ann_type,
+                        load_hook,
+                        cls.get_parser_for_annotation,
                     )
 
                 else:
@@ -404,20 +453,20 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
         elif issubclass(base_type, dict):
             load_hook = hooks[dict]
             return MappingParser(
-                base_cls, extras, ann_type, load_hook,
-                cls.get_parser_for_annotation)
+                base_cls, extras, ann_type, load_hook, cls.get_parser_for_annotation
+            )
 
         elif issubclass(base_type, LSQ.__constraints__):
             load_hook = cls.load_to_iterable
             return IterableParser(
-                base_cls, extras, ann_type, load_hook,
-                cls.get_parser_for_annotation)
+                base_cls, extras, ann_type, load_hook, cls.get_parser_for_annotation
+            )
 
         elif issubclass(base_type, tuple):
             load_hook = hooks[tuple]
             return TupleParser(
-                base_cls, extras, ann_type, load_hook,
-                cls.get_parser_for_annotation)
+                base_cls, extras, ann_type, load_hook, cls.get_parser_for_annotation
+            )
 
         if load_hook is None:
             # If load hook is still not resolved at this point, it's possible
@@ -433,11 +482,8 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
 
             else:
                 # No matching hook is found for the type.
-                err = TypeError('Provided type is not currently supported.')
-                raise ParseError(
-                    err, None, base_type,
-                    unsupported_type=base_type
-                )
+                err = TypeError("Provided type is not currently supported.")
+                raise ParseError(err, None, base_type, unsupported_type=base_type)
 
         if hasattr(load_hook, SINGLE_ARG_ALIAS):
             load_hook = resolve_alias_func(load_hook, locals())
@@ -501,12 +547,11 @@ def get_loader(class_or_instance=None, create=True) -> Type[LoadMixin]:
         return dataclass_to_loader(class_or_instance)
 
     except KeyError:
-
         if hasattr(class_or_instance, _LOAD_HOOKS):
             return set_class_loader(class_or_instance, class_or_instance)
 
         elif create:
-            cls_loader = create_new_class(class_or_instance, (LoadMixin, ))
+            cls_loader = create_new_class(class_or_instance, (LoadMixin,))
             return set_class_loader(class_or_instance, cls_loader)
 
         return set_class_loader(class_or_instance, LoadMixin)
@@ -553,10 +598,8 @@ def fromlist(cls: Type[T], list_of_dict: List[JSONObject]) -> List[T]:
 
 
 def load_func_for_dataclass(
-        cls: Type[T],
-        is_main_class: bool = True,
-        config: Optional[META] = None) -> Callable[[JSONObject], T]:
-
+    cls: Type[T], is_main_class: bool = True, config: Optional[META] = None
+) -> Callable[[JSONObject], T]:
     # Get the loader for the class, or create a new one as needed.
     cls_loader = get_loader(cls)
 
@@ -598,7 +641,6 @@ def load_func_for_dataclass(
         try:
             # Loop over the dictionary object
             for json_key in o:
-
                 # Get the resolved dataclass field name
                 try:
                     field_name = json_to_dataclass_field[json_key]
@@ -616,8 +658,7 @@ def load_func_for_dataclass(
                     # Note: pass the original cased field to the class
                     # constructor; don't use the lowercase result from
                     # `transform_json_field`
-                    cls_kwargs[field_name] = field_to_parser[field_name](
-                        o[json_key])
+                    cls_kwargs[field_name] = field_to_parser[field_name](o[json_key])
 
                 except ParseError as e:
                     # We run into a parsing error while loading the field
@@ -642,11 +683,8 @@ def load_func_for_dataclass(
             # Check if the object `o` is some other type than what we expect -
             # for example, we could be passed in a `list` type instead.
             if not isinstance(o, dict):
-                e = TypeError('Incorrect type for field')
-                raise ParseError(
-                    e, o, dict, cls,
-                    desired_type=dict
-                ) from None
+                e = TypeError("Incorrect type for field")
+                raise ParseError(e, o, dict, cls, desired_type=dict) from None
 
             #  Else, just re-raise the error.
             raise
@@ -659,9 +697,7 @@ def load_func_for_dataclass(
             return cls(**cls_kwargs)
 
         except TypeError as e:
-            raise MissingFields(
-                e, o, cls, cls_kwargs, dataclass_fields(cls)
-            ) from None
+            raise MissingFields(e, o, cls, cls_kwargs, dataclass_fields(cls)) from None
 
     def lookup_field_for_json_key(o: JSONObject, json_field: str):
         """
@@ -694,9 +730,14 @@ def load_func_for_dataclass(
             # Else, we see an unknown field in the dictionary object
             json_to_dataclass_field[json_field] = ExplicitNull
             LOG.warning(
-                'JSON field %r missing from dataclass schema, '
-                'class=%r, parsed field=%r',
-                json_field, get_class_name(cls), transformed_field)
+                (
+                    "JSON field %r missing from dataclass schema, "
+                    "class=%r, parsed field=%r"
+                ),
+                json_field,
+                get_class_name(cls),
+                transformed_field,
+            )
 
             # Raise an error here (if needed)
             if meta.raise_on_unknown_json_key:

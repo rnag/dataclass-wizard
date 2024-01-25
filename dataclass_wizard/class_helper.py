@@ -7,9 +7,7 @@ from .bases import M, AbstractMeta
 from .models import JSONField, JSON, Extras, _PatternedDT
 from .type_def import ExplicitNull, ExplicitNullType, T
 from .utils.dict_helper import DictWithLowerStore
-from .utils.typing_compat import (
-    is_annotated, get_args, eval_forward_ref_if_needed
-)
+from .utils.typing_compat import is_annotated, get_args, eval_forward_ref_if_needed
 
 
 # A cached mapping of dataclass to the list of fields, as returned by
@@ -32,8 +30,7 @@ _CLASS_TO_DUMPER: Dict[Type, Type[AbstractDumper]] = {}
 # and load hook.
 #
 # Note: need to create a `ForwardRef` here, because Python 3.6 complains.
-_FIELD_NAME_TO_LOAD_PARSER: Dict[
-    Type, 'DictWithLowerStore[str, AbstractParser]'] = {}
+_FIELD_NAME_TO_LOAD_PARSER: Dict[Type, "DictWithLowerStore[str, AbstractParser]"] = {}
 
 # Since the dump process doesn't use Parsers currently, we use a sentinel
 # mapping to confirm if we need to setup the dump config for a dataclass
@@ -41,8 +38,9 @@ _FIELD_NAME_TO_LOAD_PARSER: Dict[
 _IS_DUMP_CONFIG_SETUP: Dict[Type, bool] = {}
 
 # A cached mapping, per dataclass, of JSON field to instance field name
-_JSON_FIELD_TO_DATACLASS_FIELD: Dict[
-    Type, Dict[str, Union[str, ExplicitNullType]]] = defaultdict(dict)
+_JSON_FIELD_TO_DATACLASS_FIELD: Dict[Type, Dict[str, Union[str, ExplicitNullType]]] = (
+    defaultdict(dict)
+)
 
 # A cached mapping, per dataclass, of instance field name to JSON field
 _DATACLASS_FIELD_TO_JSON_FIELD: Dict[Type, Dict[str, str]] = defaultdict(dict)
@@ -50,8 +48,7 @@ _DATACLASS_FIELD_TO_JSON_FIELD: Dict[Type, Dict[str, str]] = defaultdict(dict)
 # A mapping of dataclass name to its Meta initializer (defined in
 # :class:`bases.BaseJSONWizardMeta`), which is only set when the
 # :class:`JSONSerializable.Meta` is sub-classed.
-_META_INITIALIZER: Dict[
-    str, Callable[[Type[W]], None]] = {}
+_META_INITIALIZER: Dict[str, Callable[[Type[W]], None]] = {}
 
 
 # Mapping of dataclass to its Meta inner class, which will only be set when
@@ -109,10 +106,8 @@ def dataclass_field_to_json_field(cls):
 
 
 def dataclass_field_to_load_parser(
-        cls_loader: Type[AbstractLoader],
-        cls: Type,
-        config: M,
-        save: bool = True) -> 'DictWithLowerStore[str, AbstractParser]':
+    cls_loader: Type[AbstractLoader], cls: Type, config: M, save: bool = True
+) -> "DictWithLowerStore[str, AbstractParser]":
     """
     Returns a mapping of each lower-cased field name to its annotated type.
     """
@@ -122,11 +117,9 @@ def dataclass_field_to_load_parser(
     return _FIELD_NAME_TO_LOAD_PARSER[cls]
 
 
-def _setup_load_config_for_cls(cls_loader: Type[AbstractLoader],
-                               cls: Type,
-                               config: M,
-                               save: bool = True
-                               ) -> 'DictWithLowerStore[str, AbstractParser]':
+def _setup_load_config_for_cls(
+    cls_loader: Type[AbstractLoader], cls: Type, config: M, save: bool = True
+) -> "DictWithLowerStore[str, AbstractParser]":
     """
     This function processes a class `cls` on an initial run, and sets up the
     load process for `cls` by iterating over each dataclass field. For each
@@ -152,7 +145,7 @@ def _setup_load_config_for_cls(cls_loader: Type[AbstractLoader],
     name_to_parser = {}
 
     for f in dataclass_init_fields(cls):
-        field_extras: Extras = {'config': config}
+        field_extras: Extras = {"config": config}
 
         f.type = eval_forward_ref_if_needed(f.type, cls)
         field_type = f.type
@@ -160,13 +153,12 @@ def _setup_load_config_for_cls(cls_loader: Type[AbstractLoader],
         # Check if the field is a `Field` type or a subclass. If so, update
         # the class-specific mapping of JSON key to dataclass field name.
         if isinstance(f, Field):
-
             if isinstance(f, JSONField):
                 for key in f.json.keys:
                     json_to_dataclass_field[key] = f.name
 
             else:
-                value = f.metadata.get('__remapping__')
+                value = f.metadata.get("__remapping__")
                 if value and isinstance(value, JSON):
                     for key in value.keys:
                         json_to_dataclass_field[key] = f.name
@@ -182,7 +174,7 @@ def _setup_load_config_for_cls(cls_loader: Type[AbstractLoader],
                     for key in extra.keys:
                         json_to_dataclass_field[key] = f.name
                 elif isinstance(extra, _PatternedDT):
-                    field_extras['pattern'] = extra
+                    field_extras["pattern"] = extra
 
         # Lookup the Parser (dispatcher) for each field based on its annotated
         # type, and then cache it so we don't need to lookup each time.
@@ -224,11 +216,9 @@ def setup_dump_config_for_cls_if_needed(cls: Type):
     dataclass_to_json_field = _DATACLASS_FIELD_TO_JSON_FIELD[cls]
 
     for f in dataclass_fields(cls):
-
         # Check if the field is a `Field` type or a subclass. If so, update
         # the class-specific mapping of dataclass field name to JSON key.
         if isinstance(f, Field):
-
             if isinstance(f, JSONField):
                 if not f.json.dump:
                     dataclass_to_json_field[f.name] = ExplicitNull
@@ -236,7 +226,7 @@ def setup_dump_config_for_cls_if_needed(cls: Type):
                     dataclass_to_json_field[f.name] = f.json.keys[0]
 
             else:
-                value = f.metadata.get('__remapping__')
+                value = f.metadata.get("__remapping__")
                 if value and isinstance(value, JSON) and value.all:
                     dataclass_to_json_field[f.name] = value.keys[0]
 
@@ -311,8 +301,11 @@ def dataclass_field_to_default(cls) -> Dict[str, Any]:
 
 
 def create_new_class(
-        class_or_instance, bases: Tuple[T, ...],
-        suffix: Optional[str] = None, attr_dict=None) -> T:
+    class_or_instance,
+    bases: Tuple[T, ...],
+    suffix: Optional[str] = None,
+    attr_dict=None,
+) -> T:
     """
     Create (dynamically) and return a new class that sub-classes from a list
     of `bases`.
@@ -320,13 +313,9 @@ def create_new_class(
     if not suffix and bases:
         suffix = get_class_name(bases[0])
 
-    new_cls_name = f'{get_class_name(class_or_instance)}{suffix}'
+    new_cls_name = f"{get_class_name(class_or_instance)}{suffix}"
 
-    return type(
-        new_cls_name,
-        bases,
-        attr_dict or {'__slots__': ()}
-    )
+    return type(new_cls_name, bases, attr_dict or {"__slots__": ()})
 
 
 def get_class_name(class_or_instance) -> str:
@@ -349,10 +338,10 @@ def get_outer_class_name(inner_cls, default=None, raise_=True):
 
     """
     try:
-        name = get_class_name(inner_cls).rsplit('.', 1)[-2]
+        name = get_class_name(inner_cls).rsplit(".", 1)[-2]
         # This is mainly for our test cases, where we nest the class
         # definition in the test func. Either way, it's not a valid class.
-        assert not name.endswith('<locals>')
+        assert not name.endswith("<locals>")
 
     except (IndexError, AssertionError):
         if raise_:

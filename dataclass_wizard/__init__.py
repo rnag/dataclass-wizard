@@ -70,29 +70,29 @@ For full documentation and more advanced usage, please see
 
 __all__ = [
     # Base exports
-    'JSONSerializable',
-    'JSONWizard',
-    'LoadMixin',
-    'DumpMixin',
-    'property_wizard',
+    "JSONSerializable",
+    "JSONWizard",
+    "LoadMixin",
+    "DumpMixin",
+    "property_wizard",
     # Wizard Mixins
-    'JSONListWizard',
-    'JSONFileWizard',
-    'YAMLWizard',
+    "JSONListWizard",
+    "JSONFileWizard",
+    "YAMLWizard",
     # Helper serializer functions + meta config
-    'fromlist',
-    'fromdict',
-    'asdict',
-    'LoadMeta',
-    'DumpMeta',
+    "fromlist",
+    "fromdict",
+    "asdict",
+    "LoadMeta",
+    "DumpMeta",
     # Models
-    'json_field',
-    'json_key',
-    'Container',
-    'Pattern',
-    'DatePattern',
-    'TimePattern',
-    'DateTimePattern',
+    "json_field",
+    "json_key",
+    "Container",
+    "Pattern",
+    "DatePattern",
+    "TimePattern",
+    "DateTimePattern",
 ]
 
 import logging
@@ -101,8 +101,15 @@ from .bases_meta import LoadMeta, DumpMeta
 from .constants import PY36
 from .dumpers import DumpMixin, setup_default_dumper, asdict
 from .loaders import LoadMixin, setup_default_loader, fromlist, fromdict
-from .models import (json_field, json_key, Container,
-                     Pattern, DatePattern, TimePattern, DateTimePattern)
+from .models import (
+    json_field,
+    json_key,
+    Container,
+    Pattern,
+    DatePattern,
+    TimePattern,
+    DateTimePattern,
+)
 from .property_wizard import property_wizard
 from .serial_json import JSONSerializable
 from .wizard_mixins import JSONListWizard, JSONFileWizard, YAMLWizard
@@ -110,7 +117,7 @@ from .wizard_mixins import JSONListWizard, JSONFileWizard, YAMLWizard
 
 # Set up logging to ``/dev/null`` like a library is supposed to.
 # http://docs.python.org/3.3/howto/logging.html#configuring-logging-for-a-library
-logging.getLogger('dataclass_wizard').addHandler(logging.NullHandler())
+logging.getLogger("dataclass_wizard").addHandler(logging.NullHandler())
 
 # A handy alias in case it comes in useful to anyone :)
 JSONWizard = JSONSerializable
@@ -123,9 +130,10 @@ setup_default_loader()
 # a JSON `string` or a Python `dict` object.
 setup_default_dumper()
 
-if PY36:    # pragma: no cover
+if PY36:  # pragma: no cover
     # Python 3.6 requires a backport for `datetime.fromisoformat()`
     # noinspection PyPackageRequirements
     # noinspection PyUnresolvedReferences
     from backports.datetime_fromisoformat import MonkeyPatch
+
     MonkeyPatch.patch_fromisoformat()

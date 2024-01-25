@@ -15,9 +15,9 @@ class LazyLoader(types.ModuleType):
     needed, and this allows them to only be loaded when they are used.
     """
 
-    def __init__(self, parent_module_globals, name,
-                 extra=None, local_name=None, warning=None):
-
+    def __init__(
+        self, parent_module_globals, name, extra=None, local_name=None, warning=None
+    ):
         self._local_name = local_name or name
         self._parent_module_globals = parent_module_globals
         self._extra = extra
@@ -34,12 +34,15 @@ class LazyLoader(types.ModuleType):
 
         except ModuleNotFoundError:
             # The lazy-loaded module is not currently installed.
-            msg = f'Unable to import the module `{self._local_name}`'
+            msg = f"Unable to import the module `{self._local_name}`"
 
             if self._extra:
                 from ..__version__ import __title__
-                msg = f'{msg}. Please run the following command to resolve the issue:\n' \
-                      f'  $ pip install {__title__}[{self._extra}]'
+
+                msg = (
+                    f"{msg}. Please run the following command to resolve the issue:\n"
+                    f"  $ pip install {__title__}[{self._extra}]"
+                )
 
             raise ImportError(msg) from None
 

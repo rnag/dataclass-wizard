@@ -1,4 +1,5 @@
 import json
+
 # noinspection PyProtectedMember
 from dataclasses import _create_fn, _set_new_attribute
 from typing import Type, List, Union, AnyStr
@@ -18,6 +19,7 @@ class JSONSerializable(AbstractJSONWizard):
     to and from JSON.
 
     """
+
     __slots__ = ()
 
     class Meta(BaseJSONWizardMeta):
@@ -25,6 +27,7 @@ class JSONSerializable(AbstractJSONWizard):
         Inner meta class that can be extended by sub-classes for additional
         customization with the JSON load / dump process.
         """
+
         __slots__ = ()
 
         # Class attribute to enable detection of the class type.
@@ -36,9 +39,9 @@ class JSONSerializable(AbstractJSONWizard):
             return cls._init_subclass()
 
     @classmethod
-    def from_json(cls: Type[W], string: AnyStr, *,
-                  decoder: Decoder = json.loads,
-                  **decoder_kwargs) -> Union[W, List[W]]:
+    def from_json(
+        cls: Type[W], string: AnyStr, *, decoder: Decoder = json.loads, **decoder_kwargs
+    ) -> Union[W, List[W]]:
         """
         Converts a JSON `string` to an instance of the dataclass, or a list of
         the dataclass instances.
@@ -74,19 +77,19 @@ class JSONSerializable(AbstractJSONWizard):
         # alias: asdict(self)
         ...
 
-    def to_json(self: W, *,
-                encoder: Encoder = json.dumps,
-                **encoder_kwargs) -> AnyStr:
+    def to_json(self: W, *, encoder: Encoder = json.dumps, **encoder_kwargs) -> AnyStr:
         """
         Converts the dataclass instance to a JSON `string` representation.
         """
         return encoder(asdict(self), **encoder_kwargs)
 
     @classmethod
-    def list_to_json(cls: Type[W],
-                     instances: List[W],
-                     encoder: Encoder = json.dumps,
-                     **encoder_kwargs) -> AnyStr:
+    def list_to_json(
+        cls: Type[W],
+        instances: List[W],
+        encoder: Encoder = json.dumps,
+        **encoder_kwargs
+    ) -> AnyStr:
         """
         Converts a ``list`` of dataclass instances to a JSON `string`
         representation.
@@ -108,7 +111,7 @@ class JSONSerializable(AbstractJSONWizard):
         call_meta_initializer_if_needed(cls)
         # Add a `__str__` method to the subclass, if needed
         if str:
-            _set_new_attribute(cls, '__str__', _str_fn())
+            _set_new_attribute(cls, "__str__", _str_fn())
 
 
 def _str_fn():
@@ -116,6 +119,4 @@ def _str_fn():
     Converts the dataclass instance to a *prettified* JSON string
     representation, when the `str()` method is invoked.
     """
-    return _create_fn('__str__',
-                      ('self', ),
-                      ['return self.to_json(indent=2)'])
+    return _create_fn("__str__", ("self",), ["return self.to_json(indent=2)"])

@@ -4,7 +4,12 @@ from typing import Dict, Any, Type, Union, Tuple, Optional
 
 from .type_def import T, NoneType
 from .utils.typing_compat import (
-    get_origin, get_args, is_generic, is_literal, is_annotated, eval_forward_ref_if_needed
+    get_origin,
+    get_args,
+    is_generic,
+    is_literal,
+    is_annotated,
+    eval_forward_ref_if_needed,
 )
 
 
@@ -26,7 +31,7 @@ def property_wizard(*args, **kwargs):
 
     cls: Type = type(*args, **kwargs)
     cls_dict: Dict[str, Any] = args[2]
-    annotations: AnnotationType = cls_dict.get('__annotations__', {})
+    annotations: AnnotationType = cls_dict.get("__annotations__", {})
 
     # For each property, we want to replace the annotation for the underscore-
     # leading field associated with that property with the 'public' field
@@ -34,43 +39,47 @@ def property_wizard(*args, **kwargs):
     annotation_repls: AnnotationReplType = {}
 
     for f, val in cls_dict.items():
-
         if isinstance(val, property):
-
             if val.fset is None:
                 # The property is read-only, not settable
                 continue
 
-            if not f.startswith('_'):
+            if not f.startswith("_"):
                 # The property is marked as 'public' (i.e. no leading
                 # underscore)
-                _process_public_property(
-                    cls, f, val, annotations, annotation_repls)
+                _process_public_property(cls, f, val, annotations, annotation_repls)
             else:
                 # The property is marked as 'private'
                 _process_underscored_property(
-                    cls, f, val, annotations, annotation_repls)
+                    cls, f, val, annotations, annotation_repls
+                )
 
     if annotation_repls:
         # Use a comprehension approach because we want to replace a
         # key while preserving the insertion order, because the order
         # of fields does matter when the constructor is called.
-        cls.__annotations__ = {annotation_repls.get(f, f): ftype
-                               for f, ftype in cls.__annotations__.items()}
+        cls.__annotations__ = {
+            annotation_repls.get(f, f): ftype
+            for f, ftype in cls.__annotations__.items()
+        }
 
     return cls
 
 
-def _process_public_property(cls: Type, public_f: str, val: property,
-                             annotations: AnnotationType,
-                             annotation_repls: AnnotationReplType):
+def _process_public_property(
+    cls: Type,
+    public_f: str,
+    val: property,
+    annotations: AnnotationType,
+    annotation_repls: AnnotationReplType,
+):
     """
     Handles the case when the property is marked as 'public' (i.e. no leading
     underscore)
     """
 
     # The field with a leading underscore
-    under_f = '_' + public_f
+    under_f = "_" + public_f
 
     # The field value that defines either a `default` or `default_factory`
     fval: Field = dataclass_field()
@@ -121,16 +130,20 @@ def _process_public_property(cls: Type, public_f: str, val: property,
     setattr(cls, public_f, val)
 
 
-def _process_underscored_property(cls: Type, under_f: str, val: property,
-                                  annotations: AnnotationType,
-                                  annotation_repls: AnnotationReplType):
+def _process_underscored_property(
+    cls: Type,
+    under_f: str,
+    val: property,
+    annotations: AnnotationType,
+    annotation_repls: AnnotationReplType,
+):
     """
     Handles the case when the property is marked as 'private' (i.e. leads with
     an underscore)
     """
 
     # The field *without* a leading underscore
-    public_f = under_f.lstrip('_')
+    public_f = under_f.lstrip("_")
 
     # The field value that defines either a `default` or `default_factory`
     fval: Field = dataclass_field()
@@ -176,8 +189,9 @@ def _process_underscored_property(cls: Type, under_f: str, val: property,
     delattr(cls, under_f)
 
 
-def _process_field(cls: Type, cls_annotations: AnnotationType,
-                   field: str, field_val: Field) -> Tuple[Field, bool]:
+def _process_field(
+    cls: Type, cls_annotations: AnnotationType, field: str, field_val: Field
+) -> Tuple[Field, bool]:
     """
     Get the default value for `field`, which is defined as a
     :class:`dataclasses.Field`.
@@ -198,7 +212,8 @@ def _process_field(cls: Type, cls_annotations: AnnotationType,
 
 
 def _default_from_annotation(
-        cls: Type, cls_annotations: AnnotationType, field: str) -> Field:
+    cls: Type, cls_annotations: AnnotationType, field: str
+) -> Field:
     """
     Get the default value for the type annotated on a field. Note that we
     include a check to see if the annotated type is a `Generic` type from the
@@ -244,9 +259,8 @@ def _default_from_type(default_type: Type[T]) -> Field:
 
 
 def _default_from_generic_type(
-        cls: Type,
-        default_type: Type[T],
-        field: Optional[str] = None) -> Field:
+    cls: Type, default_type: Type[T], field: Optional[str] = None
+) -> Field:
     """
     Process a Generic type from the `typing` module, and return the default
     value (or default factory) for the annotated type.
@@ -261,8 +275,7 @@ def _default_from_generic_type(
         # Loop over and search for any `dataclasses.Field` types
         for extra in extras:
             if isinstance(extra, Field):
-                return _process_field(
-                    cls, {field: default_type}, field, extra)[0]
+                return _process_field(cls, {field: default_type}, field, extra)[0]
         # Else, if none of the extras are particularly useful, just process
         # type `T`, which can be either a concrete or Generic sub-type.
         return _default_from_annotation(cls, {field: default_type}, field)
@@ -294,7 +307,7 @@ def _default_from_typing_args(args: Optional[Tuple[Type[T], ...]]):
     if args and NoneType not in args:
         try:
             return args[0]
-        except TypeError:   # pragma: no cover
+        except TypeError:  # pragma: no cover
             return None
     return None
 

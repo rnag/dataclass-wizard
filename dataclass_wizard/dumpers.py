@@ -9,6 +9,7 @@ obtained from http://www.apache.org/licenses/LICENSE-2.0.
 See the end of this file for the original Apache license from this library.
 """
 from collections import defaultdict, deque
+
 # noinspection PyProtectedMember
 from dataclasses import _is_dataclass_instance
 from datetime import datetime, time, date, timedelta
@@ -21,19 +22,20 @@ from .abstractions import AbstractDumper
 from .bases import BaseDumpHook, AbstractMeta, META
 from .class_helper import (
     create_new_class,
-    dataclass_field_names, dataclass_field_to_default,
+    dataclass_field_names,
+    dataclass_field_to_default,
     dataclass_field_to_json_field,
-    dataclass_to_dumper, set_class_dumper,
-    _CLASS_TO_DUMP_FUNC, setup_dump_config_for_cls_if_needed, get_meta,
+    dataclass_to_dumper,
+    set_class_dumper,
+    _CLASS_TO_DUMP_FUNC,
+    setup_dump_config_for_cls_if_needed,
+    get_meta,
     dataclass_field_to_load_parser,
 )
 from .constants import _DUMP_HOOKS, TAG
 from .decorators import _alias
 from .log import LOG
-from .type_def import (
-    ExplicitNull, NoneType, JSONObject,
-    DD, LSQ, E, U, LT, NT, T
-)
+from .type_def import ExplicitNull, NoneType, JSONObject, DD, LSQ, E, U, LT, NT, T
 from .utils.string_conv import to_camel_case
 
 
@@ -44,6 +46,7 @@ class DumpMixin(AbstractDumper, BaseDumpHook):
     built-in types to a more 'JSON-friendly' version.
 
     """
+
     __slots__ = ()
 
     def __init_subclass__(cls, **kwargs):
@@ -90,32 +93,25 @@ class DumpMixin(AbstractDumper, BaseDumpHook):
 
     @staticmethod
     def dump_with_list_or_tuple(o: LT, typ: Type[LT], *args):
-
         return typ(_asdict_inner(v, *args) for v in o)
 
     @staticmethod
     def dump_with_iterable(o: LSQ, _typ: Type[LSQ], *args):
-
         return list(_asdict_inner(v, *args) for v in o)
 
     @staticmethod
     def dump_with_named_tuple(o: NT, typ: Type[NT], *args):
-
         return typ(*[_asdict_inner(v, *args) for v in o])
 
     @staticmethod
     def dump_with_dict(o: Dict, typ: Type[Dict], *args):
-
-        return typ((_asdict_inner(k, *args),
-                    _asdict_inner(v, *args))
-                   for k, v in o.items())
+        return typ(
+            (_asdict_inner(k, *args), _asdict_inner(v, *args)) for k, v in o.items()
+        )
 
     @staticmethod
     def dump_with_defaultdict(o: DD, _typ: Type[DD], *args):
-
-        return {_asdict_inner(k, *args):
-                _asdict_inner(v, *args)
-                for k, v in o.items()}
+        return {_asdict_inner(k, *args): _asdict_inner(v, *args) for k, v in o.items()}
 
     @staticmethod
     def dump_with_decimal(o: Decimal, *_):
@@ -123,11 +119,11 @@ class DumpMixin(AbstractDumper, BaseDumpHook):
 
     @staticmethod
     def dump_with_datetime(o: datetime, *_):
-        return o.isoformat().replace('+00:00', 'Z', 1)
+        return o.isoformat().replace("+00:00", "Z", 1)
 
     @staticmethod
     def dump_with_time(o: time, *_):
-        return o.isoformat().replace('+00:00', 'Z', 1)
+        return o.isoformat().replace("+00:00", "Z", 1)
 
     @staticmethod
     def dump_with_date(o: date, *_):
@@ -188,20 +184,19 @@ def get_dumper(cls=None, create=True) -> Type[DumpMixin]:
         return dataclass_to_dumper(cls)
 
     except KeyError:
-
         if hasattr(cls, _DUMP_HOOKS):
             return set_class_dumper(cls, cls)
 
         elif create:
-            cls_dumper = create_new_class(cls, (DumpMixin, ))
+            cls_dumper = create_new_class(cls, (DumpMixin,))
             return set_class_dumper(cls, cls_dumper)
 
         return set_class_dumper(cls, DumpMixin)
 
 
-def asdict(obj: T,
-           *, cls=None, dict_factory=dict,
-           exclude: List[str] = None, **kwargs) -> JSONObject:
+def asdict(
+    obj: T, *, cls=None, dict_factory=dict, exclude: List[str] = None, **kwargs
+) -> JSONObject:
     # noinspection PyUnresolvedReferences
     """Return the fields of a dataclass instance as a new dictionary mapping
     field names to field values.
@@ -244,11 +239,11 @@ def asdict(obj: T,
     return dump(obj, dict_factory, exclude, **kwargs)
 
 
-def dump_func_for_dataclass(cls: Type[T],
-                            config: Optional[META] = None,
-                            nested_cls_to_dump_func: Dict[Type, Any] = None,
-                            ) -> Callable[[T, Any, Any, Any], JSONObject]:
-
+def dump_func_for_dataclass(
+    cls: Type[T],
+    config: Optional[META] = None,
+    nested_cls_to_dump_func: Dict[Type, Any] = None,
+) -> Callable[[T, Any, Any, Any], JSONObject]:
     # Get the dumper for the class, or create a new one as needed.
     cls_dumper = get_dumper(cls)
 
@@ -298,17 +293,20 @@ def dump_func_for_dataclass(cls: Type[T],
         # the load parser for each field  (if needed), but don't cache the
         # result, as it's conceivable we might yet call `LoadMeta` later.
         from .loaders import get_loader
+
         cls_loader = get_loader(cls)
         # Use the cached result if it exists, but don't cache it ourselves.
-        _ = dataclass_field_to_load_parser(
-            cls_loader, cls, config, save=False)
+        _ = dataclass_field_to_load_parser(cls_loader, cls, config, save=False)
 
     # Tag key to populate when a dataclass is in a `Union` with other types.
     tag_key = meta.tag_key or TAG
 
-    def cls_asdict(obj: T, dict_factory=dict,
-                   exclude: List[str] = None,
-                   skip_defaults=meta.skip_defaults) -> JSONObject:
+    def cls_asdict(
+        obj: T,
+        dict_factory=dict,
+        exclude: List[str] = None,
+        skip_defaults=meta.skip_defaults,
+    ) -> JSONObject:
         """
         Serialize a dataclass of type `cls` to a Python dictionary object.
         """
@@ -322,7 +320,6 @@ def dump_func_for_dataclass(cls: Type[T],
 
         # Loop over the dataclass fields
         for field in field_names:
-
             # Get the resolved JSON field name
             try:
                 json_field = dataclass_to_json_field[field]
@@ -347,12 +344,16 @@ def dump_func_for_dataclass(cls: Type[T],
             #
             # TODO: maybe it makes sense to move this logic to a separate
             #   function, as it might be slightly more performant.
-            if skip_defaults and field in field_to_default \
-                    and fv == field_to_default[field]:
+            if (
+                skip_defaults
+                and field in field_to_default
+                and fv == field_to_default[field]
+            ):
                 continue
 
-            value = _asdict_inner(fv, dict_factory, hooks, config,
-                                  nested_cls_to_dump_func)
+            value = _asdict_inner(
+                fv, dict_factory, hooks, config, nested_cls_to_dump_func
+            )
 
             # -- This line is *mostly* the same as in the original version --
             result.append((json_field, value))
@@ -360,9 +361,9 @@ def dump_func_for_dataclass(cls: Type[T],
         # -- This line is the same as in the original version --
         return dict_factory(result)
 
-    def cls_asdict_with_tag(obj: T, dict_factory=dict,
-                            exclude: List[str] = None,
-                            **kwargs) -> JSONObject:
+    def cls_asdict_with_tag(
+        obj: T, dict_factory=dict, exclude: List[str] = None, **kwargs
+    ) -> JSONObject:
         """
         Serialize a dataclass of type `cls` to a Python dictionary object.
         Adds a tag field when `tag` field is passed in Meta.
@@ -393,7 +394,6 @@ def dump_func_for_dataclass(cls: Type[T],
 # `dataclasses`. However, I will call out specific lines where it is taken
 # directly from the original version.
 def _asdict_inner(obj, dict_factory, hooks, meta, cls_to_dump_func) -> Any:
-
     cls = type(obj)
     dump_hook = hooks.get(cls)
     hook_args = (obj, cls, dict_factory, hooks, meta, cls_to_dump_func)
@@ -410,9 +410,8 @@ def _asdict_inner(obj, dict_factory, hooks, meta, cls_to_dump_func) -> Any:
         return dump(obj, dict_factory=dict_factory)
 
     else:
-
         # -- The following `if` condition and comments are the same as in the original version --
-        if isinstance(obj, tuple) and hasattr(obj, '_fields'):
+        if isinstance(obj, tuple) and hasattr(obj, "_fields"):
             # obj is a namedtuple.  Recurse into it, but the returned
             # object is another namedtuple of the same type.  This is
             # similar to how other list- or tuple-derived classes are
@@ -429,7 +428,7 @@ def _asdict_inner(obj, dict_factory, hooks, meta, cls_to_dump_func) -> Any:
                     dump_hook = hooks[cls] = hooks[t]
                     break
             else:
-                LOG.warning('Using default dumper, object=%r, type=%r', obj, cls)
+                LOG.warning("Using default dumper, object=%r, type=%r", obj, cls)
 
                 # cache the hook for the custom type, so that next time this
                 # logic isn't run again.

@@ -5,7 +5,7 @@ from .constants import SINGLE_ARG_ALIAS, IDENTITY
 from .errors import ParseError
 
 
-T = TypeVar('T')
+T = TypeVar("T")
 
 
 # noinspection PyPep8Naming
@@ -16,6 +16,7 @@ class cached_class_property(object):
 
     Credits: https://stackoverflow.com/a/4037979/10237506
     """
+
     def __init__(self, func):
         self.__func__ = func
         self.__attr_name__ = func.__name__
@@ -39,6 +40,7 @@ class cached_property(object):
     Descriptor decorator implementing an instance-level, read-only property,
     which caches the attribute on-demand on the first use.
     """
+
     def __init__(self, func):
         self.__func__ = func
         self.__attr_name__ = func.__name__
@@ -83,7 +85,7 @@ def try_with_load(load_fn: Callable):
                 # This means that a nested load hook raised an exception.
                 # Therefore, to help with debugging we should print the name
                 # of the outer load hook and the original object.
-                e.kwargs['load_hook'] = load_fn.__name__
+                e.kwargs["load_hook"] = load_fn.__name__
                 e.obj = o
                 # Re-raise the original error
                 raise
@@ -96,7 +98,7 @@ def try_with_load(load_fn: Callable):
     else:
         # fix: avoid re-decoration when DEBUG mode is enabled multiple
         # times (i.e. on more than one class)
-        if hasattr(load_fn, '__decorated__'):
+        if hasattr(load_fn, "__decorated__"):
             return load_fn
 
         # If it's a string value, we don't know the name of the load hook
@@ -108,19 +110,20 @@ def try_with_load(load_fn: Callable):
             alias = single_arg_alias_func.__name__
             f_locals = {alias: single_arg_alias_func}
 
-        wrapped_fn = f'{try_with_load_with_single_arg.__name__}' \
-                     f'(original_fn, {alias}, base_type)'
+        wrapped_fn = (
+            f"{try_with_load_with_single_arg.__name__}(original_fn, {alias}, base_type)"
+        )
 
-        setattr(load_fn, '__decorated__', True)
+        setattr(load_fn, "__decorated__", True)
         setattr(load_fn, SINGLE_ARG_ALIAS, wrapped_fn)
-        setattr(load_fn, 'f_locals', f_locals)
+        setattr(load_fn, "f_locals", f_locals)
 
         return load_fn
 
 
-def try_with_load_with_single_arg(original_fn: Callable,
-                                  single_arg_load_fn: Callable,
-                                  base_type: Type):
+def try_with_load_with_single_arg(
+    original_fn: Callable, single_arg_load_fn: Callable, base_type: Type
+):
     """Similar to :func:`try_with_load`, but for single-arg alias functions.
 
     :param original_fn: The original load hook (function)
@@ -128,6 +131,7 @@ def try_with_load_with_single_arg(original_fn: Callable,
     :param base_type: The annotated (or desired) type
     :return: The decorated load hook.
     """
+
     @wraps(single_arg_load_fn)
     def new_func(o: Any):
         try:
@@ -137,7 +141,7 @@ def try_with_load_with_single_arg(original_fn: Callable,
             # This means that a nested load hook raised an exception.
             # Therefore, to help with debugging we should print the name
             # of the outer load hook and the original object.
-            e.kwargs['load_hook'] = original_fn.__name__
+            e.kwargs["load_hook"] = original_fn.__name__
             e.obj = o
             # Re-raise the original error
             raise
@@ -149,7 +153,6 @@ def try_with_load_with_single_arg(original_fn: Callable,
 
 
 def discard_kwargs(f):
-
     @wraps(f)
     def new_func(*args, **_kwargs):
         return f(*args)
@@ -224,9 +227,7 @@ def _identity(_f: Callable = None, id: Union[object, str] = None):
     return new_func(_f) if _f else new_func
 
 
-def resolve_alias_func(f: Callable,
-                       _locals: Dict = None,
-                       raise_=False) -> Callable:
+def resolve_alias_func(f: Callable, _locals: Dict = None, raise_=False) -> Callable:
     """
     Resolve the underlying single-arg alias function for `f`, using the
     provided function locals (which will be a dict). If `f` does not have an
@@ -251,8 +252,8 @@ def resolve_alias_func(f: Callable,
             except KeyError:
                 # This is only the case when debug mode is enabled, so the
                 # string will be like 'try_with_load_with_single_arg(...)'
-                _locals['original_fn'] = f
-                f_locals = getattr(f, 'f_locals', None)
+                _locals["original_fn"] = f
+                f_locals = getattr(f, "f_locals", None)
                 if f_locals:
                     _locals.update(f_locals)
 

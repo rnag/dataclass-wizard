@@ -3,17 +3,17 @@ Utility module for checking generic types provided by the `typing` library.
 """
 
 __all__ = [
-    'is_literal',
-    'get_origin',
-    'get_args',
-    'get_keys_for_typed_dict',
-    'get_named_tuple_field_types',
-    'is_typed_dict',
-    'is_generic',
-    'is_base_generic',
-    'is_annotated',
-    'eval_forward_ref',
-    'eval_forward_ref_if_needed'
+    "is_literal",
+    "get_origin",
+    "get_args",
+    "get_keys_for_typed_dict",
+    "get_named_tuple_field_types",
+    "is_typed_dict",
+    "is_generic",
+    "is_base_generic",
+    "is_annotated",
+    "eval_forward_ref",
+    "eval_forward_ref_if_needed",
 ]
 
 import sys
@@ -30,6 +30,7 @@ from ..type_def import FREF, PyLiteral, PyTypedDicts, PyForwardRef
 TypedDictTypes = []
 
 for PyTypedDict in PyTypedDicts:
+
     class RealPyTypedDict(PyTypedDict):
         pass  # create a real class, because `PyTypedDict` is a helper function
 
@@ -53,19 +54,19 @@ def _get_typing_locals():  # pragma: no cover
         from typing_extensions import OrderedDict as PyOrderedDict
 
     return {
-        'Union': typing.Union,
-        'tuple': typing.Tuple,
-        'list': typing.List,
-        'dict': typing.Dict,
-        'set': typing.Set,
-        'frozenset': typing.FrozenSet,
-        'type': typing.Type,
+        "Union": typing.Union,
+        "tuple": typing.Tuple,
+        "list": typing.List,
+        "dict": typing.Dict,
+        "set": typing.Set,
+        "frozenset": typing.FrozenSet,
+        "type": typing.Type,
         # `collections` imports
-        'deque': typing.Deque,
-        'defaultdict': typing.DefaultDict,
-        'OrderedDict': PyOrderedDict,
-        'Counter': typing.Counter,
-        'ChainMap': typing.ChainMap,
+        "deque": typing.Deque,
+        "defaultdict": typing.DefaultDict,
+        "OrderedDict": PyOrderedDict,
+        "Counter": typing.Counter,
+        "ChainMap": typing.ChainMap,
     }
 
 
@@ -77,7 +78,7 @@ def get_keys_for_typed_dict(cls):
     return cls.__required_keys__, cls.__optional_keys__
 
 
-if not PY36:    # pragma: no cover
+if not PY36:  # pragma: no cover
     # Python 3.7+
 
     try:
@@ -85,10 +86,8 @@ if not PY36:    # pragma: no cover
     except ImportError:
         from typing import _AnnotatedAlias
 
-
     def _is_annotated(cls):
         return isinstance(cls, _AnnotatedAlias)
-
 
     def _is_base_generic(cls):
         if isinstance(cls, typing._GenericAlias):
@@ -101,11 +100,12 @@ if not PY36:    # pragma: no cover
             return len(cls.__parameters__) > 0
 
         if isinstance(cls, typing._SpecialForm):
-            return cls._name in {'ClassVar', 'Union', 'Optional'}
+            return cls._name in {"ClassVar", "Union", "Optional"}
 
         return False
 
     if PY38:
+
         def get_keys_for_typed_dict(cls):
             """
             Given a :class:`TypedDict` sub-class, returns a pair of
@@ -142,7 +142,6 @@ if not PY36:    # pragma: no cover
         def _process_forward_annotation(base_type):
             return PyForwardRef(base_type, is_argument=False)
 
-
         def _get_origin(cls, raise_=False):
             if isinstance(cls, types.UnionType):
                 return typing.Union
@@ -163,14 +162,13 @@ if not PY36:    # pragma: no cover
         )
 
         if PY39:  # PEP 585 is introduced in Python 3.9
-            _TYPING_LOCALS = {'Union': typing.Union}
+            _TYPING_LOCALS = {"Union": typing.Union}
 
         else:  # Python 3.7+
             _TYPING_LOCALS = _get_typing_locals()
 
         def _process_forward_annotation(base_type):
-            return PyForwardRef(
-                repl_or_with_union(base_type), is_argument=False)
+            return PyForwardRef(repl_or_with_union(base_type), is_argument=False)
 
         def _get_origin(cls, raise_=False):
             try:
@@ -179,7 +177,6 @@ if not PY36:    # pragma: no cover
                 if raise_:
                     raise
                 return cls
-
 
     def _get_named_tuple_field_types(cls, raise_=True):
         """
@@ -193,7 +190,7 @@ if not PY36:    # pragma: no cover
                 raise
             return None
 
-else:   # pragma: no cover
+else:  # pragma: no cover
     # Python 3.6
 
     _BASE_GENERIC_TYPES = (
@@ -204,11 +201,8 @@ else:   # pragma: no cover
 
     from typing_extensions import AnnotatedMeta
 
-
     def _process_forward_annotation(base_type):
-        return PyForwardRef(
-            repl_or_with_union(base_type), is_argument=False)
-
+        return PyForwardRef(repl_or_with_union(base_type), is_argument=False)
 
     def _is_base_generic(cls):
         if isinstance(cls, (typing.GenericMeta, typing._Union)):
@@ -228,7 +222,6 @@ else:   # pragma: no cover
             return False
 
     def _get_origin(cls, raise_=False):
-
         try:
             extra = cls.__extra__
             if extra is None and isinstance(cls, typing.GenericMeta):
@@ -236,7 +229,6 @@ else:   # pragma: no cover
             return extra
 
         except AttributeError:
-
             try:
                 return cls.__origin__
             except AttributeError:
@@ -248,13 +240,12 @@ else:   # pragma: no cover
                     raise
                 return cls
 
-
     def _get_args(cls):
         if is_literal(cls):
             return cls.__values__
 
         if is_annotated(cls):
-            return (cls.__args__[0], ) + cls.__metadata__
+            return (cls.__args__[0],) + cls.__metadata__
 
         try:
             res = cls.__args__
@@ -265,7 +256,6 @@ else:   # pragma: no cover
             # This can happen if it's annotated w/o a subscript, e.g.
             #   my_union: Union
             return ()
-
 
     def _get_named_tuple_field_types(cls, raise_=True):
         """
@@ -359,8 +349,7 @@ def is_annotated(cls):
     return _is_annotated(cls)
 
 
-def eval_forward_ref(base_type: FREF,
-                     cls: typing.Type):
+def eval_forward_ref(base_type: FREF, cls: typing.Type):
     """
     Evaluate a forward reference using the class globals, and return the
     underlying type reference.
@@ -376,8 +365,7 @@ def eval_forward_ref(base_type: FREF,
     return typing._eval_type(base_type, base_globals, _TYPING_LOCALS)
 
 
-def eval_forward_ref_if_needed(base_type: FREF,
-                               base_cls: typing.Type):
+def eval_forward_ref_if_needed(base_type: FREF, base_cls: typing.Type):
     """
     If needed, evaluate a forward reference using the class globals, and
     return the underlying type reference.

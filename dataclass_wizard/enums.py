@@ -14,7 +14,6 @@ class DateTimeTo(Enum):
 
 
 class LetterCase(Enum):
-
     # Converts strings (generally in snake case) to camel case.
     #   ex: `my_field_name` -> `myFieldName`
     CAMEL = FuncWrapper(to_camel_case)

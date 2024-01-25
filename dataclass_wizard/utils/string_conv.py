@@ -1,9 +1,11 @@
-__all__ = ['normalize',
-           'to_camel_case',
-           'to_pascal_case',
-           'to_lisp_case',
-           'to_snake_case',
-           'repl_or_with_union']
+__all__ = [
+    "normalize",
+    "to_camel_case",
+    "to_pascal_case",
+    "to_lisp_case",
+    "to_snake_case",
+    "repl_or_with_union",
+]
 
 import re
 from typing import Iterable, Dict, List
@@ -14,7 +16,7 @@ def normalize(string: str) -> str:
     Normalize a string - typically a dataclass field name - for comparison
     purposes.
     """
-    return string.replace('-', '').replace('_', '').upper()
+    return string.replace("-", "").replace("_", "").upper()
 
 
 def to_camel_case(string: str) -> str:
@@ -27,11 +29,11 @@ def to_camel_case(string: str) -> str:
         'deviceType'
 
     """
-    string = replace_multi_with_single(
-        string.replace('-', '_').replace(' ', '_'))
+    string = replace_multi_with_single(string.replace("-", "_").replace(" ", "_"))
 
     return string[0].lower() + re.sub(
-        r"(?:_)(.)", lambda m: m.group(1).upper(), string[1:])
+        r"(?:_)(.)", lambda m: m.group(1).upper(), string[1:]
+    )
 
 
 def to_pascal_case(string):
@@ -44,11 +46,11 @@ def to_pascal_case(string):
         'DeviceType'
 
     """
-    string = replace_multi_with_single(
-        string.replace('-', '_').replace(' ', '_'))
+    string = replace_multi_with_single(string.replace("-", "_").replace(" ", "_"))
 
     return string[0].upper() + re.sub(
-        r"(?:_)(.)", lambda m: m.group(1).upper(), string[1:])
+        r"(?:_)(.)", lambda m: m.group(1).upper(), string[1:]
+    )
 
 
 def to_lisp_case(string: str) -> str:
@@ -61,16 +63,15 @@ def to_lisp_case(string: str) -> str:
         'device-type'
 
     """
-    string = string.replace('_', '-').replace(' ', '-')
+    string = string.replace("_", "-").replace(" ", "-")
     # Short path: the field is already lower-cased, so we don't need to handle
     # for camel or title case.
     if string.islower():
-        return replace_multi_with_single(string, '-')
+        return replace_multi_with_single(string, "-")
 
-    result = re.sub(
-        r'((?!^)(?<!-)[A-Z][a-z]+|(?<=[a-z0-9])[A-Z])', r'-\1', string)
+    result = re.sub(r"((?!^)(?<!-)[A-Z][a-z]+|(?<=[a-z0-9])[A-Z])", r"-\1", string)
 
-    return replace_multi_with_single(result.lower(), '-')
+    return replace_multi_with_single(result.lower(), "-")
 
 
 def to_snake_case(string: str) -> str:
@@ -83,19 +84,18 @@ def to_snake_case(string: str) -> str:
         'device_type'
 
     """
-    string = string.replace('-', '_').replace(' ', '_')
+    string = string.replace("-", "_").replace(" ", "_")
     # Short path: the field is already lower-cased, so we don't need to handle
     # for camel or title case.
     if string.islower():
         return replace_multi_with_single(string)
 
-    result = re.sub(
-        r'((?!^)(?<!_)[A-Z][a-z]+|(?<=[a-z0-9])[A-Z])', r'_\1', string)
+    result = re.sub(r"((?!^)(?<!_)[A-Z][a-z]+|(?<=[a-z0-9])[A-Z])", r"_\1", string)
 
     return replace_multi_with_single(result.lower())
 
 
-def replace_multi_with_single(string: str, char='_') -> str:
+def replace_multi_with_single(string: str, char="_") -> str:
     """
     Replace multiple consecutive occurrences of `char` with a single one.
     """
@@ -156,10 +156,10 @@ def replace_multi_with_single(string: str, char='_') -> str:
 #     return replace_multi_with_single(result)
 
 # Constants
-OPEN_BRACKET = '['
-CLOSE_BRACKET = ']'
-COMMA = ','
-OR = '|'
+OPEN_BRACKET = "["
+CLOSE_BRACKET = "]"
+COMMA = ","
+OR = "|"
 
 # Replace any OR (|) characters in a forward-declared annotation (i.e. string)
 # with a `typing.Union` declaration. See below article for more info.
@@ -177,18 +177,16 @@ def repl_or_with_union(s: str):
 
       dict[str | Optional[int], list[list[str] | tuple[int | bool] | None]]
     """
-    return _repl_or_with_union_inner(s.replace(' ', ''))
+    return _repl_or_with_union_inner(s.replace(" ", ""))
 
 
 def _repl_or_with_union_inner(s: str):
-
     # If there is no '|' character in the annotation part, we just return it.
     if OR not in s:
         return s
 
     # Checking for brackets like `List[int | str]`.
     if OPEN_BRACKET in s:
-
         # Get any indices of COMMA or OR outside a braced expression.
         indices = _outer_comma_and_pipe_indices(s)
 
@@ -205,8 +203,8 @@ def _repl_or_with_union_inner(s: str):
         #     dict[str | int, Union[int, str]]
         if outer_commas:
             return COMMA.join(
-                [_repl_or_with_union_inner(i)
-                 for i in _sub_strings(s, outer_commas)])
+                [_repl_or_with_union_inner(i) for i in _sub_strings(s, outer_commas)]
+            )
 
         # We need to check if there are any pipes *outside* a bracketed
         # expression. For example:
@@ -216,10 +214,11 @@ def _repl_or_with_union_inner(s: str):
         # nested within the a bracketed expression:
         #     dict[str | int, list[int | str]]
         if outer_pipes:
-            or_parts = [_repl_or_with_union_inner(i)
-                        for i in _sub_strings(s, outer_pipes)]
+            or_parts = [
+                _repl_or_with_union_inner(i) for i in _sub_strings(s, outer_pipes)
+            ]
 
-            return f'Union{OPEN_BRACKET}{COMMA.join(or_parts)}{CLOSE_BRACKET}'
+            return f"Union{OPEN_BRACKET}{COMMA.join(or_parts)}{CLOSE_BRACKET}"
 
         # At this point, we know that the annotation does not have an outer
         # COMMA or PIPE expression. We also know that the following syntax
@@ -232,20 +231,20 @@ def _repl_or_with_union_inner(s: str):
 
         # Replace the value enclosed in the outermost brackets
         bracketed_val = _repl_or_with_union_inner(
-            s[first_start_bracket + 1:last_end_bracket])
+            s[first_start_bracket + 1 : last_end_bracket]
+        )
 
         start_val = s[:first_start_bracket]
-        end_val = s[last_end_bracket + 1:]
+        end_val = s[last_end_bracket + 1 :]
 
-        return f'{start_val}{OPEN_BRACKET}{bracketed_val}{CLOSE_BRACKET}{end_val}'
+        return f"{start_val}{OPEN_BRACKET}{bracketed_val}{CLOSE_BRACKET}{end_val}"
 
     elif COMMA in s:
         # We are dealing with a string like `int | str, float | None`
-        return COMMA.join([_repl_or_with_union_inner(i)
-                           for i in s.split(COMMA)])
+        return COMMA.join([_repl_or_with_union_inner(i) for i in s.split(COMMA)])
 
     # We are dealing with a string like `int | str`
-    return f'Union{OPEN_BRACKET}{s.replace(OR, COMMA)}{CLOSE_BRACKET}'
+    return f"Union{OPEN_BRACKET}{s.replace(OR, COMMA)}{CLOSE_BRACKET}"
 
 
 def _sub_strings(s: str, split_indices: Iterable[int]):
@@ -253,10 +252,10 @@ def _sub_strings(s: str, split_indices: Iterable[int]):
     prev = -1
 
     for idx in split_indices:
-        yield s[prev+1:idx]
+        yield s[prev + 1 : idx]
         prev = idx
 
-    yield s[prev+1:]
+    yield s[prev + 1 :]
 
 
 def _outer_comma_and_pipe_indices(s: str) -> Dict[str, List[int]]:

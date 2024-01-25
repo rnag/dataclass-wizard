@@ -12,7 +12,8 @@ class FuncWrapper:
 
     https://stackoverflow.com/a/40339397/10237506
     """
-    __slots__ = ('f', )
+
+    __slots__ = ("f",)
 
     def __init__(self, f: Callable):
         self.f = f

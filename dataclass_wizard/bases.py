@@ -8,7 +8,7 @@ from .type_def import FrozenKeys
 
 
 # Create a generic variable that can be 'AbstractMeta', or any subclass.
-M = TypeVar('M', bound='AbstractMeta')
+M = TypeVar("M", bound="AbstractMeta")
 # Use `Type` here explicitly, because we will never have an `M` object.
 M = Type[M]
 META = M  # alias, since `M` is already defined in another module
@@ -36,7 +36,7 @@ class ABCOrAndMeta(ABCMeta):
         src_dict = src.__dict__
         other_dict = other.__dict__
 
-        base_dict = {'__slots__': ()}
+        base_dict = {"__slots__": ()}
 
         # Set meta attributes here.
         if src is AbstractMeta:
@@ -71,7 +71,7 @@ class ABCOrAndMeta(ABCMeta):
             src = src.__mro__[-3]
 
         # noinspection PyTypeChecker
-        return type(new_cls_name, (src, ), base_dict)
+        return type(new_cls_name, (src,), base_dict)
 
     def __and__(cls: M, other: M) -> M:
         """
@@ -97,16 +97,19 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
     """
     Base class definition for the `JSONWizard.Meta` inner class.
     """
+
     __slots__ = ()
 
     # A list of class attributes that are exclusive to the Meta config.
     # When merging two Meta configs for a class, these are the only
     # attributes which will *not* be merged.
-    __special_attrs__ = frozenset({
-        'recursive',
-        'json_key_to_field',
-        'tag',
-    })
+    __special_attrs__ = frozenset(
+        {
+            "recursive",
+            "json_key_to_field",
+            "tag",
+        }
+    )
 
     # Class attribute which enables us to detect a `JSONWizard.Meta` subclass.
     __is_inner_meta__ = False
@@ -234,6 +237,7 @@ class BaseLoadHook:
     """
     Container class for type hooks.
     """
+
     __slots__ = ()
 
     __LOAD_HOOKS__: ClassVar[Dict[Type, Callable]] = None
@@ -258,6 +262,7 @@ class BaseDumpHook:
     """
     Container class for type hooks.
     """
+
     __slots__ = ()
 
     __DUMP_HOOKS__: ClassVar[Dict[Type, Callable]] = None

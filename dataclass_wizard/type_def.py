@@ -1,44 +1,57 @@
 __all__ = [
-    'PyForwardRef',
-    'PyLiteral',
-    'PyProtocol',
-    'PyDeque',
-    'PyTypedDict',
-    'PyTypedDicts',
-    'FrozenKeys',
-    'DefFactory',
-    'NoneType',
-    'ExplicitNullType',
-    'ExplicitNull',
-    'JSONList',
-    'JSONObject',
-    'ListOfJSONObject',
-    'JSONValue',
-    'Encoder',
-    'FileEncoder',
-    'Decoder',
-    'FileDecoder',
-    'NUMBERS',
-    'T',
-    'E',
-    'U',
-    'M',
-    'NT',
-    'DT',
-    'DD',
-    'N',
-    'S',
-    'LT',
-    'LSQ',
-    'FREF',
+    "PyForwardRef",
+    "PyLiteral",
+    "PyProtocol",
+    "PyDeque",
+    "PyTypedDict",
+    "PyTypedDicts",
+    "FrozenKeys",
+    "DefFactory",
+    "NoneType",
+    "ExplicitNullType",
+    "ExplicitNull",
+    "JSONList",
+    "JSONObject",
+    "ListOfJSONObject",
+    "JSONValue",
+    "Encoder",
+    "FileEncoder",
+    "Decoder",
+    "FileDecoder",
+    "NUMBERS",
+    "T",
+    "E",
+    "U",
+    "M",
+    "NT",
+    "DT",
+    "DD",
+    "N",
+    "S",
+    "LT",
+    "LSQ",
+    "FREF",
 ]
 
 from collections import deque
 from datetime import date, time, datetime
 from enum import Enum
 from typing import (
-    Any, Type, TypeVar, Sequence, Mapping, List, Dict, DefaultDict, FrozenSet,
-    Union, NamedTuple, Callable, AnyStr, TextIO, BinaryIO
+    Any,
+    Type,
+    TypeVar,
+    Sequence,
+    Mapping,
+    List,
+    Dict,
+    DefaultDict,
+    FrozenSet,
+    Union,
+    NamedTuple,
+    Callable,
+    AnyStr,
+    TextIO,
+    BinaryIO,
 )
 from uuid import UUID
 
@@ -51,37 +64,37 @@ from .decorators import discard_kwargs
 NUMBERS = int, float
 
 # Generic type
-T = TypeVar('T')
+T = TypeVar("T")
 
 # Enum subclass type
-E = TypeVar('E', bound=Enum)
+E = TypeVar("E", bound=Enum)
 
 # UUID subclass type
-U = TypeVar('U', bound=UUID)
+U = TypeVar("U", bound=UUID)
 
 # Mapping type
-M = TypeVar('M', bound=Mapping)
+M = TypeVar("M", bound=Mapping)
 
 # NamedTuple type
-NT = TypeVar('NT', bound=NamedTuple)
+NT = TypeVar("NT", bound=NamedTuple)
 
 # Date, time, or datetime type
-DT = TypeVar('DT', date, time, datetime)
+DT = TypeVar("DT", date, time, datetime)
 
 # DefaultDict type
-DD = TypeVar('DD', bound=DefaultDict)
+DD = TypeVar("DD", bound=DefaultDict)
 
 # Numeric type
-N = TypeVar('N', int, float, complex)
+N = TypeVar("N", int, float, complex)
 
 # Sequence type
-S = TypeVar('S', bound=Sequence)
+S = TypeVar("S", bound=Sequence)
 
 # List or Tuple type
-LT = TypeVar('LT', list, tuple)
+LT = TypeVar("LT", list, tuple)
 
 # List, Set, or Deque (Double ended queue) type
-LSQ = TypeVar('LSQ', list, set, frozenset, deque)
+LSQ = TypeVar("LSQ", list, set, frozenset, deque)
 
 # A fixed set of key names
 FrozenKeys = FrozenSet[str]
@@ -101,7 +114,7 @@ NoneType = type(None)
 #   about which (if any) keys are optional.  See https://bugs.python.org/issue38834
 #   The standard library TypedDict in Python 3.9.0/1 does not honour the "total"
 #   keyword with old-style TypedDict().  See https://bugs.python.org/issue42059
-PyTypedDicts: List[Type['TypedDict']] = []
+PyTypedDicts: List[Type["TypedDict"]] = []
 
 # Valid collection types in JSON.
 JSONList = List[Any]
@@ -125,6 +138,7 @@ if PY38_OR_ABOVE:  # pragma: no cover
     try:
         # noinspection PyUnresolvedReferences
         from typing_extensions import TypedDict as PyTypedDict
+
         PyTypedDicts.append(PyTypedDict)
     except ImportError:
         pass
@@ -132,6 +146,7 @@ else:  # pragma: no cover
     from typing_extensions import Literal as PyLiteral
     from typing_extensions import Protocol as PyProtocol
     from typing_extensions import TypedDict as PyTypedDict
+
     # Seems like `Deque` was only introduced to `typing` in 3.6.1, so Python
     # 3.6.0 won't have it; to be safe, we'll instead import from the
     # `typing_extensions` module here.
@@ -170,7 +185,7 @@ else:  # pragma: no cover
 
 # Forward references can be either strings or explicit `ForwardRef` objects.
 # noinspection SpellCheckingInspection
-FREF = TypeVar('FREF', str, PyForwardRef)
+FREF = TypeVar("FREF", str, PyForwardRef)
 
 
 # Create our own "nullish" type for explicit type assertions
@@ -193,8 +208,7 @@ class Encoder(PyProtocol):
     `json.dumps`
     """
 
-    def __call__(self, obj: Union[JSONObject, JSONList],
-                 **kwargs) -> AnyStr:
+    def __call__(self, obj: Union[JSONObject, JSONList], **kwargs) -> AnyStr:
         ...
 
 
@@ -204,9 +218,9 @@ class FileEncoder(PyProtocol):
     `json.dump`
     """
 
-    def __call__(self, obj: Union[JSONObject, JSONList],
-                 file: Union[TextIO, BinaryIO],
-                 **kwargs) -> AnyStr:
+    def __call__(
+        self, obj: Union[JSONObject, JSONList], file: Union[TextIO, BinaryIO], **kwargs
+    ) -> AnyStr:
         ...
 
 
@@ -216,8 +230,7 @@ class Decoder(PyProtocol):
     `json.loads`
     """
 
-    def __call__(self, s: AnyStr,
-                 **kwargs) -> Union[JSONObject, ListOfJSONObject]:
+    def __call__(self, s: AnyStr, **kwargs) -> Union[JSONObject, ListOfJSONObject]:
         ...
 
 
@@ -226,6 +239,8 @@ class FileDecoder(PyProtocol):
     Represents a decoder for JSON file -> Python object, e.g. analogous to
     `json.load`
     """
-    def __call__(self, file: Union[TextIO, BinaryIO],
-                 **kwargs) -> Union[JSONObject, ListOfJSONObject]:
+
+    def __call__(
+        self, file: Union[TextIO, BinaryIO], **kwargs
+    ) -> Union[JSONObject, ListOfJSONObject]:
         ...

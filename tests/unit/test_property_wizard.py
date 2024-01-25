@@ -19,9 +19,9 @@ def test_property_wizard_does_not_affect_normal_properties():
     dataclass field.
 
     """
+
     @dataclass
     class Vehicle(metaclass=property_wizard):
-
         def __post_init__(self):
             self.wheels = 4
             self._my_prop = 0
@@ -55,16 +55,16 @@ def test_property_wizard_does_not_affect_normal_properties():
         _ = Vehicle(wheels=3)
 
     with pytest.raises(TypeError):
-        _ = Vehicle('6')
+        _ = Vehicle("6")
 
     with pytest.raises(TypeError):
         _ = Vehicle(_my_prop=2)
 
-    v.wheels = '123'
-    assert v.wheels == 123, 'Expected assignment to use the setter method'
+    v.wheels = "123"
+    assert v.wheels == 123, "Expected assignment to use the setter method"
 
-    v._my_prop = '5'
-    assert v._my_prop == 10, 'Expected assignment to use the setter method'
+    v._my_prop = "5"
+    assert v._my_prop == 10, "Expected assignment to use the setter method"
 
 
 def test_property_wizard_does_not_affect_read_only_properties():
@@ -73,6 +73,7 @@ def test_property_wizard_does_not_affect_read_only_properties():
     read-only (i.e. ones which don't define a `setter` method)
 
     """
+
     @dataclass
     class Vehicle(metaclass=property_wizard):
         list_of_wheels: list = field(default_factory=list)
@@ -102,11 +103,11 @@ def test_property_wizard_does_not_error_when_forward_refs_are_declared():
     defined in a type annotation.
 
     """
+
     @dataclass
     class Vehicle(metaclass=property_wizard):
-
-        fire_truck: 'Truck'
-        cars: List['Car'] = field(default_factory=list)
+        fire_truck: "Truck"
+        cars: List["Car"] = field(default_factory=list)
 
         _wheels: Union[int, str] = 4
 
@@ -126,7 +127,7 @@ def test_property_wizard_does_not_error_when_forward_refs_are_declared():
     class Truck:
         color: str
 
-    truck = Truck('red')
+    truck = Truck("red")
 
     v = Vehicle(fire_truck=truck)
     log.debug(v)
@@ -136,12 +137,12 @@ def test_property_wizard_does_not_error_when_forward_refs_are_declared():
     log.debug(v)
     assert v.wheels == 3
 
-    v = Vehicle(truck, [Car(4)], '6')
+    v = Vehicle(truck, [Car(4)], "6")
     log.debug(v)
-    assert v.wheels == 6, 'The constructor should use our setter method'
+    assert v.wheels == 6, "The constructor should use our setter method"
 
-    v.wheels = '123'
-    assert v.wheels == 123, 'Expected assignment to use the setter method'
+    v.wheels = "123"
+    assert v.wheels == 123, "Expected assignment to use the setter method"
 
 
 def test_property_wizard_with_public_property_and_underscored_field():
@@ -149,9 +150,9 @@ def test_property_wizard_with_public_property_and_underscored_field():
     Using `property_wizard` when the dataclass has an public property and an
     underscored field name.
     """
+
     @dataclass
     class Vehicle(metaclass=property_wizard):
-
         _wheels: Union[int, str] = 4
 
         @property
@@ -173,12 +174,12 @@ def test_property_wizard_with_public_property_and_underscored_field():
     log.debug(v)
     assert v.wheels == 3
 
-    v = Vehicle('6')
+    v = Vehicle("6")
     log.debug(v)
-    assert v.wheels == 6, 'The constructor should use our setter method'
+    assert v.wheels == 6, "The constructor should use our setter method"
 
-    v.wheels = '123'
-    assert v.wheels == 123, 'Expected assignment to use the setter method'
+    v.wheels = "123"
+    assert v.wheels == 123, "Expected assignment to use the setter method"
 
 
 def test_property_wizard_with_public_property_and_field():
@@ -186,9 +187,9 @@ def test_property_wizard_with_public_property_and_field():
     Using `property_wizard` when the dataclass has both a property and field
     name *without* a leading underscore.
     """
+
     @dataclass
     class Vehicle(metaclass=property_wizard):
-
         # The value of `wheels` here will be ignored, since `wheels` is simply
         # re-assigned on the following property definition.
         wheels: Union[int, str] = 4
@@ -209,24 +210,24 @@ def test_property_wizard_with_public_property_and_field():
     log.debug(v)
     assert v.wheels == 3
 
-    v = Vehicle('6')
+    v = Vehicle("6")
     log.debug(v)
-    assert v.wheels == 6, 'The constructor should use our setter method'
+    assert v.wheels == 6, "The constructor should use our setter method"
 
-    v.wheels = '123'
-    assert v.wheels == 123, 'Expected assignment to use the setter method'
+    v.wheels = "123"
+    assert v.wheels == 123, "Expected assignment to use the setter method"
 
 
-@pytest.mark.skipif(not PY310_OR_ABOVE, reason='requires Python 3.10 or higher')
+@pytest.mark.skipif(not PY310_OR_ABOVE, reason="requires Python 3.10 or higher")
 def test_property_wizard_with_public_property_and_field_with_or():
     """
     Using `property_wizard` when the dataclass has both a property and field
     name *without* a leading underscore, and using the OR ("|") operator in
     Python 3.10+, instead of the `typing.Union` usage.
     """
+
     @dataclass
     class Vehicle(metaclass=property_wizard):
-
         # The value of `wheels` here will be ignored, since `wheels` is simply
         # re-assigned on the following property definition.
         wheels: int | str = 4
@@ -247,12 +248,12 @@ def test_property_wizard_with_public_property_and_field_with_or():
     log.debug(v)
     assert v.wheels == 3
 
-    v = Vehicle('6')
+    v = Vehicle("6")
     log.debug(v)
-    assert v.wheels == 6, 'The constructor should use our setter method'
+    assert v.wheels == 6, "The constructor should use our setter method"
 
-    v.wheels = '123'
-    assert v.wheels == 123, 'Expected assignment to use the setter method'
+    v.wheels = "123"
+    assert v.wheels == 123, "Expected assignment to use the setter method"
 
 
 def test_property_wizard_with_underscored_property_and_public_field():
@@ -260,9 +261,9 @@ def test_property_wizard_with_underscored_property_and_public_field():
     Using `property_wizard` when the dataclass has an underscored property and
     a public field name.
     """
+
     @dataclass
     class Vehicle(metaclass=property_wizard):
-
         wheels: Union[int, str] = 4
 
         @property
@@ -281,12 +282,12 @@ def test_property_wizard_with_underscored_property_and_public_field():
     log.debug(v)
     assert v.wheels == 3
 
-    v = Vehicle('6')
+    v = Vehicle("6")
     log.debug(v)
-    assert v.wheels == 6, 'The constructor should use our setter method'
+    assert v.wheels == 6, "The constructor should use our setter method"
 
-    v.wheels = '123'
-    assert v.wheels == 123, 'Expected assignment to use the setter method'
+    v.wheels = "123"
+    assert v.wheels == 123, "Expected assignment to use the setter method"
 
 
 def test_property_wizard_with_underscored_property_and_field():
@@ -300,9 +301,9 @@ def test_property_wizard_with_underscored_property_and_field():
     hints and auto-completion here.
 
     """
+
     @dataclass
     class Vehicle(metaclass=property_wizard):
-
         # The value of `_wheels` here will be ignored, since `_wheels` is
         # simply re-assigned on the following property definition.
         _wheels: Union[int, str] = 4
@@ -326,12 +327,12 @@ def test_property_wizard_with_underscored_property_and_field():
     log.debug(v)
     assert v.wheels == 3
 
-    v = Vehicle('6')
+    v = Vehicle("6")
     log.debug(v)
-    assert v.wheels == 6, 'The constructor should use our setter method'
+    assert v.wheels == 6, "The constructor should use our setter method"
 
-    v.wheels = '123'
-    assert v.wheels == 123, 'Expected assignment to use the setter method'
+    v.wheels = "123"
+    assert v.wheels == 123, "Expected assignment to use the setter method"
 
 
 def test_property_wizard_with_public_property_and_annotated_field():
@@ -340,9 +341,9 @@ def test_property_wizard_with_public_property_and_annotated_field():
     name *without* a leading underscore, and the field is a
     :class:`typing.Annotated` type.
     """
+
     @dataclass
     class Vehicle(metaclass=property_wizard):
-
         # The value of `wheels` here will be ignored, since `wheels` is simply
         # re-assigned on the following property definition.
         wheels: Annotated[Union[int, str], field(default=4)] = None
@@ -363,12 +364,12 @@ def test_property_wizard_with_public_property_and_annotated_field():
     log.debug(v)
     assert v.wheels == 3
 
-    v = Vehicle('6')
+    v = Vehicle("6")
     log.debug(v)
-    assert v.wheels == 6, 'The constructor should use our setter method'
+    assert v.wheels == 6, "The constructor should use our setter method"
 
-    v.wheels = '123'
-    assert v.wheels == 123, 'Expected assignment to use the setter method'
+    v.wheels = "123"
+    assert v.wheels == 123, "Expected assignment to use the setter method"
 
 
 def test_property_wizard_with_private_property_and_annotated_field_with_no_useful_extras():
@@ -378,12 +379,12 @@ def test_property_wizard_with_private_property_and_annotated_field_with_no_usefu
     :class:`typing.Annotated` type without any extras that are a
     :class:`dataclasses.Field` type.
     """
+
     @dataclass
     class Vehicle(metaclass=property_wizard):
-
         # The value of `wheels` here will be ignored, since `wheels` is simply
         # re-assigned on the following property definition.
-        _wheels: Annotated[Union[int, str], 'Hello world!', 123] = None
+        _wheels: Annotated[Union[int, str], "Hello world!", 123] = None
 
         @property
         def _wheels(self) -> int:
@@ -401,12 +402,12 @@ def test_property_wizard_with_private_property_and_annotated_field_with_no_usefu
     log.debug(v)
     assert v.wheels == 3
 
-    v = Vehicle('6')
+    v = Vehicle("6")
     log.debug(v)
-    assert v.wheels == 6, 'The constructor should use our setter method'
+    assert v.wheels == 6, "The constructor should use our setter method"
 
-    v.wheels = '123'
-    assert v.wheels == 123, 'Expected assignment to use the setter method'
+    v.wheels = "123"
+    assert v.wheels == 123, "Expected assignment to use the setter method"
 
 
 def test_property_wizard_with_multiple_inheritance():
@@ -419,6 +420,7 @@ def test_property_wizard_with_multiple_inheritance():
     metaclass, as it doesn't have any properties that meet this condition.
 
     """
+
     @dataclass
     class VehicleWithWheels(metaclass=property_wizard):
         _wheels: Union[int, str] = field(default=4)
@@ -456,22 +458,23 @@ def test_property_wizard_with_multiple_inheritance():
     # Note that my IDE complains here, and suggests `_wheels` as a possible
     # keyword argument to the constructor method; however, that's wrong and
     # will error if you try it way.
-    v = Car(wheels=3, windows=5, my_list=['hello', 'world'])
+    v = Car(wheels=3, windows=5, my_list=["hello", "world"])
     log.debug(v)
     assert v.wheels == 3
     assert v.windows == 5
-    assert v.my_list == ['hello', 'world']
+    assert v.my_list == ["hello", "world"]
 
-    v = Car('6', '7', ['testing'])
+    v = Car("6", "7", ["testing"])
     log.debug(v)
-    assert v.wheels == 6, 'The constructor should use our setter method'
-    assert v.windows == 7, 'The constructor should use our setter method'
-    assert v.my_list == ['testing']
+    assert v.wheels == 6, "The constructor should use our setter method"
+    assert v.windows == 7, "The constructor should use our setter method"
+    assert v.my_list == ["testing"]
 
-    v.wheels = '123'
-    assert v.wheels == 123, 'Expected assignment to use the setter method'
-    v.windows = '321'
-    assert v.windows == 321, 'Expected assignment to use the setter method'
+    v.wheels = "123"
+    assert v.wheels == 123, "Expected assignment to use the setter method"
+    v.windows = "321"
+    assert v.windows == 321, "Expected assignment to use the setter method"
+
 
 # NOTE: the below test cases are added for coverage purposes
 
@@ -481,9 +484,9 @@ def test_property_wizard_with_public_property_and_underscored_field_without_defa
     Using `property_wizard` when the dataclass has a public property, and an
     underscored field *without* a default value explicitly set.
     """
+
     @dataclass
     class Vehicle(metaclass=property_wizard):
-
         _wheels: Union[int, str]
 
         @property
@@ -502,12 +505,12 @@ def test_property_wizard_with_public_property_and_underscored_field_without_defa
     log.debug(v)
     assert v.wheels == 3
 
-    v = Vehicle('6')
+    v = Vehicle("6")
     log.debug(v)
-    assert v.wheels == 6, 'The constructor should use our setter method'
+    assert v.wheels == 6, "The constructor should use our setter method"
 
-    v.wheels = '123'
-    assert v.wheels == 123, 'Expected assignment to use the setter method'
+    v.wheels = "123"
+    assert v.wheels == 123, "Expected assignment to use the setter method"
 
 
 def test_property_wizard_with_public_property_and_underscored_field_with_default_factory():
@@ -515,9 +518,9 @@ def test_property_wizard_with_public_property_and_underscored_field_with_default
     Using `property_wizard` when the dataclass has a public property, and an
     underscored field has only `default_factory` set.
     """
+
     @dataclass
     class Vehicle(metaclass=property_wizard):
-
         _wheels: Union[int, str] = field(default_factory=str)
 
         @property
@@ -536,12 +539,12 @@ def test_property_wizard_with_public_property_and_underscored_field_with_default
     log.debug(v)
     assert v.wheels == 3
 
-    v = Vehicle('6')
+    v = Vehicle("6")
     log.debug(v)
-    assert v.wheels == 6, 'The constructor should use our setter method'
+    assert v.wheels == 6, "The constructor should use our setter method"
 
-    v.wheels = '123'
-    assert v.wheels == 123, 'Expected assignment to use the setter method'
+    v.wheels = "123"
+    assert v.wheels == 123, "Expected assignment to use the setter method"
 
 
 def test_property_wizard_with_public_property_and_underscored_field_without_default_or_default_factory():
@@ -549,9 +552,9 @@ def test_property_wizard_with_public_property_and_underscored_field_without_defa
     Using `property_wizard` when the dataclass has a public property, and an
     underscored field has neither `default` or `default_factory` set.
     """
+
     @dataclass
     class Vehicle(metaclass=property_wizard):
-
         _wheels: Union[int, str] = field()
 
         @property
@@ -570,12 +573,12 @@ def test_property_wizard_with_public_property_and_underscored_field_without_defa
     log.debug(v)
     assert v.wheels == 3
 
-    v = Vehicle('6')
+    v = Vehicle("6")
     log.debug(v)
-    assert v.wheels == 6, 'The constructor should use our setter method'
+    assert v.wheels == 6, "The constructor should use our setter method"
 
-    v.wheels = '123'
-    assert v.wheels == 123, 'Expected assignment to use the setter method'
+    v.wheels = "123"
+    assert v.wheels == 123, "Expected assignment to use the setter method"
 
 
 def test_property_wizard_with_underscored_property_and_public_field_without_default_value():
@@ -583,9 +586,9 @@ def test_property_wizard_with_underscored_property_and_public_field_without_defa
     Using `property_wizard` when the dataclass has an underscored property,
     and a public field *without* a default value explicitly set.
     """
+
     @dataclass
     class Vehicle(metaclass=property_wizard):
-
         wheels: Union[int, str]
 
         @property
@@ -604,12 +607,12 @@ def test_property_wizard_with_underscored_property_and_public_field_without_defa
     log.debug(v)
     assert v.wheels == 3
 
-    v = Vehicle('6')
+    v = Vehicle("6")
     log.debug(v)
-    assert v.wheels == 6, 'The constructor should use our setter method'
+    assert v.wheels == 6, "The constructor should use our setter method"
 
-    v.wheels = '123'
-    assert v.wheels == 123, 'Expected assignment to use the setter method'
+    v.wheels = "123"
+    assert v.wheels == 123, "Expected assignment to use the setter method"
 
 
 def test_property_wizard_with_public_property_and_public_field_is_property():
@@ -617,9 +620,9 @@ def test_property_wizard_with_public_property_and_public_field_is_property():
     Using `property_wizard` when the dataclass has an underscored property,
     and a public field is also defined as a property.
     """
+
     @dataclass
     class Vehicle(metaclass=property_wizard):
-
         # The value of `wheels` here will be ignored, since `wheels` is simply
         # re-assigned on the following property definition.
         wheels = property
@@ -649,12 +652,12 @@ def test_property_wizard_with_public_property_and_public_field_is_property():
     log.debug(v)
     assert v.wheels == 3
 
-    v = Vehicle('6')
+    v = Vehicle("6")
     log.debug(v)
-    assert v.wheels == 6, 'The constructor should use our setter method'
+    assert v.wheels == 6, "The constructor should use our setter method"
 
-    v.wheels = '123'
-    assert v.wheels == 123, 'Expected assignment to use the setter method'
+    v.wheels = "123"
+    assert v.wheels == 123, "Expected assignment to use the setter method"
 
 
 def test_property_wizard_with_underscored_property_and_public_field_with_default():
@@ -662,9 +665,9 @@ def test_property_wizard_with_underscored_property_and_public_field_with_default
     Using `property_wizard` when the dataclass has an underscored property,
     and the public field has `default` set.
     """
+
     @dataclass
     class Vehicle(metaclass=property_wizard):
-
         wheels: Union[int, str] = field(default=2)
 
         @property
@@ -683,12 +686,12 @@ def test_property_wizard_with_underscored_property_and_public_field_with_default
     log.debug(v)
     assert v.wheels == 3
 
-    v = Vehicle('6')
+    v = Vehicle("6")
     log.debug(v)
-    assert v.wheels == 6, 'The constructor should use our setter method'
+    assert v.wheels == 6, "The constructor should use our setter method"
 
-    v.wheels = '123'
-    assert v.wheels == 123, 'Expected assignment to use the setter method'
+    v.wheels = "123"
+    assert v.wheels == 123, "Expected assignment to use the setter method"
 
 
 def test_property_wizard_with_underscored_property_and_public_field_with_default_factory():
@@ -696,9 +699,9 @@ def test_property_wizard_with_underscored_property_and_public_field_with_default
     Using `property_wizard` when the dataclass has an underscored property,
     and the public field has only `default_factory` set.
     """
+
     @dataclass
     class Vehicle(metaclass=property_wizard):
-
         wheels: Union[int, str] = field(default_factory=str)
 
         @property
@@ -717,12 +720,12 @@ def test_property_wizard_with_underscored_property_and_public_field_with_default
     log.debug(v)
     assert v.wheels == 3
 
-    v = Vehicle('6')
+    v = Vehicle("6")
     log.debug(v)
-    assert v.wheels == 6, 'The constructor should use our setter method'
+    assert v.wheels == 6, "The constructor should use our setter method"
 
-    v.wheels = '123'
-    assert v.wheels == 123, 'Expected assignment to use the setter method'
+    v.wheels = "123"
+    assert v.wheels == 123, "Expected assignment to use the setter method"
 
 
 def test_property_wizard_with_underscored_property_and_public_field_without_default_or_default_factory():
@@ -730,9 +733,9 @@ def test_property_wizard_with_underscored_property_and_public_field_without_defa
     Using `property_wizard` when the dataclass has an underscored property,
     and the public field has neither `default` or `default_factory` set.
     """
+
     @dataclass
     class Vehicle(metaclass=property_wizard):
-
         wheels: Union[int, str] = field()
 
         @property
@@ -751,12 +754,12 @@ def test_property_wizard_with_underscored_property_and_public_field_without_defa
     log.debug(v)
     assert v.wheels == 3
 
-    v = Vehicle('6')
+    v = Vehicle("6")
     log.debug(v)
-    assert v.wheels == 6, 'The constructor should use our setter method'
+    assert v.wheels == 6, "The constructor should use our setter method"
 
-    v.wheels = '123'
-    assert v.wheels == 123, 'Expected assignment to use the setter method'
+    v.wheels = "123"
+    assert v.wheels == 123, "Expected assignment to use the setter method"
 
 
 def test_property_wizard_where_annotated_type_contains_none():
@@ -767,9 +770,9 @@ def test_property_wizard_where_annotated_type_contains_none():
     value will be `None` if no value is specified via the constructor.
 
     """
+
     @dataclass
     class Vehicle(metaclass=property_wizard):
-
         wheels: Union[int, str, None]
 
         @property
@@ -788,12 +791,12 @@ def test_property_wizard_where_annotated_type_contains_none():
     log.debug(v)
     assert v.wheels == 3
 
-    v = Vehicle('6')
+    v = Vehicle("6")
     log.debug(v)
-    assert v.wheels == 6, 'The constructor should use our setter method'
+    assert v.wheels == 6, "The constructor should use our setter method"
 
-    v.wheels = '123'
-    assert v.wheels == 123, 'Expected assignment to use the setter method'
+    v.wheels = "123"
+    assert v.wheels == 123, "Expected assignment to use the setter method"
 
 
 def test_property_wizard_with_literal_type():
@@ -801,16 +804,16 @@ def test_property_wizard_with_literal_type():
     Using `property_wizard` when the dataclass field associated with a
     property is annotated with a :class:`Literal` type.
     """
+
     @dataclass
     class Vehicle(metaclass=property_wizard):
-
         # Annotate `wheels` as a literal that should only be set to 1 or 0
         # (similar to how the binary numeral system works, for example)
         #
         # Note: we can assign a default value for `wheels` explicitly, so that
         # the IDE doesn't complain when we omit the argument to the
         # constructor method, but it's technically not required.
-        wheels: Literal[1, '1', 0, '0']
+        wheels: Literal[1, "1", 0, "0"]
 
         @property
         def _wheels(self) -> int:
@@ -831,12 +834,12 @@ def test_property_wizard_with_literal_type():
     assert v.wheels == 3
 
     # The IDE should display no warning here, as this is an acceptable value
-    v = Vehicle('1')
+    v = Vehicle("1")
     log.debug(v)
-    assert v.wheels == 1, 'The constructor should use our setter method'
+    assert v.wheels == 1, "The constructor should use our setter method"
 
-    v.wheels = '123'
-    assert v.wheels == 123, 'Expected assignment to use the setter method'
+    v.wheels = "123"
+    assert v.wheels == 123, "Expected assignment to use the setter method"
 
 
 def test_property_wizard_with_concrete_type():
@@ -844,9 +847,9 @@ def test_property_wizard_with_concrete_type():
     Using `property_wizard` when the dataclass field associated with a
     property is annotated with a non-generic type, such as a `str` or `int`.
     """
+
     @dataclass
     class Vehicle(metaclass=property_wizard):
-
         wheels: int
 
         @property
@@ -865,12 +868,12 @@ def test_property_wizard_with_concrete_type():
     log.debug(v)
     assert v.wheels == 3
 
-    v = Vehicle('1')
+    v = Vehicle("1")
     log.debug(v)
-    assert v.wheels == 1, 'The constructor should use our setter method'
+    assert v.wheels == 1, "The constructor should use our setter method"
 
-    v.wheels = '123'
-    assert v.wheels == 123, 'Expected assignment to use the setter method'
+    v.wheels = "123"
+    assert v.wheels == 123, "Expected assignment to use the setter method"
 
 
 def test_property_wizard_with_concrete_type_and_default_factory_raises_type_error():
@@ -881,9 +884,9 @@ def test_property_wizard_with_concrete_type_and_default_factory_raises_type_erro
     instantiate a new `datetime`, the default value should be ``None``.
 
     """
+
     @dataclass
     class Vehicle(metaclass=property_wizard):
-
         # Date when the vehicle was sold
         sold_dt: datetime
 
@@ -900,21 +903,19 @@ def test_property_wizard_with_concrete_type_and_default_factory_raises_type_erro
     with pytest.raises(AttributeError):
         _ = Vehicle()
 
-    dt = datetime(2020, 1, 1, 12, 0, 0)             # Jan. 1 2020 12:00 PM
-    expected_dt = datetime(2010, 1, 1, 12, 0, 0)    # Jan. 1 2010 12:00 PM
+    dt = datetime(2020, 1, 1, 12, 0, 0)  # Jan. 1 2020 12:00 PM
+    expected_dt = datetime(2010, 1, 1, 12, 0, 0)  # Jan. 1 2010 12:00 PM
 
     v = Vehicle(sold_dt=dt)
     log.debug(v)
     assert v.sold_dt != dt
-    assert v.sold_dt == expected_dt, 'The constructor should use our setter ' \
-                                     'method'
+    assert v.sold_dt == expected_dt, "The constructor should use our setter method"
 
     dt = datetime.min
     expected_dt = datetime.min.replace(year=2010)
 
     v.sold_dt = dt
-    assert v.sold_dt == expected_dt, 'Expected assignment to use the setter ' \
-                                     'method'
+    assert v.sold_dt == expected_dt, "Expected assignment to use the setter method"
 
 
 def test_property_wizard_with_generic_type_which_is_not_supported():
@@ -954,8 +955,7 @@ def test_property_wizard_with_generic_type_which_is_not_supported():
 
     # Our property should still work as expected, however
     v.sold_dt = dt
-    assert v.sold_dt == expected_dt, 'Expected assignment to use the setter ' \
-                                     'method'
+    assert v.sold_dt == expected_dt, "Expected assignment to use the setter method"
 
 
 def test_property_wizard_with_mutable_types_v1():
@@ -967,7 +967,6 @@ def test_property_wizard_with_mutable_types_v1():
 
     @dataclass
     class Vehicle(metaclass=property_wizard):
-
         wheels: List[Union[int, str]]
         # _wheels: List[Union[int, str]] = field(init=False)
 
@@ -980,7 +979,7 @@ def test_property_wizard_with_mutable_types_v1():
         # we want.
         wheels_dict: Annotated[
             DefaultDict[str, List[str]],
-            field(default_factory=lambda: defaultdict(list))
+            field(default_factory=lambda: defaultdict(list)),
         ]
 
         @property
@@ -1010,35 +1009,37 @@ def test_property_wizard_with_mutable_types_v1():
         def wheels_dict(self, wheels: Union[int, str]):
             self._wheels_dict = wheels
 
-    v1 = Vehicle(wheels=['1', '2', '3'],
-                 inverse_bool_set={True, False},
-                 wheels_dict=defaultdict(list, key=['value']))
-    v1.wheels_dict['key2'].append('another value')
+    v1 = Vehicle(
+        wheels=["1", "2", "3"],
+        inverse_bool_set={True, False},
+        wheels_dict=defaultdict(list, key=["value"]),
+    )
+    v1.wheels_dict["key2"].append("another value")
     log.debug(v1)
 
     v2 = Vehicle()
     v2.wheels.append(4)
-    v2.wheels_dict['a'].append('5')
+    v2.wheels_dict["a"].append("5")
     v2.inverse_bool_set.add(True)
     log.debug(v2)
 
     v3 = Vehicle()
     v3.wheels.append(1)
-    v3.wheels_dict['b'].append('2')
+    v3.wheels_dict["b"].append("2")
     v3.inverse_bool_set.add(False)
     log.debug(v3)
 
     assert v1.wheels == [1, 2, 3]
     assert v1.inverse_bool_set == {False, True}
-    assert v1.wheels_dict == {'key': ['value'], 'key2': ['another value']}
+    assert v1.wheels_dict == {"key": ["value"], "key2": ["another value"]}
 
     assert v2.wheels == [4]
     assert v2.inverse_bool_set == {True}
-    assert v2.wheels_dict == {'a': ['5']}
+    assert v2.wheels_dict == {"a": ["5"]}
 
     assert v3.wheels == [1]
     assert v3.inverse_bool_set == {False}
-    assert v3.wheels_dict == {'b': ['2']}
+    assert v3.wheels_dict == {"b": ["2"]}
 
 
 def test_property_wizard_with_mutable_types_v2():
@@ -1101,7 +1102,7 @@ def test_property_wizard_with_mutable_types_v2():
     assert v3.wheels_list == [5, 5]
 
 
-@pytest.mark.skipif(not PY39_OR_ABOVE, reason='requires Python 3.9 or higher')
+@pytest.mark.skipif(not PY39_OR_ABOVE, reason="requires Python 3.9 or higher")
 def test_property_wizard_with_mutable_types_with_parameterized_standard_collections():
     """
     Test case for mutable types with a Python 3.9 specific feature:
@@ -1111,7 +1112,6 @@ def test_property_wizard_with_mutable_types_with_parameterized_standard_collecti
 
     @dataclass
     class Vehicle(metaclass=property_wizard):
-
         wheels: list[Union[int, str]]
         # _wheels: List[Union[int, str]] = field(init=False)
 
@@ -1124,7 +1124,7 @@ def test_property_wizard_with_mutable_types_with_parameterized_standard_collecti
         # we want.
         wheels_dict: Annotated[
             defaultdict[str, List[str]],
-            field(default_factory=lambda: defaultdict(list))
+            field(default_factory=lambda: defaultdict(list)),
         ]
 
         @property
@@ -1154,32 +1154,34 @@ def test_property_wizard_with_mutable_types_with_parameterized_standard_collecti
         def wheels_dict(self, wheels: Union[int, str]):
             self._wheels_dict = wheels
 
-    v1 = Vehicle(wheels=['1', '2', '3'],
-                 inverse_bool_set={True, False},
-                 wheels_dict=defaultdict(list, key=['value']))
-    v1.wheels_dict['key2'].append('another value')
+    v1 = Vehicle(
+        wheels=["1", "2", "3"],
+        inverse_bool_set={True, False},
+        wheels_dict=defaultdict(list, key=["value"]),
+    )
+    v1.wheels_dict["key2"].append("another value")
     log.debug(v1)
 
     v2 = Vehicle()
     v2.wheels.append(4)
-    v2.wheels_dict['a'].append('5')
+    v2.wheels_dict["a"].append("5")
     v2.inverse_bool_set.add(True)
     log.debug(v2)
 
     v3 = Vehicle()
     v3.wheels.append(1)
-    v3.wheels_dict['b'].append('2')
+    v3.wheels_dict["b"].append("2")
     v3.inverse_bool_set.add(False)
     log.debug(v3)
 
     assert v1.wheels == [1, 2, 3]
     assert v1.inverse_bool_set == {False, True}
-    assert v1.wheels_dict == {'key': ['value'], 'key2': ['another value']}
+    assert v1.wheels_dict == {"key": ["value"], "key2": ["another value"]}
 
     assert v2.wheels == [4]
     assert v2.inverse_bool_set == {True}
-    assert v2.wheels_dict == {'a': ['5']}
+    assert v2.wheels_dict == {"a": ["5"]}
 
     assert v3.wheels == [1]
     assert v3.inverse_bool_set == {False}
-    assert v3.wheels_dict == {'b': ['2']}
+    assert v3.wheels_dict == {"b": ["2"]}

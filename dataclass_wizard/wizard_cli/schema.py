@@ -47,9 +47,7 @@ See the end of this file for the original BSD-style license from this library.
 
 """
 
-__all__ = [
-    'PyCodeGenerator'
-]
+__all__ = ["PyCodeGenerator"]
 
 import json
 import re
@@ -63,14 +61,13 @@ from enum import Enum
 from pathlib import Path
 from typing import Callable, Any, Optional, TypeVar, Type, ClassVar
 from typing import DefaultDict, Set, List
-from typing import (
-    Union, Dict, Sequence
-)
+from typing import Union, Dict, Sequence
 
 from .. import property_wizard
 from ..class_helper import get_class_name
 from ..type_def import PyDeque, JSONList, JSONObject, JSONValue, T
 from ..utils.string_conv import to_snake_case, to_pascal_case
+
 # noinspection PyProtectedMember
 from ..utils.type_conv import _TRUTHY_VALUES
 from ..utils.type_conv import as_datetime, as_date, as_time
@@ -78,20 +75,21 @@ from ..utils.type_conv import as_datetime, as_date, as_time
 
 # Some unconstrained type variables.  These are used by the container types.
 # (These are not for export.)
-_S = TypeVar('_S')
+_S = TypeVar("_S")
 
 # Merge both the "truthy" and "falsy" values, so we can determine the criteria
 # under which a string can be considered as a boolean value.
-_FALSY_VALUES = ('FALSE', 'F', 'NO', 'N', '0')
+_FALSY_VALUES = ("FALSE", "F", "NO", "N", "0")
 _BOOL_VALUES = _TRUTHY_VALUES + _FALSY_VALUES
 
 # Valid types for JSON contents; this can be either a list of any type,
 # or a dictionary with `string` keys and values of any type.
 JSONBlobType = Union[JSONList, JSONObject]
 
-PyDataTypeOrSeq = Union['PyDataType', Sequence['PyDataType']]
-TypeContainerElements = Union[PyDataTypeOrSeq,
-                              'PyDataclassGenerator', 'PyListGenerator']
+PyDataTypeOrSeq = Union["PyDataType", Sequence["PyDataType"]]
+TypeContainerElements = Union[
+    PyDataTypeOrSeq, "PyDataclassGenerator", "PyListGenerator"
+]
 
 
 @dataclass
@@ -115,17 +113,20 @@ class PyCodeGenerator:
     experimental: InitVar[bool] = None
 
     # The rest of these fields are just for internal use.
-    parser: 'JSONRootParser' = field(init=False)
+    parser: "JSONRootParser" = field(init=False)
     data: JSONBlobType = field(init=False)
     _py_code_lines: List[str] = field(default=None, init=False)
 
-    def __post_init__(self, file_name: str, file_contents: str,
-                      force_strings: bool, experimental: bool):
-
+    def __post_init__(
+        self,
+        file_name: str,
+        file_contents: str,
+        force_strings: bool,
+        experimental: bool,
+    ):
         # Set global flags
         global Globals
-        Globals = _Globals(force_strings=force_strings,
-                           experimental=experimental)
+        Globals = _Globals(force_strings=force_strings, experimental=experimental)
 
         # https://stackoverflow.com/a/62940588/10237506
         if file_name:
@@ -137,18 +138,17 @@ class PyCodeGenerator:
 
     @property
     def py_code(self) -> str:
-
         if self._py_code_lines is None:
             # Generate Python code for the dataclass(es)
             dataclass_code: str = repr(self.parser)
             # Add any imports used at the top of the code
             self._py_code_lines = ModuleImporter.imports
             if self._py_code_lines:
-                self._py_code_lines.append('')
+                self._py_code_lines.append("")
             # Generate final Python code - imports + dataclass(es)
             self._py_code_lines.append(dataclass_code)
 
-        return '\n'.join(self._py_code_lines)
+        return "\n".join(self._py_code_lines)
 
 
 # Global flags (generally passed in via command-line) which are shared by
@@ -162,7 +162,6 @@ Globals = None
 
 @dataclass
 class _Globals:
-
     # Should we force-resolve inferred types for strings? For example, a value
     # of "TRUE" will appear as a `Union[str, bool]` type by default.
     force_strings: bool = False
@@ -193,66 +192,79 @@ class English:
         underscores with a space, and by upper-casing the initial
         character by default.
         """
-        return to_snake_case(word).replace('_', ' ').title()
+        return to_snake_case(word).replace("_", " ").title()
 
     @staticmethod
     def singularize(word):
         """Singularizes English nouns."""
 
         rules = [
-            ['(?i)(quiz)zes$', '\\1'],
-            ['(?i)(matr)ices$', '\\1ix'],
-            ['(?i)(vert|ind)ices$', '\\1ex'],
-            ['(?i)^(ox)en', '\\1'],
-            ['(?i)(alias|status)es$', '\\1'],
-            ['(?i)([octop|vir])i$', '\\1us'],
-            ['(?i)(cris|ax|test)es$', '\\1is'],
-            ['(?i)(shoe)s$', '\\1'],
-            ['(?i)(o)es$', '\\1'],
-            ['(?i)(bus)es$', '\\1'],
-            ['(?i)([m|l])ice$', '\\1ouse'],
-            ['(?i)(x|ch|ss|sh)es$', '\\1'],
-            ['(?i)(m)ovies$', '\\1ovie'],
-            ['(?i)(s)eries$', '\\1eries'],
-            ['(?i)([^aeiouy]|qu)ies$', '\\1y'],
-            ['(?i)([lr])ves$', '\\1f'],
-            ['(?i)(tive)s$', '\\1'],
-            ['(?i)(hive)s$', '\\1'],
-            ['(?i)([^f])ves$', '\\1fe'],
-            ['(?i)(^analy)ses$', '\\1sis'],
-            ['(?i)(^analysis)$', '\\1'],
-            ['(?i)((a)naly|(b)a|(d)iagno|(p)arenthe|(p)rogno|(s)ynop|(t)he)ses$', '\\1\\2sis'],
+            ["(?i)(quiz)zes$", "\\1"],
+            ["(?i)(matr)ices$", "\\1ix"],
+            ["(?i)(vert|ind)ices$", "\\1ex"],
+            ["(?i)^(ox)en", "\\1"],
+            ["(?i)(alias|status)es$", "\\1"],
+            ["(?i)([octop|vir])i$", "\\1us"],
+            ["(?i)(cris|ax|test)es$", "\\1is"],
+            ["(?i)(shoe)s$", "\\1"],
+            ["(?i)(o)es$", "\\1"],
+            ["(?i)(bus)es$", "\\1"],
+            ["(?i)([m|l])ice$", "\\1ouse"],
+            ["(?i)(x|ch|ss|sh)es$", "\\1"],
+            ["(?i)(m)ovies$", "\\1ovie"],
+            ["(?i)(s)eries$", "\\1eries"],
+            ["(?i)([^aeiouy]|qu)ies$", "\\1y"],
+            ["(?i)([lr])ves$", "\\1f"],
+            ["(?i)(tive)s$", "\\1"],
+            ["(?i)(hive)s$", "\\1"],
+            ["(?i)([^f])ves$", "\\1fe"],
+            ["(?i)(^analy)ses$", "\\1sis"],
+            ["(?i)(^analysis)$", "\\1"],
+            [
+                "(?i)((a)naly|(b)a|(d)iagno|(p)arenthe|(p)rogno|(s)ynop|(t)he)ses$",
+                "\\1\\2sis",
+            ],
             # I don't want 'Data' replaced with 'Datum', however
-            ['(?i)(^data)$', '\\1'],
-            ['(?i)([ti])a$', '\\1um'],
-            ['(?i)(n)ews$', '\\1ews'],
-            ['(?i)s$', ''],
+            ["(?i)(^data)$", "\\1"],
+            ["(?i)([ti])a$", "\\1um"],
+            ["(?i)(n)ews$", "\\1ews"],
+            ["(?i)s$", ""],
         ]
 
-        uncountable_words = ['equipment', 'information', 'rice', 'money',
-                             'species', 'series', 'fish', 'sheep', 'sms']
+        uncountable_words = [
+            "equipment",
+            "information",
+            "rice",
+            "money",
+            "species",
+            "series",
+            "fish",
+            "sheep",
+            "sms",
+        ]
 
         irregular_words = {
-            'people': 'person',
-            'men': 'man',
-            'children': 'child',
-            'sexes': 'sex',
-            'moves': 'move'
+            "people": "person",
+            "men": "man",
+            "children": "child",
+            "sexes": "sex",
+            "moves": "move",
         }
 
         lower_cased_word = word.lower()
 
         for uncountable_word in uncountable_words:
-            if lower_cased_word[-1 * len(uncountable_word):] == uncountable_word:
+            if lower_cased_word[-1 * len(uncountable_word) :] == uncountable_word:
                 return word
 
         for irregular in irregular_words.keys():
-            match = re.search('(' + irregular + ')$', word, re.IGNORECASE)
+            match = re.search("(" + irregular + ")$", word, re.IGNORECASE)
             if match:
                 return re.sub(
-                    '(?i)' + irregular + '$',
-                    match.expand('\\1')[0] + irregular_words[irregular][1:],
-                    word)
+                    "(?i)" + irregular + "$",
+                    match.expand("\\1")[0] + irregular_words[irregular][1:],
+                    word,
+                )
 
         for rule in range(len(rules)):
             match = re.search(rules[rule][0], word, re.IGNORECASE)
@@ -260,8 +272,7 @@ class English:
                 groups = match.groups()
                 for k in range(0, len(groups)):
                     if groups[k] == None:
-                        rules[rule][1] = rules[
-                            rule][1].replace('\\' + str(k + 1), '')
+                        rules[rule][1] = rules[rule][1].replace("\\" + str(k + 1), "")
 
                 return re.sub(rules[rule][0], rules[rule][1], word)
 
@@ -279,11 +290,11 @@ class classproperty:
         - https://docs.djangoproject.com/en/3.1/ref/utils/#django.utils.functional.classproperty
 
     """
+
     def __init__(self, method: Callable[[Any], T]) -> None:
         self.f = method
 
-    def __get__(
-            self, instance: Optional[_S], cls: Optional[Type[_S]] = None) -> T:
+    def __get__(self, instance: Optional[_S], cls: Optional[Type[_S]] = None) -> T:
         return self.f(cls)
 
     def getter(self, method):
@@ -317,6 +328,7 @@ class PyDataType(Enum):
     """
     Enum representing a Python Data Type
     """
+
     STRING = str
     FLOAT = float
     INT = int
@@ -332,8 +344,7 @@ class PyDataType(Enum):
         """
         Returns the string representation of an Enum member's value.
         """
-        return getattr(
-            self.value, '__name__', str(self.value))
+        return getattr(self.value, "__name__", str(self.value))
 
 
 class ModuleImporter:
@@ -362,16 +373,19 @@ class ModuleImporter:
             for mod in sorted(modules):
                 imported = sorted(modules[mod])
                 lines.append(f'from {mod} import {", ".join(imported)}')
-            lines.append('')
+            lines.append("")
 
         return lines
 
     @classmethod
-    def wrap_string_with_import(cls, string: str,
-                                imported: object,
-                                wrap_chars='[]',
-                                register_import=True,
-                                level=1) -> str:
+    def wrap_string_with_import(
+        cls,
+        string: str,
+        imported: object,
+        wrap_chars="[]",
+        register_import=True,
+        level=1,
+    ) -> str:
         """
         Wraps `string` so it is contained within `imported`. The `wrap_chars`
         parameter determines the enclosing characters to use -- defaults to
@@ -395,15 +409,18 @@ class ModuleImporter:
         if register_import:
             cls.register_import_by_name(module, name, level)
 
-        return f'{name}{start}{string}{end}'
+        return f"{name}{start}{string}{end}"
 
     # noinspection PyUnresolvedReferences
     @classmethod
-    def wrap_with_import(cls, deck: PyDeque[str],
-                         imported: object,
-                         wrap_chars='[]',
-                         register_import=True,
-                         level=1) -> None:
+    def wrap_with_import(
+        cls,
+        deck: PyDeque[str],
+        imported: object,
+        wrap_chars="[]",
+        register_import=True,
+        level=1,
+    ) -> None:
         """
         Same as :meth:`wrap_string_with_import` above, except this accepts
         a list (deque) of strings to be wrapped instead.
@@ -447,7 +464,7 @@ class ModuleImporter:
 
         # Skip any built-in helper functions
         #   if name in __builtins__.__dict__:
-        if module == 'builtins':
+        if module == "builtins":
             return
 
         cls._MOD_IMPORTS[level][module].add(name)
@@ -459,7 +476,7 @@ class ModuleImporter:
         required to be the first import defined at the top of the file.
 
         """
-        cls._MOD_IMPORTS[0]['__future__'].add(name)
+        cls._MOD_IMPORTS[0]["__future__"].add(name)
 
     @classmethod
     def clear_imports(cls):
@@ -490,7 +507,7 @@ class ModuleImporter:
             # Useful to strip underscores from the start, for example
             # in Python 3.6 which doesn't have a `_name` attribute for the
             # `Union` type, and the class name is returned as `_Union`.
-            return get_class_name(cls).lstrip('_')
+            return get_class_name(cls).lstrip("_")
 
 
 @dataclass(repr=False)
@@ -533,8 +550,7 @@ class TypeContainer(List[TypeContainerElements]):
         """
 
         if not isinstance(other, TypeContainer):
-            raise TypeError(
-                f'TypeContainer: incorrect type for __add__: {type(other)}')
+            raise TypeError(f"TypeContainer: incorrect type for __add__: {type(other)}")
 
         # Remember to carry over the `is_optional` flag
         self.is_optional |= other.is_optional
@@ -567,7 +583,7 @@ class TypeContainer(List[TypeContainerElements]):
             if isinstance(typ, (PyDataclassGenerator, PyListGenerator)):
                 lines.append(repr(typ))
 
-        return '\n'.join(lines)
+        return "\n".join(lines)
 
     def __str__(self):
         ...
@@ -599,26 +615,25 @@ class TypeContainer(List[TypeContainerElements]):
             # resolved type should be a `Union` of all the seen types.
             typing_imports.appendleft(Union)
 
-        parts = deque(', '.join(str(typ) for typ in self))
+        parts = deque(", ".join(str(typ) for typ in self))
 
         for tp in typing_imports:
             ModuleImporter.wrap_with_import(parts, tp)
 
-        return ''.join(parts).replace('[]', '')
+        return "".join(parts).replace("[]", "")
 
     def _experimental_features_str(self):
-
         if not self:
             # This is the case when the only value encountered for a field is
             # a `null` - hence, we're unable to determine the type.
             ModuleImporter.register_import(Any)
-            return 'Any'
+            return "Any"
 
         parts = [str(typ) for typ in self]
         if self.is_optional:
-            parts.append('None')
+            parts.append("None")
 
-        return ' | '.join(parts)
+        return " | ".join(parts)
 
 
 def possible_types_for_string_value(string: str) -> PyDataTypeOrSeq:
@@ -642,7 +657,7 @@ def possible_types_for_string_value(string: str) -> PyDataTypeOrSeq:
     # I want to eliminate false positives so this seems the easiest
     # way to do that. Otherwise strings like "24" seem to get parsed
     # as a :class:`Time` object, which might not be expected.
-    if ':' not in string:
+    if ":" not in string:
         possible_types = []
 
         if string.isnumeric():
@@ -710,28 +725,25 @@ def json_to_python_type(o: JSONValue) -> PyDataTypeOrSeq:
 
 @dataclass
 class JSONRootParser:
-
     data: JSONBlobType
 
-    model: Union['PyListGenerator',
-                 'PyDataclassGenerator'] = field(init=False)
+    model: Union["PyListGenerator", "PyDataclassGenerator"] = field(init=False)
 
     def __post_init__(self):
-
         # Clear imports from last run
         ModuleImporter.clear_imports()
 
-        str_method_prefix = 'default'
+        str_method_prefix = "default"
 
         # Check if experimental features are enabled
         if Globals.experimental:
             # Add the required `__future__` import
-            ModuleImporter.register_future_import('annotations')
+            ModuleImporter.register_future_import("annotations")
             # Update how annotations are resolved
-            str_method_prefix = 'experimental_features'
+            str_method_prefix = "experimental_features"
 
         # Set the `__str__` method to use for classes
-        str_method_name = f'_{str_method_prefix}_str'
+        str_method_name = f"_{str_method_prefix}_str"
         for typ in TypeContainer, PyListGenerator, PyDataclassGenerator:
             typ.__str__ = getattr(typ, str_method_name)
 
@@ -739,36 +751,33 @@ class JSONRootParser:
         ModuleImporter.register_import(dataclass)
 
         if isinstance(self.data, list):
-            self.model = PyListGenerator(self.data,
-                                         is_root=True)
+            self.model = PyListGenerator(self.data, is_root=True)
 
         elif isinstance(self.data, dict):
-            self.model = PyDataclassGenerator(self.data,
-                                              is_root=True)
+            self.model = PyDataclassGenerator(self.data, is_root=True)
 
         else:
             raise TypeError(
-                'Incorrect type, expected a JSON `list` or `dict`. '
-                f'actual_type={type(self.data)!r}, data={self.data!r}')
+                "Incorrect type, expected a JSON `list` or `dict`. "
+                f"actual_type={type(self.data)!r}, data={self.data!r}"
+            )
 
     def __repr__(self):
-        return repr(self.model) + '\n'
+        return repr(self.model) + "\n"
 
 
 @dataclass
 class PyDataclassGenerator(metaclass=property_wizard):
-
     data: InitVar[JSONObject]
 
-    _name: str = 'data'
-    indent: str = ' ' * 4
+    _name: str = "data"
+    indent: str = " " * 4
     is_root: bool = False
 
     nested_lvl: InitVar[int] = 0
 
     parsed_types: DefaultDict[str, TypeContainer] = field(
-        init=False,
-        default_factory=lambda: defaultdict(TypeContainer)
+        init=False, default_factory=lambda: defaultdict(TypeContainer)
     )
 
     @property
@@ -782,12 +791,10 @@ class PyDataclassGenerator(metaclass=property_wizard):
 
     @classmethod
     def load_parsed(
-            cls: Type[T],
-            parsed_types: Dict[str,
-                               Union[PyDataType, 'PyDataclassGenerator']],
-            **constructor_kwargs
+        cls: Type[T],
+        parsed_types: Dict[str, Union[PyDataType, "PyDataclassGenerator"]],
+        **constructor_kwargs,
     ) -> T:
-
         obj = cls({}, **constructor_kwargs)
 
         for k, typ in parsed_types.items():
@@ -797,20 +804,22 @@ class PyDataclassGenerator(metaclass=property_wizard):
         return obj
 
     def __post_init__(self, data: JSONObject, nested_lvl: int):
-
         for k, v in data.items():
             underscored_field = to_snake_case(k)
             typ = json_to_python_type(v)
 
             if typ is PyDataType.DICT:
                 typ = PyDataclassGenerator(
-                    v, k,
+                    v,
+                    k,
                     nested_lvl=nested_lvl,
                 )
             elif typ is PyDataType.LIST:
                 nested_lvl += 1
                 typ = PyListGenerator(
-                    v, k, k,
+                    v,
+                    k,
+                    k,
                     nested_lvl=nested_lvl,
                 )
 
@@ -819,8 +828,9 @@ class PyDataclassGenerator(metaclass=property_wizard):
     def __or__(self, other):
         if not isinstance(other, PyDataclassGenerator):
             raise TypeError(
-                f'{self.__class__.__name__}: Incorrect type for `__or__`. '
-                f'actual_type: {type(other)}, object={other}')
+                f"{self.__class__.__name__}: Incorrect type for `__or__`. "
+                f"actual_type: {type(other)}, object={other}"
+            )
 
         for k, v in other.parsed_types.items():
             if k in self.parsed_types:
@@ -834,32 +844,29 @@ class PyDataclassGenerator(metaclass=property_wizard):
     def get_lines(self) -> List[str]:
         if self.is_root:
             ModuleImporter.register_import_by_name(
-                'dataclass_wizard', 'JSONWizard', level=2)
-            class_name = f'class {self.name}(JSONWizard):'
+                "dataclass_wizard", "JSONWizard", level=2
+            )
+            class_name = f"class {self.name}(JSONWizard):"
         else:
-            class_name = f'class {self.name}:'
+            class_name = f"class {self.name}:"
 
-        class_parts = ['@dataclass',
-                       class_name]
+        class_parts = ["@dataclass", class_name]
         parts = []
         nested_parts = []
 
         # noinspection PyUnresolvedReferences
         if Globals.insert_comments:
-            class_parts.append(
-                textwrap.indent('"""', self.indent))
-            class_parts.append(
-                textwrap.indent(f'{self.name} dataclass', self.indent))
+            class_parts.append(textwrap.indent('"""', self.indent))
+            class_parts.append(textwrap.indent(f"{self.name} dataclass", self.indent))
 
             # noinspection PyUnresolvedReferences
             if Globals.newline_after_class_def:
-                class_parts.append('')
+                class_parts.append("")
 
-            class_parts.append(textwrap.indent(
-                '"""', self.indent))
+            class_parts.append(textwrap.indent('"""', self.indent))
 
         for k, v in self.parsed_types.items():
-            line = f'{k}: {v}'
+            line = f"{k}: {v}"
             wrapped_line = textwrap.indent(line, self.indent)
             parts.append(wrapped_line)
 
@@ -868,11 +875,11 @@ class PyDataclassGenerator(metaclass=property_wizard):
                 nested_parts.append(nested_part)
 
         for part in nested_parts:
-            parts.append('\n')
+            parts.append("\n")
             parts.append(part)
 
         if not parts:
-            parts = [textwrap.indent('pass', self.indent)]
+            parts = [textwrap.indent("pass", self.indent)]
 
         class_parts.extend(parts)
 
@@ -891,7 +898,7 @@ class PyDataclassGenerator(metaclass=property_wizard):
         """
         Returns the Python `dataclasses` representation of the object.
         """
-        return '\n'.join(self.get_lines())
+        return "\n".join(self.get_lines())
 
 
 @dataclass(repr=False)
@@ -915,22 +922,21 @@ class PyListGenerator(metaclass=property_wizard):
     """
 
     # Default name for model class if none is provided.
-    default_name: ClassVar[str] = 'data'
+    default_name: ClassVar[str] = "data"
 
     data: JSONList
 
-    container_name: str = 'container'
+    container_name: str = "container"
     _name: str = None
 
-    indent: str = ' ' * 4
+    indent: str = " " * 4
 
     is_root: InitVar[bool] = False
     nested_lvl: InitVar[int] = 0
 
     root: PyDataclassGenerator = field(init=False, default=None)
 
-    parsed_types: TypeContainer = field(init=False,
-                                        default_factory=TypeContainer)
+    parsed_types: TypeContainer = field(init=False, default_factory=TypeContainer)
 
     # Model is our model dataclass object, which may or may not be present
     # in the list. If there are multiple models (i.e. dicts), their keys
@@ -946,16 +952,15 @@ class PyListGenerator(metaclass=property_wizard):
         """Title case and singularize the name."""
         if name:
             name = English.humanize(name)
-            name = English.singularize(name).replace(' ', '')
+            name = English.singularize(name).replace(" ", "")
 
         self._name = name
 
     def __post_init__(self, is_root: bool, nested_lvl: int):
-
         if not self.name:
             # Increment the suffix if needed
             if nested_lvl:
-                self.name = f'{self.default_name}{nested_lvl}'
+                self.name = f"{self.default_name}{nested_lvl}"
             else:
                 self.name = self.default_name
 
@@ -963,14 +968,12 @@ class PyListGenerator(metaclass=property_wizard):
         data_list = []
 
         for elem in self.data:
-
             typ = json_to_python_type(elem)
 
             if typ is PyDataType.DICT:
-
-                typ = PyDataclassGenerator(elem, self.name,
-                                           nested_lvl=nested_lvl,
-                                           is_root=is_root)
+                typ = PyDataclassGenerator(
+                    elem, self.name, nested_lvl=nested_lvl, is_root=is_root
+                )
 
                 if self.model:
                     self.model |= typ
@@ -989,19 +992,16 @@ class PyListGenerator(metaclass=property_wizard):
             self.parsed_types.append(typ)
 
         if is_root:
-
             # We want to start off by adding the nested `dataclass` field
             # first, so it shows up at the top of the container `dataclass`.
             data_dict = {self.name: self.model} if self.model else {}
 
-            data_dict.update({
-                f'field_{i + 1}': elem
-                for i, elem in enumerate(data_list)
-            })
+            data_dict.update(
+                {f"field_{i + 1}": elem for i, elem in enumerate(data_list)}
+            )
 
             self.root = PyDataclassGenerator.load_parsed(
-                data_dict,
-                nested_lvl=nested_lvl
+                data_dict, nested_lvl=nested_lvl
             )
             self.root.name = self.container_name
 
@@ -1009,8 +1009,9 @@ class PyListGenerator(metaclass=property_wizard):
         """Merge two lists together."""
         if not isinstance(other, PyListGenerator):
             raise TypeError(
-                f'{self.__class__.__name__}: Incorrect type for `__or__`. '
-                f'actual_type: {type(other)}, object={other}')
+                f"{self.__class__.__name__}: Incorrect type for `__or__`. "
+                f"actual_type: {type(other)}, object={other}"
+            )
 
         # To merge lists with equal number of elements, that's easy enough:
         #   [{"key": "v1"}] | [{"key2": 2}] = [{"key": "v1", "key2": 2}]
@@ -1035,7 +1036,6 @@ class PyListGenerator(metaclass=property_wizard):
         return self
 
     def get_lines(self) -> List[str]:
-
         lines = []
 
         if self.root:
@@ -1054,7 +1054,7 @@ class PyListGenerator(metaclass=property_wizard):
                         # spaces, in a case like below.
                         #   [{"another_Key":  "value"}, [{"key":  "value"}]]
                         if self.model:
-                            lines.append('\n')
+                            lines.append("\n")
                         lines.append(code)
 
         return lines
@@ -1063,35 +1063,31 @@ class PyListGenerator(metaclass=property_wizard):
         ...
 
     def _default_str(self):
-
         if len(self.parsed_types) == 0:
             # We could also wrap it with 'Optional' here, since we see it's
             # an empty list, but it's probably better to not not do that, as
             # 'Optional' generally means the value can be an explicit "null".
             #
             # return ModuleImporter.wrap_string_with_import('list', Optional)
-            return ModuleImporter.wrap_string_with_import('', List)
+            return ModuleImporter.wrap_string_with_import("", List)
 
-        return ModuleImporter.wrap_string_with_import(
-            str(self.parsed_types), List)
+        return ModuleImporter.wrap_string_with_import(str(self.parsed_types), List)
 
     def _experimental_features_str(self):
-
         if len(self.parsed_types) == 0:
-            return 'list'
+            return "list"
 
-        return ModuleImporter.wrap_string_with_import(
-            str(self.parsed_types), list)
+        return ModuleImporter.wrap_string_with_import(str(self.parsed_types), list)
 
     def __repr__(self):
         """
         Returns the Python `dataclasses` representation of the object.
         """
-        return '\n'.join(self.get_lines())
+        return "\n".join(self.get_lines())
 
 
-if __name__ == '__main__':
-    loader = PyCodeGenerator('../../tests/testdata/test1.json')
+if __name__ == "__main__":
+    loader = PyCodeGenerator("../../tests/testdata/test1.json")
     print(loader.py_code)
 
 

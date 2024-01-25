@@ -1,9 +1,9 @@
 import json
+
 # noinspection PyProtectedMember
 from dataclasses import MISSING, Field, _create_fn
 from datetime import date, datetime, time
-from typing import (cast, Collection, Callable,
-                    Optional, List, Union, Type)
+from typing import cast, Collection, Callable, Optional, List, Union, Type
 
 from .bases import META
 from .constants import PY310_OR_ABOVE
@@ -23,9 +23,10 @@ class Extras(PyTypedDict):
     """
     "Extra" config that can be used in the load / dump process.
     """
+
     config: META
     # noinspection PyTypedDict
-    pattern: '_PatternedDT'
+    pattern: "_PatternedDT"
 
 
 def json_key(*keys: str, all=False, dump=True):
@@ -53,11 +54,19 @@ def json_key(*keys: str, all=False, dump=True):
     return JSON(*keys, all=all, dump=dump)
 
 
-def json_field(keys: _STR_COLLECTION, *,
-               all=False, dump=True,
-               default=MISSING, default_factory=MISSING,
-               init=True, repr=True,
-               hash=None, compare=True, metadata=None):
+def json_field(
+    keys: _STR_COLLECTION,
+    *,
+    all=False,
+    dump=True,
+    default=MISSING,
+    default_factory=MISSING,
+    init=True,
+    repr=True,
+    hash=None,
+    compare=True,
+    metadata=None,
+):
     """
     This is a helper function that sets the same defaults for keyword
     arguments as the ``dataclasses.field`` function. It can be thought of as
@@ -86,10 +95,11 @@ def json_field(keys: _STR_COLLECTION, *,
     """
 
     if default is not MISSING and default_factory is not MISSING:
-        raise ValueError('cannot specify both default and default_factory')
+        raise ValueError("cannot specify both default and default_factory")
 
-    return JSONField(keys, all, dump, default, default_factory, init, repr,
-                     hash, compare, metadata)
+    return JSONField(
+        keys, all, dump, default, default_factory, init, repr, hash, compare, metadata
+    )
 
 
 class JSON:
@@ -98,9 +108,8 @@ class JSON:
 
     See the docs on the :func:`json_key` function for more info.
     """
-    __slots__ = ('keys',
-                 'all',
-                 'dump')
+
+    __slots__ = ("keys", "all", "dump")
 
     def __init__(self, *keys: str, all=False, dump=True):
         self.keys = keys
@@ -115,35 +124,58 @@ class JSONField(Field):
 
     See the docs on the :func:`json_field` function for more info.
     """
-    __slots__ = ('json', )
+
+    __slots__ = ("json",)
 
     # In Python 3.10, dataclasses adds a new parameter to the :class:`Field`
     # constructor: `kw_only`
     #
     # Ref: https://docs.python.org/3.10/library/dataclasses.html#dataclasses.dataclass
     if PY310_OR_ABOVE:  # pragma: no cover
-        def __init__(self, keys: _STR_COLLECTION, all: bool, dump: bool,
-                     default, default_factory, init, repr, hash, compare,
-                     metadata):
 
-            super().__init__(default, default_factory, init, repr, hash,
-                             compare, metadata, False)
+        def __init__(
+            self,
+            keys: _STR_COLLECTION,
+            all: bool,
+            dump: bool,
+            default,
+            default_factory,
+            init,
+            repr,
+            hash,
+            compare,
+            metadata,
+        ):
+            super().__init__(
+                default, default_factory, init, repr, hash, compare, metadata, False
+            )
 
             if isinstance(keys, str):
-                keys = (keys, )
+                keys = (keys,)
 
             self.json = JSON(*keys, all=all, dump=dump)
 
     else:  # pragma: no cover
-        def __init__(self, keys: _STR_COLLECTION, all: bool, dump: bool,
-                     default, default_factory, init, repr, hash, compare,
-                     metadata):
 
-            super().__init__(default, default_factory, init, repr, hash,
-                             compare, metadata)
+        def __init__(
+            self,
+            keys: _STR_COLLECTION,
+            all: bool,
+            dump: bool,
+            default,
+            default_factory,
+            init,
+            repr,
+            hash,
+            compare,
+            metadata,
+        ):
+            super().__init__(
+                default, default_factory, init, repr, hash, compare, metadata
+            )
 
             if isinstance(keys, str):
-                keys = (keys, )
+                keys = (keys,)
 
             self.json = JSON(*keys, all=all, dump=dump)
 
@@ -167,6 +199,7 @@ def Pattern(pattern: str):
 
 class _PatternBase:
     """Base "subscriptable" pattern for date/time/datetime."""
+
     __slots__ = ()
 
     def __class_getitem__(cls, pattern: str):
@@ -182,6 +215,7 @@ class DatePattern(date, _PatternBase):
 
     See the docs on :func:`Pattern` for more info.
     """
+
     __slots__ = ()
 
 
@@ -192,6 +226,7 @@ class TimePattern(time, _PatternBase):
 
     See the docs on :func:`Pattern` for more info.
     """
+
     __slots__ = ()
 
 
@@ -202,6 +237,7 @@ class DateTimePattern(datetime, _PatternBase):
 
     See the docs on :func:`Pattern` for more info.
     """
+
     __slots__ = ()
 
 
@@ -213,8 +249,7 @@ class _PatternedDT:
 
     # `cls` is the date/time/datetime type or subclass.
     # `pattern` is the format string to pass in to `datetime.strptime`.
-    __slots__ = ('cls',
-                 'pattern')
+    __slots__ = ("cls", "pattern")
 
     def __init__(self, pattern: str, cls: DT_OR_NONE = None):
         self.cls = cls
@@ -248,53 +283,57 @@ class _PatternedDT:
         # Parse with `fromisoformat` first, because its *much* faster than
         # `datetime.strptime` - see linked article above for more details.
         body_lines = [
-            'dt = default_load_func(date_string, cls, raise_=False)',
-            'if dt is not None:',
-            '  return dt',
-            'dt = datetime.strptime(date_string, pattern)',
+            "dt = default_load_func(date_string, cls, raise_=False)",
+            "if dt is not None:",
+            "  return dt",
+            "dt = datetime.strptime(date_string, pattern)",
         ]
 
-        locals_ns = {'datetime': datetime,
-                     'pattern': self.pattern,
-                     'cls': cls}
+        locals_ns = {"datetime": datetime, "pattern": self.pattern, "cls": cls}
 
         if cls is datetime:
             default_load_func = as_datetime
-            body_lines.append('return dt')
+            body_lines.append("return dt")
         elif cls is date:
             default_load_func = as_date
-            body_lines.append('return dt.date()')
+            body_lines.append("return dt.date()")
         elif cls is time:
             default_load_func = as_time
-            body_lines.append('return dt.time()')
+            body_lines.append("return dt.time()")
         elif issubclass(cls, datetime):
             default_load_func = as_datetime
-            locals_ns['datetime'] = cls
-            body_lines.append('return dt')
+            locals_ns["datetime"] = cls
+            body_lines.append("return dt")
         elif issubclass(cls, date):
             default_load_func = as_date
-            body_lines.append('return cls(dt.year, dt.month, dt.day)')
+            body_lines.append("return cls(dt.year, dt.month, dt.day)")
         elif issubclass(cls, time):
             default_load_func = as_time
-            body_lines.append('return cls(dt.hour, dt.minute, dt.second, '
-                              'dt.microsecond, fold=dt.fold)')
+            body_lines.append(
+                "return cls(dt.hour, dt.minute, dt.second, "
+                "dt.microsecond, fold=dt.fold)"
+            )
         else:
-            raise TypeError(f'Annotation for `Pattern` is of invalid type '
-                            f'({cls}). Expected a type or subtype of: '
-                            f'{DT.__constraints__}')
+            raise TypeError(
+                "Annotation for `Pattern` is of invalid type "
+                f"({cls}). Expected a type or subtype of: "
+                f"{DT.__constraints__}"
+            )
 
-        locals_ns['default_load_func'] = default_load_func
+        locals_ns["default_load_func"] = default_load_func
 
         # TODO This approach unfortunately won't work in Python 3.6. To fix
         #   it, we'll need to pass `globals` instead of `locals` here.
-        return _create_fn('pattern_to_dt',
-                          ('date_string', ),
-                          body_lines,
-                          locals=locals_ns,
-                          return_type=DT)
+        return _create_fn(
+            "pattern_to_dt",
+            ("date_string",),
+            body_lines,
+            locals=locals_ns,
+            return_type=DT,
+        )
 
     def __repr__(self):
-        repr_val = [f'{k}={getattr(self, k)!r}' for k in self.__slots__]
+        repr_val = [f"{k}={getattr(self, k)!r}" for k in self.__slots__]
         return f'{self.__class__.__name__}({", ".join(repr_val)})'
 
 
@@ -331,10 +370,12 @@ class Container(List[T]):
             return self.__orig_class__.__args__[0]
         except AttributeError:
             cls_name = self.__class__.__qualname__
-            msg = (f'A {cls_name} object needs to be instantiated with '
-                   f'a generic type T.\n\n'
-                   'Example:\n'
-                   f'  my_list = {cls_name}[T](...)')
+            msg = (
+                f"A {cls_name} object needs to be instantiated with "
+                "a generic type T.\n\n"
+                "Example:\n"
+                f"  my_list = {cls_name}[T](...)"
+            )
 
             raise TypeError(msg) from None
 
@@ -343,23 +384,20 @@ class Container(List[T]):
         Control the value displayed when ``print(self)`` is called.
         """
         import pprint
+
         return pprint.pformat(self)
 
-    def prettify(self, encoder: Encoder = json.dumps,
-                 ensure_ascii=False,
-                 **encoder_kwargs) -> str:
+    def prettify(
+        self, encoder: Encoder = json.dumps, ensure_ascii=False, **encoder_kwargs
+    ) -> str:
         """
         Convert the list of instances to a *prettified* JSON string.
         """
         return self.to_json(
-            indent=2,
-            encoder=encoder,
-            ensure_ascii=ensure_ascii,
-            **encoder_kwargs
+            indent=2, encoder=encoder, ensure_ascii=ensure_ascii, **encoder_kwargs
         )
 
-    def to_json(self, encoder: Encoder = json.dumps,
-                **encoder_kwargs) -> str:
+    def to_json(self, encoder: Encoder = json.dumps, **encoder_kwargs) -> str:
         """
         Convert the list of instances to a JSON string.
         """
@@ -370,9 +408,13 @@ class Container(List[T]):
 
         return encoder(list_of_dict, **encoder_kwargs)
 
-    def to_json_file(self, file: str, mode: str = 'w',
-                     encoder: FileEncoder = json.dump,
-                     **encoder_kwargs) -> None:
+    def to_json_file(
+        self,
+        file: str,
+        mode: str = "w",
+        encoder: FileEncoder = json.dump,
+        **encoder_kwargs,
+    ) -> None:
         """
         Serializes the list of instances and writes it to a JSON file.
         """

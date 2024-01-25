@@ -23,29 +23,24 @@ class MyClass:
 
 
 # Model for `dataclass-wizard`
-WizType = TypeVar('WizType', MyClass, JSONWizard)
+WizType = TypeVar("WizType", MyClass, JSONWizard)
 # Model for `jsons`
-JsonsType = TypeVar('JsonsType', MyClass, JsonSerializable)
+JsonsType = TypeVar("JsonsType", MyClass, JsonSerializable)
 # Model for `dataclasses-json`
-DJType = TypeVar('DJType', MyClass, DataClassJsonMixin)
+DJType = TypeVar("DJType", MyClass, DataClassJsonMixin)
 # Factory for `dataclass-factory`
 factory = dataclass_factory.Factory()
 
-MyClassWizard: WizType = create_new_class(
-    MyClass, (MyClass, JSONWizard), 'Wizard')
-MyClassDJ: DJType = create_new_class(
-    MyClass, (MyClass, DataClassJsonMixin), 'DJ')
+MyClassWizard: WizType = create_new_class(MyClass, (MyClass, JSONWizard), "Wizard")
+MyClassDJ: DJType = create_new_class(MyClass, (MyClass, DataClassJsonMixin), "DJ")
 MyClassJsons: JsonsType = create_new_class(
-    MyClass, (MyClass, JsonSerializable), 'Jsons')
+    MyClass, (MyClass, JsonSerializable), "Jsons"
+)
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope="session")
 def data():
-    return {
-        'my_str': 'hello world!',
-        'my_int': 21,
-        'my_bool': True
-    }
+    return {"my_str": "hello world!", "my_int": 21, "my_bool": True}
 
 
 def test_load(data, n):
@@ -53,24 +48,34 @@ def test_load(data, n):
     g.update(locals())
 
     # Result: 0.170
-    log.info('dataclass-wizard     %f',
-             timeit('MyClassWizard.from_dict(data)', globals=g, number=n))
+    log.info(
+        "dataclass-wizard     %f",
+        timeit("MyClassWizard.from_dict(data)", globals=g, number=n),
+    )
 
     # Result: 0.314
-    log.info('dataclass-factory    %f',
-             timeit('factory.load(data, MyClass)', globals=g, number=n))
+    log.info(
+        "dataclass-factory    %f",
+        timeit("factory.load(data, MyClass)", globals=g, number=n),
+    )
 
     # Result: 4.953
-    log.info('dataclasses-json     %f',
-             timeit('MyClassDJ.from_dict(data)', globals=g, number=n))
+    log.info(
+        "dataclasses-json     %f",
+        timeit("MyClassDJ.from_dict(data)", globals=g, number=n),
+    )
 
     # Result: 9.543
-    log.info('jsons                %f',
-             timeit('MyClassJsons.load(data)', globals=g, number=n))
+    log.info(
+        "jsons                %f",
+        timeit("MyClassJsons.load(data)", globals=g, number=n),
+    )
 
     # Result: 12.825
-    log.info('jsons (strict)       %f',
-             timeit('MyClassJsons.load(data, strict=True)', globals=g, number=n))
+    log.info(
+        "jsons (strict)       %f",
+        timeit("MyClassJsons.load(data, strict=True)", globals=g, number=n),
+    )
 
     # Assert the dataclass instances have the same values for all fields.
 
@@ -92,28 +97,27 @@ def test_dump(data, n):
     g.update(locals())
 
     # Result: 0.237
-    log.info('dataclass-wizard     %f',
-             timeit('c1.to_dict()', globals=g, number=n))
+    log.info("dataclass-wizard     %f", timeit("c1.to_dict()", globals=g, number=n))
 
     # Result: 0.238
-    log.info('asdict (dataclasses) %f',
-             timeit('c1.to_dict()', globals=g, number=n))
+    log.info("asdict (dataclasses) %f", timeit("c1.to_dict()", globals=g, number=n))
 
     # Result: 0.513
-    log.info('dataclass-factory    %f',
-             timeit('factory.dump(c2, MyClass)', globals=g, number=n))
+    log.info(
+        "dataclass-factory    %f",
+        timeit("factory.dump(c2, MyClass)", globals=g, number=n),
+    )
 
     # Result: 1.497
-    log.info('dataclasses-json     %f',
-             timeit('c3.to_dict()', globals=g, number=n))
+    log.info("dataclasses-json     %f", timeit("c3.to_dict()", globals=g, number=n))
 
     # Result: 10.177
-    log.info('jsons                %f',
-             timeit('c4.dump()', globals=g, number=n))
+    log.info("jsons                %f", timeit("c4.dump()", globals=g, number=n))
 
     # Result: 10.099
-    log.info('jsons (strict)       %f',
-             timeit('c4.dump(strict=True)', globals=g, number=n))
+    log.info(
+        "jsons (strict)       %f", timeit("c4.dump(strict=True)", globals=g, number=n)
+    )
 
     # Assert the dict objects which are the result of `to_dict` are all equal.
 

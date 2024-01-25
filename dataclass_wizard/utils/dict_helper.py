@@ -29,7 +29,8 @@ class DictWithLowerStore(dict):
        but I also have a lower-cased key store, in case I ever need to use it.
 
     """
-    __slots__ = ('_lower_store', )
+
+    __slots__ = ("_lower_store",)
 
     def __init__(self, data=None, **kwargs):
         super().__init__()
@@ -68,9 +69,7 @@ class DictWithLowerStore(dict):
     def lower_items(self):
         """Like iteritems(), but with all lowercase keys."""
         return (
-            (lowerkey, keyval[1])
-            for (lowerkey, keyval)
-            in self._lower_store.items()
+            (lowerkey, keyval[1]) for (lowerkey, keyval) in self._lower_store.items()
         )
 
     def __eq__(self, other):
