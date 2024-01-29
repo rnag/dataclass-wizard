@@ -27,8 +27,7 @@ help:
 	@python -c "$$PRINT_HELP_PYSCRIPT" < $(MAKEFILE_LIST)
 
 init: ## install all dev dependencies for this project
-	pip install -e .
-	pip install -r requirements-dev.txt
+	pip install -e .[dev]
 
 clean: clean-build clean-pyc clean-test ## remove all build, test, coverage and Python artifacts
 
