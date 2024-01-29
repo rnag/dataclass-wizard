@@ -17,13 +17,19 @@ requires = [
     'backports-datetime-fromisoformat==1.0.0; python_version == "3.6"'
 ]
 
-if (requires_dev_file := here / 'requirements-dev.txt').exists():
+# TODO update once we drop support for Python 3.6 & 3.7
+# if (requires_dev_file := here / 'requirements-dev.txt').exists():
+requires_dev_file = here / 'requirements-dev.txt'
+if requires_dev_file.exists():
     with requires_dev_file.open() as requires_dev_txt:
         dev_requires = [str(req) for req in parse_requirements(requires_dev_txt)]
 else:   # Running on CI
     dev_requires = []
 
-if (requires_test_file := here / 'requirements-test.txt').exists():
+# TODO update once we drop support for Python 3.6 & 3.7
+# if (requires_test_file := here / 'requirements-dev.txt').exists():
+requires_test_file = here / 'requirements-test.txt'
+if requires_test_file.exists():
     with requires_test_file.open() as requires_test_txt:
         test_requirements = [str(req) for req in parse_requirements(requires_test_txt)]
 else:   # Running on CI
