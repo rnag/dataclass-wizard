@@ -59,8 +59,11 @@ setup(
     include_package_data=True,
     install_requires=requires,
     project_urls={
-        'Documentation': 'https://dataclass-wizard.readthedocs.io',
+        'Changelog': 'https://dataclass-wizard.readthedocs.io/en/latest/history.html',
         'Source': 'https://github.com/rnag/dataclass-wizard',
+        'Download': 'https://pypi.org/project/dataclass-wizard',
+        'Documentation': 'https://dataclass-wizard.readthedocs.io',
+        'Bug Tracker': 'https://github.com/rnag/dataclass-wizard/issues',
     },
     license=about['__license__'],
     keywords=['dataclasses', 'dataclass', 'wizard', 'json', 'marshal',
