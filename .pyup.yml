@@ -15,6 +15,7 @@ requirements:
       pin: False
   - requirements-dev.txt
   - requirements-test.txt
+  - docs/requirements.txt
 # add a label to pull requests, default is not set
 label_prs: update
 # assign users to pull requests, default is not set

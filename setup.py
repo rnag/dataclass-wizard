@@ -27,7 +27,16 @@ else:   # Running on CI
     dev_requires = []
 
 # TODO update once we drop support for Python 3.6 & 3.7
-# if (requires_test_file := here / 'requirements-dev.txt').exists():
+# if (requires_docs_file := here / 'docs' / 'requirements.txt').exists():
+requires_docs_file = here / 'docs' / 'requirements.txt'
+if requires_docs_file.exists():
+    with requires_docs_file.open() as requires_docs_txt:
+        doc_requires = [str(req) for req in parse_requirements(requires_docs_txt)]
+else:   # Running on CI
+    doc_requires = []
+
+# TODO update once we drop support for Python 3.6 & 3.7
+# if (requires_test_file := here / 'requirements-test.txt').exists():
 requires_test_file = here / 'requirements-test.txt'
 if requires_test_file.exists():
     with requires_test_file.open() as requires_test_txt:
@@ -92,7 +101,7 @@ setup(
     extras_require={
         'timedelta': ['pytimeparse>=1.1.7'],
         'yaml': ['PyYAML>=5.3'],
-        'dev': dev_requires + test_requirements,
+        'dev': dev_requires + doc_requires + test_requirements,
     },
     zip_safe=False
 )
