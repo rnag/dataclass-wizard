@@ -33,16 +33,26 @@ if sys.version_info[:2] >= (3, 7):
 else:
     from contextlib import ExitStack as does_not_raise
 
+# TODO typing.Deque is deprecated since PY 3.9
+#   https://docs.python.org/3/library/typing.html#typing.Deque
 try:
+    # Introduced in Python 3.6
+    from typing import Deque
+    # Introduced in Python 3.8
     from typing import Literal
     from typing import TypedDict
-    from typing import Annotated
-    from typing import Deque
 except ImportError:
+    # Introduced in Python 3.6
+    from typing_extensions import Deque
+    # Introduced in Python 3.8
     from typing_extensions import Literal
     from typing_extensions import TypedDict
+
+# typing.Annotated: Introduced in Python 3.9
+if PY39_OR_ABOVE:
+    from typing import Annotated
+else:
     from typing_extensions import Annotated
-    from typing_extensions import Deque
 
 
 def data_file_path(name: str) -> str:

@@ -2,6 +2,27 @@
 History
 =======
 
+0.22.3 (2024-01-29)
+-------------------
+
+**Features and Improvements**
+
+* Add full support for Python 3.11 and 3.12 (Credits to :user:`alexanderilyin` on :pr:`101`)
+* Project-specific development changes
+    * Update CI to run tests on PY 3.11 and 3.12
+    * Update ``wheel`` version
+    * Update ``setup.py`` to add a ``dev`` extra which installs dev-related dependencies
+    * Move test dependencies into ``requirements-test.txt``
+    * Add ``sphinx_issues`` dependency to easily add link in docs to an user/issue/PR on GitHub
+    * Update ``project_urls`` on PyPI to add extra links, such as "Changelog" and "Issue Tracker"
+
+
+**Bugfixes**
+
+* Fix: Loading a Variadic Tuple fails for length 0 (Credits to :user:`intentionally-left-nil` on :pr:`105`)
+* Stop-gap fix for time-string patterns that contain ``-`` or ``+``,
+  as Python 3.11+ can interpret this as timezone data.
+
 0.22.2 (2022-10-11)
 -------------------
 

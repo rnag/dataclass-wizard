@@ -36,7 +36,14 @@ from dataclass_wizard import __version__
 extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.viewcode',
+    'sphinx_issues',
 ]
+
+github_user = 'rnag'
+github_repo = 'dataclass-wizard'
+
+# Path to GitHub repo {user}/{project}
+issues_github_path = f'{github_user}/{github_repo}'
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -52,8 +59,8 @@ master_doc = 'index'
 
 # General information about the project.
 project = 'Dataclass Wizard'
-copyright = '2021, <a href="https://github.com/rnag">Ritvik Nag</a>'
 author = "Ritvik Nag"
+copyright = f'2021, <a href="https://github.com/{github_user}">{author}</a>'
 
 # The version info for the project you're documenting, acts as replacement
 # for |version| and |release|, also used in various other places throughout
@@ -69,7 +76,7 @@ release = __version__.__version__
 #
 # This is also used if you do content translation via gettext catalogs.
 # Usually you set "language" from the command line for these cases.
-language = None
+language = 'en'
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
@@ -95,8 +102,8 @@ html_theme = 'alabaster'
 # documentation.
 #
 html_theme_options = {
-    "github_user": "rnag",
-    "github_repo": "dataclass-wizard",
+    "github_user": github_user,
+    "github_repo": github_repo,
     "description": 'A set of simple, yet elegant <i>wizarding</i> tools for '
                    'interacting with the Python <code>dataclasses</code> module.',
     "show_powered_by": False,
@@ -159,7 +166,7 @@ latex_elements = {
 latex_documents = [
     (master_doc, 'dataclass_wizard.tex',
      'Dataclass Wizard Documentation',
-     'Ritvik Nag', 'manual'),
+     author, 'manual'),
 ]
 
 

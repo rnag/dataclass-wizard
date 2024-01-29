@@ -1,6 +1,7 @@
 """The setup script."""
 import pathlib
 
+from pkg_resources import parse_requirements
 from setuptools import setup, find_packages
 
 
@@ -16,12 +17,23 @@ requires = [
     'backports-datetime-fromisoformat==1.0.0; python_version == "3.6"'
 ]
 
-test_requirements = [
-    'pytest~=6.2.4',
-    'pytest-mock~=3.6.1',
-    'pytest-cov~=2.12.1',
-    'pytest-runner~=5.3.1'
-]
+# TODO update once we drop support for Python 3.6 & 3.7
+# if (requires_dev_file := here / 'requirements-dev.txt').exists():
+requires_dev_file = here / 'requirements-dev.txt'
+if requires_dev_file.exists():
+    with requires_dev_file.open() as requires_dev_txt:
+        dev_requires = [str(req) for req in parse_requirements(requires_dev_txt)]
+else:   # Running on CI
+    dev_requires = []
+
+# TODO update once we drop support for Python 3.6 & 3.7
+# if (requires_test_file := here / 'requirements-dev.txt').exists():
+requires_test_file = here / 'requirements-test.txt'
+if requires_test_file.exists():
+    with requires_test_file.open() as requires_test_txt:
+        test_requirements = [str(req) for req in parse_requirements(requires_test_txt)]
+else:   # Running on CI
+    test_requirements = []
 
 about = {}
 exec((here / package_name / '__version__.py').read_text(), about)
@@ -47,8 +59,11 @@ setup(
     include_package_data=True,
     install_requires=requires,
     project_urls={
-        'Documentation': 'https://dataclass-wizard.readthedocs.io',
+        'Changelog': 'https://dataclass-wizard.readthedocs.io/en/latest/history.html',
         'Source': 'https://github.com/rnag/dataclass-wizard',
+        'Download': 'https://pypi.org/project/dataclass-wizard',
+        'Documentation': 'https://dataclass-wizard.readthedocs.io',
+        'Bug Tracker': 'https://github.com/rnag/dataclass-wizard/issues',
     },
     license=about['__license__'],
     keywords=['dataclasses', 'dataclass', 'wizard', 'json', 'marshal',
@@ -68,13 +83,16 @@ setup(
         'Programming Language :: Python :: 3.8',
         'Programming Language :: Python :: 3.9',
         'Programming Language :: Python :: 3.10',
+        'Programming Language :: Python :: 3.11',
+        'Programming Language :: Python :: 3.12',
         'Programming Language :: Python'
     ],
     test_suite='tests',
     tests_require=test_requirements,
     extras_require={
         'timedelta': ['pytimeparse>=1.1.7'],
-        'yaml': ['PyYAML>=5.3']
+        'yaml': ['PyYAML>=5.3'],
+        'dev': dev_requires + test_requirements,
     },
     zip_safe=False
 )
