@@ -11,7 +11,7 @@ from typing import Type, Union, AnyStr, List, Optional, TextIO, BinaryIO
 from .abstractions import W
 from .bases_meta import DumpMeta
 from .class_helper import _META
-from .dumpers import asdict
+from .dumpers import asdict, get_dumper
 from .enums import LetterCase
 from .lazy_imports import yaml
 from .loaders import fromdict, fromlist
@@ -119,6 +119,30 @@ class YAMLWizard:
         if key_transform and cls not in _META:
             DumpMeta(key_transform=key_transform).bind_to(cls)
 
+        # Add constructor to the yaml decoder
+        def construct_yaml(loader: yaml.SafeLoader, node: yaml.nodes.MappingNode) -> cls:
+            return dict(**loader.construct_mapping(node), __tag__=cls.__name__)
+
+        yaml.SafeLoader.add_constructor(f'!{cls.__name__}', construct_yaml)
+
+        # Add representer to the yaml encoder
+        cls_dumper = get_dumper(cls)
+        meta = getattr(cls, "Meta", None)
+        auto_assign_tags = getattr(meta, "auto_assign_tags", False)
+        representer_tag = f"!{cls.__name__}" if auto_assign_tags else "tag:yaml.org,2002:map"
+
+        def represent_yaml(dumper: yaml.SafeDumper, data: cls) -> yaml.nodes.MappingNode:
+            return dumper.represent_mapping(
+                representer_tag,
+                {
+                    cls_dumper.transform_dataclass_field(k): v
+                    for k, v in data.__dict__.items()
+                },
+            )
+
+        yaml.SafeDumper.add_representer(cls, represent_yaml)
+
+
     @classmethod
     def from_yaml(cls: Type[T],
                   string_or_stream: Union[AnyStr, TextIO, BinaryIO], *,
@@ -155,8 +179,9 @@ class YAMLWizard:
         """
         if encoder is None:
             encoder = yaml.dump
+            encoder_kwargs = {"Dumper": yaml.SafeDumper, **encoder_kwargs}
 
-        return encoder(asdict(self), **encoder_kwargs)
+        return encoder(self, **encoder_kwargs)
 
     def to_yaml_file(self: T, file: str, mode: str = 'w',
                      encoder: Optional[FileEncoder] = None,
@@ -179,7 +204,8 @@ class YAMLWizard:
         """
         if encoder is None:
             encoder = yaml.dump
+            encoder_kwargs = {"Dumper": yaml.SafeDumper, **encoder_kwargs}
 
-        list_of_dict = [asdict(o, cls=cls) for o in instances]
+        list_of_dict = [o for o in instances]
 
         return encoder(list_of_dict, **encoder_kwargs)
