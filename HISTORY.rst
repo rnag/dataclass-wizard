@@ -20,7 +20,7 @@ History
 **Bugfixes**
 
 * Fix: Loading a Variadic Tuple fails for length 0 (Credits to :user:`intentionally-left-nil` on :pr:`105`)
-* Temporary fix for time-string patterns that contain ``-`` or ``+``,
+* Stop-gap fix for time-string patterns that contain ``-`` or ``+``,
   as Python 3.11+ can interpret this as timezone data.
 
 0.22.2 (2022-10-11)
