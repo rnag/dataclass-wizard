@@ -80,10 +80,15 @@ Ready to contribute? Here's how to set up `dataclass-wizard` for local developme
    tests, including testing other Python versions with tox::
 
     $ make lint
-    $ make test
+    $ make test  # or: see debug output with `make test-vb`
     $ tox
 
    To get flake8 and tox, just pip install them into your virtualenv.
+
+   To instead run pytest in verbose mode `-vvv` and also show
+   log output in terminal for debugging purposes, use::
+
+   $ make test-vb
 
 6. Commit your changes and push your branch to GitHub::
 

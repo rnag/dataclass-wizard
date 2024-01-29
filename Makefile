@@ -58,6 +58,9 @@ lint: ## check style with flake8 and pylint
 test: ## run unit tests quickly with the default Python
 	pytest -v --cov=dataclass_wizard --cov-report=term-missing tests/unit
 
+test-vb: ## run unit tests (in verbose mode) with the default Python
+	pytest -vvv --log-cli-level=DEBUG --capture=tee-sys --cov=dataclass_wizard --cov-report=term-missing tests/unit
+
 test-all: ## run tests on every Python version with tox
 	tox
 

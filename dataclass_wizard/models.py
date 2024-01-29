@@ -266,7 +266,17 @@ class _PatternedDT:
             body_lines.append('return dt.date()')
         elif cls is time:
             default_load_func = as_time
-            body_lines.append('return dt.time()')
+            # temp fix for Python 3.11+, since `time.fromisoformat` is updated
+            # to support more formats, such as "-" and "+" in strings.
+            if '-' in self.pattern or '+' in self.pattern:
+                body_lines = ['try:',
+                              '  return datetime.strptime(date_string, pattern).time()',
+                              'except (ValueError, TypeError):',
+                              '  dt = default_load_func(date_string, cls, raise_=False)',
+                              '  if dt is not None:',
+                              '    return dt']
+            else:
+                body_lines.append('return dt.time()')
         elif issubclass(cls, datetime):
             default_load_func = as_datetime
             locals_ns['datetime'] = cls
@@ -276,6 +286,16 @@ class _PatternedDT:
             body_lines.append('return cls(dt.year, dt.month, dt.day)')
         elif issubclass(cls, time):
             default_load_func = as_time
+            # temp fix for Python 3.11+, since `time.fromisoformat` is updated
+            # to support more formats, such as "-" and "+" in strings.
+            if '-' in self.pattern or '+' in self.pattern:
+                body_lines = ['try:',
+                              '  dt = datetime.strptime(date_string, pattern).time()',
+                              'except (ValueError, TypeError):',
+                              '  dt = default_load_func(date_string, cls, raise_=False)',
+                              '  if dt is not None:',
+                              '    return dt']
+
             body_lines.append('return cls(dt.hour, dt.minute, dt.second, '
                               'dt.microsecond, fold=dt.fold)')
         else:
