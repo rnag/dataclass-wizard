@@ -29,7 +29,7 @@ class LetterCase(Enum):
     SNAKE = FuncWrapper(to_snake_case)
     # Perfoms no conversion on strings.
     #   ex: `MY_FIELD_NAME` -> `MY_FIELD_NAME`
-    NONE = FuncWrapper(str)
+    NONE = FuncWrapper(lambda s: s)
 
     def __call__(self, *args):
         return self.value.f(*args)
