@@ -41,7 +41,7 @@ class ParseError(JSONWizardError):
 
     def __init__(self, base_err: Exception,
                  obj: Any,
-                 ann_type: Union[Type, Iterable],
+                 ann_type: Optional[Union[Type, Iterable]],
                  _default_class: Optional[type] = None,
                  _field_name: Optional[str] = None,
                  _json_object: Any = None,

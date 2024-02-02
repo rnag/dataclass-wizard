@@ -8,10 +8,10 @@ from .type_def import FrozenKeys
 
 
 # Create a generic variable that can be 'AbstractMeta', or any subclass.
-M = TypeVar('M', bound='AbstractMeta')
-# Use `Type` here explicitly, because we will never have an `M` object.
-M = Type[M]
-META = M  # alias, since `M` is already defined in another module
+# Full word as `M` is already defined in another module
+META_ = TypeVar('META_', bound='AbstractMeta')
+# Use `Type` here explicitly, because we will never have an `META_` object.
+META = Type[META_]
 
 
 class ABCOrAndMeta(ABCMeta):
@@ -24,7 +24,7 @@ class ABCOrAndMeta(ABCMeta):
       - https://stackoverflow.com/a/57351066/10237506
     """
 
-    def __or__(cls: M, other: M) -> M:
+    def __or__(cls: META, other: META) -> META:
         """
         Merge two Meta configs. Priority will be given to the source config
         present in `cls`, e.g. the first operand in the '|' expression.
@@ -73,7 +73,7 @@ class ABCOrAndMeta(ABCMeta):
         # noinspection PyTypeChecker
         return type(new_cls_name, (src, ), base_dict)
 
-    def __and__(cls: M, other: M) -> M:
+    def __and__(cls: META, other: META) -> META:
         """
         Merge the `other` Meta config into the first one, i.e. `cls`. This
         operation does not create a new class, but instead it modifies the
