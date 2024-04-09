@@ -26,7 +26,7 @@ class MyYAMLWizard(YAMLWizard):
 
 
 @dataclass
-class Inner:
+class Inner(YAMLWizard):
     my_float: float
     my_list: List[str]
 
@@ -76,13 +76,13 @@ def test_json_file_wizard_methods(mocker: MockerFixture, mock_open):
 
 def test_yaml_wizard_methods(mocker: MockerFixture):
     """Test and coverage the base methods in YAMLWizard."""
-    yaml_data = """\
+    yaml_data = """
     my_str: test value
     inner:
         my_float: 1.2
         my_list:
             - hello, world!
-            - 123\
+            - 123
     """
 
     # Patch open() to return a file-like object which returns our string data.
