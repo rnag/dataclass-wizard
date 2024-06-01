@@ -1,2 +1,2 @@
 sphinx-issues==4.1.0; python_version < "3.8"
-sphinx-issues==4.0.0; python_version >= "3.8"
+sphinx-issues==4.1.0; python_version >= "3.8"
