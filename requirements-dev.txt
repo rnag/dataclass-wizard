@@ -1,5 +1,5 @@
 flake8>=3  # pyup: ignore
-tox==3.24.5
+tox==4.15.1
 # Extras
 pytimeparse==1.1.8
 # TODO I don't know if we need the below on CI
