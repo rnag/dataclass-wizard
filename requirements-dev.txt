@@ -7,7 +7,7 @@ coverage>=6.2
 pip>=21.3.1
 bump2version==1.0.1
 wheel==0.43.0; python_version == "3.6"
-wheel==0.42.0; python_version > "3.6"
+wheel==0.43.0; python_version > "3.6"
 watchdog[watchmedo]==2.1.6
 Sphinx==5.3.0
 twine==3.8.0
