@@ -2,6 +2,19 @@
 History
 =======
 
+0.23.0 (2024-09-18)
+-------------------
+
+* `#94`_: Allows the ability to define keys in JSON/dataclass
+  that do not undergo transformation -- credits to `@cquick01`_.
+
+  * ``LetterCase.NONE`` - Performs no conversion on strings.
+
+    * ex: `MY_FIELD_NAME` -> `MY_FIELD_NAME`
+
+.. _@cquick01: https://github.com/cquick01
+.. _#94: https://github.com/rnag/dataclass-wizard/pull/94
+
 0.22.3 (2024-01-29)
 -------------------
 
