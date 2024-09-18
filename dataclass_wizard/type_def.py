@@ -5,6 +5,8 @@ __all__ = [
     'PyDeque',
     'PyTypedDict',
     'PyTypedDicts',
+    'PyRequired',
+    'PyNotRequired',
     'FrozenKeys',
     'DefFactory',
     'NoneType',
@@ -42,7 +44,7 @@ from typing import (
 )
 from uuid import UUID
 
-from .constants import PY36, PY38_OR_ABOVE
+from .constants import PY36, PY38_OR_ABOVE, PY311_OR_ABOVE
 from .decorators import discard_kwargs
 
 
@@ -128,10 +130,23 @@ if PY38_OR_ABOVE:  # pragma: no cover
         PyTypedDicts.append(PyTypedDict)
     except ImportError:
         pass
+
+    # Python 3.11 introduced `Required` and `NotRequired` wrappers for
+    # `TypedDict` fields (PEP 655). Python 3.8+ users can import the
+    # wrappers from `typing_extensions`.
+    if PY311_OR_ABOVE:
+        from typing import Required as PyRequired
+        from typing import NotRequired as PyNotRequired
+    else:
+        from typing_extensions import Required as PyRequired
+        from typing_extensions import NotRequired as PyNotRequired
+
 else:  # pragma: no cover
     from typing_extensions import Literal as PyLiteral
     from typing_extensions import Protocol as PyProtocol
     from typing_extensions import TypedDict as PyTypedDict
+    from typing_extensions import Required as PyRequired
+    from typing_extensions import NotRequired as PyNotRequired
     # Seems like `Deque` was only introduced to `typing` in 3.6.1, so Python
     # 3.6.0 won't have it; to be safe, we'll instead import from the
     # `typing_extensions` module here.
