@@ -376,7 +376,7 @@ def eval_forward_ref(base_type: FREF,
     return typing._eval_type(base_type, base_globals, _TYPING_LOCALS)
 
 
-def eval_forward_ref_if_needed(base_type: FREF,
+def eval_forward_ref_if_needed(base_type: typing.Union[typing.Type, FREF],
                                base_cls: typing.Type):
     """
     If needed, evaluate a forward reference using the class globals, and
