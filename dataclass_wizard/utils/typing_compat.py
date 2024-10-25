@@ -364,8 +364,12 @@ def eval_forward_ref(base_type: FREF,
     # Evaluate the ForwardRef here
     base_globals = sys.modules[cls.__module__].__dict__
 
-    # noinspection PyProtectedMember
-    return typing._eval_type(base_type, base_globals, _TYPING_LOCALS, type_params=())
+    if sys.version_info >= (3, 13):
+        # noinspection PyProtectedMember
+        return typing._eval_type(base_type, base_globals, _TYPING_LOCALS, type_params=())
+    else:
+        # noinspection PyProtectedMember
+        return typing._eval_type(base_type, base_globals, _TYPING_LOCALS)
 
 
 def eval_forward_ref_if_needed(base_type: FREF,
