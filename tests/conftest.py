@@ -4,11 +4,15 @@ __all__ = [
     'PY36',
     'PY39_OR_ABOVE',
     'PY310_OR_ABOVE',
+    'PY311_OR_ABOVE',
     # For compatibility with Python 3.6 and 3.7
     'Literal',
     'TypedDict',
     'Annotated',
-    'Deque'
+    'Deque',
+    # For compatibility with Python 3.6 through 3.10
+    'Required',
+    'NotRequired'
 ]
 
 import sys
@@ -26,6 +30,9 @@ PY39_OR_ABOVE = sys.version_info[:2] >= (3, 9)
 
 # Check if we are running Python 3.10+
 PY310_OR_ABOVE = sys.version_info[:2] >= (3, 10)
+
+# Check if we are running Python 3.11+
+PY311_OR_ABOVE = sys.version_info[:2] >= (3, 11)
 
 # Ref: https://docs.pytest.org/en/6.2.x/example/parametrize.html#parametrizing-conditional-raising
 if sys.version_info[:2] >= (3, 7):
@@ -53,6 +60,14 @@ if PY39_OR_ABOVE:
     from typing import Annotated
 else:
     from typing_extensions import Annotated
+
+# typing.Required and typing.NotRequired: Introduced in Python 3.11
+if PY311_OR_ABOVE:
+    from typing import Required
+    from typing import NotRequired
+else:
+    from typing_extensions import Required
+    from typing_extensions import NotRequired
 
 
 def data_file_path(name: str) -> str:
