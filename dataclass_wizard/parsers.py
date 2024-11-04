@@ -84,6 +84,14 @@ class LiteralParser(AbstractParser[Type[M], M]):
             val: type(val) for val in get_args(self.base_type)
         }
 
+    def __contains__(self, item) -> bool:
+        """
+        Return true if the LiteralParser is expected to handle the specified item
+        type. Checks that the item is incorporated in the given expected values of
+        the Literal.
+        """
+        return item in self.value_to_type.keys()
+
     def __call__(self, o: Any) -> M:
         """
         Checks for Literal equivalence, as mentioned here:
