@@ -1426,7 +1426,7 @@ def test_typed_dict_with_all_fields_optional(input, expectation, expected):
         assert result.my_typed_dict == expected
 
 
-@pytest.mark.skipif(PY36, reason='requires Python 3.7 or higher')
+@pytest.mark.skipif(PY36 or PY38, reason='requires Python 3.7 or higher')
 @pytest.mark.parametrize(
     'input,expectation,expected',
     [
