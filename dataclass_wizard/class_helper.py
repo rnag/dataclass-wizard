@@ -3,7 +3,7 @@ from dataclasses import MISSING, Field, fields
 from typing import Dict, Tuple, Type, Union, Callable, Optional, Any
 
 from .abstractions import W, AbstractLoader, AbstractDumper, AbstractParser
-from .bases import M, AbstractMeta
+from .bases import AbstractMeta, META
 from .models import JSONField, JSON, Extras, _PatternedDT
 from .type_def import ExplicitNull, ExplicitNullType, T
 from .utils.dict_helper import DictWithLowerStore
@@ -14,7 +14,7 @@ from .utils.typing_compat import (
 
 # A cached mapping of dataclass to the list of fields, as returned by
 # `dataclasses.fields()`.
-_FIELDS: Dict[Type, Tuple[Field]] = {}
+_FIELDS: Dict[Type, Tuple[Field, ...]] = {}
 
 # Mapping of main dataclass to its `load` function.
 _CLASS_TO_LOAD_FUNC: Dict[Type, Any] = {}
@@ -56,7 +56,7 @@ _META_INITIALIZER: Dict[
 
 # Mapping of dataclass to its Meta inner class, which will only be set when
 # the :class:`JSONSerializable.Meta` is sub-classed.
-_META: Dict[Type, M] = {}
+_META: Dict[Type, META] = {}
 
 
 def dataclass_to_loader(cls):
@@ -111,7 +111,7 @@ def dataclass_field_to_json_field(cls):
 def dataclass_field_to_load_parser(
         cls_loader: Type[AbstractLoader],
         cls: Type,
-        config: M,
+        config: META,
         save: bool = True) -> 'DictWithLowerStore[str, AbstractParser]':
     """
     Returns a mapping of each lower-cased field name to its annotated type.
@@ -124,7 +124,7 @@ def dataclass_field_to_load_parser(
 
 def _setup_load_config_for_cls(cls_loader: Type[AbstractLoader],
                                cls: Type,
-                               config: M,
+                               config: META,
                                save: bool = True
                                ) -> 'DictWithLowerStore[str, AbstractParser]':
     """
@@ -267,7 +267,7 @@ def call_meta_initializer_if_needed(cls: Type[W]):
         _META_INITIALIZER[cls_name](cls)
 
 
-def get_meta(cls: Type) -> M:
+def get_meta(cls: Type) -> META:
     """
     Retrieves the Meta config for the :class:`AbstractJSONWizard` subclass.
 
@@ -276,7 +276,7 @@ def get_meta(cls: Type) -> M:
     return _META.get(cls, AbstractMeta)
 
 
-def dataclass_fields(cls) -> Tuple[Field]:
+def dataclass_fields(cls) -> Tuple[Field, ...]:
     """
     Cache the `dataclasses.fields()` call for each class, as overall that
     ends up around 5x faster than making a fresh call each time.
@@ -288,7 +288,7 @@ def dataclass_fields(cls) -> Tuple[Field]:
     return _FIELDS[cls]
 
 
-def dataclass_init_fields(cls) -> Tuple[Field]:
+def dataclass_init_fields(cls) -> Tuple[Field, ...]:
     """Get only the dataclass fields that would be passed into the constructor."""
     return tuple(f for f in dataclass_fields(cls) if f.init)
 
