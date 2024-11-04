@@ -208,7 +208,7 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
     def load_to_decimal(o: N, base_type: Type[Decimal]) -> Decimal:
 
         return base_type(str(o))
-    
+
     @staticmethod
     def load_to_path(o: N, base_type: Type[Path]) -> Path:
 

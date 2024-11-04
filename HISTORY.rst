@@ -2,6 +2,15 @@
 History
 =======
 
+0.25.0 (2024-11-03)
+-------------------
+
+**Features and Improvements**
+
+* Add support for `pathlib.Path`_. Thanks to :user:`assafge` in :pr:`79`.
+
+.. _pathlib.Path: https://docs.python.org/3/library/pathlib.html#basic-use
+
 0.24.1 (2024-11-03)
 -------------------
 
