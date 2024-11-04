@@ -54,6 +54,7 @@ NUMBERS = int, float
 
 # Generic type
 T = TypeVar('T')
+TT = TypeVar('TT')
 
 # Enum subclass type
 E = TypeVar('E', bound=Enum)
@@ -74,7 +75,7 @@ DT = TypeVar('DT', date, time, datetime)
 DD = TypeVar('DD', bound=DefaultDict)
 
 # Numeric type
-N = TypeVar('N', int, float, complex)
+N = Union[int, float]
 
 # Sequence type
 S = TypeVar('S', bound=Sequence)
