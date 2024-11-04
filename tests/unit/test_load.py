@@ -28,7 +28,6 @@ from dataclass_wizard.type_def import NoneType, T
 from .conftest import MyUUIDSubclass
 from ..conftest import *
 
-
 log = logging.getLogger(__name__)
 
 
@@ -1427,7 +1426,7 @@ def test_typed_dict_with_all_fields_optional(input, expectation, expected):
         assert result.my_typed_dict == expected
 
 
-@pytest.mark.skipif(PY36, reason='requires Python 3.7 or higher')
+@pytest.mark.skipif(PY36 or PY38, reason='requires Python 3.7 or higher')
 @pytest.mark.parametrize(
     'input,expectation,expected',
     [
@@ -1490,7 +1489,7 @@ def test_typed_dict_with_one_field_not_required(input, expectation, expected):
         assert result.my_typed_dict == expected
 
 
-@pytest.mark.skipif(PY36, reason='requires Python 3.7 or higher')
+@pytest.mark.skipif(PY36 or PY38, reason='requires Python 3.9 or higher')
 @pytest.mark.parametrize(
     'input,expectation,expected',
     [

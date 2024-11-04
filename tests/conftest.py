@@ -2,6 +2,7 @@ __all__ = [
     'does_not_raise',
     'data_file_path',
     'PY36',
+    'PY38',
     'PY39_OR_ABOVE',
     'PY310_OR_ABOVE',
     'PY311_OR_ABOVE',
@@ -25,8 +26,15 @@ TEST_DATA_DIR = Path(__file__).resolve().parent / 'testdata'
 # Check if we are running Python 3.6
 PY36 = sys.version_info[:2] == (3, 6)
 
+# Check if we are running Python 3.8
+PY38 = sys.version_info[:2] == (3, 8)
+
 # Check if we are running Python 3.9+
 PY39_OR_ABOVE = sys.version_info[:2] >= (3, 9)
+
+# Check if we are running Python 3.9 or 3.10
+PY39 = sys.version_info[:2] == (3, 9)
+PY310 = sys.version_info[:2] == (3, 10)
 
 # Check if we are running Python 3.10+
 PY310_OR_ABOVE = sys.version_info[:2] >= (3, 10)
@@ -53,6 +61,11 @@ except ImportError:
     from typing_extensions import Deque
     # Introduced in Python 3.8
     from typing_extensions import Literal
+    from typing_extensions import TypedDict
+
+# Weird, test cases for `TypedDict` fail in Python 3.9 & 3.10.15 (3.10:latest)
+# So apparently, we need to use the one from `typing_extensions`.
+if PY39 or PY310:
     from typing_extensions import TypedDict
 
 # typing.Annotated: Introduced in Python 3.9
