@@ -2,6 +2,11 @@
 History
 =======
 
+0.24.1 (2024-11-03)
+-------------------
+
+* Resolve ``mypy`` typing issues. Thanks to :user:`AdiNar` in :pr:`64`.
+
 0.24.0 (2024-11-03)
 -------------------
 
