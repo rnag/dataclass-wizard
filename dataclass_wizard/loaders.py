@@ -3,6 +3,7 @@ from dataclasses import is_dataclass
 from datetime import datetime, time, date, timedelta
 from decimal import Decimal
 from enum import Enum
+from pathlib import Path
 from typing import (
     Any, Type, Dict, List, Tuple, Iterable, Sequence, Union,
     NamedTupleMeta, SupportsFloat, AnyStr, Text, Callable, Optional
@@ -205,6 +206,11 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
 
     @staticmethod
     def load_to_decimal(o: N, base_type: Type[Decimal]) -> Decimal:
+
+        return base_type(str(o))
+    
+    @staticmethod
+    def load_to_path(o: N, base_type: Type[Path]) -> Path:
 
         return base_type(str(o))
 
@@ -486,6 +492,7 @@ def setup_default_loader(cls=LoadMixin):
     cls.register_load_hook(defaultdict, cls.load_to_defaultdict)
     cls.register_load_hook(dict, cls.load_to_dict)
     cls.register_load_hook(Decimal, cls.load_to_decimal)
+    cls.register_load_hook(Path, cls.load_to_path)
     # Dates and times
     cls.register_load_hook(datetime, cls.load_to_datetime)
     cls.register_load_hook(time, cls.load_to_time)
