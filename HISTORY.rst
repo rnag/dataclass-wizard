@@ -2,6 +2,13 @@
 History
 =======
 
+0.25.1 (2024-11-04)
+-------------------
+
+**Bugfixes**
+
+* Fix for :issue:`67`: ``LiteralParser``'s ``__contains__`` method compares value of item with ``Literal`` arguments -- contributed by :user:`mikeweltevrede` in :pr:`111`.
+
 0.25.0 (2024-11-03)
 -------------------
 
