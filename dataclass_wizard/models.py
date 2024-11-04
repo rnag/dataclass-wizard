@@ -2,7 +2,7 @@ import json
 from dataclasses import MISSING, Field
 from datetime import date, datetime, time
 from typing import (cast, Collection, Callable,
-                    Optional, List, Union, Type)
+                    Optional, List, Union, Type, Generic)
 
 from .bases import META
 from .constants import PY310_OR_ABOVE
@@ -15,9 +15,6 @@ from .utils.type_conv import as_datetime, as_time, as_date
 
 # Type for a string or a collection of strings.
 _STR_COLLECTION = Union[str, Collection[str]]
-
-# A date, time, datetime sub type, or None.
-DT_OR_NONE = Optional[DT]
 
 
 class Extras(PyTypedDict):
@@ -206,7 +203,7 @@ class DateTimePattern(datetime, _PatternBase):
     __slots__ = ()
 
 
-class _PatternedDT:
+class _PatternedDT(Generic[DT]):
     """
     Base class for pattern matching using :meth:`datetime.strptime` when
     loading (de-serializing) a string to a date / time / datetime object.
@@ -217,8 +214,8 @@ class _PatternedDT:
     __slots__ = ('cls',
                  'pattern')
 
-    def __init__(self, pattern: str, cls: DT_OR_NONE = None):
-        self.cls = cls
+    def __init__(self, pattern: str, cls: Optional[Type[DT]] = None):
+        self.cls: Optional[Type[DT]] = cls
         self.pattern = pattern
 
     def get_transform_func(self) -> Callable[[str], DT]:

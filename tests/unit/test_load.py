@@ -28,7 +28,6 @@ from dataclass_wizard.type_def import NoneType, T
 from .conftest import MyUUIDSubclass
 from ..conftest import *
 
-
 log = logging.getLogger(__name__)
 
 
@@ -1403,7 +1402,7 @@ def test_typed_dict(input, expectation, expected):
         )
     ]
 )
-def test_typed_dict_with_optional_fields(input, expectation, expected):
+def test_typed_dict_with_all_fields_optional(input, expectation, expected):
     """
     Test case for loading to a TypedDict which has `total=False`, indicating
     that all fields are optional.
@@ -1413,6 +1412,130 @@ def test_typed_dict_with_optional_fields(input, expectation, expected):
         my_str: str
         my_bool: bool
         my_int: int
+
+    @dataclass
+    class MyClass(JSONSerializable):
+        my_typed_dict: MyDict
+
+    d = {'myTypedDict': input}
+
+    with expectation:
+        result = MyClass.from_dict(d)
+
+        log.debug('Parsed object: %r', result)
+        assert result.my_typed_dict == expected
+
+
+@pytest.mark.skipif(PY36 or PY38, reason='requires Python 3.7 or higher')
+@pytest.mark.parametrize(
+    'input,expectation,expected',
+    [
+        (
+            {}, pytest.raises(ParseError), None
+        ),
+        (
+            {'key': 'value'}, pytest.raises(ParseError), {}
+        ),
+        (
+            {'my_str': 'test', 'my_int': 2,
+             'my_bool': True, 'other_key': 'testing'}, does_not_raise(),
+            {'my_str': 'test', 'my_int': 2, 'my_bool': True}
+        ),
+        (
+            {'my_str': 3}, pytest.raises(ParseError), None
+        ),
+        (
+            {'my_str': 'test', 'my_int': 'test', 'my_bool': True},
+            pytest.raises(ValueError), None,
+        ),
+        (
+            {'my_str': 'test', 'my_int': 2, 'my_bool': True},
+            does_not_raise(),
+            {'my_str': 'test', 'my_int': 2, 'my_bool': True}
+        ),
+        (
+            {'my_str': 'test', 'my_bool': True},
+            does_not_raise(),
+            {'my_str': 'test', 'my_bool': True}
+        ),
+        (
+            # Incorrect type - `list`, but should be a `dict`
+            [{'my_str': 'test', 'my_int': 2, 'my_bool': True}],
+            pytest.raises(ParseError), None
+        )
+    ]
+)
+def test_typed_dict_with_one_field_not_required(input, expectation, expected):
+    """
+    Test case for loading to a TypedDict whose fields are all mandatory
+    except for one field, whose annotated type is NotRequired.
+
+    """
+    class MyDict(TypedDict):
+        my_str: str
+        my_bool: bool
+        my_int: NotRequired[int]
+
+    @dataclass
+    class MyClass(JSONSerializable):
+        my_typed_dict: MyDict
+
+    d = {'myTypedDict': input}
+
+    with expectation:
+        result = MyClass.from_dict(d)
+
+        log.debug('Parsed object: %r', result)
+        assert result.my_typed_dict == expected
+
+
+@pytest.mark.skipif(PY36 or PY38, reason='requires Python 3.9 or higher')
+@pytest.mark.parametrize(
+    'input,expectation,expected',
+    [
+        (
+            {}, pytest.raises(ParseError), None
+        ),
+        (
+            {'my_int': 2}, does_not_raise(), {'my_int': 2}
+        ),
+        (
+            {'key': 'value'}, pytest.raises(ParseError), None
+        ),
+        (
+            {'key': 'value', 'my_int': 2}, does_not_raise(),
+            {'my_int': 2}
+        ),
+        (
+            {'my_str': 'test', 'my_int': 2,
+             'my_bool': True, 'other_key': 'testing'}, does_not_raise(),
+            {'my_str': 'test', 'my_int': 2, 'my_bool': True}
+        ),
+        (
+            {'my_str': 3}, pytest.raises(ParseError), None
+        ),
+        (
+            {'my_str': 'test', 'my_int': 'test', 'my_bool': True},
+            pytest.raises(ValueError),
+            {'my_str': 'test', 'my_int': 'test', 'my_bool': True}
+        ),
+        (
+            {'my_str': 'test', 'my_int': 2, 'my_bool': True},
+            does_not_raise(),
+            {'my_str': 'test', 'my_int': 2, 'my_bool': True}
+        )
+    ]
+)
+def test_typed_dict_with_one_field_required(input, expectation, expected):
+    """
+    Test case for loading to a TypedDict whose fields are all optional
+    except for one field, whose annotated type is Required.
+
+    """
+    class MyDict(TypedDict, total=False):
+        my_str: str
+        my_bool: bool
+        my_int: Required[int]
 
     @dataclass
     class MyClass(JSONSerializable):

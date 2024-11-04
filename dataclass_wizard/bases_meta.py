@@ -8,7 +8,7 @@ from datetime import datetime, date
 from typing import Type, Optional, Dict, Union
 
 from .abstractions import AbstractJSONWizard
-from .bases import AbstractMeta, M
+from .bases import AbstractMeta, META
 from .class_helper import (
     _META_INITIALIZER, _META,
     get_outer_class_name, get_class_name, create_new_class,
@@ -176,7 +176,7 @@ def LoadMeta(*, debug_enabled: bool = False,
              raise_on_unknown_json_key: bool = False,
              json_key_to_field: Dict[str, str] = None,
              key_transform: Union[LetterCase, str] = None,
-             tag: str = None) -> M:
+             tag: str = None) -> META:
     """
     Helper function to setup the ``Meta`` Config for the JSON load
     (de-serialization) process, which is intended for use alongside the
@@ -216,7 +216,7 @@ def DumpMeta(*, debug_enabled: bool = False,
              marshal_date_time_as: Union[DateTimeTo, str] = None,
              key_transform: Union[LetterCase, str] = None,
              tag: str = None,
-             skip_defaults: bool = False) -> M:
+             skip_defaults: bool = False) -> META:
     """
     Helper function to setup the ``Meta`` Config for the JSON dump
     (serialization) process, which is intended for use alongside the

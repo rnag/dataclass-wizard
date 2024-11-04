@@ -2,18 +2,41 @@
 History
 =======
 
+0.25.0 (2024-11-03)
+-------------------
+
+**Features and Improvements**
+
+* Add support for `pathlib.Path`_. Thanks to :user:`assafge` in :pr:`79`.
+
+.. _pathlib.Path: https://docs.python.org/3/library/pathlib.html#basic-use
+
+0.24.1 (2024-11-03)
+-------------------
+
+* Resolve ``mypy`` typing issues. Thanks to :user:`AdiNar` in :pr:`64`.
+
+0.24.0 (2024-11-03)
+-------------------
+
+**Features and Improvements**
+
+* :pr:`125`: add support for ``typing.Required``, ``NotRequired``
+
+**Bugfixes**
+
+* Fixed by :pr:`125`: Annotating ``TypedDict`` field with one of ``Required`` or ``NotRequired`` wrappers introduced in Python 3.11, no longer raises a ``TypeError``
+  -- credits to :user:`claui`.
+
 0.23.0 (2024-09-18)
 -------------------
 
-* `#94`_: Allows the ability to define keys in JSON/dataclass
-  that do not undergo transformation -- credits to `@cquick01`_.
+* :pr:`94`: Allows the ability to define keys in JSON/dataclass
+  that do not undergo transformation -- credits to :user:`cquick01`.
 
   * ``LetterCase.NONE`` - Performs no conversion on strings.
 
     * ex: `MY_FIELD_NAME` -> `MY_FIELD_NAME`
-
-.. _@cquick01: https://github.com/cquick01
-.. _#94: https://github.com/rnag/dataclass-wizard/pull/94
 
 0.22.3 (2024-01-29)
 -------------------
