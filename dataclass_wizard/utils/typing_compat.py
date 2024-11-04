@@ -22,7 +22,7 @@ import typing
 from collections.abc import Callable
 
 from .string_conv import repl_or_with_union
-from ..constants import PY36, PY38, PY310_OR_ABOVE, PY39
+from ..constants import PY36, PY38, PY310_OR_ABOVE, PY313_OR_ABOVE, PY39
 from ..type_def import FREF, PyLiteral, PyTypedDicts, PyForwardRef
 
 
@@ -364,7 +364,7 @@ def eval_forward_ref(base_type: FREF,
     # Evaluate the ForwardRef here
     base_globals = sys.modules[cls.__module__].__dict__
 
-    if sys.version_info >= (3, 13):
+    if PY313_OR_ABOVE:
         # noinspection PyProtectedMember
         return typing._eval_type(base_type, base_globals, _TYPING_LOCALS, type_params=())
     else:

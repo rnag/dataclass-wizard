@@ -9,7 +9,7 @@ from .dumpers import asdict
 from .loaders import fromdict, fromlist
 from .type_def import Decoder, Encoder, JSONObject, ListOfJSONObject
 # noinspection PyProtectedMember
-from .utils.compatibility import _create_fn, _set_new_attribute
+from .utils.dataclass_compat import _create_fn, _set_new_attribute
 
 
 class JSONSerializable(AbstractJSONWizard):
