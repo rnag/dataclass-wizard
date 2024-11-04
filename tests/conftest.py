@@ -28,6 +28,9 @@ PY36 = sys.version_info[:2] == (3, 6)
 # Check if we are running Python 3.9+
 PY39_OR_ABOVE = sys.version_info[:2] >= (3, 9)
 
+# Check if we are running Python 3.10
+PY310 = sys.version_info[:2] == (3, 10)
+
 # Check if we are running Python 3.10+
 PY310_OR_ABOVE = sys.version_info[:2] >= (3, 10)
 
@@ -53,6 +56,11 @@ except ImportError:
     from typing_extensions import Deque
     # Introduced in Python 3.8
     from typing_extensions import Literal
+    from typing_extensions import TypedDict
+
+# Weird, test cases for `TypedDict` fail in Python 3.10.15 (3.10:latest)
+# So apparently, we need to use the one from `typing_extensions`.
+if PY310:
     from typing_extensions import TypedDict
 
 # typing.Annotated: Introduced in Python 3.9
