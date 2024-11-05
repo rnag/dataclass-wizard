@@ -2,6 +2,23 @@
 History
 =======
 
+0.26.0 (2024-11-05)
+-------------------
+
+* This will be the latest (minor) release with support for Python 3.6, 3.7, and 3.8 --
+  all of which have reached *end-of-life*!
+
+**Features and Improvements**
+
+* Add compatability and support for **Python 3.13**. Thanks to :user:`benjjs` in :pr:`129`!
+
+**Bugfixes**
+
+* Fix: :meth:`LiteralParser.__contains__` method compares value of item with `Literal`_ arguments.
+  Contributed by :user:`mikeweltevrede` in :pr:`111`.
+
+.. _Literal: https://docs.python.org/3/library/typing.html#typing.Literal
+
 0.25.0 (2024-11-03)
 -------------------
 
