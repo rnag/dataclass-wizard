@@ -16,6 +16,7 @@ __all__ = [
     'eval_forward_ref_if_needed'
 ]
 
+import functools
 import sys
 import types
 import typing
@@ -351,6 +352,14 @@ def is_annotated(cls):
     return _is_annotated(cls)
 
 
+if PY313_OR_ABOVE:
+    # noinspection PyProtectedMember,PyUnresolvedReferences
+    _eval_type = functools.partial(typing._eval_type, type_params=())
+else:
+    # noinspection PyProtectedMember,PyUnresolvedReferences
+    _eval_type = typing._eval_type
+
+
 def eval_forward_ref(base_type: FREF,
                      cls: typing.Type):
     """
@@ -364,12 +373,7 @@ def eval_forward_ref(base_type: FREF,
     # Evaluate the ForwardRef here
     base_globals = sys.modules[cls.__module__].__dict__
 
-    if PY313_OR_ABOVE:
-        # noinspection PyProtectedMember
-        return typing._eval_type(base_type, base_globals, _TYPING_LOCALS, type_params=())
-    else:
-        # noinspection PyProtectedMember
-        return typing._eval_type(base_type, base_globals, _TYPING_LOCALS)
+    return _eval_type(base_type, base_globals, _TYPING_LOCALS)
 
 
 def eval_forward_ref_if_needed(base_type: typing.Union[typing.Type, FREF],

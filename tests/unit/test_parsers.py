@@ -1,10 +1,11 @@
-from typing import Literal
-
 import pytest
 
 from dataclass_wizard.parsers import LiteralParser
 
+from ..conftest import Literal, PY39_OR_ABOVE
 
+
+@pytest.mark.skipif(not PY39_OR_ABOVE, reason='requires Python 3.9 or higher')
 class TestLiteralParser:
     @pytest.fixture
     def literal_parser(self) -> LiteralParser:
