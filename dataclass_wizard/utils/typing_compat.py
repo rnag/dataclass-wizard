@@ -22,7 +22,7 @@ import typing
 from collections.abc import Callable
 
 from .string_conv import repl_or_with_union
-from ..constants import PY36, PY38, PY310_OR_ABOVE, PY39
+from ..constants import PY36, PY38, PY310_OR_ABOVE, PY313_OR_ABOVE, PY39
 from ..type_def import FREF, PyLiteral, PyTypedDicts, PyForwardRef
 
 
@@ -85,10 +85,8 @@ if not PY36:    # pragma: no cover
     except ImportError:
         from typing import _AnnotatedAlias
 
-
     def _is_annotated(cls):
         return isinstance(cls, _AnnotatedAlias)
-
 
     def _is_base_generic(cls):
         if isinstance(cls, typing._GenericAlias):
@@ -142,7 +140,6 @@ if not PY36:    # pragma: no cover
         def _process_forward_annotation(base_type):
             return PyForwardRef(base_type, is_argument=False)
 
-
         def _get_origin(cls, raise_=False):
             if isinstance(cls, types.UnionType):
                 return typing.Union
@@ -180,7 +177,6 @@ if not PY36:    # pragma: no cover
                     raise
                 return cls
 
-
     def _get_named_tuple_field_types(cls, raise_=True):
         """
         Note: The latest Python versions only support the `__annotations__`
@@ -204,11 +200,9 @@ else:   # pragma: no cover
 
     from typing_extensions import AnnotatedMeta
 
-
     def _process_forward_annotation(base_type):
         return PyForwardRef(
             repl_or_with_union(base_type), is_argument=False)
-
 
     def _is_base_generic(cls):
         if isinstance(cls, (typing.GenericMeta, typing._Union)):
@@ -248,7 +242,6 @@ else:   # pragma: no cover
                     raise
                 return cls
 
-
     def _get_args(cls):
         if is_literal(cls):
             return cls.__values__
@@ -265,7 +258,6 @@ else:   # pragma: no cover
             # This can happen if it's annotated w/o a subscript, e.g.
             #   my_union: Union
             return ()
-
 
     def _get_named_tuple_field_types(cls, raise_=True):
         """
@@ -372,8 +364,12 @@ def eval_forward_ref(base_type: FREF,
     # Evaluate the ForwardRef here
     base_globals = sys.modules[cls.__module__].__dict__
 
-    # noinspection PyProtectedMember
-    return typing._eval_type(base_type, base_globals, _TYPING_LOCALS)
+    if PY313_OR_ABOVE:
+        # noinspection PyProtectedMember
+        return typing._eval_type(base_type, base_globals, _TYPING_LOCALS, type_params=())
+    else:
+        # noinspection PyProtectedMember
+        return typing._eval_type(base_type, base_globals, _TYPING_LOCALS)
 
 
 def eval_forward_ref_if_needed(base_type: typing.Union[typing.Type, FREF],

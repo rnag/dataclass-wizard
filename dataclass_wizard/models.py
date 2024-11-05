@@ -1,6 +1,5 @@
 import json
-# noinspection PyProtectedMember
-from dataclasses import MISSING, Field, _create_fn
+from dataclasses import MISSING, Field
 from datetime import date, datetime, time
 from typing import (cast, Collection, Callable,
                     Optional, List, Union, Type, Generic)
@@ -9,6 +8,8 @@ from .bases import META
 from .constants import PY310_OR_ABOVE
 from .decorators import cached_property
 from .type_def import T, DT, Encoder, PyTypedDict, FileEncoder
+# noinspection PyProtectedMember
+from .utils.dataclass_compat import _create_fn
 from .utils.type_conv import as_datetime, as_time, as_date
 
 

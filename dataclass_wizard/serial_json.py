@@ -1,6 +1,4 @@
 import json
-# noinspection PyProtectedMember
-from dataclasses import _create_fn, _set_new_attribute
 from typing import Type, List, Union, AnyStr
 
 from .abstractions import AbstractJSONWizard, W
@@ -10,6 +8,8 @@ from .decorators import _alias
 from .dumpers import asdict
 from .loaders import fromdict, fromlist
 from .type_def import Decoder, Encoder, JSONObject, ListOfJSONObject
+# noinspection PyProtectedMember
+from .utils.dataclass_compat import _create_fn, _set_new_attribute
 
 
 class JSONSerializable(AbstractJSONWizard):
