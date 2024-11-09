@@ -90,7 +90,7 @@ class LiteralParser(AbstractParser[Type[M], M]):
         type. Checks that the item is incorporated in the given expected values of
         the Literal.
         """
-        return item in self.value_to_type.keys()
+        return item in self.value_to_type
 
     def __call__(self, o: Any) -> M:
         """
