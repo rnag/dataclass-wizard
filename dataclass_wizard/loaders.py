@@ -607,7 +607,11 @@ def load_func_for_dataclass(
     try:
         field_to_parser = dataclass_field_to_load_parser(cls_loader, cls, config)
     except RecursionError as e:
-        raise RecursiveClassError(cls) from None
+        if meta.recursive_classes:
+            # recursion-safe loader is already in use; something else must have gone wrong
+            raise
+        else:
+            raise RecursiveClassError(cls) from None
 
     # A cached mapping of each key in a JSON or dictionary object to the
     # resolved dataclass field name; useful so we don't need to do a case
