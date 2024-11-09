@@ -2,6 +2,11 @@
 History
 =======
 
+0.26.1 (2024-11-09)
+-------------------
+
+* Add ``py.typed`` marker, which finalizes :issue:`51`. Credits to :user:`stdedos` in :pr:`136`.
+
 0.26.0 (2024-11-05)
 -------------------
 
