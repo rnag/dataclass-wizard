@@ -1801,3 +1801,30 @@ def test_load_with_inner_model_when_data_is_wrong_type():
     # the error should mention that we want a dict, but get a list
     assert e.ann_type == dict
     assert e.obj_type == list
+
+
+def test_load_with_python_3_11_regression():
+    """
+    This test case is to confirm intended operation with `typing.Any`
+    (either explicit or implicit in plain `list` or `dict` type
+    annotations).
+
+    Note: I have been unable to reproduce [the issue] posted on GitHub.
+    I've tested this on multiple Python versions on Mac, including
+    3.10.6, 3.11.0, 3.11.5, 3.11.10.
+
+    See [the issue].
+
+    [the issue]: https://github.com/rnag/dataclass-wizard/issues/89
+    """
+
+    @dataclass
+    class Item(JSONSerializable):
+        a: dict
+        b: Optional[dict]
+        c: Optional[list] = None
+
+    item = Item.from_json('{"a": {}, "b": null}')
+
+    assert item.a == {}
+    assert item.b is item.c is None
