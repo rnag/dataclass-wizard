@@ -1801,3 +1801,50 @@ def test_load_with_inner_model_when_data_is_wrong_type():
     # the error should mention that we want a dict, but get a list
     assert e.ann_type == dict
     assert e.obj_type == list
+
+
+def test_with_self_referential_dataclasses_1():
+    """
+    Test loading JSON data, when a dataclass model has cyclic
+    or self-referential dataclasses. For example, A -> A -> A.
+    """
+    @dataclass
+    class A:
+        a: Optional['A'] = None
+
+    # enable support for self-referential / recursive dataclasses
+    LoadMeta(recursive_classes=True).bind_to(A)
+
+    # Fix for local test cases so the forward reference works
+    globals().update(locals())
+
+    # assert that `fromdict` with a recursive, self-referential
+    # input `dict` works as expected.
+    a = fromdict(A, {'a': {'a': {'a': None}}})
+    assert a == A(a=A(a=A(a=None)))
+
+
+def test_with_self_referential_dataclasses_2():
+    """
+    Test loading JSON data, when a dataclass model has cyclic
+    or self-referential dataclasses. For example, A -> B -> A -> B.
+    """
+    @dataclass
+    class A(JSONWizard):
+        class _(JSONWizard.Meta):
+            # enable support for self-referential / recursive dataclasses
+            recursive_classes = True
+
+        b: Optional['B'] = None
+
+    @dataclass
+    class B:
+        a: Optional['A'] = None
+
+    # Fix for local test cases so the forward reference works
+    globals().update(locals())
+
+    # assert that `fromdict` with a recursive, self-referential
+    # input `dict` works as expected.
+    a = fromdict(A, {'b': {'a': {'b': {'a': None}}}})
+    assert a == A(b=B(a=A(b=B())))

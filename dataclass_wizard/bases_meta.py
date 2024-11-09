@@ -14,6 +14,7 @@ from .class_helper import (
     get_outer_class_name, get_class_name, create_new_class,
     json_field_to_dataclass_field, dataclass_field_to_json_field
 )
+from .constants import TAG
 from .decorators import try_with_load
 from .dumpers import get_dumper
 from .enums import LetterCase, DateTimeTo
@@ -173,10 +174,13 @@ class BaseJSONWizardMeta(AbstractMeta):
 # noinspection PyPep8Naming
 def LoadMeta(*, debug_enabled: bool = False,
              recursive: bool = True,
+             recursive_classes: bool = False,
              raise_on_unknown_json_key: bool = False,
              json_key_to_field: Dict[str, str] = None,
              key_transform: Union[LetterCase, str] = None,
-             tag: str = None) -> META:
+             tag: str = None,
+             tag_key: str = TAG,
+             auto_assign_tags: bool = False) -> META:
     """
     Helper function to setup the ``Meta`` Config for the JSON load
     (de-serialization) process, which is intended for use alongside the
@@ -198,11 +202,14 @@ def LoadMeta(*, debug_enabled: bool = False,
     base_dict = {
         '__slots__': (),
         'raise_on_unknown_json_key': raise_on_unknown_json_key,
+        'recursive_classes': recursive_classes,
         'key_transform_with_load': key_transform,
         'json_key_to_field': json_key_to_field,
         'debug_enabled': debug_enabled,
         'recursive': recursive,
         'tag': tag,
+        'tag_key': tag_key,
+        'auto_assign_tags': auto_assign_tags,
     }
 
     # Create a new subclass of :class:`AbstractMeta`
