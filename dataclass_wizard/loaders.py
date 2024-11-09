@@ -20,7 +20,8 @@ from .class_helper import (
 )
 from .constants import _LOAD_HOOKS, SINGLE_ARG_ALIAS, IDENTITY
 from .decorators import _alias, _single_arg_alias, resolve_alias_func, _identity
-from .errors import ParseError, MissingFields, UnknownJSONKey, MissingData
+from .errors import (ParseError, MissingFields, UnknownJSONKey,
+                     MissingData, RecursiveClassError)
 from .log import LOG
 from .models import Extras, _PatternedDT
 from .parsers import *
@@ -290,12 +291,22 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
                 elif isinstance(base_type, type):
 
                     if is_dataclass(base_type):
-                        base_type: Type[T]
-                        load_hook = load_func_for_dataclass(
-                            base_type,
-                            is_main_class=False,
-                            config=extras['config']
-                        )
+                        config: META = extras.get('config')
+
+                        # enable support for cyclic / self-referential dataclasses
+                        # see https://github.com/rnag/dataclass-wizard/issues/62
+                        if config and config.recursive_classes:
+                            # noinspection PyTypeChecker
+                            return RecursionSafeParser(
+                                base_cls, extras, base_type, hook=None
+                            )
+                        else:  # else, logic is same as normal
+                            base_type: Type[T]
+                            load_hook = load_func_for_dataclass(
+                                base_type,
+                                is_main_class=False,
+                                config=extras['config']
+                            )
 
                     elif issubclass(base_type, Enum):
                         load_hook = hooks.get(Enum)
@@ -593,7 +604,14 @@ def load_func_for_dataclass(
 
     # This contains a mapping of the original field name to the parser for its
     # annotated type; the item lookup *can* be case-insensitive.
-    field_to_parser = dataclass_field_to_load_parser(cls_loader, cls, config)
+    try:
+        field_to_parser = dataclass_field_to_load_parser(cls_loader, cls, config)
+    except RecursionError as e:
+        if meta.recursive_classes:
+            # recursion-safe loader is already in use; something else must have gone wrong
+            raise
+        else:
+            raise RecursiveClassError(cls) from None
 
     # A cached mapping of each key in a JSON or dictionary object to the
     # resolved dataclass field name; useful so we don't need to do a case
