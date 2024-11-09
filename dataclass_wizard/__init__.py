@@ -98,7 +98,6 @@ __all__ = [
 import logging
 
 from .bases_meta import LoadMeta, DumpMeta
-from .constants import PY36
 from .dumpers import DumpMixin, setup_default_dumper, asdict
 from .loaders import LoadMixin, setup_default_loader, fromlist, fromdict
 from .models import (json_field, json_key, Container,
@@ -122,10 +121,3 @@ setup_default_loader()
 # Setup the default type hooks to use when converting `dataclass` instances to
 # a JSON `string` or a Python `dict` object.
 setup_default_dumper()
-
-if PY36:    # pragma: no cover
-    # Python 3.6 requires a backport for `datetime.fromisoformat()`
-    # noinspection PyPackageRequirements
-    # noinspection PyUnresolvedReferences
-    from backports.datetime_fromisoformat import MonkeyPatch
-    MonkeyPatch.patch_fromisoformat()
