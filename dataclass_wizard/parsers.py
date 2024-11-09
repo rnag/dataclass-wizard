@@ -1,6 +1,7 @@
 __all__ = ['IdentityParser',
            'SingleArgParser',
            'Parser',
+           'RecursionSafeParser',
            'PatternedDTParser',
            'LiteralParser',
            'UnionParser',
@@ -36,6 +37,7 @@ from .utils.typing_compat import (
 
 # Type defs
 GetParserType = Callable[[Type[T], Type, Extras], AbstractParser]
+LoadHookType = Callable[[Any], T]
 TupleOfParsers = Tuple[AbstractParser, ...]
 
 
@@ -51,7 +53,7 @@ class IdentityParser(AbstractParser[Type[T], T]):
 class SingleArgParser(AbstractParser[Type[T], T]):
     __slots__ = ('hook', )
 
-    hook: Callable[[Any], T]
+    hook: LoadHookType
 
     # noinspection PyDataclass
     def __post_init__(self, *_):
@@ -70,6 +72,44 @@ class Parser(AbstractParser[Type[T], T]):
 
     def __call__(self, o: Any) -> T:
         return self.hook(o, self.base_type)
+
+
+@dataclass
+class RecursionSafeParser(AbstractParser):
+    """
+    Parser to handle cyclic or self-referential dataclasses.
+
+    For example::
+
+        @dataclass
+        class A:
+            a: A | None = None
+
+        instance = fromdict(A, {'a': {'a': {'a': None}}})
+    """
+    __slots__ = ('extras', 'hook')
+
+    extras: Extras
+    hook: Optional[LoadHookType]
+
+    def load_hook_func(self) -> LoadHookType:
+        from .loaders import load_func_for_dataclass
+
+        return load_func_for_dataclass(
+            self.base_type,
+            is_main_class=False,
+            config=self.extras['config']
+        )
+
+    # TODO: decorating `load_hook_func` with `@cached_property` could
+    #   be an alternate, bit cleaner approach.
+    def __call__(self, o: Any) -> T:
+        load_hook = self.hook
+
+        if not load_hook:
+            load_hook = self.hook = self.load_hook_func()
+
+        return load_hook(o)
 
 
 @dataclass
