@@ -667,6 +667,61 @@ A brief example of the intended usage is shown below:
     # serialization. In fact, it'll be faster than parsing the custom patterns!
     assert class_obj == fromdict(MyClass, asdict(class_obj))
 
+"Recursive" Dataclasses with Cyclic References
+----------------------------------------------
+
+Prior to version `v0.27.0`, dataclasses with cyclic references
+or self-referential structures were not supported. This
+limitation is shown in the following toy example:
+
+.. code:: python3
+
+    from dataclasses import dataclass
+
+    @dataclass
+    class A:
+        a: 'A | None' = None
+
+    a = A(a=A(a=A(a=A())))
+
+This was a `longstanding issue`_.
+
+New in ``v0.27.0``: The Dataclass Wizard now extends its support
+to cyclic and self-referential dataclass models.
+
+The example below demonstrates recursive dataclasses with cyclic
+dependencies, following the pattern ``A -> B -> A -> B``. For more details, see
+the `Cyclic or "Recursive" Dataclasses`_ section in the documentation.
+
+.. code:: python3
+
+    from __future__ import annotations  # This can be removed in Python 3.10+
+
+    from dataclasses import dataclass
+
+    from dataclass_wizard import JSONWizard
+
+
+    @dataclass
+    class A(JSONWizard):
+        class _(JSONWizard.Meta):
+            # enable support for self-referential / recursive dataclasses
+            recursive_classes = True
+
+        b: 'B | None' = None
+
+
+    @dataclass
+    class B:
+        a: A | None = None
+
+
+    # confirm that `from_dict` with a recursive, self-referential
+    # input `dict` works as expected.
+    a = A.from_dict({'b': {'a': {'b': {'a': None}}}})
+
+    assert a == A(b=B(a=A(b=B())))
+
 Dataclasses in ``Union`` Types
 ------------------------------
 
@@ -923,4 +978,6 @@ This package was created with Cookiecutter_ and the `rnag/cookiecutter-pypackage
 .. _`Patterned Date and Time`: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/patterned_date_time.html
 .. _Union: https://docs.python.org/3/library/typing.html#typing.Union
 .. _`Dataclasses in Union Types`: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/dataclasses_in_union_types.html
+.. _`Cyclic or "Recursive" Dataclasses`: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/cyclic_or_recursive_dataclasses.html
 .. _as milestones: https://github.com/rnag/dataclass-wizard/milestones
+.. _longstanding issue: https://github.com/rnag/dataclass-wizard/issues/62
