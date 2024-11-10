@@ -20,9 +20,16 @@ this dependency for **Python version 3.10 or earlier**, so there's no need
 to install this library separately.
 
 With the ``typing-extensions`` module, you can take advantage of the
-following new types from the ``typing`` module for Python 3.6+. Most of them are currently
+following new types from the ``typing`` module for Python 3.9+. Most of them are currently
 supported by the ``JSONSerializable`` class, however the ones that are *not*
 are marked with an asterisk (``*``) below.
+
+Introduced in *Python 3.10*:
+    * `is_typeddict`_
+    * `Concatenate`_
+    * `ParamSpec`_
+    * `TypeAlias`_
+    * `TypeGuard`_
 
 Introduced in *Python 3.9*:
     * `Annotated`_ (added by `PEP 593`_)
@@ -31,9 +38,6 @@ Introduced in *Python 3.8*:
     * `Literal`_
     * `TypedDict`_
     * `Final`_ ``*``
-
-Introduced in *Python 3.7*:
-    * `OrderedDict`_
 
 
 ``*`` - Currently not supported by ``JSONSerializable`` at this time, though this
@@ -44,8 +48,12 @@ may change in a future release.
 .. _PEP 593: https://www.python.org/dev/peps/pep-0593/
 .. _Final: https://docs.python.org/3.8/library/typing.html#typing.Final
 .. _Literal: https://docs.python.org/3.8/library/typing.html#typing.Literal
-.. _OrderedDict: https://docs.python.org/3.7/library/typing.html#typing.OrderedDict
 .. _TypedDict: https://docs.python.org/3.8/library/typing.html#typing.TypedDict
+.. _TypeAlias: https://docs.python.org/3/library/typing.html#typing.TypeAlias
+.. _Concatenate: https://docs.python.org/3/library/typing.html#typing.Concatenate
+.. _TypeGuard: https://docs.python.org/3/library/typing.html#typing.TypeGuard
+.. _ParamSpec: https://docs.python.org/3/library/typing.html#typing.ParamSpec
+.. _is_typeddict: https://docs.python.org/3/library/typing.html#typing.is_typeddict
 
 Importing the New Types
 ~~~~~~~~~~~~~~~~~~~~~~~

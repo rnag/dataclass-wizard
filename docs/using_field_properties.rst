@@ -189,14 +189,12 @@ But fortunately... there is yet an even simpler approach!
 Using the `Annotated`_ type from the ``typing`` module (introduced in Python 3.9)
 it is possible to set a default value for the field property in the annotation itself.
 This is done by adding a ``field`` extra in the ``Annotated`` definition as
-shown below; here we'll instead import the type from the ``typing-extensions``
-module, just so that the code works for Python 3.6+ without issue.
+shown below.
 
 .. code:: python3
 
     from dataclasses import dataclass, field
-    from typing import Union
-    from typing_extensions import Annotated
+    from typing import Annotated, Union
 
     from dataclass_wizard import property_wizard
 

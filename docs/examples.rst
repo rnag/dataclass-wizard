@@ -4,8 +4,7 @@ Examples
 Simple
 ~~~~~~
 
-The following example has been tested on **Python 3.7+**. See below for an
-alternate version that is supported in Python 3.6+.
+The following example has been tested on **Python 3.9+**.
 
 .. code:: python3
 
@@ -46,10 +45,10 @@ alternate version that is supported in Python 3.6+.
     # True
     assert c == c.from_dict(c.to_dict())
 
-Using Typing Imports
---------------------
+Using Typing Imports (Deprecated)
+---------------------------------
 
-This approach is supported in **Python 3.6+**. Usage is the same as above.
+This approach is supported in **Python 3.6**. Usage is the same as above.
 
 .. code:: python3
 
