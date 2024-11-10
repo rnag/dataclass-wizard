@@ -38,34 +38,6 @@ for PyTypedDict in PyTypedDicts:
     del RealPyTypedDict
 
 
-def _get_typing_locals():  # pragma: no cover
-    """
-    Get typing locals() used to evaluate forward-declared annotations.
-
-    This allows standard collections to map to typing Generics; this is used
-    to support PEP-585 syntax for Python 3.9+ (see below)
-
-    https://www.python.org/dev/peps/pep-0585/#implementation
-    """
-    from typing import OrderedDict as PyOrderedDict
-
-    return {
-        'Union': typing.Union,
-        'tuple': typing.Tuple,
-        'list': typing.List,
-        'dict': typing.Dict,
-        'set': typing.Set,
-        'frozenset': typing.FrozenSet,
-        'type': typing.Type,
-        # `collections` imports
-        'deque': typing.Deque,
-        'defaultdict': typing.DefaultDict,
-        'OrderedDict': PyOrderedDict,
-        'Counter': typing.Counter,
-        'ChainMap': typing.ChainMap,
-    }
-
-
 def get_keys_for_typed_dict(cls):
     """
     Given a :class:`TypedDict` sub-class, returns a pair of
@@ -144,6 +116,8 @@ else:  # pragma: no cover
     )
 
     # PEP 585 is introduced in Python 3.9
+    # PEP 604 (Allows writing union types as `X | Y`) is introduced
+    #   in Python 3.10
     _TYPING_LOCALS = {'Union': typing.Union}
 
     def _process_forward_annotation(base_type):
