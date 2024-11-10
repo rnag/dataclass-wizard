@@ -633,7 +633,7 @@ A brief example of the intended usage is shown below:
 
     from dataclasses import dataclass
     from datetime import time, datetime
-    from typing import Annotated, List
+    from typing import Annotated
 
     from dataclass_wizard import fromdict, asdict, DatePattern, TimePattern, Pattern
 
@@ -643,7 +643,7 @@ A brief example of the intended usage is shown below:
         date_field: DatePattern['%m-%Y']
         dt_field: Annotated[datetime, Pattern('%m/%d/%y %H.%M.%S')]
         time_field1: TimePattern['%H:%M']
-        time_field2: Annotated[List[time], Pattern('%I:%M %p')]
+        time_field2: Annotated[list[time], Pattern('%I:%M %p')]
 
 
     data = {'date_field': '12-2022',
@@ -831,7 +831,6 @@ result. An example of both these approaches is shown below.
 
     from collections import defaultdict
     from dataclasses import field, dataclass
-    from typing import DefaultDict, List
 
     from dataclass_wizard import JSONWizard
 
@@ -845,8 +844,8 @@ result. An example of both these approaches is shown below.
         my_str: str
         other_str: str = 'any value'
         optional_str: str = None
-        my_list: List[str] = field(default_factory=list)
-        my_dict: DefaultDict[str, List[float]] = field(
+        my_list: list[str] = field(default_factory=list)
+        my_dict: defaultdict[str, list[float]] = field(
             default_factory=lambda: defaultdict(list))
 
 

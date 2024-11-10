@@ -2,6 +2,28 @@
 History
 =======
 
+0.27.0 (2024-11-09)
+-------------------
+
+**Features and Improvements**
+
+* This minor release drops support/compatibility for Python 3.6, 3.7, and 3.8 -- all of
+  which have reached End of Life (EOL). Check out the `Python End of Life Cycle here`_.
+  Side effects and results of this changes include:
+    * Fix `pyup` errors - currently pyup shows as "insecure" since we're forced into using old or outdated
+      pkg versions since most don't support Python 3.8 or earlier.
+    * Clean up most if not all `TODO`s scattered in code in library, since most of those are python version- specific anyway.
+    * More cleaner, easier to maintain codebase.
+* `Add test case`_ to satisfy :issue:`89`.
+* Add support for cyclic or "recursive" dataclasses, first mentioned in :issue:`62` (thanks to :user:`dlenski` in :pr:`138` for finalizing this!)
+
+**Bugfixes**
+
+* :issue:`62`: Cyclic or "recursive" dataclasses no longer raises a :class:`RecursionError`.
+
+.. _Python End of Life Cycle here: https://devguide.python.org/versions/#status-of-python-versions
+.. _Add test case: https://github.com/rnag/dataclass-wizard/pull/139/commits/cf2e98cb75c75dc3e566ed0205637dbd4632e159
+
 0.26.1 (2024-11-09)
 -------------------
 
