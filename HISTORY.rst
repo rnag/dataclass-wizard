@@ -2,27 +2,29 @@
 History
 =======
 
-0.27.0 (2024-11-09)
+0.27.0 (2024-11-10)
 -------------------
 
 **Features and Improvements**
 
-* This minor release drops support/compatibility for Python 3.6, 3.7, and 3.8 -- all of
-  which have reached End of Life (EOL). Check out the `Python End of Life Cycle here`_.
-  Side effects and results of this changes include:
-    * Fix `pyup` errors - currently pyup shows as "insecure" since we're forced into using old or outdated
-      pkg versions since most don't support Python 3.8 or earlier.
-    * Clean up most if not all `TODO`s scattered in code in library, since most of those are python version- specific anyway.
-    * More cleaner, easier to maintain codebase.
-* `Add test case`_ to satisfy :issue:`89`.
-* Add support for cyclic or "recursive" dataclasses, first mentioned in :issue:`62` (thanks to :user:`dlenski` in :pr:`138` for finalizing this!)
+* This minor release drops support for Python 3.6, 3.7, and 3.8, all of which have reached End of Life (EOL). Check out the Python End of Life Cycle here_. Key changes resulting from this update include:
+    * Resolved pyup errors, previously flagged as "insecure" due to outdated package versions that lacked support for Python 3.8 or earlier.
+    * Update all requirements to latest versions.
+    * Cleaned up various TODO comments scattered throughout the codebase, as many were specific to older Python versions.
+    * Simplified and improved codebase for easier maintenance.
+    * Remove everything except the ``py.typed`` file (see comment_).
+* Added `test case`_ to satisfy :issue:`89`.
+* Added support for cyclic or "recursive" dataclasses, as first mentioned in :issue:`62` (special thanks to :user:`dlenski` for finalizing this in :pr:`138`!).
 
 **Bugfixes**
 
 * :issue:`62`: Cyclic or "recursive" dataclasses no longer raises a :class:`RecursionError`.
+* Typing locals should now correctly key off the correct Python version, see the commit_ that addressed this.
 
-.. _Python End of Life Cycle here: https://devguide.python.org/versions/#status-of-python-versions
-.. _Add test case: https://github.com/rnag/dataclass-wizard/pull/139/commits/cf2e98cb75c75dc3e566ed0205637dbd4632e159
+.. _here: https://devguide.python.org/versions/#status-of-python-versions
+.. _test case: https://github.com/rnag/dataclass-wizard/pull/139/commits/cf2e98cb75c75dc3e566ed0205637dbd4632e159
+.. _comment: https://github.com/rnag/dataclass-wizard/pull/136#issuecomment-2466463153
+.. _commit: https://github.com/rnag/dataclass-wizard/pull/139/commits/310a0c28690fdfdf15a386a427d1ea9aaf8898a1
 
 0.26.1 (2024-11-09)
 -------------------
