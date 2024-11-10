@@ -10,7 +10,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, date, time, timedelta
 from typing import (
     List, Optional, Union, Tuple, Dict, NamedTuple, Type, DefaultDict,
-    Set, FrozenSet, Generic
+    Set, FrozenSet, Generic, Annotated, Literal
 )
 
 import pytest
@@ -960,7 +960,7 @@ def test_deque(input, expectation, expected):
 
     @dataclass
     class MyClass(JSONSerializable):
-        my_deque: Deque[int]
+        my_deque: deque[int]
 
     d = {'My_Deque': input}
 

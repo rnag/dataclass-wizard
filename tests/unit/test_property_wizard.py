@@ -2,12 +2,12 @@ import logging
 from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Union, List, ClassVar, DefaultDict, Set
+from typing import Union, List, ClassVar, DefaultDict, Set, Literal, Annotated
 
 import pytest
 
 from dataclass_wizard import property_wizard
-from ..conftest import Literal, Annotated, PY310_OR_ABOVE
+from ..conftest import PY310_OR_ABOVE
 
 log = logging.getLogger(__name__)
 

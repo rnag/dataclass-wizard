@@ -1,10 +1,9 @@
-from typing import ClassVar, Generic, Union, List, Tuple, Dict, Callable
+from typing import ClassVar, Generic, Union, List, Tuple, Dict, Callable, Literal
 
 import pytest
 
 from dataclass_wizard.type_def import T
 from dataclass_wizard.utils.typing_compat import get_origin, get_args
-from ...conftest import *
 
 
 @pytest.mark.parametrize(

@@ -8,18 +8,6 @@ LOG_LEVEL = os.getenv('WIZARD_LOG_LEVEL', 'ERROR').upper()
 # Current system Python version
 _PY_VERSION = sys.version_info[:2]
 
-# Check if currently running Python 3.6
-PY36 = _PY_VERSION == (3, 6)
-
-# Check if currently running Python 3.8
-PY38 = _PY_VERSION == (3, 8)
-
-# Check if currently running Python 3.8 or higher
-PY38_OR_ABOVE = _PY_VERSION >= (3, 8)
-
-# Check if currently running Python 3.9
-PY39 = _PY_VERSION == (3, 9)
-
 # Check if currently running Python 3.10 or higher
 PY310_OR_ABOVE = _PY_VERSION >= (3, 10)
 

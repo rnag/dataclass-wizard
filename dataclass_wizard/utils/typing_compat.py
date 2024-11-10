@@ -22,7 +22,7 @@ import types
 import typing
 
 from .string_conv import repl_or_with_union
-from ..constants import PY310_OR_ABOVE, PY313_OR_ABOVE, PY39
+from ..constants import PY310_OR_ABOVE, PY313_OR_ABOVE
 from ..type_def import FREF, PyLiteral, PyTypedDicts, PyForwardRef
 
 

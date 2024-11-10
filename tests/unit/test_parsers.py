@@ -1,8 +1,8 @@
 import pytest
 
-from dataclass_wizard.parsers import LiteralParser
+from typing import Literal
 
-from ..conftest import Literal
+from dataclass_wizard.parsers import LiteralParser
 
 
 class TestLiteralParser:
