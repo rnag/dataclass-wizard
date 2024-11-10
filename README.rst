@@ -86,7 +86,7 @@ Alternatively, this library is available `on conda`_ under the `conda-forge`_ ch
 
     $ conda install dataclass-wizard -c conda-forge
 
-The ``dataclass-wizard`` library officially supports **Python 3.6** or higher.
+The ``dataclass-wizard`` library officially supports **Python 3.9** or higher.
 
 .. _on conda: https://anaconda.org/conda-forge/dataclass-wizard
 .. _conda-forge: https://conda-forge.org/
@@ -133,7 +133,7 @@ Usage and Examples
 
 Using the built-in JSON marshalling support for dataclasses:
 
-    Note: The following example should work in **Python 3.7+** with the included ``__future__``
+    Note: The following example should work in **Python 3.9+** with the included ``__future__``
     import.
 
 .. code:: python3
@@ -633,9 +633,7 @@ A brief example of the intended usage is shown below:
 
     from dataclasses import dataclass
     from datetime import time, datetime
-    from typing import List
-    # Note: in Python 3.9+, you can import this from `typing` instead
-    from typing_extensions import Annotated
+    from typing import Annotated, List
 
     from dataclass_wizard import fromdict, asdict, DatePattern, TimePattern, Pattern
 
