@@ -7,10 +7,8 @@ __all__ = [
     'get_origin',
     'get_args',
     'get_keys_for_typed_dict',
-    'get_named_tuple_field_types',
     'is_typed_dict',
     'is_generic',
-    'is_base_generic',
     'is_annotated',
     'eval_forward_ref',
     'eval_forward_ref_if_needed'
@@ -20,6 +18,8 @@ import functools
 import sys
 import types
 import typing
+# noinspection PyUnresolvedReferences,PyProtectedMember
+from typing import _AnnotatedAlias
 
 from .string_conv import repl_or_with_union
 from ..constants import PY310_OR_ABOVE, PY313_OR_ABOVE
@@ -46,30 +46,8 @@ def get_keys_for_typed_dict(cls):
     return cls.__required_keys__, cls.__optional_keys__
 
 
-try:  # pragma: no cover
-    from typing_extensions import _AnnotatedAlias
-except ImportError:
-    from typing import _AnnotatedAlias
-
-
 def _is_annotated(cls):
     return isinstance(cls, _AnnotatedAlias)
-
-
-def _is_base_generic(cls):
-    if isinstance(cls, typing._GenericAlias):
-        if cls.__origin__ in {typing.Generic, typing._Protocol}:
-            return False
-
-        if isinstance(cls, typing._VariadicGenericAlias):
-            return True
-
-        return len(cls.__parameters__) > 0
-
-    if isinstance(cls, typing._SpecialForm):
-        return cls._name in {'ClassVar', 'Union', 'Optional'}
-
-    return False
 
 
 def is_literal(cls) -> bool:
@@ -133,19 +111,6 @@ else:  # pragma: no cover
             return cls
 
 
-def _get_named_tuple_field_types(cls, raise_=True):
-    """
-    Note: The latest Python versions only support the `__annotations__`
-    attribute.
-    """
-    try:
-        return cls.__annotations__
-    except AttributeError:
-        if raise_:
-            raise
-        return None
-
-
 def is_typed_dict(cls: typing.Type) -> bool:
     """
     Checks if `cls` is a sub-class of ``TypedDict``
@@ -162,13 +127,6 @@ def is_generic(cls):
     https://stackoverflow.com/a/52664522/10237506
     """
     return isinstance(cls, _BASE_GENERIC_TYPES)
-
-
-def is_base_generic(cls):
-    """
-    Detects generic base classes, for example `List` (but not `List[int]`)
-    """
-    return _is_base_generic(cls)
 
 
 def get_args(cls):
@@ -210,13 +168,6 @@ def get_origin(cls, raise_=False):
 
     """
     return _get_origin(cls, raise_=raise_)
-
-
-def get_named_tuple_field_types(cls, raise_=True):
-    """
-    Get annotations for a :class:`typing.NamedTuple` sub-class.
-    """
-    return _get_named_tuple_field_types(cls, raise_)
 
 
 def is_annotated(cls):

@@ -31,7 +31,7 @@ from .type_def import (
     T, M, S, DD, LSQ, N, NT, DT
 )
 from .utils.typing_compat import (
-    get_origin, get_args, get_named_tuple_field_types,
+    get_origin, get_args,
     get_keys_for_typed_dict, eval_forward_ref_if_needed)
 
 
@@ -482,9 +482,7 @@ class NamedTupleParser(AbstractParser[Type[NT], NT]):
                       get_parser: GetParserType):
 
         # Get the field annotations for the `NamedTuple` type
-        type_anns: Dict[str, Type[Any]] = get_named_tuple_field_types(
-            self.base_type
-        )
+        type_anns: Dict[str, Type[Any]] = self.base_type.__annotations__
 
         self.field_to_parser: Optional[FieldToParser] = {
             f: get_parser(ftype, cls, extras)
