@@ -43,7 +43,7 @@ def _get_typing_locals():  # pragma: no cover
     Get typing locals() used to evaluate forward-declared annotations.
 
     This allows standard collections to map to typing Generics; this is used
-    to support PEP-585 syntax for Python 3.7+ (see below)
+    to support PEP-585 syntax for Python 3.9+ (see below)
 
     https://www.python.org/dev/peps/pep-0585/#implementation
     """
@@ -143,11 +143,8 @@ else:  # pragma: no cover
         typing._SpecialForm,
     )
 
-    if PY39:  # PEP 585 is introduced in Python 3.9
-        _TYPING_LOCALS = {'Union': typing.Union}
-
-    else:  # Python 3.7+
-        _TYPING_LOCALS = _get_typing_locals()
+    # PEP 585 is introduced in Python 3.9
+    _TYPING_LOCALS = {'Union': typing.Union}
 
     def _process_forward_annotation(base_type):
         return PyForwardRef(
