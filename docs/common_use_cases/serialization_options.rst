@@ -21,7 +21,6 @@ approaches is shown below.
 
     from collections import defaultdict
     from dataclasses import field, dataclass
-    from typing import DefaultDict, List
 
     from dataclass_wizard import JSONWizard
 
@@ -35,8 +34,8 @@ approaches is shown below.
         my_str: str
         other_str: str = 'any value'
         optional_str: str = None
-        my_list: List[str] = field(default_factory=list)
-        my_dict: DefaultDict[str, List[float]] = field(
+        my_list: list[str] = field(default_factory=list)
+        my_dict: defaultdict[str, list[float]] = field(
             default_factory=lambda: defaultdict(list))
 
 

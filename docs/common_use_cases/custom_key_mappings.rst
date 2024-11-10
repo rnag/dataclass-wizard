@@ -36,7 +36,7 @@ with IDEs in general.
 .. code:: python3
 
     from dataclasses import dataclass, field
-    from typing_extensions import Annotated
+    from typing import Annotated
 
     from dataclass_wizard import JSONSerializable, json_field, json_key
 
@@ -165,8 +165,7 @@ Using Annotated with a :func:`json_key` argument
 .. code:: python3
 
     from dataclasses import dataclass
-    from typing import Union
-    from typing_extensions import Annotated
+    from typing import Annotated, Union
 
     from dataclass_wizard import JSONSerializable, json_key
 
