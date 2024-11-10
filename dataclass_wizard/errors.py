@@ -101,7 +101,7 @@ class ParseError(JSONWizardError):
             obj_type=self.name(self.obj_type))
 
         if self.json_object:
-            self.kwargs['json_object'] = json.dumps(self.json_object)
+            self.kwargs['json_object'] = json.dumps(self.json_object, default=str)
 
         if self.kwargs:
             sep = '\n  '
@@ -168,7 +168,7 @@ class MissingFields(JSONWizardError):
     def message(self) -> str:
         msg = self._TEMPLATE.format(
             cls=self.class_name,
-            json_string=json.dumps(self.obj),
+            json_string=json.dumps(self.obj, default=str),
             e=self.base_error,
             fields=self.fields,
             missing_fields=self.missing_fields)
@@ -217,7 +217,7 @@ class UnknownJSONKey(JSONWizardError):
     def message(self) -> str:
         msg = self._TEMPLATE.format(
             cls=self.class_name,
-            json_string=json.dumps(self.obj),
+            json_string=json.dumps(self.obj, default=str),
             fields=self.fields,
             json_key=self.json_key)
 
@@ -255,7 +255,7 @@ class MissingData(ParseError):
         msg = self._TEMPLATE.format(
             cls=self.class_name,
             nested_cls=self.nested_class_name,
-            json_string=json.dumps(self.obj),
+            json_string=json.dumps(self.obj, default=str),
             field=self.field_name,
             o=self.obj,
         )
@@ -266,3 +266,36 @@ class MissingData(ParseError):
             msg = f'{msg}{sep}{parts}'
 
         return msg
+
+
+class RecursiveClassError(JSONWizardError):
+    """
+    Error raised when we encounter a `RecursionError` due to cyclic
+    or self-referential dataclasses.
+    """
+
+    _TEMPLATE = ('Failure parsing class `{cls}`. '
+                 'Consider updating the Meta config to enable '
+                 'the `recursive_classes` flag.\n\n'
+                 'Example with `dataclass_wizard.LoadMeta`:\n'
+                 ' >>> LoadMeta(recursive_classes=True).bind_to({cls})\n\n'
+                 'For more info, please see:\n'
+                 '  https://github.com/rnag/dataclass-wizard/issues/62')
+
+    def __init__(self, cls: Type):
+        super().__init__()
+
+        self.class_name: str = self.name(cls)
+
+    @staticmethod
+    def name(obj) -> str:
+        """Return the type or class name of an object"""
+        # Uses short-circuiting with `or` to efficiently
+        # return the first valid name.
+        return (getattr(obj, '__qualname__', None)
+                or getattr(obj, '__name__', None)
+                or str(obj))
+
+    @property
+    def message(self) -> str:
+        return self._TEMPLATE.format(cls=self.class_name)

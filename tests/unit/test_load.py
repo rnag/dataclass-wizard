@@ -10,7 +10,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, date, time, timedelta
 from typing import (
     List, Optional, Union, Tuple, Dict, NamedTuple, Type, DefaultDict,
-    Set, FrozenSet, Generic
+    Set, FrozenSet, Generic, Annotated, Literal
 )
 
 import pytest
@@ -120,7 +120,6 @@ def test_fromdict_with_nested_dataclass():
     ]
 
 
-@pytest.mark.skipif(PY36, reason='requires Python 3.7 or higher')
 def test_invalid_types_with_debug_mode_enabled():
     """
     Passing invalid types (i.e. that *can't* be coerced into the annotated
@@ -178,7 +177,6 @@ def test_invalid_types_with_debug_mode_enabled():
     assert (err.ann_type, err.obj_type) == (int, dict)
 
 
-@pytest.mark.skipif(PY36, reason='requires Python 3.7 or higher')
 def test_from_dict_called_with_incorrect_type():
     """
     Calling `from_dict` with a non-`dict` argument should raise a
@@ -201,7 +199,6 @@ def test_from_dict_called_with_incorrect_type():
     assert (err.ann_type, err.obj_type) == (dict, list)
 
 
-@pytest.mark.skipif(PY36, reason='requires Python 3.7 or higher')
 def test_date_times_with_custom_pattern():
     """
     Date, time, and datetime objects with a custom date string
@@ -289,7 +286,6 @@ def test_date_times_with_custom_pattern():
     assert fromdict(MyClass, serialized_dict) == expected_obj
 
 
-@pytest.mark.skipif(PY36, reason='requires Python 3.7 or higher')
 def test_date_times_with_custom_pattern_when_input_is_invalid():
     """
     Date, time, and datetime objects with a custom date string
@@ -306,7 +302,6 @@ def test_date_times_with_custom_pattern_when_input_is_invalid():
         _ = fromdict(MyClass, data)
 
 
-@pytest.mark.skipif(PY36, reason='requires Python 3.7 or higher')
 def test_date_times_with_custom_pattern_when_annotation_is_invalid():
     """
     Date, time, and datetime objects with a custom date string
@@ -746,12 +741,7 @@ def test_optional(input, expectation, expected):
         # The actual value would end up being 0 (int) if we checked the type
         # using `isinstance` instead. However, we do an exact `type` check for
         # :class:`Union` types.
-        #
-        # NOTE: This is an xfail on Python 3.6 as mentioned below.
-        # https://stackoverflow.com/q/60154326/10237506
-        pytest.param(False, does_not_raise(), False,
-                     marks=pytest.mark.skipif(
-                         PY36, reason='requires python 3.7 or higher')),
+        (False, does_not_raise(), False),
         (0, does_not_raise(), 0),
         (None, does_not_raise(), None),
         # Since it's a float value, that results in a `TypeError` which gets
@@ -912,10 +902,7 @@ def test_timedelta(input, expectation, base_err):
         log.debug('timedelta string value: %s', result.my_td)
 
     if e:  # if an error was raised, assert the underlying error type
-        # Because on 3.6, we run into a strange error (shown below)
-        #   AttributeError: 'ExitStack' object has no attribute 'value'
-        if not PY36:
-            assert type(e.value.base_error) == base_err
+        assert type(e.value.base_error) == base_err
 
 
 @pytest.mark.parametrize(
@@ -973,7 +960,7 @@ def test_deque(input, expectation, expected):
 
     @dataclass
     class MyClass(JSONSerializable):
-        my_deque: Deque[int]
+        my_deque: deque[int]
 
     d = {'My_Deque': input}
 
@@ -1426,7 +1413,6 @@ def test_typed_dict_with_all_fields_optional(input, expectation, expected):
         assert result.my_typed_dict == expected
 
 
-@pytest.mark.skipif(PY36 or PY38, reason='requires Python 3.7 or higher')
 @pytest.mark.parametrize(
     'input,expectation,expected',
     [
@@ -1489,7 +1475,6 @@ def test_typed_dict_with_one_field_not_required(input, expectation, expected):
         assert result.my_typed_dict == expected
 
 
-@pytest.mark.skipif(PY36 or PY38, reason='requires Python 3.9 or higher')
 @pytest.mark.parametrize(
     'input,expectation,expected',
     [
@@ -1801,3 +1786,77 @@ def test_load_with_inner_model_when_data_is_wrong_type():
     # the error should mention that we want a dict, but get a list
     assert e.ann_type == dict
     assert e.obj_type == list
+
+
+def test_load_with_python_3_11_regression():
+    """
+    This test case is to confirm intended operation with `typing.Any`
+    (either explicit or implicit in plain `list` or `dict` type
+    annotations).
+
+    Note: I have been unable to reproduce [the issue] posted on GitHub.
+    I've tested this on multiple Python versions on Mac, including
+    3.10.6, 3.11.0, 3.11.5, 3.11.10.
+
+    See [the issue].
+
+    [the issue]: https://github.com/rnag/dataclass-wizard/issues/89
+    """
+
+    @dataclass
+    class Item(JSONSerializable):
+        a: dict
+        b: Optional[dict]
+        c: Optional[list] = None
+
+    item = Item.from_json('{"a": {}, "b": null}')
+
+    assert item.a == {}
+    assert item.b is item.c is None
+
+
+def test_with_self_referential_dataclasses_1():
+    """
+    Test loading JSON data, when a dataclass model has cyclic
+    or self-referential dataclasses. For example, A -> A -> A.
+    """
+    @dataclass
+    class A:
+        a: Optional['A'] = None
+
+    # enable support for self-referential / recursive dataclasses
+    LoadMeta(recursive_classes=True).bind_to(A)
+
+    # Fix for local test cases so the forward reference works
+    globals().update(locals())
+
+    # assert that `fromdict` with a recursive, self-referential
+    # input `dict` works as expected.
+    a = fromdict(A, {'a': {'a': {'a': None}}})
+    assert a == A(a=A(a=A(a=None)))
+
+
+def test_with_self_referential_dataclasses_2():
+    """
+    Test loading JSON data, when a dataclass model has cyclic
+    or self-referential dataclasses. For example, A -> B -> A -> B.
+    """
+    @dataclass
+    class A(JSONWizard):
+        class _(JSONWizard.Meta):
+            # enable support for self-referential / recursive dataclasses
+            recursive_classes = True
+
+        b: Optional['B'] = None
+
+    @dataclass
+    class B:
+        a: Optional['A'] = None
+
+    # Fix for local test cases so the forward reference works
+    globals().update(locals())
+
+    # assert that `fromdict` with a recursive, self-referential
+    # input `dict` works as expected.
+    a = fromdict(A, {'b': {'a': {'b': {'a': None}}}})
+    assert a == A(b=B(a=A(b=B())))

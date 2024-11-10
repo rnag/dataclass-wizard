@@ -33,7 +33,7 @@ build:
   script: {{ PYTHON }} -m pip install . -vv
   noarch: python
   # Add the line "skip: True  # [py<35]" (for example) to limit to Python 3.5 and newer, or "skip: True  # [not win]" to limit to Windows.
-  skip: True  # [py<36]
+  skip: True  # [py<39]
 
 requirements:
   host:
@@ -41,9 +41,7 @@ requirements:
     - pip
   run:
     - python
-    - backports-datetime-fromisoformat ==1.0.0  # [py==36]
-    - dataclasses  # [py==36]
-    - typing-extensions >=3.7.4.2  # [py<=39]
+    - typing-extensions >=4  # [py<=310]
 
 test:
   imports:
@@ -71,7 +69,7 @@ about:
   description: |
     The dataclass-wizard library provides a set of simple, yet
     elegant *wizarding* tools for interacting with the Python
-    `dataclasses` module in Python 3.6+.
+    `dataclasses` module in Python 3.9+.
 
     The primary use is as a fast serialization framework that enables
     dataclass instances to be converted to/from JSON; this works well

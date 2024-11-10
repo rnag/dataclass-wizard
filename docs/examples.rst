@@ -4,8 +4,7 @@ Examples
 Simple
 ~~~~~~
 
-The following example has been tested on **Python 3.7+**. See below for an
-alternate version that is supported in Python 3.6+.
+The following example has been tested on **Python 3.9+**.
 
 .. code:: python3
 
@@ -46,10 +45,10 @@ alternate version that is supported in Python 3.6+.
     # True
     assert c == c.from_dict(c.to_dict())
 
-Using Typing Imports
---------------------
+Using Typing Imports (Deprecated)
+---------------------------------
 
-This approach is supported in **Python 3.6+**. Usage is the same as above.
+This approach is supported in **Python 3.6**. Usage is the same as above.
 
 .. code:: python3
 
@@ -74,18 +73,16 @@ A (More) Complete Example
     from collections import defaultdict
     from dataclasses import dataclass, field
     from datetime import datetime
-    from typing import Optional, List, Union, Dict, Any, NamedTuple, DefaultDict
-    # Note: for Python 3.9+, you can import the following from `typing` instead
-    from typing_extensions import Literal
+    from typing import Optional, Literal, Union, Any, NamedTuple
 
     from dataclass_wizard import JSONSerializable
 
 
     @dataclass
     class MyTestClass(JSONSerializable):
-        my_ledger: Dict[str, Any]
+        my_ledger: dict[str, Any]
         the_answer_to_life: Optional[int]
-        people: List['Person']
+        people: list['Person']
         is_enabled: bool = True
 
 
@@ -95,8 +92,8 @@ A (More) Complete Example
         age: int
         birthdate: datetime
         gender: Literal['M', 'F', 'N/A']
-        occupation: Union[str, List[str]]
-        hobbies: DefaultDict[str, List[str]] = field(
+        occupation: Union[str, list[str]]
+        hobbies: defaultdict[str, list[str]] = field(
             default_factory=lambda: defaultdict(list))
 
 

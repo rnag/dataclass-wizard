@@ -25,7 +25,7 @@ Here is an example to demonstrate the usage of these helper functions:
 
     from dataclasses import dataclass
     from datetime import datetime
-    from typing import List, Optional, Union
+    from typing import Optional, Union
 
     from dataclass_wizard import fromdict, asdict, DumpMeta
 
@@ -34,7 +34,7 @@ Here is an example to demonstrate the usage of these helper functions:
     class Container:
         id: int
         created_at: datetime
-        my_elements: List['MyElement']
+        my_elements: list['MyElement']
 
 
     @dataclass

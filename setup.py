@@ -12,33 +12,22 @@ package_name = 'dataclass_wizard'
 packages = find_packages(include=[package_name, f'{package_name}.*'])
 
 requires = [
-    'typing-extensions>=3.7.4.2; python_version <= "3.9"',
-    'dataclasses; python_version == "3.6"',
-    'backports-datetime-fromisoformat==1.0.0; python_version == "3.6"'
+    'typing-extensions>=4; python_version == "3.9" or python_version == "3.10"',
 ]
 
-# TODO update once we drop support for Python 3.6 & 3.7
-# if (requires_dev_file := here / 'requirements-dev.txt').exists():
-requires_dev_file = here / 'requirements-dev.txt'
-if requires_dev_file.exists():
+if (requires_dev_file := here / 'requirements-dev.txt').exists():
     with requires_dev_file.open() as requires_dev_txt:
         dev_requires = [str(req) for req in parse_requirements(requires_dev_txt)]
 else:   # Running on CI
     dev_requires = []
 
-# TODO update once we drop support for Python 3.6 & 3.7
-# if (requires_docs_file := here / 'docs' / 'requirements.txt').exists():
-requires_docs_file = here / 'docs' / 'requirements.txt'
-if requires_docs_file.exists():
+if (requires_docs_file := here / 'docs' / 'requirements.txt').exists():
     with requires_docs_file.open() as requires_docs_txt:
         doc_requires = [str(req) for req in parse_requirements(requires_docs_txt)]
 else:   # Running on CI
     doc_requires = []
 
-# TODO update once we drop support for Python 3.6 & 3.7
-# if (requires_test_file := here / 'requirements-test.txt').exists():
-requires_test_file = here / 'requirements-test.txt'
-if requires_test_file.exists():
+if (requires_test_file := here / 'requirements-test.txt').exists():
     with requires_test_file.open() as requires_test_txt:
         test_requirements = [str(req) for req in parse_requirements(requires_test_txt)]
 else:   # Running on CI
@@ -87,9 +76,6 @@ setup(
         'Natural Language :: English',
         'Programming Language :: Python :: 3 :: Only',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.6',
-        'Programming Language :: Python :: 3.7',
-        'Programming Language :: Python :: 3.8',
         'Programming Language :: Python :: 3.9',
         'Programming Language :: Python :: 3.10',
         'Programming Language :: Python :: 3.11',

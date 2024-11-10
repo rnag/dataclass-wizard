@@ -148,15 +148,6 @@ def try_with_load_with_single_arg(original_fn: Callable,
     return new_func
 
 
-def discard_kwargs(f):
-
-    @wraps(f)
-    def new_func(*args, **_kwargs):
-        return f(*args)
-
-    return new_func
-
-
 def _alias(default: Callable) -> Callable[[T], T]:
     """
     Decorator which re-assigns a function `_f` to point to `default` instead.

@@ -17,7 +17,7 @@ and declare and use field properties with default values.
 
     from dataclasses import dataclass, field
     from datetime import datetime
-    from typing import Optional, List
+    from typing import Optional
 
     from dataclass_wizard import JSONSerializable, property_wizard
 
@@ -26,7 +26,7 @@ and declare and use field properties with default values.
     class MyClass(JSONSerializable, metaclass=property_wizard):
 
         my_str: Optional[str]
-        list_of_int: List[int] = field(default_factory=list)
+        list_of_int: list[int] = field(default_factory=list)
         # You can also define this as `my_dt`, however only the annotation
         # will carry over in that case, since the value is re-declared by
         # the property below. See also the 'Using Field Properties' section

@@ -134,6 +134,12 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
     # apply in a recursive manner.
     recursive: ClassVar[bool] = True
 
+    # True to support cyclic or self-referential dataclasses. For example,
+    # the type of a dataclass field in class `A` refers to `A` itself.
+    #
+    # See https://github.com/rnag/dataclass-wizard/issues/62 for more details.
+    recursive_classes: ClassVar[bool] = False
+
     # True to raise an class:`UnknownJSONKey` when an unmapped JSON key is
     # encountered when `from_dict` or `from_json` is called; an unknown key is
     # one that does not have a known mapping to a dataclass field.

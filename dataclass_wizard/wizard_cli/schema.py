@@ -153,11 +153,7 @@ class PyCodeGenerator:
 
 # Global flags (generally passed in via command-line) which are shared by
 # classes and functions.
-#
-# Note: unfortunately we can't annotate it as below, because Python 3.6
-# complains.
-#   Globals: '_Globals' = None
-Globals = None
+Globals: '_Globals | None' = None
 
 
 @dataclass

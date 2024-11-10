@@ -45,7 +45,7 @@ The usage is shown below, and is again pretty straightforward.
     from dataclasses import dataclass
     from datetime import datetime
 
-    from typing_extensions import Annotated
+    from typing import Annotated
 
     from dataclass_wizard import JSONWizard, Pattern, DatePattern, TimePattern
 
@@ -104,9 +104,8 @@ of date-time, for example a subclass of :class:`date` if so desired.
 
     from dataclasses import dataclass
     from datetime import datetime, time
-    from typing import List, Dict
 
-    from typing_extensions import Annotated
+    from typing import Annotated
 
     from dataclass_wizard import JSONWizard, Pattern
 
@@ -120,8 +119,8 @@ of date-time, for example a subclass of :class:`date` if so desired.
     @dataclass
     class MyClass(JSONWizard):
 
-        time_field: Annotated[List[MyTime], Pattern('%I:%M %p')]
-        dt_mapping: Annotated[Dict[int, datetime], Pattern('%b.%d.%y %H,%M,%S')]
+        time_field: Annotated[list[MyTime], Pattern('%I:%M %p')]
+        dt_mapping: Annotated[dict[int, datetime], Pattern('%b.%d.%y %H,%M,%S')]
 
 
     data = {'time_field': ['3:45 PM', '1:20 am', '12:30 pm'],

@@ -4,7 +4,7 @@ Overview
 Requirements
 ~~~~~~~~~~~~
 
-The ``dataclass-wizard`` library officially supports **Python 3.6+**
+The ``dataclass-wizard`` library officially supports **Python 3.9+**
 
 There are no core requirements outside of the Python standard library. That being
 said, this library *does* utilize a few conditional dependencies:
@@ -12,8 +12,6 @@ said, this library *does* utilize a few conditional dependencies:
 * `typing-extensions` - this is a lightweight and highly useful library that backports
   the most recently added features to the ``typing`` module. For more info,
   check out the :doc:`python_compatibility` section.
-* `dataclasses` - a backport of the ``dataclasses`` module for Python 3.6
-* `backports-datetime-fromisoformat` - a backport of `fromisoformat()`_ for Python 3.6
 
 Advantages
 ~~~~~~~~~~
@@ -95,8 +93,7 @@ Supported Types
     - ``Union`` - Also supports `using dataclasses`_.
     - ``Optional``
 
-* Recently introduced Generic types (available in Python 3.6+ via the ``typing-extensions``
-  module)
+* Recently introduced Generic types
     - ``Annotated``
     - ``Literal``
 

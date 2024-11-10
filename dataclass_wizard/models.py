@@ -303,8 +303,6 @@ class _PatternedDT(Generic[DT]):
 
         locals_ns['default_load_func'] = default_load_func
 
-        # TODO This approach unfortunately won't work in Python 3.6. To fix
-        #   it, we'll need to pass `globals` instead of `locals` here.
         return _create_fn('pattern_to_dt',
                           ('date_string', ),
                           body_lines,
@@ -334,9 +332,8 @@ class Container(List[T]):
 
     """
 
-    # TODO: Uncomment once we drop support for Python 3.6
-    # __slots__ = ('__dict__',
-    #              '__orig_class__')
+    __slots__ = ('__dict__',
+                 '__orig_class__')
 
     @cached_property
     def __model__(self) -> Type[T]:
