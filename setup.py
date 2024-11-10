@@ -12,7 +12,7 @@ package_name = 'dataclass_wizard'
 packages = find_packages(include=[package_name, f'{package_name}.*'])
 
 requires = [
-    'typing-extensions>=4; python_version == "3.9"',
+    'typing-extensions>=4; python_version == "3.9" or python_version == "3.10"',
 ]
 
 # TODO update once we drop support for Python 3.6 & 3.7

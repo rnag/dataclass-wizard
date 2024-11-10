@@ -7,7 +7,7 @@ from typing import Union, List, ClassVar, DefaultDict, Set
 import pytest
 
 from dataclass_wizard import property_wizard
-from ..conftest import Literal, Annotated, PY39_OR_ABOVE, PY310_OR_ABOVE
+from ..conftest import Literal, Annotated, PY310_OR_ABOVE
 
 log = logging.getLogger(__name__)
 
@@ -1101,7 +1101,6 @@ def test_property_wizard_with_mutable_types_v2():
     assert v3.wheels_list == [5, 5]
 
 
-@pytest.mark.skipif(not PY39_OR_ABOVE, reason='requires Python 3.9 or higher')
 def test_property_wizard_with_mutable_types_with_parameterized_standard_collections():
     """
     Test case for mutable types with a Python 3.9 specific feature:
