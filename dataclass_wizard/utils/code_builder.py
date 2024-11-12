@@ -44,11 +44,11 @@ class CodeBuilder:
         self.current_function["body"].append(f"{indent}{line}")
 
     def add_lines(self, *lines: str):
-        """Add a line to the current function's body with proper indentation."""
+        """Add lines to the current function's body with proper indentation."""
         indent = '  ' * self.indent_level
-        add_to_fn_body = self.current_function["body"].append
-        for line in lines:
-            add_to_fn_body(f"{indent}{line}")
+        self.current_function["body"].extend(
+            [f"{indent}{line}" for line in lines]
+        )
 
     def increase_indent(self):
         """Increase indentation level for nested code."""

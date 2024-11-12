@@ -587,6 +587,8 @@ def load_func_for_dataclass(
         config: Optional[META] = None,
 ) -> Callable[[JSONObject], T]:
 
+    # TODO dynamically generate for multiple nested classes at once
+
     # Get the loader for the class, or create a new one as needed.
     cls_loader = get_loader(cls)
 

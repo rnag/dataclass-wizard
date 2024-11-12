@@ -251,6 +251,8 @@ def dump_func_for_dataclass(cls: Type[T],
                             nested_cls_to_dump_func: Dict[Type, Any] = None,
                             ) -> Callable[[T, Any, Any, Any], JSONObject]:
 
+    # TODO dynamically generate for multiple nested classes at once
+
     # Get the dumper for the class, or create a new one as needed.
     cls_dumper = get_dumper(cls)
 
