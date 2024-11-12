@@ -641,7 +641,6 @@ def load_func_for_dataclass(
         'LOG': LOG,
         'MissingData': MissingData,
         'MissingFields': MissingFields,
-        'ParseError': ParseError,
         'UnknownJSONKey': UnknownJSONKey,
     }
 
@@ -653,113 +652,89 @@ def load_func_for_dataclass(
         # Need to create a separate dictionary to copy over the constructor
         # args, as we don't want to mutate the original dictionary object.
         cb.add_line('init_kwargs = {}')
-
         # This try-block is here in case the object `o` is None.
-        cb.add_line("try:")
+        with cb.try_block():
+            # Loop over the dictionary object
+            with cb.for_block('json_key in o'):
 
-        # Loop over the dictionary object
-        cb.increase_indent()
-        cb.add_line("for json_key in o:")
+                with cb.try_block():
+                    # Get the resolved dataclass field name
+                    cb.add_line("field_name = json_to_field[json_key]")
 
-        # Get the resolved dataclass field name
-        cb.increase_indent()
-        cb.add_line("try:")
-        cb.increase_indent()
-        cb.add_line("field_name = json_to_field[json_key]")
-        cb.decrease_indent()  # End inner try
+                with cb.except_block(KeyError):
+                    cb.add_line('# Lookup Field for JSON Key')
+                    # Determines the dataclass field which a JSON key should map to.
+                    # Note this logic only runs the initial time, i.e. the first time
+                    # we encounter the key in a JSON object.
+                    #
+                    # :raises UnknownJSONKey: If there is no resolved field name for the
+                    #   JSON key, and`raise_on_unknown_json_key` is enabled in the Meta
+                    #   config for the class.
 
-        cb.add_line("except KeyError:")
-        cb.increase_indent()
+                    # Short path: an identical-cased field name exists for the JSON key
+                    with cb.if_block('json_key in field_to_parser'):
+                        cb.add_line("field_name = json_to_field[json_key] = json_key")
 
-        cb.add_line('# Lookup Field for JSON Key')
-        # Determines the dataclass field which a JSON key should map to.
-        # Note this logic only runs the initial time, i.e. the first time
-        # we encounter the key in a JSON object.
-        #
-        # :raises UnknownJSONKey: If there is no resolved field name for the
-        #   JSON key, and`raise_on_unknown_json_key` is enabled in the Meta
-        #   config for the class.
+                    with cb.else_block():
+                        # Transform JSON field name (typically camel-cased) to the
+                        # snake-cased variant which is convention in Python.
+                        cb.add_line("py_field = py_case(json_key)")
 
-        # Short path: an identical-cased field name exists for the JSON key
-        with cb.if_block('json_key in field_to_parser'):
-            cb.add_line("field_name = json_to_field[json_key] = json_key")
-        with cb.else_block():
-            # Transform JSON field name (typically camel-cased) to the
-            # snake-cased variant which is convention in Python.
-            cb.add_line("py_field = py_case(json_key)")
-            cb.add_line("try:")
-            cb.increase_indent()
-            # Do a case-insensitive lookup of the dataclass field, and
-            # cache the mapping, so we have it for next time
-            cb.add_line("field_name "
-                        "= json_to_field[json_key] "
-                        "= field_to_parser.get_key(py_field)")
-            cb.decrease_indent()
-            cb.add_line("except KeyError:")
-            cb.increase_indent()
-            # Else, we see an unknown field in the dictionary object
-            cb.add_line("field_name = json_to_field[json_key] = ExplicitNull")
-            cb.add_line("LOG.warning('JSON field %r missing from dataclass schema, "
-                        "class=%r, parsed field=%r',json_key,cls,py_field)")
-            # Raise an error here (if needed)
-            if meta.raise_on_unknown_json_key:
-                cb.add_line("raise UnknownJSONKey(json_key, o, cls, cls_fields) from None")
-            cb.decrease_indent()  # End inner except and for json_key
-            cb.decrease_indent()  # End except KeyError and for json_key
+                        with cb.try_block():
+                            # Do a case-insensitive lookup of the dataclass field, and
+                            # cache the mapping, so we have it for next time
+                            cb.add_line("field_name "
+                                        "= json_to_field[json_key] "
+                                        "= field_to_parser.get_key(py_field)")
 
-        # Exclude JSON keys that don't map to any fields.
-        with cb.if_block('field_name is ExplicitNull'):
-            cb.add_line("continue")
+                        with cb.except_block(KeyError):
+                            # Else, we see an unknown field in the dictionary object
+                            cb.add_line("field_name = json_to_field[json_key] = ExplicitNull")
+                            cb.add_line("LOG.warning('JSON field %r missing from dataclass schema, "
+                                        "class=%r, parsed field=%r',json_key,cls,py_field)")
+                            # Raise an error here (if needed)
+                            if meta.raise_on_unknown_json_key:
+                                cb.add_line("raise UnknownJSONKey(json_key, o, cls, cls_fields) from None")
 
-        cb.add_line("try:")
+                # Exclude JSON keys that don't map to any fields.
+                with cb.if_block('field_name is not ExplicitNull'):
 
-        # Note: pass the original cased field to the class constructor;
-        # don't use the lowercase result from `py_case`
-        cb.increase_indent()
-        cb.add_line("init_kwargs[field_name] = field_to_parser[field_name](o[json_key])")
+                    with cb.try_block():
+                        # Note: pass the original cased field to the class constructor;
+                        # don't use the lowercase result from `py_case`
+                        cb.add_line("init_kwargs[field_name] = field_to_parser[field_name](o[json_key])")
 
-        cb.decrease_indent()  # End try
-        cb.add_line("except ParseError as e:")
+                    with cb.except_block(ParseError, 'e'):
+                        # We run into a parsing error while loading the field value;
+                        # Add additional info on the Exception object before re-raising it.
+                        cb.add_line("e.class_name, e.field_name, e.json_object = cls, field_name, o")
+                        cb.add_line("raise")
 
-        # We run into a parsing error while loading the field value;
-        # Add additional info on the Exception object before re-raising it.
-        cb.increase_indent()
-        cb.add_line("e.class_name, e.field_name, e.json_object = cls, field_name, o")
-        cb.add_line("raise")
+        with cb.except_block(TypeError):
+            # If the object `o` is None, then raise an error with the relevant info included.
+            with cb.if_block('o is None'):
+                cb.add_line("raise MissingData(cls) from None")
+            # Check if the object `o` is some other type than what we expect -
+            # for example, we could be passed in a `list` type instead.
+            with cb.if_block('not isinstance(o, dict)'):
+                cb.add_line("e = TypeError('Incorrect type for field')")
+                cb.add_line("raise ParseError(e, o, dict, cls, desired_type=dict) from None")
 
-        cb.decrease_indent()  # End except ParseError
-        cb.decrease_indent()  # End for json_key
-        cb.decrease_indent()  # End outer try
-
-        cb.add_line("except TypeError:")
-
-        # If the object `o` is None, then raise an error with the relevant info included.
-        cb.increase_indent()
-        with cb.if_block('o is None'):
-            cb.add_line("raise MissingData(cls) from None")
-        # Check if the object `o` is some other type than what we expect -
-        # for example, we could be passed in a `list` type instead.
-        with cb.if_block('not isinstance(o, dict)'):
-            cb.add_line("e = TypeError('Incorrect type for field')")
-            cb.add_line("raise ParseError(e, o, dict, cls, desired_type=dict) from None")
-
-        # Else, just re-raise the error.
-        cb.add_line("raise")
-        cb.decrease_indent()  # End outer except
+            # Else, just re-raise the error.
+            cb.add_line("raise")
 
         # Now pass the arguments to the constructor method, and return the new dataclass instance.
         # If there are any missing fields, we raise them here.
-        cb.add_line("try:")
-        cb.increase_indent()
-        cb.add_line("return cls(**init_kwargs)")
-        cb.decrease_indent()
+        with cb.try_block():
+            cb.add_line("return cls(**init_kwargs)")
+        with cb.except_block(TypeError, 'e'):
+            cb.add_line("raise MissingFields(e, o, cls, init_kwargs, cls_fields) from None")
 
-        cb.add_line("except TypeError as e:")
-        cb.increase_indent()
-        cb.add_line("raise MissingFields(e, o, cls, init_kwargs, cls_fields) from None")
-        cb.decrease_indent()
+    functions = cb.create_functions(
+        locals=_locals, globals=_globals
+    )
 
-    cls_fromdict = cb.create_functions(locals=_locals, globals=_globals)
+    cls_fromdict = functions['cls_fromdict']
 
     # Save the load function for the main dataclass, so we don't need to run
     # this logic each time.

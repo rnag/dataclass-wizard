@@ -308,6 +308,11 @@ def dataclass_field_to_default(cls) -> Dict[str, Any]:
     return defaults
 
 
+def is_builtin_class(cls):
+    """Check if a class is a builtin in Python."""
+    return cls.__module__ == 'builtins'
+
+
 def create_new_class(
         class_or_instance, bases: Tuple[T, ...],
         suffix: Optional[str] = None, attr_dict=None) -> T:

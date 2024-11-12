@@ -331,10 +331,10 @@ def dump_func_for_dataclass(cls: Type[T],
 
     # Code for `cls_asdict`
     with cb.function('cls_asdict',
-                ['obj:T',
-                     'dict_factory=dict',
-                     "exclude:'list[str]|None'=None",
-                     f'skip_defaults:bool={meta.skip_defaults}'],
+                     ['obj:T',
+                      'dict_factory=dict',
+                      "exclude:'list[str]|None'=None",
+                      f'skip_defaults:bool={meta.skip_defaults}'],
                      return_type='JSONObject'):
 
         _pre_as_dict_method = getattr(cls_dumper, '__pre_as_dict__', None)
@@ -348,7 +348,7 @@ def dump_func_for_dataclass(cls: Type[T],
         if field_names:
 
             skip_field_assignments = []
-            exclude_assignments_to_skip = []
+            exclude_assignments = []
             skip_default_assignments = []
             field_assignments = []
 
@@ -358,7 +358,7 @@ def dump_func_for_dataclass(cls: Type[T],
                 default_value = f'_default_{i}'
 
                 skip_field_assignments.append(skip_field)
-                exclude_assignments_to_skip.append(
+                exclude_assignments.append(
                     f'{skip_field}={field!r} in exclude'
                 )
                 if field in field_to_default:
@@ -385,7 +385,7 @@ def dump_func_for_dataclass(cls: Type[T],
             with cb.if_block('exclude is None'):
                 cb.add_line(f'{'='.join(skip_field_assignments)}=False')
             with cb.else_block():
-                cb.add_line(';'.join(exclude_assignments_to_skip))
+                cb.add_line(';'.join(exclude_assignments))
 
             if skip_default_assignments:
                 with cb.if_block('skip_defaults'):
@@ -403,7 +403,9 @@ def dump_func_for_dataclass(cls: Type[T],
             cb.add_line("return dict_factory(result)")
 
     # Compile the code into a dynamic string
-    cls_asdict = cb.create_functions(locals=_locals, globals=_globals)
+    functions = cb.create_functions(locals=_locals, globals=_globals)
+
+    cls_asdict = functions['cls_asdict']
 
     asdict_func = cls_asdict
 

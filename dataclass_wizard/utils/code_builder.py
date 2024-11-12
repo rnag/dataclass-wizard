@@ -1,20 +1,23 @@
 from dataclasses import MISSING
 
-from dataclass_wizard.log import LOG
+from ..class_helper import is_builtin_class
+from ..log import LOG
 
 
 class CodeBuilder:
     __slots__ = (
-        'functions',
-        'namespace',
-        'indent_level',
         'current_function',
+        'functions',
+        'globals',
+        'indent_level',
+        'namespace',
     )
 
     def __init__(self):
         self.functions = {}
-        self.namespace = {}
         self.indent_level = 0
+        self.globals = {}
+        self.namespace = {}
 
     def __enter__(self):
         self.indent_level += 1
@@ -25,24 +28,48 @@ class CodeBuilder:
         if not indent_lvl:
             self.finalize_function()
 
-    def function(self, name: str, args: list, return_type=None) -> 'CodeBuilder':
+    def function(self, name: str, args: list, return_type=MISSING) -> 'CodeBuilder':
         """Start a new function definition with optional return type."""
         self.current_function = {"name": name, "args": args, "body": [], "return_type": return_type}
         # self.add_line(f"def {name}({', '.join(args)})")  # Add function header
-        if return_type:
-            self.add_line(f"  # Return type: {return_type}")  # Log return type in the comments
+        return self
+
+    def _with_new_block(self,
+                        name: str,
+                        condition: 'str | None' = None) -> 'CodeBuilder':
+        """Creates a new block. Used with a context manager (with)."""
+        indent = '  ' * self.indent_level
+
+        if condition is not None:
+            self.current_function["body"].append(f"{indent}{name} {condition}:")
+        else:
+            self.current_function["body"].append(f"{indent}{name}:")
 
         return self
+
+    def for_block(self, condition: str) -> 'CodeBuilder':
+        return self._with_new_block('for', condition)
 
     def if_block(self, condition: str) -> 'CodeBuilder':
-        indent = '  ' * self.indent_level
-        self.current_function["body"].append(f"{indent}if {condition}:")
-        return self
+        return self._with_new_block('if', condition)
 
     def else_block(self) -> 'CodeBuilder':
-        indent = '  ' * self.indent_level
-        self.current_function["body"].append(f"{indent}else:")
-        return self
+        return self._with_new_block('else')
+
+    def try_block(self) -> 'CodeBuilder':
+        return self._with_new_block('try')
+
+    def except_block(self,
+                     cls: type[Exception],
+                     var_name: 'str | None' = None):
+
+        cls_name = cls.__name__
+        statement = f'{cls_name} as {var_name}' if var_name else cls_name
+
+        if not is_builtin_class(cls):
+            self.globals[cls_name] = cls
+
+        return self._with_new_block('except', statement)
 
     def add_line(self, line: str):
         """Add a line to the current function's body with proper indentation."""
@@ -69,26 +96,18 @@ class CodeBuilder:
         """Finalize the function code and add to the list of functions."""
         # Add the function body and don't re-add the function definition
         func_code = '\n'.join(self.current_function["body"])
-        self.functions[self.current_function["name"]] = ({"args": self.current_function["args"], "code": func_code})
+        self.functions[self.current_function["name"]] = ({"args": self.current_function["args"],
+                                                          "return_type": self.current_function["return_type"],
+                                                          "code": func_code})
         self.current_function = None  # Reset current function
 
-    def create_functions(self, *, globals=None, locals=None,
-                         return_type=MISSING
-                         ):
+    def create_functions(self, *, globals=None, locals=None):
         """Create functions by compiling the code."""
         # Note that we may mutate locals. Callers beware!
         # The only callers are internal to this module, so no
         # worries about external callers.
         if locals is None:
             locals = {}
-
-        return_annotation = ''
-
-        # if return_type is not MISSING:
-        #     locals['__dataclass_return_type__'] = return_type
-        #     return_annotation = '->__dataclass_return_type__'
-        # args = ','.join(args)
-        # body = '\n'.join(f'  {b}' for b in body)
 
         # Compute the text of the entire function.
         # txt = f' def {name}({args}){return_annotation}:\n{body}'
@@ -98,32 +117,49 @@ class CodeBuilder:
         # The global namespace we have is user-provided, so we can't modify it for
         # our purposes. So we put the things we need into locals and introduce a
         # scope to allow the function we're creating to close over them.
+
+        name_to_func_code = {}
+
+        for name, func in self.functions.items():
+            args = ','.join(func['args'])
+            body = func['code']
+            return_type = func['return_type']
+
+            return_annotation = ''
+            if return_type is not MISSING:
+                locals[f'__dataclass_{name}_return_type__'] = return_type
+                return_annotation = f'->__dataclass_{name}_return_type__'
+
+            name_to_func_code[name] = f'def {name}({args}){return_annotation}:\n{body}'
+
         local_vars = ', '.join(locals.keys())
-        all_func_code = '\n'.join(
-            f"def __create_fn__({local_vars}):\n def {name}({','.join(func['args'])}):\n{func['code']}\n return {name}"
-            for name, func in self.functions.items()
-        )
+
+        all_func_code = '\n'.join([
+            f"def __create_{name}_fn__({local_vars}):\n"
+            f" {code}\n"
+            f" return {name}"
+            for name, code in name_to_func_code.items()
+        ])
 
         # Print the generated code for debugging
         # logging.debug(f"Generated function code:\n{all_func_code}")
         LOG.debug(f"Generated function code:\n{all_func_code}")
 
         ns = {}
-        exec(all_func_code, globals, ns)
+        exec(all_func_code, globals | self.globals, ns)
 
         # Print namespace for debugging
         # logging.debug(f"Namespace after function compilation: {self.namespace}")
 
-        return ns['__create_fn__'](**locals)
+        return {
+            name: ns[f'__create_{name}_fn__'](**locals)
+            for name in name_to_func_code
+        }
 
         # txt = f"def __create_fn__({local_vars}):\n{txt}\n return {name}"
         # ns = {}
         # exec(txt, globals, ns)
         # return ns['__create_fn__'](**locals)
-
-
-
-
 
     def get_namespace(self):
         """Return the namespace containing all compiled functions."""
