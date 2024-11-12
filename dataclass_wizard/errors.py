@@ -128,7 +128,7 @@ class MissingFields(JSONWizardError):
                  obj: JSONObject,
                  cls: Type,
                  cls_kwargs: JSONObject,
-                 cls_fields: Tuple[Field], **kwargs):
+                 cls_fields: Tuple[Field, ...], **kwargs):
 
         super().__init__()
 
@@ -199,7 +199,7 @@ class UnknownJSONKey(JSONWizardError):
                  json_key: str,
                  obj: JSONObject,
                  cls: Type,
-                 cls_fields: Tuple[Field], **kwargs):
+                 cls_fields: Tuple[Field, ...], **kwargs):
         super().__init__()
 
         self.json_key = json_key
