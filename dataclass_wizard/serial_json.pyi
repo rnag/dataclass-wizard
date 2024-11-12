@@ -1,5 +1,5 @@
 import json
-from typing import Type, List, Union, AnyStr, Sequence
+from typing import Type, List, Union, AnyStr, Collection
 
 from .abstractions import AbstractJSONWizard, W
 from .bases_meta import BaseJSONWizardMeta
@@ -62,7 +62,7 @@ class JSONSerializable(AbstractJSONWizard):
     def to_dict(self: W,
                 *,
                 dict_factory=dict,
-                exclude: Sequence[str] | None = None,
+                exclude: Collection[str] | None = None,
                 skip_defaults: bool | None = None,
                 ) -> JSONObject:
         """

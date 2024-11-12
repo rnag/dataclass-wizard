@@ -15,7 +15,7 @@ from uuid import UUID
 from .abstractions import AbstractLoader, AbstractParser, FieldToParser
 from .bases import BaseLoadHook, AbstractMeta, META
 from .class_helper import (
-    get_class_name, create_new_class,
+    create_new_class,
     dataclass_to_loader, set_class_loader,
     dataclass_field_to_load_parser, json_field_to_dataclass_field,
     _CLASS_TO_LOAD_FUNC, dataclass_fields, get_meta, is_subclass_safe,
@@ -628,24 +628,20 @@ def load_func_for_dataclass(
 
     _locals = {
         'cls': cls,
-        # 'meta': meta,
         'config': config,
-        # Get the loader for the class, or create a new one as needed.
-        'cls_loader': cls_loader,
-        # Get the meta config for the class, or the default config otherwise.
+        'py_case': cls_loader.transform_json_field,
         'field_to_parser': field_to_parser,
         'json_to_field': json_to_field,
+        'ExplicitNull': ExplicitNull,
     }
 
     # TODO Unsure if dataclasses uses globals()?
     _globals = {
-        'MissingFields': MissingFields,
-        'MissingData': MissingData,
-        'ExplicitNull': ExplicitNull,
-        'ParseError': ParseError,
         'cls_fields': cls_fields,
         'LOG': LOG,
-        'get_class_name': get_class_name,
+        'MissingData': MissingData,
+        'MissingFields': MissingFields,
+        'ParseError': ParseError,
         'UnknownJSONKey': UnknownJSONKey,
     }
 
@@ -685,50 +681,40 @@ def load_func_for_dataclass(
         #   config for the class.
 
         # Short path: an identical-cased field name exists for the JSON key
-        cb.add_line("if json_key in field_to_parser:")
-        cb.increase_indent()
-        cb.add_line("field_name = json_to_field[json_key] = json_key")
-        cb.decrease_indent()
-        cb.add_line("else:")
-        cb.increase_indent()
-        # Transform JSON field name (typically camel-cased) to the
-        # snake-cased variant which is convention in Python.
-        cb.add_line("transformed_field = cls_loader.transform_json_field(json_key)")
-        cb.add_line("try:")
-        cb.increase_indent()
-        # Do a case-insensitive lookup of the dataclass field, and
-        # cache the mapping, so we have it for next time
-        cb.add_line("field_name "
-                    "= json_to_field[json_key] "
-                    "= field_to_parser.get_key(transformed_field)")
-        cb.decrease_indent()
-        cb.add_line("except KeyError:")
-        cb.increase_indent()
-        # Else, we see an unknown field in the dictionary object
-        cb.add_line("field_name = json_to_field[json_key] = ExplicitNull")
-        cb.add_line("LOG.warning(")
-        cb.increase_indent()
-        cb.add_line("'JSON field %r missing from dataclass schema, class=%r, parsed field=%r',")
-        cb.add_line("json_key, get_class_name(cls), transformed_field")
-        cb.decrease_indent()
-        cb.add_line(")")
-        # Raise an error here (if needed)
-        if meta.raise_on_unknown_json_key:
-            cb.add_line("raise UnknownJSONKey(json_key, o, cls, cls_fields) from None")
-        cb.decrease_indent()
-        cb.decrease_indent()  # End inner except and for json_key
-        cb.decrease_indent()  # End except KeyError and for json_key
+        with cb.if_block('json_key in field_to_parser'):
+            cb.add_line("field_name = json_to_field[json_key] = json_key")
+        with cb.else_block():
+            # Transform JSON field name (typically camel-cased) to the
+            # snake-cased variant which is convention in Python.
+            cb.add_line("py_field = py_case(json_key)")
+            cb.add_line("try:")
+            cb.increase_indent()
+            # Do a case-insensitive lookup of the dataclass field, and
+            # cache the mapping, so we have it for next time
+            cb.add_line("field_name "
+                        "= json_to_field[json_key] "
+                        "= field_to_parser.get_key(py_field)")
+            cb.decrease_indent()
+            cb.add_line("except KeyError:")
+            cb.increase_indent()
+            # Else, we see an unknown field in the dictionary object
+            cb.add_line("field_name = json_to_field[json_key] = ExplicitNull")
+            cb.add_line("LOG.warning('JSON field %r missing from dataclass schema, "
+                        "class=%r, parsed field=%r',json_key,cls,py_field)")
+            # Raise an error here (if needed)
+            if meta.raise_on_unknown_json_key:
+                cb.add_line("raise UnknownJSONKey(json_key, o, cls, cls_fields) from None")
+            cb.decrease_indent()  # End inner except and for json_key
+            cb.decrease_indent()  # End except KeyError and for json_key
 
         # Exclude JSON keys that don't map to any fields.
-        cb.add_line("if field_name is ExplicitNull:")
-        cb.increase_indent()
-        cb.add_line("continue")
-        cb.decrease_indent()  # End if
+        with cb.if_block('field_name is ExplicitNull'):
+            cb.add_line("continue")
 
         cb.add_line("try:")
 
         # Note: pass the original cased field to the class constructor;
-        # don't use the lowercase result from `transform_json_field`
+        # don't use the lowercase result from `py_case`
         cb.increase_indent()
         cb.add_line("init_kwargs[field_name] = field_to_parser[field_name](o[json_key])")
 
@@ -749,18 +735,13 @@ def load_func_for_dataclass(
 
         # If the object `o` is None, then raise an error with the relevant info included.
         cb.increase_indent()
-        cb.add_line("if o is None:")
-        cb.increase_indent()
-        cb.add_line("raise MissingData(cls) from None")
-        cb.decrease_indent()  # End if
-
+        with cb.if_block('o is None'):
+            cb.add_line("raise MissingData(cls) from None")
         # Check if the object `o` is some other type than what we expect -
         # for example, we could be passed in a `list` type instead.
-        cb.add_line("if not isinstance(o, dict):")
-        cb.increase_indent()
-        cb.add_line("e = TypeError('Incorrect type for field')")
-        cb.add_line("raise ParseError(e, o, dict, cls, desired_type=dict) from None")
-        cb.decrease_indent()  # End if
+        with cb.if_block('not isinstance(o, dict)'):
+            cb.add_line("e = TypeError('Incorrect type for field')")
+            cb.add_line("raise ParseError(e, o, dict, cls, desired_type=dict) from None")
 
         # Else, just re-raise the error.
         cb.add_line("raise")

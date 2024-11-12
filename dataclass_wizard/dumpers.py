@@ -382,20 +382,14 @@ def dump_func_for_dataclass(cls: Type[T],
                     field_assignments.append(f"  result.append(('{json_field}',"
                                              f"asdict(obj.{field},dict_factory,hooks,config,cls_to_asdict)))")
 
-            cb.add_line('if exclude is None:')
-            cb.increase_indent()
-            cb.add_line(f'{'='.join(skip_field_assignments)}=False')
-            cb.decrease_indent()
-            cb.add_line('else:')
-            cb.increase_indent()
-            cb.add_line(';'.join(exclude_assignments_to_skip))
-            cb.decrease_indent()
+            with cb.if_block('exclude is None'):
+                cb.add_line(f'{'='.join(skip_field_assignments)}=False')
+            with cb.else_block():
+                cb.add_line(';'.join(exclude_assignments_to_skip))
 
             if skip_default_assignments:
-                cb.add_line('if skip_defaults:')
-                cb.increase_indent()
-                cb.add_lines(*skip_default_assignments)
-                cb.decrease_indent()
+                with cb.if_block('skip_defaults'):
+                    cb.add_lines(*skip_default_assignments)
 
             cb.add_lines(*field_assignments)
 

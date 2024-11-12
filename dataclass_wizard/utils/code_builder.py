@@ -34,6 +34,16 @@ class CodeBuilder:
 
         return self
 
+    def if_block(self, condition: str) -> 'CodeBuilder':
+        indent = '  ' * self.indent_level
+        self.current_function["body"].append(f"{indent}if {condition}:")
+        return self
+
+    def else_block(self) -> 'CodeBuilder':
+        indent = '  ' * self.indent_level
+        self.current_function["body"].append(f"{indent}else:")
+        return self
+
     def add_line(self, line: str):
         """Add a line to the current function's body with proper indentation."""
         indent = '  ' * self.indent_level
