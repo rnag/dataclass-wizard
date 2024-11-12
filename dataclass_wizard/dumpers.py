@@ -9,11 +9,12 @@ obtained from http://www.apache.org/licenses/LICENSE-2.0.
 See the end of this file for the original Apache license from this library.
 """
 from collections import defaultdict, deque
-# noinspection PyProtectedMember
+# noinspection PyProtectedMember,PyUnresolvedReferences
 from dataclasses import _is_dataclass_instance
 from datetime import datetime, time, date, timedelta
 from decimal import Decimal
 from enum import Enum
+# noinspection PyProtectedMember,PyUnresolvedReferences
 from typing import Type, List, Dict, Any, NamedTupleMeta, Optional, Callable
 from uuid import UUID
 
@@ -34,6 +35,7 @@ from .type_def import (
     ExplicitNull, NoneType, JSONObject,
     DD, LSQ, E, U, LT, NT, T
 )
+from .utils.code_builder import CodeBuilder
 from .utils.string_conv import to_camel_case
 
 
@@ -265,12 +267,12 @@ def dump_func_for_dataclass(cls: Type[T],
         if meta.recursive and meta is not AbstractMeta:
             config = meta
 
-    else:  # we are being run for a nested dataclass
-        if config:
-            # we want to apply the meta config from the main dataclass
-            # recursively.
-            meta = meta | config
-            meta.bind_to(cls, is_default=False)
+    # we are being run for a nested dataclass
+    elif config:
+        # we want to apply the meta config from the main dataclass
+        # recursively.
+        meta = meta | config
+        meta.bind_to(cls, is_default=False)
 
     # This contains the dump hooks for the dataclass. If the class
     # sub-classes from `DumpMixIn`, these hooks could be customized.
@@ -306,76 +308,111 @@ def dump_func_for_dataclass(cls: Type[T],
     # Tag key to populate when a dataclass is in a `Union` with other types.
     tag_key = meta.tag_key or TAG
 
-    def cls_asdict(obj: T, dict_factory=dict,
-                   exclude: List[str] = None,
-                   skip_defaults=meta.skip_defaults) -> JSONObject:
-        """
-        Serialize a dataclass of type `cls` to a Python dictionary object.
-        """
+    _locals = {
+        'cls': cls,
+        # 'meta': meta,
+        'config': config,
+        'cls_dumper': cls_dumper,
+        'field_names': field_names,
+        'field_to_default': field_to_default,
+        'dataclass_to_json_field': dataclass_to_json_field,
 
-        # Call the optional hook that runs before we process the dataclass
-        cls_dumper.__pre_as_dict__(obj)
+        # TODO maybe global?
+        '_asdict_inner': _asdict_inner,
+        'hooks': hooks,
+        'nested_cls_to_dump_func': nested_cls_to_dump_func,
+    }
 
-        # This a list that contains a mapping of each dataclass field to its
-        # serialized value.
-        result = []
+    # TODO Unsure if dataclasses uses globals()?
+    _globals = {
 
-        # Loop over the dataclass fields
-        for field in field_names:
+        'T': T,
+        'ExplicitNull': ExplicitNull,
+        'LOG': LOG,
+    }
 
-            # Get the resolved JSON field name
-            try:
-                json_field = dataclass_to_json_field[field]
+    # Initialize CodeBuilder
+    cb = CodeBuilder()
 
-            except KeyError:
-                # Normalize the dataclass field name (by default to camel
-                # case)
-                json_field = cls_dumper.transform_dataclass_field(field)
-                dataclass_to_json_field[field] = json_field
+    # Code for `cls_asdict`
+    with cb.function('cls_asdict',
+                ['obj:T',
+                     'dict_factory=dict',
+                     "exclude:'list[str]|None'=None",
+                     f'skip_defaults:bool={meta.skip_defaults}'],
+                     return_type='JSONObject'):
 
-            # Exclude any dataclass fields that are explicitly ignored.
-            if json_field is ExplicitNull:
-                continue
-            if exclude and field in exclude:
-                continue
+        if hasattr(cls_dumper, '__pre_as_dict__'):
+            cb.add_line('cls_dumper.__pre_as_dict__(obj)')
 
-            # -- This line is *mostly* the same as in the original version --
-            fv = getattr(obj, field)
+        # Initialize result list to hold field mappings
+        cb.add_line("result = []")
 
-            # Check if we need to strip defaults, and the field currently
-            # is assigned a default value.
-            #
-            # TODO: maybe it makes sense to move this logic to a separate
-            #   function, as it might be slightly more performant.
-            if skip_defaults and field in field_to_default \
-                    and fv == field_to_default[field]:
-                continue
+        if field_names:
 
-            value = _asdict_inner(fv, dict_factory, hooks, config,
-                                  nested_cls_to_dump_func)
+            skip_field_assignments = []
+            exclude_assignments_to_skip = []
+            skip_default_assignments = []
+            field_assignments = []
 
-            # -- This line is *mostly* the same as in the original version --
-            result.append((json_field, value))
+            # Loop over the dataclass fields
+            for i, field in enumerate(field_names):
+                skip_field = f'_skip_{i}'
+                default_value = f'_default_{i}'
 
-        # -- This line is the same as in the original version --
-        return dict_factory(result)
+                skip_field_assignments.append(skip_field)
+                exclude_assignments_to_skip.append(
+                    f'{skip_field}={field!r} in exclude'
+                )
+                if field in field_to_default:
+                    _locals[default_value] = field_to_default[field]
+                    skip_default_assignments.append(
+                        f"{skip_field} = {skip_field} or obj.{field} == {default_value}"
+                    )
 
-    def cls_asdict_with_tag(obj: T, dict_factory=dict,
-                            exclude: List[str] = None,
-                            **kwargs) -> JSONObject:
-        """
-        Serialize a dataclass of type `cls` to a Python dictionary object.
-        Adds a tag field when `tag` field is passed in Meta.
-        """
-        result = cls_asdict(obj, dict_factory, exclude, **kwargs)
-        result[tag_key] = meta.tag
+                # Get the resolved JSON field name
+                try:
+                    json_field = dataclass_to_json_field[field]
+                except KeyError:
+                    # Normalize the dataclass field name (by default to camel
+                    # case)
+                    json_field = cls_dumper.transform_dataclass_field(field)
+                    dataclass_to_json_field[field] = json_field
 
-        return result
+                # Exclude any dataclass fields that are explicitly ignored.
+                if json_field is not ExplicitNull:
+                    field_assignments.append(f"if not {skip_field}:")
+                    field_assignments.append(f"  value = _asdict_inner(obj.{field}, dict_factory,"
+                                             f" hooks, config, nested_cls_to_dump_func)")
+                    field_assignments.append(f"  result.append(('{json_field}', value))")
 
-    if meta.tag:
-        asdict_func = cls_asdict_with_tag
-    else:
-        asdict_func = cls_asdict
+            cb.add_line(f'{'='.join(skip_field_assignments)}=False')
+            cb.add_line('if exclude is not None:')
+            cb.increase_indent()
+            cb.add_lines(*exclude_assignments_to_skip)
+            cb.decrease_indent()
+
+            if skip_default_assignments:
+                cb.add_line('if skip_defaults:')
+                cb.increase_indent()
+                cb.add_lines(*skip_default_assignments)
+                cb.decrease_indent()
+
+            cb.add_lines(*field_assignments)
+
+        # Return the final dictionary result
+        if meta.tag:
+            cb.add_line("result = dict_factory(result)")
+            cb.add_line(f"result[{tag_key!r}] = {meta.tag!r}")
+            # Return the result with the tag added
+            cb.add_line("return result")
+        else:
+            cb.add_line("return dict_factory(result)")
+
+    # Compile the code into a dynamic string
+    cls_asdict = cb.compile_with_types(locals=_locals, globals=_globals)
+
+    asdict_func = cls_asdict
 
     # In any case, save the dump function for the class, so we don't need to
     # run this logic each time.

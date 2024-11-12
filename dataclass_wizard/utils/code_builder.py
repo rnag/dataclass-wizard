@@ -8,23 +8,47 @@ logging.basicConfig(level=logging.INFO, format='%(message)s')
 
 
 class CodeBuilder:
+    __slots__ = (
+        'functions',
+        'namespace',
+        'indent_level',
+        'current_function',
+    )
+
     def __init__(self):
         self.functions = {}
         self.namespace = {}
         self.indent_level = 0
 
-    def add_function(self, name: str, args: list, return_type=None):
+    def __enter__(self):
+        self.indent_level += 1
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        indent_lvl = self.indent_level = self.indent_level - 1
+
+        if not indent_lvl:
+            self.finalize_function()
+
+    def function(self, name: str, args: list, return_type=None) -> 'CodeBuilder':
         """Start a new function definition with optional return type."""
         self.current_function = {"name": name, "args": args, "body": [], "return_type": return_type}
         # self.add_line(f"def {name}({', '.join(args)})")  # Add function header
         if return_type:
-            self.add_line(f"    # Return type: {return_type}")  # Log return type in the comments
-        self.indent_level = 2  # Indent level for function body
+            self.add_line(f"  # Return type: {return_type}")  # Log return type in the comments
+
+        return self
 
     def add_line(self, line: str):
         """Add a line to the current function's body with proper indentation."""
         indent = '  ' * self.indent_level
         self.current_function["body"].append(f"{indent}{line}")
+
+    def add_lines(self, *lines: str):
+        """Add a line to the current function's body with proper indentation."""
+        indent = '  ' * self.indent_level
+        add_to_fn_body = self.current_function["body"].append
+        for line in lines:
+            add_to_fn_body(f"{indent}{line}")
 
     def increase_indent(self):
         """Increase indentation level for nested code."""

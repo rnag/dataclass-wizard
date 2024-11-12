@@ -1,5 +1,5 @@
 import json
-from typing import Type, List, Union, AnyStr
+from typing import Type, List, Union, AnyStr, Sequence
 
 from .abstractions import AbstractJSONWizard, W
 from .bases_meta import BaseJSONWizardMeta
@@ -59,10 +59,31 @@ class JSONSerializable(AbstractJSONWizard):
         # alias: fromdict(cls, o)
         ...
 
-    def to_dict(self: W) -> JSONObject:
+    def to_dict(self: W,
+                *,
+                dict_factory=dict,
+                exclude: Sequence[str] | None = None,
+                skip_defaults: bool | None = None,
+                ) -> JSONObject:
         """
         Converts the dataclass instance to a Python dictionary object that is
         JSON serializable.
+
+        Example usage:
+
+          @dataclass
+          class C(JSONWizard):
+              x: int
+              y: int
+              z: bool = True
+
+          c = C(1, 2, True)
+          assert c.to_dict(skip_defaults=True) == {'x': 1, 'y': 2}
+
+        If given, 'dict_factory' will be used instead of built-in dict.
+        The function applies recursively to field values that are
+        dataclass instances. This will also look into built-in containers:
+        tuples, lists, and dicts.
         """
         # alias: asdict(self)
         ...
