@@ -247,7 +247,7 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
     @classmethod
     def get_parser_for_annotation(cls, ann_type: Type[T],
                                   base_cls: Type = None,
-                                  extras: Extras = None) -> AbstractParser:
+                                  extras: Extras = None) -> 'AbstractParser | Callable[[dict[str, Any]], T]':
         """Returns the Parser (dispatcher) for a given annotation type."""
         hooks = cls.__LOAD_HOOKS__
         ann_type = eval_forward_ref_if_needed(ann_type, base_cls)
@@ -304,8 +304,8 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
                                 base_cls, extras, base_type, hook=None
                             )
                         else:  # else, logic is same as normal
-                            base_type: Type[T]
-                            load_hook = load_func_for_dataclass(
+                            base_type: 'type[T]'
+                            return load_func_for_dataclass(
                                 base_type,
                                 is_main_class=False,
                                 config=extras['config']
@@ -589,6 +589,8 @@ def load_func_for_dataclass(
 
     # TODO dynamically generate for multiple nested classes at once
 
+    cls_fields = dataclass_fields(cls)
+
     # Get the loader for the class, or create a new one as needed.
     cls_loader = get_loader(cls)
 
@@ -622,7 +624,7 @@ def load_func_for_dataclass(
     # A cached mapping of each key in a JSON or dictionary object to the
     # resolved dataclass field name; useful so we don't need to do a case
     # transformation (via regex) each time.
-    json_to_dataclass_field = json_field_to_dataclass_field(cls)
+    json_to_field = json_field_to_dataclass_field(cls)
 
     _locals = {
         'cls': cls,
@@ -632,7 +634,7 @@ def load_func_for_dataclass(
         'cls_loader': cls_loader,
         # Get the meta config for the class, or the default config otherwise.
         'field_to_parser': field_to_parser,
-        'json_to_dataclass_field': json_to_dataclass_field,
+        'json_to_field': json_to_field,
     }
 
     # TODO Unsure if dataclasses uses globals()?
@@ -641,7 +643,7 @@ def load_func_for_dataclass(
         'MissingData': MissingData,
         'ExplicitNull': ExplicitNull,
         'ParseError': ParseError,
-        'dataclass_fields': dataclass_fields,
+        'cls_fields': cls_fields,
         'LOG': LOG,
         'get_class_name': get_class_name,
         'UnknownJSONKey': UnknownJSONKey,
@@ -650,11 +652,11 @@ def load_func_for_dataclass(
     # Initialize the CodeBuilder
     cb = CodeBuilder()
 
-    with cb.function('cls_fromdict', ['o', '*_']):
+    with cb.function('cls_fromdict', ['o']):
 
         # Need to create a separate dictionary to copy over the constructor
         # args, as we don't want to mutate the original dictionary object.
-        cb.add_line('cls_kwargs = {}')
+        cb.add_line('init_kwargs = {}')
 
         # This try-block is here in case the object `o` is None.
         cb.add_line("try:")
@@ -667,7 +669,7 @@ def load_func_for_dataclass(
         cb.increase_indent()
         cb.add_line("try:")
         cb.increase_indent()
-        cb.add_line("field_name = json_to_dataclass_field[json_key]")
+        cb.add_line("field_name = json_to_field[json_key]")
         cb.decrease_indent()  # End inner try
 
         cb.add_line("except KeyError:")
@@ -685,7 +687,7 @@ def load_func_for_dataclass(
         # Short path: an identical-cased field name exists for the JSON key
         cb.add_line("if json_key in field_to_parser:")
         cb.increase_indent()
-        cb.add_line("field_name = json_to_dataclass_field[json_key] = json_key")
+        cb.add_line("field_name = json_to_field[json_key] = json_key")
         cb.decrease_indent()
         cb.add_line("else:")
         cb.increase_indent()
@@ -697,13 +699,13 @@ def load_func_for_dataclass(
         # Do a case-insensitive lookup of the dataclass field, and
         # cache the mapping, so we have it for next time
         cb.add_line("field_name "
-                    "= json_to_dataclass_field[json_key] "
+                    "= json_to_field[json_key] "
                     "= field_to_parser.get_key(transformed_field)")
         cb.decrease_indent()
         cb.add_line("except KeyError:")
         cb.increase_indent()
         # Else, we see an unknown field in the dictionary object
-        cb.add_line("field_name = json_to_dataclass_field[json_key] = ExplicitNull")
+        cb.add_line("field_name = json_to_field[json_key] = ExplicitNull")
         cb.add_line("LOG.warning(")
         cb.increase_indent()
         cb.add_line("'JSON field %r missing from dataclass schema, class=%r, parsed field=%r',")
@@ -712,7 +714,6 @@ def load_func_for_dataclass(
         cb.add_line(")")
         # Raise an error here (if needed)
         if meta.raise_on_unknown_json_key:
-            cb.add_line("cls_fields = dataclass_fields(cls)")
             cb.add_line("raise UnknownJSONKey(json_key, o, cls, cls_fields) from None")
         cb.decrease_indent()
         cb.decrease_indent()  # End inner except and for json_key
@@ -729,7 +730,7 @@ def load_func_for_dataclass(
         # Note: pass the original cased field to the class constructor;
         # don't use the lowercase result from `transform_json_field`
         cb.increase_indent()
-        cb.add_line("cls_kwargs[field_name] = field_to_parser[field_name](o[json_key])")
+        cb.add_line("init_kwargs[field_name] = field_to_parser[field_name](o[json_key])")
 
         cb.decrease_indent()  # End try
         cb.add_line("except ParseError as e:")
@@ -769,15 +770,15 @@ def load_func_for_dataclass(
         # If there are any missing fields, we raise them here.
         cb.add_line("try:")
         cb.increase_indent()
-        cb.add_line("return cls(**cls_kwargs)")
+        cb.add_line("return cls(**init_kwargs)")
         cb.decrease_indent()
 
         cb.add_line("except TypeError as e:")
         cb.increase_indent()
-        cb.add_line("raise MissingFields(e, o, cls, cls_kwargs, dataclass_fields(cls)) from None")
+        cb.add_line("raise MissingFields(e, o, cls, init_kwargs, cls_fields) from None")
         cb.decrease_indent()
 
-    cls_fromdict = cb.compile_with_types(locals=_locals, globals=_globals)
+    cls_fromdict = cb.create_functions(locals=_locals, globals=_globals)
 
     # Save the load function for the main dataclass, so we don't need to run
     # this logic each time.

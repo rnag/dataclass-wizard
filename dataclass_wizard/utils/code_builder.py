@@ -1,10 +1,6 @@
-import types
-import logging
 from dataclasses import MISSING
-from timeit import timeit
 
-# Set up logging
-logging.basicConfig(level=logging.INFO, format='%(message)s')
+from dataclass_wizard.log import LOG
 
 
 class CodeBuilder:
@@ -66,9 +62,9 @@ class CodeBuilder:
         self.functions[self.current_function["name"]] = ({"args": self.current_function["args"], "code": func_code})
         self.current_function = None  # Reset current function
 
-    def compile_with_types(self, *, globals=None, locals=None,
-                           return_type=MISSING
-                           ):
+    def create_functions(self, *, globals=None, locals=None,
+                         return_type=MISSING
+                         ):
         """Create functions by compiling the code."""
         # Note that we may mutate locals. Callers beware!
         # The only callers are internal to this module, so no
@@ -100,7 +96,7 @@ class CodeBuilder:
 
         # Print the generated code for debugging
         # logging.debug(f"Generated function code:\n{all_func_code}")
-        # print(f"Generated function code:\n{all_func_code}")
+        LOG.debug(f"Generated function code:\n{all_func_code}")
 
         ns = {}
         exec(all_func_code, globals, ns)

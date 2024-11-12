@@ -119,7 +119,7 @@ class AbstractParser(ABC, Generic[T, TT]):
     # This is usually the underlying base type of the annotation (for example,
     # for `list[str]` it will be `list`), though in some cases this will be
     # the annotation itself.
-    base_type: T
+    base_type: type[T]
 
     def __contains__(self, item) -> bool:
         """

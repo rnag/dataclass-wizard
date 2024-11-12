@@ -311,18 +311,11 @@ def dump_func_for_dataclass(cls: Type[T],
     tag_key = meta.tag_key or TAG
 
     _locals = {
-        'cls': cls,
-        # 'meta': meta,
         'config': config,
-        'cls_dumper': cls_dumper,
-        'field_names': field_names,
         'field_to_default': field_to_default,
-        'dataclass_to_json_field': dataclass_to_json_field,
-
-        # TODO maybe global?
-        '_asdict_inner': _asdict_inner,
+        'asdict': _asdict_inner,
         'hooks': hooks,
-        'nested_cls_to_dump_func': nested_cls_to_dump_func,
+        'cls_to_asdict': nested_cls_to_dump_func,
     }
 
     # TODO Unsure if dataclasses uses globals()?
@@ -344,8 +337,10 @@ def dump_func_for_dataclass(cls: Type[T],
                      f'skip_defaults:bool={meta.skip_defaults}'],
                      return_type='JSONObject'):
 
-        if hasattr(cls_dumper, '__pre_as_dict__'):
-            cb.add_line('cls_dumper.__pre_as_dict__(obj)')
+        _pre_as_dict_method = getattr(cls_dumper, '__pre_as_dict__', None)
+        if _pre_as_dict_method is not None:
+            _locals['__pre_as_dict__'] = _pre_as_dict_method
+            cb.add_line('__pre_as_dict__(obj)')
 
         # Initialize result list to hold field mappings
         cb.add_line("result = []")
@@ -384,14 +379,16 @@ def dump_func_for_dataclass(cls: Type[T],
                 # Exclude any dataclass fields that are explicitly ignored.
                 if json_field is not ExplicitNull:
                     field_assignments.append(f"if not {skip_field}:")
-                    field_assignments.append(f"  value = _asdict_inner(obj.{field}, dict_factory,"
-                                             f" hooks, config, nested_cls_to_dump_func)")
-                    field_assignments.append(f"  result.append(('{json_field}', value))")
+                    field_assignments.append(f"  result.append(('{json_field}',"
+                                             f"asdict(obj.{field},dict_factory,hooks,config,cls_to_asdict)))")
 
-            cb.add_line(f'{'='.join(skip_field_assignments)}=False')
-            cb.add_line('if exclude is not None:')
+            cb.add_line('if exclude is None:')
             cb.increase_indent()
-            cb.add_lines(*exclude_assignments_to_skip)
+            cb.add_line(f'{'='.join(skip_field_assignments)}=False')
+            cb.decrease_indent()
+            cb.add_line('else:')
+            cb.increase_indent()
+            cb.add_line(';'.join(exclude_assignments_to_skip))
             cb.decrease_indent()
 
             if skip_default_assignments:
@@ -412,7 +409,7 @@ def dump_func_for_dataclass(cls: Type[T],
             cb.add_line("return dict_factory(result)")
 
     # Compile the code into a dynamic string
-    cls_asdict = cb.compile_with_types(locals=_locals, globals=_globals)
+    cls_asdict = cb.create_functions(locals=_locals, globals=_globals)
 
     asdict_func = cls_asdict
 
