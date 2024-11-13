@@ -4,7 +4,7 @@ from ..class_helper import is_builtin_class
 from ..log import LOG
 
 
-class CodeBuilder:
+class FunctionBuilder:
     __slots__ = (
         'current_function',
         'functions',
@@ -28,15 +28,15 @@ class CodeBuilder:
         if not indent_lvl:
             self.finalize_function()
 
-    def function(self, name: str, args: list, return_type=MISSING) -> 'CodeBuilder':
+    def function(self, name: str, args: list, return_type=MISSING) -> 'FunctionBuilder':
         """Start a new function definition with optional return type."""
+        # noinspection PyAttributeOutsideInit
         self.current_function = {"name": name, "args": args, "body": [], "return_type": return_type}
-        # self.add_line(f"def {name}({', '.join(args)})")  # Add function header
         return self
 
     def _with_new_block(self,
                         name: str,
-                        condition: 'str | None' = None) -> 'CodeBuilder':
+                        condition: 'str | None' = None) -> 'FunctionBuilder':
         """Creates a new block. Used with a context manager (with)."""
         indent = '  ' * self.indent_level
 
@@ -47,22 +47,86 @@ class CodeBuilder:
 
         return self
 
-    def for_block(self, condition: str) -> 'CodeBuilder':
+    def for_(self, condition: str) -> 'FunctionBuilder':
+        """Equivalent to the `for` statement in Python.
+
+        Sample Usage:
+
+            >>> with FunctionBuilder().for_('i in range(3)'):
+            >>>     ...
+
+        Will generate the following code:
+
+            >>> for i in range(3):
+            >>>     ...
+
+        """
         return self._with_new_block('for', condition)
 
-    def if_block(self, condition: str) -> 'CodeBuilder':
+    def if_(self, condition: str) -> 'FunctionBuilder':
+        """Equivalent to the `if` statement in Python.
+
+        Sample Usage:
+
+            >>> with FunctionBuilder().if_('something is True'):
+            >>>     ...
+
+        Will generate the following code:
+
+            >>> if something is True:
+            >>>     ...
+
+        """
         return self._with_new_block('if', condition)
 
-    def else_block(self) -> 'CodeBuilder':
+    def else_(self) -> 'FunctionBuilder':
+        """Equivalent to the `else` statement in Python.
+
+        Sample Usage:
+
+            >>> with FunctionBuilder().else_():
+            >>>     ...
+
+        Will generate the following code:
+
+            >>> else:
+            >>>     ...
+
+        """
         return self._with_new_block('else')
 
-    def try_block(self) -> 'CodeBuilder':
+    def try_(self) -> 'FunctionBuilder':
+        """Equivalent to the `try` block in Python.
+
+        Sample Usage:
+
+            >>> with FunctionBuilder().try_():
+            >>>     ...
+
+        Will generate the following code:
+
+            >>> try:
+            >>>     ...
+
+        """
         return self._with_new_block('try')
 
-    def except_block(self,
-                     cls: type[Exception],
-                     var_name: 'str | None' = None):
+    def except_(self,
+                cls: type[Exception],
+                var_name: 'str | None' = None):
+        """Equivalent to the `except` block in Python.
 
+        Sample Usage:
+
+            >>> with FunctionBuilder().except_(TypeError, 'exc'):
+            >>>     ...
+
+        Will generate the following code:
+
+            >>> except TypeError as exc:
+            >>>     ...
+
+        """
         cls_name = cls.__name__
         statement = f'{cls_name} as {var_name}' if var_name else cls_name
 
@@ -83,11 +147,11 @@ class CodeBuilder:
             [f"{indent}{line}" for line in lines]
         )
 
-    def increase_indent(self):
+    def increase_indent(self):  # pragma: no cover
         """Increase indentation level for nested code."""
         self.indent_level += 1
 
-    def decrease_indent(self):
+    def decrease_indent(self):  # pragma: no cover
         """Decrease indentation level."""
         if self.indent_level > 1:
             self.indent_level -= 1
@@ -106,7 +170,7 @@ class CodeBuilder:
         # Note that we may mutate locals. Callers beware!
         # The only callers are internal to this module, so no
         # worries about external callers.
-        if locals is None:
+        if locals is None:  # pragma: no cover
             locals = {}
 
         # Compute the text of the entire function.
@@ -134,7 +198,7 @@ class CodeBuilder:
 
         local_vars = ', '.join(locals.keys())
 
-        all_func_code = '\n'.join([
+        txt = '\n'.join([
             f"def __create_{name}_fn__({local_vars}):\n"
             f" {code}\n"
             f" return {name}"
@@ -143,24 +207,17 @@ class CodeBuilder:
 
         # Print the generated code for debugging
         # logging.debug(f"Generated function code:\n{all_func_code}")
-        LOG.debug(f"Generated function code:\n{all_func_code}")
+        LOG.debug(f"Generated function code:\n{txt}")
 
         ns = {}
-        exec(all_func_code, globals | self.globals, ns)
+        exec(txt, globals | self.globals, ns)
 
-        # Print namespace for debugging
-        # logging.debug(f"Namespace after function compilation: {self.namespace}")
-
-        return {
+        final_ns = self.namespace = {
             name: ns[f'__create_{name}_fn__'](**locals)
             for name in name_to_func_code
         }
 
-        # txt = f"def __create_fn__({local_vars}):\n{txt}\n return {name}"
-        # ns = {}
-        # exec(txt, globals, ns)
-        # return ns['__create_fn__'](**locals)
+        # Print namespace for debugging
+        LOG.debug(f"Namespace after function compilation: {self.namespace}")
 
-    def get_namespace(self):
-        """Return the namespace containing all compiled functions."""
-        return self.namespace
+        return final_ns

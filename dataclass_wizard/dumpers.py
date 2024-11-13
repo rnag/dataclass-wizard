@@ -15,7 +15,7 @@ from datetime import datetime, time, date, timedelta
 from decimal import Decimal
 from enum import Enum
 # noinspection PyProtectedMember,PyUnresolvedReferences
-from typing import Type, List, Dict, Any, NamedTupleMeta, Optional, Callable
+from typing import Type, List, Dict, Any, NamedTupleMeta, Optional, Callable, Collection
 from uuid import UUID
 
 from .abstractions import AbstractDumper
@@ -35,7 +35,8 @@ from .type_def import (
     ExplicitNull, NoneType, JSONObject,
     DD, LSQ, E, U, LT, NT, T
 )
-from .utils.code_builder import CodeBuilder
+from .utils.function_builder import FunctionBuilder
+from .utils.dataclass_compat import _set_new_attribute
 from .utils.string_conv import to_camel_case
 
 
@@ -201,9 +202,11 @@ def get_dumper(cls=None, create=True) -> Type[DumpMixin]:
         return set_class_dumper(cls, DumpMixin)
 
 
-def asdict(obj: T,
-           *, cls=None, dict_factory=dict,
-           exclude: List[str] = None, **kwargs) -> JSONObject:
+def asdict(o: T,
+           *, cls=None,
+           dict_factory=dict,
+           exclude: 'Collection[str] | None' = None,
+           **kwargs) -> JSONObject:
     # noinspection PyUnresolvedReferences
     """Return the fields of a dataclass instance as a new dictionary mapping
     field names to field values.
@@ -236,14 +239,14 @@ def asdict(obj: T,
     # if not _is_dataclass_instance(obj):
     #     raise TypeError("asdict() should be called on dataclass instances")
 
-    cls = cls or type(obj)
+    cls = cls or type(o)
 
     try:
         dump = _CLASS_TO_DUMP_FUNC[cls]
     except KeyError:
         dump = dump_func_for_dataclass(cls)
 
-    return dump(obj, dict_factory, exclude, **kwargs)
+    return dump(o, dict_factory, exclude, **kwargs)
 
 
 def dump_func_for_dataclass(cls: Type[T],
@@ -312,38 +315,33 @@ def dump_func_for_dataclass(cls: Type[T],
 
     _locals = {
         'config': config,
-        'field_to_default': field_to_default,
         'asdict': _asdict_inner,
         'hooks': hooks,
         'cls_to_asdict': nested_cls_to_dump_func,
     }
 
-    # TODO Unsure if dataclasses uses globals()?
     _globals = {
-
         'T': T,
-        'ExplicitNull': ExplicitNull,
-        'LOG': LOG,
     }
 
-    # Initialize CodeBuilder
-    cb = CodeBuilder()
+    # Initialize FuncBuilder
+    fn_gen = FunctionBuilder()
 
     # Code for `cls_asdict`
-    with cb.function('cls_asdict',
-                     ['obj:T',
-                      'dict_factory=dict',
-                      "exclude:'list[str]|None'=None",
-                      f'skip_defaults:bool={meta.skip_defaults}'],
-                     return_type='JSONObject'):
+    with fn_gen.function('cls_asdict',
+                         ['obj:T',
+                          'dict_factory=dict',
+                          "exclude:'list[str]|None'=None",
+                          f'skip_defaults:bool={meta.skip_defaults}'],
+                         return_type='JSONObject'):
 
         _pre_as_dict_method = getattr(cls_dumper, '__pre_as_dict__', None)
         if _pre_as_dict_method is not None:
             _locals['__pre_as_dict__'] = _pre_as_dict_method
-            cb.add_line('__pre_as_dict__(obj)')
+            fn_gen.add_line('__pre_as_dict__(obj)')
 
         # Initialize result list to hold field mappings
-        cb.add_line("result = []")
+        fn_gen.add_line("result = []")
 
         if field_names:
 
@@ -382,28 +380,28 @@ def dump_func_for_dataclass(cls: Type[T],
                     field_assignments.append(f"  result.append(('{json_field}',"
                                              f"asdict(obj.{field},dict_factory,hooks,config,cls_to_asdict)))")
 
-            with cb.if_block('exclude is None'):
-                cb.add_line('='.join(skip_field_assignments) + '=False')
-            with cb.else_block():
-                cb.add_line(';'.join(exclude_assignments))
+            with fn_gen.if_('exclude is None'):
+                fn_gen.add_line('='.join(skip_field_assignments) + '=False')
+            with fn_gen.else_():
+                fn_gen.add_line(';'.join(exclude_assignments))
 
             if skip_default_assignments:
-                with cb.if_block('skip_defaults'):
-                    cb.add_lines(*skip_default_assignments)
+                with fn_gen.if_('skip_defaults'):
+                    fn_gen.add_lines(*skip_default_assignments)
 
-            cb.add_lines(*field_assignments)
+            fn_gen.add_lines(*field_assignments)
 
         # Return the final dictionary result
         if meta.tag:
-            cb.add_line("result = dict_factory(result)")
-            cb.add_line(f"result[{tag_key!r}] = {meta.tag!r}")
+            fn_gen.add_line("result = dict_factory(result)")
+            fn_gen.add_line(f"result[{tag_key!r}] = {meta.tag!r}")
             # Return the result with the tag added
-            cb.add_line("return result")
+            fn_gen.add_line("return result")
         else:
-            cb.add_line("return dict_factory(result)")
+            fn_gen.add_line("return dict_factory(result)")
 
     # Compile the code into a dynamic string
-    functions = cb.create_functions(locals=_locals, globals=_globals)
+    functions = fn_gen.create_functions(locals=_locals, globals=_globals)
 
     cls_asdict = functions['cls_asdict']
 
@@ -412,6 +410,8 @@ def dump_func_for_dataclass(cls: Type[T],
     # In any case, save the dump function for the class, so we don't need to
     # run this logic each time.
     if is_main_class:
+        if hasattr(cls, 'to_dict'):
+            _set_new_attribute(cls, 'to_dict', asdict_func)
         _CLASS_TO_DUMP_FUNC[cls] = asdict_func
     else:
         nested_cls_to_dump_func[cls] = asdict_func
