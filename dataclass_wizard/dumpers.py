@@ -383,7 +383,7 @@ def dump_func_for_dataclass(cls: Type[T],
                                              f"asdict(obj.{field},dict_factory,hooks,config,cls_to_asdict)))")
 
             with cb.if_block('exclude is None'):
-                cb.add_line(f'{'='.join(skip_field_assignments)}=False')
+                cb.add_line('='.join(skip_field_assignments) + '=False')
             with cb.else_block():
                 cb.add_line(';'.join(exclude_assignments))
 
