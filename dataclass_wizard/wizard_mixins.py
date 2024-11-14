@@ -131,8 +131,8 @@ class TOMLWizard:
         Converts a TOML `string` to an instance of the dataclass, or a list of
         the dataclass instances.
 
-        If `header` is passed in, and the value of this key in the parsed
-        ``dict`` object is a ``list``, then the return type is a ``List[T]``.
+        If ``header`` is provided and the corresponding value in the parsed
+        data is a ``list``, the return type is ``List[T]``.
         """
         if decoder is None:  # pragma: no cover
             decoder = toml.loads
@@ -149,11 +149,11 @@ class TOMLWizard:
                        header: str = 'items',
                        parse_float: ParseFloat = float) -> Union[T, List[T]]:
         """
-        Reads in the TOML file contents and converts to an instance of the
-        dataclass, or a list of the dataclass instances.
+        Reads the contents of a TOML file and converts them
+        into an instance (or list of instances) of the dataclass.
 
-        If `header` is passed in, and the value of this key in the parsed
-        ``dict`` object is a ``list``, then the return type is a ``List[T]``.
+        Similar to :meth:`from_toml`, it can return a list if ``header``
+        is specified and points to a list in the TOML data.
         """
         if decoder is None:  # pragma: no cover
             decoder = toml.load
@@ -171,7 +171,11 @@ class TOMLWizard:
                 multiline_strings: bool = False,
                 indent: int = 4) -> AnyStr:
         """
-        Converts the dataclass instance to a TOML `string` representation.
+        Converts a dataclass instance to a TOML `string`.
+
+        Optional parameters include ``multiline_strings``
+        for enabling/disabling multiline formatting of strings,
+        and ``indent`` for setting the indentation level.
         """
         if encoder is None:  # pragma: no cover
             encoder = toml_w.dumps
@@ -180,12 +184,14 @@ class TOMLWizard:
                        multiline_strings=multiline_strings,
                        indent=indent)
 
-    def to_toml_file(self: T, file: str, mode: str = 'w',
+    def to_toml_file(self: T, file: str, mode: str = 'wb',
                      encoder: Optional[FileEncoder] = None,
                      multiline_strings: bool = False,
                      indent: int = 4) -> None:
         """
-        Serializes the instance and writes it to a TOML file.
+        Serializes a dataclass instance and writes it to a TOML file.
+
+        By default, opens the file in "write binary" mode.
         """
         if encoder is None:  # pragma: no cover
             encoder = toml_w.dump
@@ -202,8 +208,8 @@ class TOMLWizard:
                      encoder: Optional[Encoder] = None,
                      **encoder_kwargs) -> AnyStr:
         """
-        Converts a ``list`` of dataclass instances to a TOML `string`
-        representation.
+        Serializes a ``list`` of dataclass instances into a TOML `string`,
+        grouped under a specified header.
         """
         if encoder is None:
             encoder = toml_w.dumps
