@@ -87,7 +87,9 @@ setup(
     tests_require=test_requirements,
     extras_require={
         'timedelta': ['pytimeparse>=1.1.7'],
-        'yaml': ['PyYAML>=5.3'],
+        'toml': ['tomli>=2,<3; python_version == "3.9" or python_version == "3.10"',
+                 'tomli-w>=1,<2'],
+        'yaml': ['PyYAML>=6,<7'],
         'dev': dev_requires + doc_requires + test_requirements,
     },
     zip_safe=False

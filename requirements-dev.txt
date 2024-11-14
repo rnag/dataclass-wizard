@@ -13,3 +13,4 @@ watchdog[watchmedo]==6.0.0
 Sphinx==7.4.7; python_version == "3.9"
 Sphinx==8.1.3; python_version >= "3.10"
 twine==5.1.1
+dataclass-wizard[toml]

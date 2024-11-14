@@ -3,6 +3,7 @@ Helper Wizard Mixin classes.
 """
 __all__ = ['JSONListWizard',
            'JSONFileWizard',
+           'TOMLWizard',
            'YAMLWizard']
 
 import json
@@ -13,7 +14,7 @@ from .bases_meta import DumpMeta
 from .class_helper import _META
 from .dumpers import asdict
 from .enums import LetterCase
-from .lazy_imports import yaml
+from .lazy_imports import toml, toml_w, yaml
 from .loaders import fromdict, fromlist
 from .models import Container
 from .serial_json import JSONSerializable
@@ -92,6 +93,113 @@ class JSONFileWizard:
         """
         with open(file, mode) as out_file:
             encoder(asdict(self), out_file, **encoder_kwargs)
+
+
+class TOMLWizard:
+    # noinspection PyUnresolvedReferences
+    """
+    A Mixin class that makes it easier to interact with TOML data.
+
+    .. NOTE::
+      By default, *NO* key transform is used in the TOML dump process.
+      In practice, this means that a `snake_case` field name in Python is saved
+      as `snake_case` to TOML; however, this can easily be customized without
+      the need to sub-class from :class:`JSONWizard`.
+
+    For example:
+
+        >>> @dataclass
+        >>> class MyClass(TOMLWizard, key_transform='CAMEL'):
+        >>>     ...
+
+    """
+    def __init_subclass__(cls, key_transform=LetterCase.NONE):
+        """Allow easy setup of common config, such as key casing transform."""
+
+        # Only add the key transform if Meta config has not been specified
+        # for the dataclass.
+        if key_transform and cls not in _META:
+            DumpMeta(key_transform=key_transform).bind_to(cls)
+
+    @classmethod
+    def from_toml(cls: Type[T],
+                  string_or_stream: Union[AnyStr, BinaryIO], *,
+                  decoder: Optional[Decoder] = None,
+                  **decoder_kwargs) -> Union[T, List[T]]:
+        """
+        Converts a TOML `string` to an instance of the dataclass, or a list of
+        the dataclass instances.
+        """
+        if decoder is None:
+            decoder = toml.loads
+
+        o = decoder(string_or_stream, **decoder_kwargs)
+
+        return fromdict(cls, o) if isinstance(o, dict) else fromlist(cls, o)
+
+    @classmethod
+    def from_toml_file(cls: Type[T], file: str, *,
+                       decoder: Optional[FileDecoder] = None,
+                       **decoder_kwargs) -> Union[T, List[T]]:
+        """
+        Reads in the TOML file contents and converts to an instance of the
+        dataclass, or a list of the dataclass instances.
+        """
+        if decoder is None:
+            decoder = toml.load
+
+        with open(file, 'rb') as in_file:
+            return cls.from_toml(in_file,
+                                 decoder=decoder,
+                                 **decoder_kwargs)
+
+    def to_toml(self: T,
+                /,
+                *encoder_args,
+                encoder: Optional[Encoder] = None,
+                multiline_strings: bool = False,
+                indent: int = 4) -> AnyStr:
+        """
+        Converts the dataclass instance to a TOML `string` representation.
+        """
+        if encoder is None:
+            encoder = toml_w.dumps
+
+        return encoder(asdict(self), *encoder_args,
+                       multiline_strings=multiline_strings,
+                       indent=indent)
+
+    def to_toml_file(self: T, file: str, mode: str = 'w',
+                     encoder: Optional[FileEncoder] = None,
+                     multiline_strings: bool = False,
+                     indent: int = 4) -> None:
+        """
+        Serializes the instance and writes it to a TOML file.
+        """
+        if encoder is None:
+            encoder = toml_w.dump
+
+        with open(file, mode) as out_file:
+            self.to_toml(out_file, encoder=encoder,
+                         multiline_strings=multiline_strings,
+                         indent=indent)
+
+    @classmethod
+    def list_to_toml(cls: Type[T],
+                     instances: List[T],
+                     header: str = 'items',
+                     encoder: Optional[Encoder] = None,
+                     **encoder_kwargs) -> AnyStr:
+        """
+        Converts a ``list`` of dataclass instances to a TOML `string`
+        representation.
+        """
+        if encoder is None:
+            encoder = toml_w.dumps
+
+        list_of_dict = [asdict(o, cls=cls) for o in instances]
+
+        return encoder({header: list_of_dict}, **encoder_kwargs)
 
 
 class YAMLWizard:

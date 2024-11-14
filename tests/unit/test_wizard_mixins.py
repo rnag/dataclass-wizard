@@ -1,3 +1,4 @@
+import io
 from dataclasses import dataclass
 from typing import List, Optional, Dict
 
@@ -6,7 +7,7 @@ from pytest_mock import MockerFixture
 
 from dataclass_wizard import Container
 from dataclass_wizard.wizard_mixins import (
-    JSONListWizard, JSONFileWizard, YAMLWizard
+    JSONListWizard, JSONFileWizard, TOMLWizard, YAMLWizard
 )
 from .conftest import SampleClass
 
@@ -176,3 +177,101 @@ def test_yaml_wizard_for_branch_coverage(mocker: MockerFixture):
 
     assert result == mock_return_val
     mock_encoder.assert_any_call([])
+
+
+@dataclass
+class MyTOMLWizard(TOMLWizard):
+    my_str: str
+    inner: Optional['Inner'] = None
+
+
+def test_toml_wizard_methods(mocker: MockerFixture):
+    """Test and cover the base methods in TOMLWizard."""
+    toml_data = b"""\
+my_str = "test value"
+[inner]
+my_float = 1.2
+my_list = ["hello, world!", "123"]
+    """
+
+    # Mock open to return the TOML data as a string directly.
+    mock_open = mocker.patch("dataclass_wizard.wizard_mixins.open", mocker.mock_open(read_data=toml_data))
+
+    filename = 'my_file.toml'
+
+    # Test reading from TOML file
+    obj = MyTOMLWizard.from_toml_file(filename)
+
+    mock_open.assert_called_once_with(filename, 'rb')
+    mock_open.reset_mock()
+
+    assert obj == MyTOMLWizard(my_str="test value",
+                               inner=Inner(my_float=1.2,
+                                           my_list=["hello, world!", "123"]))
+
+    # Test writing to TOML file
+    # Mock open for writing to the TOML file.
+    mock_open_write = mocker.mock_open()
+    mocker.patch("dataclass_wizard.wizard_mixins.open", mock_open_write)
+
+    obj.to_toml_file(filename)
+
+    mock_open_write.assert_called_once_with(filename, 'w')
+
+
+def test_toml_wizard_list_to_toml():
+    """Test and cover the `list_to_toml` method in TOMLWizard."""
+    @dataclass
+    class MyClass(TOMLWizard, key_transform='SNAKE'):
+        my_str: str
+        my_dict: Dict[str, str]
+
+    toml_string = MyClass.list_to_toml([
+        MyClass('42', {'111': 'hello', '222': 'world'}),
+        MyClass('testing!', {'333': 'this is a test.'})
+    ])
+
+    print(toml_string)
+
+    assert toml_string == """\
+items = [
+    { my_str = "42", my_dict = { 111 = "hello", 222 = "world" } },
+    { my_str = "testing!", my_dict = { 333 = "this is a test." } },
+]
+"""
+
+
+def test_toml_wizard_for_branch_coverage(mocker: MockerFixture):
+    """Test branching logic in TOMLWizard, mainly for code coverage purposes."""
+
+    # This is to cover the `if` condition in the `__init_subclass__`
+    @dataclass
+    class MyClass(TOMLWizard, key_transform=None):
+        ...
+
+    # from_toml: To cover the case of passing in `decoder`
+    mock_return_val = {'my_str': 'test string'}
+
+    mock_decoder = mocker.Mock()
+    mock_decoder.return_value = mock_return_val
+
+    result = MyTOMLWizard.from_toml('my stream', decoder=mock_decoder)
+
+    assert result == MyTOMLWizard('test string')
+    mock_decoder.assert_called_once()
+
+    # to_toml: To cover the case of passing in `encoder`
+    mock_encoder = mocker.Mock()
+    mock_encoder.return_value = mock_return_val
+
+    m = MyTOMLWizard('test string')
+    result = m.to_toml(encoder=mock_encoder)
+
+    assert result == mock_return_val
+    mock_encoder.assert_called_once()
+
+    # list_to_toml: To cover the case of passing in `encoder`
+    result = MyTOMLWizard.list_to_toml([], encoder=mock_encoder)
+
+    assert result == mock_return_val
+    mock_encoder.assert_any_call({'items': []})

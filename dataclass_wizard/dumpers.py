@@ -28,7 +28,7 @@ from .class_helper import (
     _CLASS_TO_DUMP_FUNC, setup_dump_config_for_cls_if_needed, get_meta,
     dataclass_field_to_load_parser,
 )
-from .constants import _DUMP_HOOKS, TAG
+from .constants import _DUMP_HOOKS, TAG, PY311_OR_ABOVE
 from .decorators import _alias
 from .log import LOG
 from .type_def import (
@@ -158,6 +158,10 @@ def setup_default_dumper(cls=DumpMixin):
     cls.register_dump_hook(NoneType, cls.dump_with_null)
     # Complex types
     cls.register_dump_hook(Enum, cls.dump_with_enum)
+    if PY311_OR_ABOVE:  # Register `IntEnum` and `StrEnum` (PY 3.11+)
+        from enum import IntEnum, StrEnum
+        cls.register_dump_hook(IntEnum, cls.dump_with_enum)
+        cls.register_dump_hook(StrEnum, cls.dump_with_enum)
     cls.register_dump_hook(UUID, cls.dump_with_uuid)
     cls.register_dump_hook(set, cls.dump_with_iterable)
     cls.register_dump_hook(frozenset, cls.dump_with_iterable)
