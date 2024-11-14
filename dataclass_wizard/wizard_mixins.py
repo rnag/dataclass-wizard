@@ -19,7 +19,7 @@ from .loaders import fromdict, fromlist
 from .models import Container
 from .serial_json import JSONSerializable
 from .type_def import (T, ListOfJSONObject,
-                       Encoder, Decoder, FileDecoder, FileEncoder)
+                       Encoder, Decoder, FileDecoder, FileEncoder, ParseFloat)
 
 
 class JSONListWizard(JSONSerializable, str=False):
@@ -125,33 +125,44 @@ class TOMLWizard:
     def from_toml(cls: Type[T],
                   string_or_stream: Union[AnyStr, BinaryIO], *,
                   decoder: Optional[Decoder] = None,
-                  **decoder_kwargs) -> Union[T, List[T]]:
+                  header: str = 'items',
+                  parse_float: ParseFloat = float) -> Union[T, List[T]]:
         """
         Converts a TOML `string` to an instance of the dataclass, or a list of
         the dataclass instances.
+
+        If `header` is passed in, and the value of this key in the parsed
+        ``dict`` object is a ``list``, then the return type is a ``List[T]``.
         """
-        if decoder is None:
+        if decoder is None:  # pragma: no cover
             decoder = toml.loads
 
-        o = decoder(string_or_stream, **decoder_kwargs)
+        o = decoder(string_or_stream, parse_float=parse_float)
 
-        return fromdict(cls, o) if isinstance(o, dict) else fromlist(cls, o)
+        return (fromlist(cls, maybe_l)
+                if (maybe_l := o.get(header)) and isinstance(maybe_l, list)
+                else fromdict(cls, o))
 
     @classmethod
     def from_toml_file(cls: Type[T], file: str, *,
                        decoder: Optional[FileDecoder] = None,
-                       **decoder_kwargs) -> Union[T, List[T]]:
+                       header: str = 'items',
+                       parse_float: ParseFloat = float) -> Union[T, List[T]]:
         """
         Reads in the TOML file contents and converts to an instance of the
         dataclass, or a list of the dataclass instances.
+
+        If `header` is passed in, and the value of this key in the parsed
+        ``dict`` object is a ``list``, then the return type is a ``List[T]``.
         """
-        if decoder is None:
+        if decoder is None:  # pragma: no cover
             decoder = toml.load
 
         with open(file, 'rb') as in_file:
             return cls.from_toml(in_file,
                                  decoder=decoder,
-                                 **decoder_kwargs)
+                                 header=header,
+                                 parse_float=parse_float)
 
     def to_toml(self: T,
                 /,
@@ -162,7 +173,7 @@ class TOMLWizard:
         """
         Converts the dataclass instance to a TOML `string` representation.
         """
-        if encoder is None:
+        if encoder is None:  # pragma: no cover
             encoder = toml_w.dumps
 
         return encoder(asdict(self), *encoder_args,
@@ -176,7 +187,7 @@ class TOMLWizard:
         """
         Serializes the instance and writes it to a TOML file.
         """
-        if encoder is None:
+        if encoder is None:  # pragma: no cover
             encoder = toml_w.dump
 
         with open(file, mode) as out_file:

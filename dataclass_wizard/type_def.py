@@ -16,6 +16,7 @@ __all__ = [
     'JSONObject',
     'ListOfJSONObject',
     'JSONValue',
+    'ParseFloat',
     'Encoder',
     'FileEncoder',
     'Decoder',
@@ -164,6 +165,9 @@ class ExplicitNullType:
 
 # Create the singleton instance
 ExplicitNull = ExplicitNullType()
+
+# Type annotations
+ParseFloat = Callable[[str], Any]
 
 
 class Encoder(PyProtocol):
