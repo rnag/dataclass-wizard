@@ -20,7 +20,7 @@ from .class_helper import (
     dataclass_field_to_load_parser, json_field_to_dataclass_field,
     _CLASS_TO_LOAD_FUNC, dataclass_fields, get_meta, is_subclass_safe,
 )
-from .constants import _LOAD_HOOKS, SINGLE_ARG_ALIAS, IDENTITY, PY311_OR_ABOVE
+from .constants import _LOAD_HOOKS, SINGLE_ARG_ALIAS, IDENTITY
 from .decorators import _alias, _single_arg_alias, resolve_alias_func, _identity
 from .errors import (ParseError, MissingFields, UnknownJSONKey,
                      MissingData, RecursiveClassError)
@@ -496,10 +496,6 @@ def setup_default_loader(cls=LoadMixin):
     cls.register_load_hook(NoneType, cls.default_load_to)
     # Complex types
     cls.register_load_hook(Enum, cls.load_to_enum)
-    if PY311_OR_ABOVE:  # Register `IntEnum` and `StrEnum` (PY 3.11+)
-        from enum import IntEnum, StrEnum
-        cls.register_load_hook(IntEnum, cls.load_to_enum)
-        cls.register_load_hook(StrEnum, cls.load_to_enum)
     cls.register_load_hook(UUID, cls.load_to_uuid)
     cls.register_load_hook(set, cls.load_to_iterable)
     cls.register_load_hook(frozenset, cls.load_to_iterable)
