@@ -216,7 +216,7 @@ my_list = ["hello, world!", "123"]
 
     obj.to_toml_file(filename)
 
-    mock_open_write.assert_called_once_with(filename, 'w')
+    mock_open_write.assert_called_once_with(filename, 'wb')
 
 
 def test_toml_wizard_list_to_toml():
