@@ -423,7 +423,9 @@ def dump_func_for_dataclass(cls: Type[T],
     # In any case, save the dump function for the class, so we don't need to
     # run this logic each time.
     if is_main_class:
-        if hasattr(cls, 'to_dict'):
+        # Check if the class has a `to_dict`, and it's
+        # equivalent to `asdict`.
+        if getattr(cls, 'to_dict', None) is asdict:
             _set_new_attribute(cls, 'to_dict', asdict_func)
         _CLASS_TO_DUMP_FUNC[cls] = asdict_func
     else:

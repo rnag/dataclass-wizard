@@ -747,7 +747,10 @@ def load_func_for_dataclass(
     # Save the load function for the main dataclass, so we don't need to run
     # this logic each time.
     if is_main_class:
-        if hasattr(cls, 'from_dict'):
+        # Check if the class has a `from_dict`, and it's
+        # a class method bound to `fromdict`.
+        if ((from_dict := getattr(cls, 'from_dict', None)) is not None
+                and getattr(from_dict, '__func__', None) is fromdict):
             _set_new_attribute(cls, 'from_dict', cls_fromdict)
         _CLASS_TO_LOAD_FUNC[cls] = cls_fromdict
 
