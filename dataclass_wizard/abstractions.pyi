@@ -376,5 +376,7 @@ class AbstractDumper(ABC):
         >>>     def __pre_as_dict__(self):
         >>>         self.my_str = self.my_str.swapcase()
 
+        @deprecated since v0.28.0. Use `_pre_dict()` instead - no need
+            to subclass from DumpMixin.
         """
         ...

@@ -30,6 +30,7 @@ from .class_helper import (
 )
 from .constants import _DUMP_HOOKS, TAG
 from .decorators import _alias
+from .errors import show_deprecation_warning
 from .log import LOG
 from .type_def import (
     ExplicitNull, NoneType, JSONObject,
@@ -329,16 +330,28 @@ def dump_func_for_dataclass(cls: Type[T],
 
     # Code for `cls_asdict`
     with fn_gen.function('cls_asdict',
-                         ['obj:T',
+                         ['o:T',
                           'dict_factory=dict',
                           "exclude:'list[str]|None'=None",
                           f'skip_defaults:bool={meta.skip_defaults}'],
                          return_type='JSONObject'):
 
-        _pre_as_dict_method = getattr(cls_dumper, '__pre_as_dict__', None)
-        if _pre_as_dict_method is not None:
-            _locals['__pre_as_dict__'] = _pre_as_dict_method
-            fn_gen.add_line('__pre_as_dict__(obj)')
+        if (
+            _pre_dict := getattr(cls, '_pre_dict', None)
+        ) is not None:
+            # class defines a `_pre_dict()`
+            _locals['__pre_dict__'] = _pre_dict
+            fn_gen.add_line('__pre_dict__(o)')
+        elif (
+            _pre_dict := getattr(cls_dumper, '__pre_as_dict__', None)
+        ) is not None:
+            # deprecated since v0.28.0
+            # subclass of `DumpMixin` defines a `__pre_as_dict__()`
+            reason = "use `_pre_dict` instead - no need to subclass from DumpMixin"
+            show_deprecation_warning(_pre_dict, reason)
+
+            _locals['__pre_dict__'] = _pre_dict
+            fn_gen.add_line('__pre_dict__(o)')
 
         # Initialize result list to hold field mappings
         fn_gen.add_line("result = []")
@@ -362,7 +375,7 @@ def dump_func_for_dataclass(cls: Type[T],
                 if field in field_to_default:
                     _locals[default_value] = field_to_default[field]
                     skip_default_assignments.append(
-                        f"{skip_field} = {skip_field} or obj.{field} == {default_value}"
+                        f"{skip_field} = {skip_field} or o.{field} == {default_value}"
                     )
 
                 # Get the resolved JSON field name
@@ -378,7 +391,7 @@ def dump_func_for_dataclass(cls: Type[T],
                 if json_field is not ExplicitNull:
                     field_assignments.append(f"if not {skip_field}:")
                     field_assignments.append(f"  result.append(('{json_field}',"
-                                             f"asdict(obj.{field},dict_factory,hooks,config,cls_to_asdict)))")
+                                             f"asdict(o.{field},dict_factory,hooks,config,cls_to_asdict)))")
 
             with fn_gen.if_('exclude is None'):
                 fn_gen.add_line('='.join(skip_field_assignments) + '=False')

@@ -34,6 +34,60 @@ class JSONSerializable(AbstractJSONWizard):
             ...
 
     @classmethod
+    def _pre_from_dict(cls: Type[W], o: JSONObject) -> JSONObject:
+        """
+        Optional hook that runs before the dataclass instance is
+        loaded, and before it is converted from a dictionary object
+        via :meth:`from_dict`.
+
+        To override this, subclasses need to implement this method.
+        A simple example is shown below:
+
+        >>> from dataclasses import dataclass
+        >>> from dataclass_wizard import JSONWizard
+        >>> from dataclass_wizard.type_def import JSONObject
+        >>>
+        >>>
+        >>> @dataclass
+        >>> class MyClass(JSONWizard):
+        >>>     a_bool: bool
+        >>>
+        >>>     @classmethod
+        >>>     def _pre_from_dict(cls, o: JSONObject) -> JSONObject:
+        >>>         # o = o.copy()  # Copying the `dict` object is optional
+        >>>         o['a_bool'] = True  # Add a new key/value pair
+        >>>         return o
+        >>>
+        >>> c = MyClass.from_dict({})
+        >>> assert c == MyClass(a_bool=True)
+        """
+        ...
+
+    def _pre_dict(self):
+        # noinspection PyDunderSlots, PyUnresolvedReferences
+        """
+                Optional hook that runs before the dataclass instance is processed and
+                before it is converted to a dictionary object via :meth:`to_dict`.
+
+                To override this, subclasses need to extend from :class:`DumpMixIn`
+                and implement this method. A simple example is shown below:
+
+                >>> from dataclasses import dataclass
+                >>> from dataclass_wizard import JSONWizard
+                >>>
+                >>>
+                >>> @dataclass
+                >>> class MyClass(JSONWizard):
+                >>>     my_str: str
+                >>>
+                >>>     def _pre_dict(self):
+                >>>         self.my_str = self.my_str.swapcase()
+                >>>
+                >>> assert MyClass('test').to_dict() == {'myStr': 'TEST'}
+                """
+        ...
+
+    @classmethod
     def from_json(cls: Type[W], string: AnyStr, *,
                   decoder: Decoder = json.loads,
                   **decoder_kwargs) -> Union[W, List[W]]:
@@ -108,11 +162,13 @@ class JSONSerializable(AbstractJSONWizard):
         ...
 
     # noinspection PyShadowingBuiltins
-    def __init_subclass__(cls, str=True):
+    def __init_subclass__(cls, str=True, debug=False):
         """
         Checks for optional settings and flags that may be passed in by the
         sub-class, and calls the Meta initializer when :class:`Meta` is sub-classed.
 
         :param str: True to add a default `__str__` method to the subclass.
+        :param debug: True to enable debug mode and setup logging, so that
+          this library's DEBUG (and above) log messages are visible.
         """
         ...

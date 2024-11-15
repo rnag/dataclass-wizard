@@ -307,6 +307,8 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
                             )
                         else:  # else, logic is same as normal
                             base_type: 'type[T]'
+                            # return a dynamically generated `fromdict`
+                            # for the `cls` (base_type)
                             return load_func_for_dataclass(
                                 base_type,
                                 is_main_class=False,
@@ -648,6 +650,11 @@ def load_func_for_dataclass(
     fn_gen = FunctionBuilder()
 
     with fn_gen.function('cls_fromdict', ['o']):
+
+        _pre_from_dict_method = getattr(cls, '_pre_from_dict', None)
+        if _pre_from_dict_method is not None:
+            _locals['__pre_from_dict__'] = _pre_from_dict_method
+            fn_gen.add_line('o = __pre_from_dict__(o)')
 
         # Need to create a separate dictionary to copy over the constructor
         # args, as we don't want to mutate the original dictionary object.
