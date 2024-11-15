@@ -1,8 +1,9 @@
 import json
+import logging
 from typing import Type, List, Union, AnyStr
 
 from .abstractions import AbstractJSONWizard, W
-from .bases_meta import BaseJSONWizardMeta
+from .bases_meta import BaseJSONWizardMeta, LoadMeta
 from .class_helper import call_meta_initializer_if_needed
 from .decorators import _alias
 from .dumpers import asdict
@@ -96,12 +97,14 @@ class JSONSerializable(AbstractJSONWizard):
         return encoder(list_of_dict, **encoder_kwargs)
 
     # noinspection PyShadowingBuiltins
-    def __init_subclass__(cls, str=True):
+    def __init_subclass__(cls, str=True, debug=False):
         """
         Checks for optional settings and flags that may be passed in by the
         sub-class, and calls the Meta initializer when :class:`Meta` is sub-classed.
 
         :param str: True to add a default `__str__` method to the subclass.
+        :param debug: True to enable debug mode and setup logging, so that
+          this library's DEBUG (and above) log messages are visible.
         """
         super().__init_subclass__()
         # Calls the Meta initializer when inner :class:`Meta` is sub-classed.
@@ -109,6 +112,9 @@ class JSONSerializable(AbstractJSONWizard):
         # Add a `__str__` method to the subclass, if needed
         if str:
             _set_new_attribute(cls, '__str__', _str_fn())
+        if debug:
+            logging.basicConfig(level='DEBUG')
+            LoadMeta(debug_enabled=True).bind_to(cls)
 
 
 def _str_fn():

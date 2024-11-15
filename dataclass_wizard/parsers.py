@@ -65,10 +65,10 @@ class SingleArgParser(AbstractParser[Type[T], T]):
 
 
 @dataclass
-class Parser(AbstractParser[Type[T], T]):
+class Parser(AbstractParser[T, T]):
     __slots__ = ('hook', )
 
-    hook: Callable[[Any, Type[T]], T]
+    hook: Callable[[Any, type[T]], T]
 
     def __call__(self, o: Any) -> T:
         return self.hook(o, self.base_type)
@@ -113,10 +113,10 @@ class RecursionSafeParser(AbstractParser):
 
 
 @dataclass
-class LiteralParser(AbstractParser[Type[M], M]):
+class LiteralParser(AbstractParser[M, M]):
     __slots__ = ('value_to_type', )
 
-    base_type: Type[M]
+    base_type: type[M]
 
     # noinspection PyDataclass
     def __post_init__(self, *_):
@@ -139,7 +139,7 @@ class LiteralParser(AbstractParser[Type[M], M]):
 
         """
         try:
-            type_does_not_match = type(o) != self.value_to_type[o]
+            type_does_not_match = type(o) is not self.value_to_type[o]
 
         except KeyError:
             # No such Literal with the value of `o`
@@ -192,7 +192,7 @@ class PatternedDTParser(AbstractParser[_PatternedDT, DT]):
 
 
 @dataclass
-class OptionalParser(AbstractParser[Type[T], Optional[T]]):
+class OptionalParser(AbstractParser[T, Optional[T]]):
     __slots__ = ('parser', )
 
     get_parser: InitVar[GetParserType]
@@ -238,9 +238,12 @@ class UnionParser(AbstractParser[Tuple[Type[T], ...], Optional[T]]):
             self.tag_key = TAG
             auto_assign_tags = False
 
+        # noinspection PyUnboundLocalVariable
         self.parsers = tuple(
-            get_parser(t, cls, extras) for t in self.base_type
-            if t is not NoneType)
+            parser
+            for t in self.base_type
+            if t is not NoneType
+            and isinstance(parser := get_parser(t, cls, extras), AbstractParser))
 
         self.tag_to_parser = {}
         for t in self.base_type:
@@ -255,7 +258,8 @@ class UnionParser(AbstractParser[Tuple[Type[T], ...], Optional[T]]):
                     if meta is AbstractMeta:
                         from .bases_meta import BaseJSONWizardMeta
                         cls_dict = {'__slots__': (), 'tag': tag}
-                        meta = type(cls_name + 'Meta', (BaseJSONWizardMeta, ), cls_dict)
+                        # noinspection PyTypeChecker
+                        meta: type[M] = type(cls_name + 'Meta', (BaseJSONWizardMeta, ), cls_dict)
                         _META[t] = meta
                     else:
                         meta.tag = cls_name
@@ -465,14 +469,13 @@ class VariadicTupleParser(TupleParser):
 
 
 @dataclass
-class NamedTupleParser(AbstractParser[Type[NT], NT]):
+class NamedTupleParser(AbstractParser[tuple, NT]):
     __slots__ = ('hook',
                  'field_to_parser',
                  'field_parsers')
 
-    base_type: Type[NT]
     hook: Callable[
-        [Any, Type[NT], Optional[FieldToParser], List[AbstractParser]],
+        [Any, type[tuple], Optional[FieldToParser], List[AbstractParser]],
         NT
     ]
     get_parser: InitVar[GetParserType]
@@ -482,7 +485,7 @@ class NamedTupleParser(AbstractParser[Type[NT], NT]):
                       get_parser: GetParserType):
 
         # Get the field annotations for the `NamedTuple` type
-        type_anns: Dict[str, Type[Any]] = self.base_type.__annotations__
+        type_anns: Dict[str, type[T]] = self.base_type.__annotations__
 
         self.field_to_parser: Optional[FieldToParser] = {
             f: get_parser(ftype, cls, extras)
@@ -501,13 +504,12 @@ class NamedTupleParser(AbstractParser[Type[NT], NT]):
 
 
 @dataclass
-class NamedTupleUntypedParser(AbstractParser[Type[NT], NT]):
+class NamedTupleUntypedParser(AbstractParser[tuple, NT]):
     __slots__ = ('hook',
                  'dict_parser',
                  'list_parser')
 
-    base_type: Type[NT]
-    hook: Callable[[Any, Type[NT], AbstractParser, AbstractParser], NT]
+    hook: Callable[[Any, Type[tuple], AbstractParser, AbstractParser], NT]
     get_parser: InitVar[GetParserType]
 
     def __post_init__(self, cls: Type,

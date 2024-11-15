@@ -191,3 +191,152 @@ A (mostly) complete example of using the :class:`YAMLWizard` is as follows:
     #   ...
 
 .. _PyYAML: https://pypi.org/project/PyYAML/
+
+:class:`TOMLWizard`
+~~~~~~~~~~~~~~~~~~~
+
+.. admonition:: **Added in v0.28.0**
+
+   The :class:`TOMLWizard` was introduced in version 0.28.0.
+
+The TOML Wizard provides an easy, convenient interface for converting ``dataclass`` instances to/from `TOML`_. This mixin enables simple loading, saving, and flexible serialization of TOML data, including support for custom key casing transforms.
+
+.. note::
+   By default, *NO* key transform is used in the TOML dump process. This means that a `snake_case` field name in Python is saved as `snake_case` in TOML. However, this can be customized without subclassing from :class:`JSONWizard`, as below.
+
+       >>> @dataclass
+       >>> class MyClass(TOMLWizard, key_transform='CAMEL'):
+       >>>     ...
+
+Dependencies
+------------
+- For reading TOML, `TOMLWizard` uses `Tomli`_ for Python 3.9 and 3.10, and the built-in `tomllib`_ for Python 3.11+.
+- For writing TOML, `Tomli-W`_ is used across all Python versions.
+
+.. _TOML: https://toml.io/en/
+.. _Tomli: https://pypi.org/project/tomli/
+.. _Tomli-W: https://pypi.org/project/tomli-w/
+.. _tomllib: https://docs.python.org/3/library/tomllib.html
+
+Example
+-------
+
+A (mostly) complete example of using the :class:`TOMLWizard` is as follows:
+
+.. code:: python3
+
+    from dataclasses import dataclass, field
+    from dataclass_wizard import TOMLWizard
+
+
+    @dataclass
+    class InnerData:
+        my_float: float
+        my_list: list[str] = field(default_factory=list)
+
+
+    @dataclass
+    class MyData(TOMLWizard):
+        my_str: str
+        my_dict: dict[str, int] = field(default_factory=dict)
+        inner_data: InnerData = field(default_factory=lambda: InnerData(3.14, ["hello", "world"]))
+
+
+    # TOML input string with nested tables and lists
+    toml_string = """
+    my_str = 'example'
+    [my_dict]
+    key1 = 1
+    key2 = '2'
+
+    [inner_data]
+    my_float = 2.718
+    my_list = ['apple', 'banana', 'cherry']
+    """
+
+    # Load from TOML string
+    data = MyData.from_toml(toml_string)
+
+    # Sample output of `data` after loading from TOML:
+    #> my_str = 'example'
+    #> my_dict = {'key1': 1, 'key2': 2}
+    #> inner_data = InnerData(my_float=2.718, my_list=['apple', 'banana', 'cherry'])
+
+    # Save to TOML file
+    data.to_toml_file('data.toml')
+
+    # Now read it back from the TOML file
+    new_data = MyData.from_toml_file('data.toml')
+
+    # Assert we get back the same data
+    assert data == new_data, "Data read from TOML file does not match the original."
+
+    # Create a list of dataclass instances
+    data_list = [data, new_data, MyData("another_example", {"key3": 3}, InnerData(1.618, ["one", "two"]))]
+
+    # Serialize the list to a TOML string
+    toml_output = MyData.list_to_toml(data_list, header='testing')
+
+    print(toml_output)
+    # [[testing]]
+    # my_str = "example"
+    #
+    # [testing.my_dict]
+    # key1 = 1
+    # key2 = 2
+    #
+    # [testing.inner_data]
+    # my_float = 2.718
+    # my_list = [
+    #     "apple",
+    #     "banana",
+    #     "cherry",
+    # ]
+    # ...
+
+This approach provides a straightforward way to handle TOML data within Python dataclasses.
+
+Methods
+-------
+
+.. method:: from_toml(cls, string_or_stream, *, decoder=None, header='items', parse_float=float)
+
+   Parses a TOML `string` or stream and converts it into an instance (or list of instances) of the dataclass. If `header` is provided and the corresponding value in the parsed data is a list, the return type is `List[T]`.
+
+   **Example usage:**
+
+      >>> data_str = '''my_str = "test"\n[inner]\nmy_float = 1.2'''
+      >>> obj = MyClass.from_toml(data_str)
+
+.. method:: from_toml_file(cls, file, *, decoder=None, header='items', parse_float=float)
+
+   Reads the contents of a TOML file and converts them into an instance (or list of instances) of the dataclass. Similar to :meth:`from_toml`, it can return a list if `header` is specified and points to a list in the TOML data.
+
+   **Example usage:**
+
+      >>> obj = MyClass.from_toml_file('config.toml')
+
+.. method:: to_toml(self, /, *encoder_args, encoder=None, multiline_strings=False, indent=4)
+
+   Converts a dataclass instance to a TOML string. Optional parameters include `multiline_strings` for enabling/disabling multiline formatting of strings and `indent` for setting the indentation level.
+
+   **Example usage:**
+
+      >>> toml_str = obj.to_toml()
+
+.. method:: to_toml_file(self, file, mode='wb', encoder=None, multiline_strings=False, indent=4)
+
+   Serializes a dataclass instance and writes it to a TOML file. By default, opens the file in "write binary" mode.
+
+   **Example usage:**
+
+      >>> obj.to_toml_file('output.toml')
+
+.. method:: list_to_toml(cls, instances, header='items', encoder=None, **encoder_kwargs)
+
+   Serializes a list of dataclass instances into a TOML string, grouped under a specified `header`.
+
+   **Example usage:**
+
+      >>> obj_list = [MyClass(), MyClass(my_str="example")]
+      >>> toml_str = MyClass.list_to_toml(obj_list)

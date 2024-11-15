@@ -16,6 +16,7 @@ __all__ = [
     'JSONObject',
     'ListOfJSONObject',
     'JSONValue',
+    'ParseFloat',
     'Encoder',
     'FileEncoder',
     'Decoder',
@@ -145,18 +146,28 @@ else:
 FREF = TypeVar('FREF', str, PyForwardRef)
 
 
-# Create our own "nullish" type for explicit type assertions
 class ExplicitNullType:
-    __slots__ = ()
+    __slots__ = ()  # Saves memory by preventing the creation of instance dictionaries
+
+    _instance = None  # Class-level instance variable for singleton control
+
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super(ExplicitNullType, cls).__new__(cls)
+        return cls._instance
 
     def __bool__(self):
         return False
 
     def __repr__(self):
-        return self.__class__.__qualname__
+        return '<ExplicitNull>'
 
 
+# Create the singleton instance
 ExplicitNull = ExplicitNullType()
+
+# Type annotations
+ParseFloat = Callable[[str], Any]
 
 
 class Encoder(PyProtocol):
@@ -166,6 +177,8 @@ class Encoder(PyProtocol):
     """
 
     def __call__(self, obj: Union[JSONObject, JSONList],
+                 /,
+                 *args,
                  **kwargs) -> AnyStr:
         ...
 

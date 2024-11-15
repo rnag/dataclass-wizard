@@ -7,7 +7,7 @@ from dataclasses import dataclass, InitVar
 from datetime import datetime, time, date, timedelta
 from decimal import Decimal
 from typing import (
-    Any, Type, TypeVar, Union, List, Tuple, Dict, SupportsFloat, AnyStr,
+    Any, TypeVar, SupportsFloat, AnyStr,
     Text, Sequence, Iterable, Generic
 )
 
@@ -21,7 +21,7 @@ from .type_def import (
 # Create a generic variable that can be 'AbstractJSONWizard', or any subclass.
 W = TypeVar('W', bound='AbstractJSONWizard')
 
-FieldToParser = Dict[str, 'AbstractParser']
+FieldToParser = dict[str, 'AbstractParser']
 
 
 class AbstractJSONWizard(ABC):
@@ -38,7 +38,7 @@ class AbstractJSONWizard(ABC):
 
     @classmethod
     @abstractmethod
-    def from_json(cls: Type[W], string: AnyStr) -> Union[W, List[W]]:
+    def from_json(cls: type[W], string: AnyStr) -> W | list[W]:
         """
         Converts a JSON `string` to an instance of the dataclass, or a list of
         the dataclass instances.
@@ -46,14 +46,14 @@ class AbstractJSONWizard(ABC):
 
     @classmethod
     @abstractmethod
-    def from_list(cls: Type[W], o: ListOfJSONObject) -> List[W]:
+    def from_list(cls: type[W], o: ListOfJSONObject) -> list[W]:
         """
         Converts a Python `list` object to a list of the dataclass instances.
         """
 
     @classmethod
     @abstractmethod
-    def from_dict(cls: Type[W], o: JSONObject) -> W:
+    def from_dict(cls: type[W], o: JSONObject) -> W:
         """
         Converts a Python `dict` object to an instance of the dataclass.
         """
@@ -76,8 +76,8 @@ class AbstractJSONWizard(ABC):
 
     @classmethod
     @abstractmethod
-    def list_to_json(cls: Type[W],
-                     instances: List[W],
+    def list_to_json(cls: type[W],
+                     instances: list[W],
                      encoder: Encoder = json.dumps,
                      indent=None,
                      **encoder_kwargs) -> AnyStr:
@@ -108,7 +108,7 @@ class AbstractParser(ABC, Generic[T, TT]):
     # type `base_type`. This is primarily useful for resolving `ForwardRef`
     # types, where we need the globals of the class to resolve the underlying
     # type of the reference.
-    cls: InitVar[Type]
+    cls: InitVar[type]
 
     # This represents an optional Meta config that was specified for the main
     # dataclass. This is primarily useful to have so that we can merge this
@@ -117,7 +117,7 @@ class AbstractParser(ABC, Generic[T, TT]):
     extras: InitVar[Extras]
 
     # This is usually the underlying base type of the annotation (for example,
-    # for `List[str]` it will be `list`), though in some cases this will be
+    # for `list[str]` it will be `list`), though in some cases this will be
     # the annotation itself.
     base_type: type[T]
 
@@ -163,7 +163,7 @@ class AbstractLoader(ABC):
 
     @staticmethod
     @abstractmethod
-    def load_after_type_check(o: Any, base_type: Type[T]) -> T:
+    def load_after_type_check(o: Any, base_type: type[T]) -> T:
         """
         Load an object `o`, after confirming that it is indeed of
         type `base_type`.
@@ -173,7 +173,7 @@ class AbstractLoader(ABC):
 
     @staticmethod
     @abstractmethod
-    def load_to_str(o: Union[Text, N, None], base_type: Type[str]) -> str:
+    def load_to_str(o: Text | N | None, base_type: type[str]) -> str:
         """
         Load a string or numeric type into a new object of type `base_type`
         (generally a sub-class of the :class:`str` type)
@@ -181,7 +181,7 @@ class AbstractLoader(ABC):
 
     @staticmethod
     @abstractmethod
-    def load_to_int(o: Union[str, int, bool, None], base_type: Type[N]) -> N:
+    def load_to_int(o: str | int | bool | None, base_type: type[N]) -> N:
         """
         Load a string or int into a new object of type `base_type`
         (generally a sub-class of the :class:`int` type)
@@ -189,7 +189,7 @@ class AbstractLoader(ABC):
 
     @staticmethod
     @abstractmethod
-    def load_to_float(o: Union[SupportsFloat, str], base_type: Type[N]) -> N:
+    def load_to_float(o: SupportsFloat | str, base_type: type[N]) -> N:
         """
         Load a string or float into a new object of type `base_type`
         (generally a sub-class of the :class:`float` type)
@@ -197,7 +197,7 @@ class AbstractLoader(ABC):
 
     @staticmethod
     @abstractmethod
-    def load_to_bool(o: Union[str, bool, N], _: Type[bool]) -> bool:
+    def load_to_bool(o: str | bool | N, _: type[bool]) -> bool:
         """
         Load a bool, string, or an numeric value into a new object of type
         `bool`.
@@ -208,7 +208,7 @@ class AbstractLoader(ABC):
 
     @staticmethod
     @abstractmethod
-    def load_to_enum(o: Union[AnyStr, N], base_type: Type[E]) -> E:
+    def load_to_enum(o: AnyStr | N, base_type: type[E]) -> E:
         """
         Load an object `o` into a new object of type `base_type` (generally a
         sub-class of the :class:`Enum` type)
@@ -216,7 +216,7 @@ class AbstractLoader(ABC):
 
     @staticmethod
     @abstractmethod
-    def load_to_uuid(o: Union[AnyStr, U], base_type: Type[U]) -> U:
+    def load_to_uuid(o: AnyStr | U, base_type: type[U]) -> U:
         """
         Load an object `o` into a new object of type `base_type` (generally a
         sub-class of the :class:`UUID` type)
@@ -225,7 +225,7 @@ class AbstractLoader(ABC):
     @staticmethod
     @abstractmethod
     def load_to_iterable(
-            o: Iterable, base_type: Type[LSQ],
+            o: Iterable, base_type: type[LSQ],
             elem_parser: AbstractParser) -> LSQ:
         """
         Load a list, set, frozenset or deque into a new object of type
@@ -236,8 +236,8 @@ class AbstractLoader(ABC):
     @staticmethod
     @abstractmethod
     def load_to_tuple(
-            o: Union[List, Tuple], base_type: Type[Tuple],
-            elem_parsers: Sequence[AbstractParser]) -> Tuple:
+            o: list | tuple, base_type: type[tuple],
+            elem_parsers: Sequence[AbstractParser]) -> tuple:
         """
         Load a list or tuple into a new object of type `base_type` (generally
         a :class:`tuple` or a sub-class of one)
@@ -246,9 +246,9 @@ class AbstractLoader(ABC):
     @staticmethod
     @abstractmethod
     def load_to_named_tuple(
-            o: Union[Dict, List, Tuple], base_type: Type[NT],
+            o: dict | list | tuple, base_type: type[NT],
             field_to_parser: FieldToParser,
-            field_parsers: List[AbstractParser]) -> NT:
+            field_parsers: list[AbstractParser]) -> NT:
         """
         Load a dictionary, list, or tuple to a `NamedTuple` sub-class
         """
@@ -256,7 +256,7 @@ class AbstractLoader(ABC):
     @staticmethod
     @abstractmethod
     def load_to_named_tuple_untyped(
-            o: Union[Dict, List, Tuple], base_type: Type[NT],
+            o: dict | list | tuple, base_type: type[NT],
             dict_parser: AbstractParser, list_parser: AbstractParser) -> NT:
         """
         Load a dictionary, list, or tuple to a (generally) un-typed
@@ -266,7 +266,7 @@ class AbstractLoader(ABC):
     @staticmethod
     @abstractmethod
     def load_to_dict(
-            o: Dict, base_type: Type[M],
+            o: dict, base_type: type[M],
             key_parser: AbstractParser,
             val_parser: AbstractParser) -> M:
         """
@@ -277,7 +277,7 @@ class AbstractLoader(ABC):
     @staticmethod
     @abstractmethod
     def load_to_defaultdict(
-            o: Dict, base_type: Type[DD],
+            o: dict, base_type: type[DD],
             default_factory: DefFactory,
             key_parser: AbstractParser,
             val_parser: AbstractParser) -> DD:
@@ -289,7 +289,7 @@ class AbstractLoader(ABC):
     @staticmethod
     @abstractmethod
     def load_to_typed_dict(
-            o: Dict, base_type: Type[M],
+            o: dict, base_type: type[M],
             key_to_parser: FieldToParser,
             required_keys: FrozenKeys,
             optional_keys: FrozenKeys) -> M:
@@ -301,7 +301,7 @@ class AbstractLoader(ABC):
 
     @staticmethod
     @abstractmethod
-    def load_to_decimal(o: N, base_type: Type[Decimal]) -> Decimal:
+    def load_to_decimal(o: N, base_type: type[Decimal]) -> Decimal:
         """
         Load an object `o` into a new object of type `base_type` (generally a
         :class:`Decimal` or a sub-class of one)
@@ -310,7 +310,7 @@ class AbstractLoader(ABC):
     @staticmethod
     @abstractmethod
     def load_to_datetime(
-            o: Union[str, N], base_type: Type[datetime]) -> datetime:
+            o: str | N, base_type: type[datetime]) -> datetime:
         """
         Load a string or number (int or float) into a new object of type
         `base_type` (generally a :class:`datetime` or a sub-class of one)
@@ -318,7 +318,7 @@ class AbstractLoader(ABC):
 
     @staticmethod
     @abstractmethod
-    def load_to_time(o: str, base_type: Type[time]) -> time:
+    def load_to_time(o: str, base_type: type[time]) -> time:
         """
         Load a string or number (int or float) into a new object of type
         `base_type` (generally a :class:`time` or a sub-class of one)
@@ -326,7 +326,7 @@ class AbstractLoader(ABC):
 
     @staticmethod
     @abstractmethod
-    def load_to_date(o: Union[str, N], base_type: Type[date]) -> date:
+    def load_to_date(o: str | N, base_type: type[date]) -> date:
         """
         Load a string or number (int or float) into a new object of type
         `base_type` (generally a :class:`date` or a sub-class of one)
@@ -335,7 +335,7 @@ class AbstractLoader(ABC):
     @staticmethod
     @abstractmethod
     def load_to_timedelta(
-            o: Union[str, N], base_type: Type[timedelta]) -> timedelta:
+            o: str | N, base_type: type[timedelta]) -> timedelta:
         """
         Load a string or number (int or float) into a new object of type
         `base_type` (generally a :class:`timedelta` or a sub-class of one)
@@ -343,8 +343,8 @@ class AbstractLoader(ABC):
 
     @classmethod
     @abstractmethod
-    def get_parser_for_annotation(cls, ann_type: Type[T],
-                                  base_cls: Type = None,
+    def get_parser_for_annotation(cls, ann_type: type[T],
+                                  base_cls: type = None,
                                   extras: Extras = None) -> AbstractParser:
         """
         Returns the Parser (dispatcher) for a given annotation type.
@@ -356,3 +356,27 @@ class AbstractLoader(ABC):
 
 class AbstractDumper(ABC):
     __slots__ = ()
+
+    def __pre_as_dict__(self):
+        """
+        Optional hook that runs before the dataclass instance is processed and
+        before it is converted to a dictionary object via :meth:`to_dict`.
+
+        To override this, subclasses need to extend from :class:`DumpMixIn`
+        and implement this method. A simple example is shown below:
+
+        >>> from dataclasses import dataclass
+        >>> from dataclass_wizard import JSONSerializable, DumpMixin
+        >>>
+        >>>
+        >>> @dataclass
+        >>> class MyClass(JSONSerializable, DumpMixin):
+        >>>     my_str: str
+        >>>
+        >>>     def __pre_as_dict__(self):
+        >>>         self.my_str = self.my_str.swapcase()
+
+        @deprecated since v0.28.0. Use `_pre_dict()` instead - no need
+            to subclass from DumpMixin.
+        """
+        ...
