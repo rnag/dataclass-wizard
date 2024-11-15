@@ -22,7 +22,7 @@ To customize the load process:
   by the ``dataclass`` decorator.
 
 To customize the dump process, simply implement
-a ``__pre_as_dict__`` method which will be called
+a ``_pre_dict`` method which will be called
 whenever you invoke the ``to_dict`` or ``to_json``
 methods. Please note that this will pass in the
 original dataclass instance, so updating any values
