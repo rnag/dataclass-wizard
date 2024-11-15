@@ -2,6 +2,31 @@
 History
 =======
 
+0.28.0 (2024-11-15)
+-------------------
+
+**Features and Improvements**
+
+* Added :class:`TOMLWizard`.
+* Introduced new (pre-process) serializer hooks:
+    * :meth:`_pre_from_dict`
+    * :meth:`_pre_dict`
+* Added ``debug`` parameter to :meth:`JSONWizard.__init_subclass__`.
+* Added ``*.pyi`` stub files for better Type Hinting and Autocompletion in IDEs (e.g., PyCharm):
+    * :file:`abstractions.pyi`
+    * :file:`serial_json.pyi`
+* Introduced utility class :class:`FunctionBuilder` to help build and dynamically ``exec`` a function.
+* Documentation/tests on the new and updated features.
+
+**Changes**
+
+* The returned parser for a dataclass is now the original load/dump function itself (which takes a single argument)
+  rather than a :class:`Parser` instance.
+* Minor optimization and quality-of-life improvement: dynamically ``exec`` dataclass load and dump functions.
+* Improved performance: if a class defines a :meth:`from_dict` method - equivalent to :func:`fromdict` - and a :meth:`to_dict` method
+  - equivalent to :func:`asdict` - replace them with dynamically generated load/dump functions.
+* Deprecated the pre-process hook :meth:`DumpMixin.__pre_as_dict__`.
+
 0.27.0 (2024-11-10)
 -------------------
 
