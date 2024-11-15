@@ -1,9 +1,10 @@
 Serializer Hooks
 ================
 
-    Note: To customize the load or dump process for annotated types
+.. note::
+    To customize the load or dump process for annotated types
     instead of individual fields, please see the `Type
-    Hooks <#type-hooks>`__ section.
+    Hooks <type_hooks.html>`__ section.
 
 You can optionally add hooks that are run before a JSON string or a
 Python ``dict`` object is loaded to a dataclass instance, or before the

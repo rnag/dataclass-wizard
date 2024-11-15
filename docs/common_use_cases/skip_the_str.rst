@@ -1,6 +1,10 @@
 Skip the :meth:`__str__`
 ========================
 
+.. note::
+    It is now easier to view ``DEBUG``-level log messages from this library! Check out
+    the `Easier Debug Mode <easier_debug_mode.html>`__ section.
+
 The ``JSONSerializable`` class implements a default
 ``__str__`` method if a sub-class doesn't already define
 this method. This method will format the dataclass

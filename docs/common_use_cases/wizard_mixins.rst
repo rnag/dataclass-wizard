@@ -195,6 +195,10 @@ A (mostly) complete example of using the :class:`YAMLWizard` is as follows:
 :class:`TOMLWizard`
 ~~~~~~~~~~~~~~~~~~~
 
+.. admonition:: **Added in v0.28.0**
+
+   The :class:`TOMLWizard` was introduced in version 0.28.0.
+
 The TOML Wizard provides an easy, convenient interface for converting ``dataclass`` instances to/from `TOML`_. This mixin enables simple loading, saving, and flexible serialization of TOML data, including support for custom key casing transforms.
 
 .. note::
