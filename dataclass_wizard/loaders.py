@@ -20,7 +20,7 @@ from .class_helper import (
     dataclass_field_to_load_parser, json_field_to_dataclass_field,
     _CLASS_TO_LOAD_FUNC, dataclass_fields, get_meta, is_subclass_safe,
 )
-from .constants import _LOAD_HOOKS, SINGLE_ARG_ALIAS, IDENTITY
+from .constants import _LOAD_HOOKS, SINGLE_ARG_ALIAS, IDENTITY, CATCH_ALL
 from .decorators import _alias, _single_arg_alias, resolve_alias_func, _identity
 from .errors import (ParseError, MissingFields, UnknownJSONKey,
                      MissingData, RecursiveClassError)
@@ -631,6 +631,9 @@ def load_func_for_dataclass(
     # transformation (via regex) each time.
     json_to_field = json_field_to_dataclass_field(cls)
 
+    catch_all_field = json_to_field.get(CATCH_ALL)
+    has_catch_all = catch_all_field is not None
+
     _locals = {
         'cls': cls,
         'py_case': cls_loader.transform_json_field,
@@ -659,6 +662,8 @@ def load_func_for_dataclass(
         # Need to create a separate dictionary to copy over the constructor
         # args, as we don't want to mutate the original dictionary object.
         fn_gen.add_line('init_kwargs = {}')
+        if has_catch_all:
+            fn_gen.add_line('catch_all = {}')
         # This try-block is here in case the object `o` is None.
         with fn_gen.try_():
             # Loop over the dictionary object
@@ -718,6 +723,10 @@ def load_func_for_dataclass(
                         fn_gen.add_line("e.class_name, e.field_name, e.json_object = cls, field, o")
                         fn_gen.add_line("raise")
 
+                if has_catch_all:
+                    with fn_gen.else_():
+                        fn_gen.add_line('catch_all[json_key] = o[json_key]')
+
         with fn_gen.except_(TypeError):
             # If the object `o` is None, then raise an error with the relevant info included.
             with fn_gen.if_('o is None'):
@@ -733,6 +742,13 @@ def load_func_for_dataclass(
 
         # Now pass the arguments to the constructor method, and return the new dataclass instance.
         # If there are any missing fields, we raise them here.
+        if has_catch_all:
+            if catch_all_field.endswith('?'):  # Default value
+                with fn_gen.if_('catch_all'):
+                    fn_gen.add_line(f'init_kwargs[{catch_all_field.rstrip("?")!r}] = catch_all')
+            else:
+                fn_gen.add_line(f'init_kwargs[{catch_all_field!r}] = catch_all')
+
         with fn_gen.try_():
             fn_gen.add_line("return cls(**init_kwargs)")
         with fn_gen.except_(TypeError, 'e'):

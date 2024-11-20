@@ -2,10 +2,10 @@ import json
 from dataclasses import MISSING, Field
 from datetime import date, datetime, time
 from typing import (cast, Collection, Callable,
-                    Optional, List, Union, Type, Generic)
+                    Optional, List, Union, Type, Generic, Mapping, NewType, TYPE_CHECKING)
 
 from .bases import META
-from .constants import PY310_OR_ABOVE
+from .constants import PY310_OR_ABOVE, PY312_OR_ABOVE
 from .decorators import cached_property
 from .type_def import T, DT, Encoder, PyTypedDict, FileEncoder
 # noinspection PyProtectedMember
@@ -15,6 +15,14 @@ from .utils.type_conv import as_datetime, as_time, as_date
 
 # Type for a string or a collection of strings.
 _STR_COLLECTION = Union[str, Collection[str]]
+
+
+# The `type` statement is introduced in Python 3.12
+# Ref: https://docs.python.org/3.12/reference/simple_stmts.html#type
+if PY312_OR_ABOVE:
+    type CatchAll = Mapping
+else:
+    CatchAll = NewType('CatchAll', Mapping)
 
 
 class Extras(PyTypedDict):

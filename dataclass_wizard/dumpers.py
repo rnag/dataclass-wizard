@@ -28,7 +28,7 @@ from .class_helper import (
     _CLASS_TO_DUMP_FUNC, setup_dump_config_for_cls_if_needed, get_meta,
     dataclass_field_to_load_parser,
 )
-from .constants import _DUMP_HOOKS, TAG
+from .constants import _DUMP_HOOKS, TAG, CATCH_ALL
 from .decorators import _alias
 from .errors import show_deprecation_warning
 from .log import LOG
@@ -314,6 +314,9 @@ def dump_func_for_dataclass(cls: Type[T],
     # Tag key to populate when a dataclass is in a `Union` with other types.
     tag_key = meta.tag_key or TAG
 
+    catch_all_field = dataclass_to_json_field.get(CATCH_ALL)
+    has_catch_all = catch_all_field is not None
+
     _locals = {
         'config': config,
         'asdict': _asdict_inner,
@@ -392,6 +395,11 @@ def dump_func_for_dataclass(cls: Type[T],
                     field_assignments.append(f"if not {skip_field}:")
                     field_assignments.append(f"  result.append(('{json_field}',"
                                              f"asdict(o.{field},dict_factory,hooks,config,cls_to_asdict)))")
+                elif has_catch_all and catch_all_field == field:
+                    field_assignments.append(f"if not {skip_field}:")
+                    field_assignments.append(f"  for k, v in o.{field}.items():")
+                    field_assignments.append("    result.append((k,"
+                                             "asdict(v,dict_factory,hooks,config,cls_to_asdict)))")
 
             with fn_gen.if_('exclude is None'):
                 fn_gen.add_line('='.join(skip_field_assignments) + '=False')

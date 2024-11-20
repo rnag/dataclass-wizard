@@ -14,6 +14,9 @@ PY310_OR_ABOVE = _PY_VERSION >= (3, 10)
 # Check if currently running Python 3.11 or higher
 PY311_OR_ABOVE = _PY_VERSION >= (3, 11)
 
+# Check if currently running Python 3.12 or higher
+PY312_OR_ABOVE = _PY_VERSION >= (3, 12)
+
 # Check if currently running Python 3.13 or higher
 PY313_OR_ABOVE = _PY_VERSION >= (3, 13)
 
@@ -40,3 +43,9 @@ IDENTITY = '__IDENTITY__'
 # Note that this key can also be customized in the `Meta` config for a class,
 # via the :attr:`tag_key` field.
 TAG = '__tag__'
+
+
+# INTERNAL USE ONLY: The dictionary key that the library
+# sets/uses to identify a "catch all" field, which captures
+# JSON key/values that don't map to any known dataclass fields.
+CATCH_ALL = '<-|CatchAll|->'

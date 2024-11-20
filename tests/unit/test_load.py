@@ -1860,3 +1860,104 @@ def test_with_self_referential_dataclasses_2():
     # input `dict` works as expected.
     a = fromdict(A, {'b': {'a': {'b': {'a': None}}}})
     assert a == A(b=B(a=A(b=B())))
+
+
+def test_catch_all():
+    """'Catch All' support with no default field value."""
+    @dataclass
+    class MyData(TOMLWizard):
+        my_str: str
+        my_float: float
+        extra: CatchAll
+
+    toml_string = '''
+    my_extra_str = "test!"
+    my_str = "test"
+    my_float = 3.14
+    my_bool = true
+    '''
+
+    # Load from TOML string
+    data = MyData.from_toml(toml_string)
+
+    assert data.extra == {'my_extra_str': 'test!', 'my_bool': True}
+
+    # Save to TOML string
+    toml_string = data.to_toml()
+
+    assert toml_string == """\
+my_str = "test"
+my_float = 3.14
+my_extra_str = "test!"
+my_bool = true
+"""
+
+    # Read back from the TOML string
+    new_data = MyData.from_toml(toml_string)
+
+    assert new_data.extra == {'my_extra_str': 'test!', 'my_bool': True}
+
+
+def test_catch_all_with_default():
+    """'Catch All' support with a default field value."""
+
+    @dataclass
+    class MyData(JSONWizard):
+        class _(JSONWizard.Meta):
+            skip_defaults = True
+
+        my_str: str
+        my_float: float
+        extra_data: CatchAll = False
+
+    # Case 1: Extra Data is provided
+
+    input_dict = {
+        'my_str': "test",
+        'my_float': 3.14,
+        'my_other_str': "test!",
+        'my_bool': True
+    }
+
+    # Load from TOML string
+    data = MyData.from_dict(input_dict)
+
+    assert data.extra_data == {'my_other_str': 'test!', 'my_bool': True}
+
+    # Save to TOML file
+    output_dict = data.to_dict()
+
+    assert output_dict == {
+        "myStr": "test",
+        "myFloat": 3.14,
+        "my_other_str": "test!",
+        "my_bool": True
+    }
+
+    new_data = MyData.from_dict(output_dict)
+
+    assert new_data.extra_data == {'my_other_str': 'test!', 'my_bool': True}
+
+    # Case 2: Extra Data is not provided
+
+    input_dict = {
+        'my_str': "test",
+        'my_float': 3.14,
+    }
+
+    # Load from TOML string
+    data = MyData.from_dict(input_dict)
+
+    assert data.extra_data is False
+
+    # Save to TOML file
+    output_dict = data.to_dict()
+
+    assert output_dict == {
+        "myStr": "test",
+        "myFloat": 3.14,
+    }
+
+    new_data = MyData.from_dict(output_dict)
+
+    assert new_data.extra_data is False

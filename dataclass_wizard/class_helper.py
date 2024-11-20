@@ -4,7 +4,8 @@ from typing import Dict, Tuple, Type, Union, Callable, Optional, Any
 
 from .abstractions import W, AbstractLoader, AbstractDumper, AbstractParser
 from .bases import AbstractMeta, META
-from .models import JSONField, JSON, Extras, _PatternedDT
+from .constants import CATCH_ALL
+from .models import JSONField, JSON, Extras, _PatternedDT, CatchAll
 from .type_def import ExplicitNull, ExplicitNullType, T
 from .utils.dict_helper import DictWithLowerStore
 from .utils.typing_compat import (
@@ -152,28 +153,33 @@ def _setup_load_config_for_cls(cls_loader: Type[AbstractLoader],
     for f in dataclass_init_fields(cls):
         field_extras: Extras = {'config': config}
 
-        f.type = eval_forward_ref_if_needed(f.type, cls)
-        field_type = f.type
+        field_type = f.type = eval_forward_ref_if_needed(f.type, cls)
+
+        # isinstance(f, Field) == True
 
         # Check if the field is a `Field` type or a subclass. If so, update
         # the class-specific mapping of JSON key to dataclass field name.
-        if isinstance(f, Field):
+        if isinstance(f, JSONField):
+            for key in f.json.keys:
+                json_to_dataclass_field[key] = f.name
 
-            if isinstance(f, JSONField):
-                for key in f.json.keys:
+        else:
+            value = f.metadata.get('__remapping__')
+            if value and isinstance(value, JSON):
+                for key in value.keys:
                     json_to_dataclass_field[key] = f.name
 
-            else:
-                value = f.metadata.get('__remapping__')
-                if value and isinstance(value, JSON):
-                    for key in value.keys:
-                        json_to_dataclass_field[key] = f.name
+        # Check for a "Catch All" field
+        if field_type is CatchAll:
+            json_to_dataclass_field[CATCH_ALL] = (
+                f'{f.name}{"" if f.default is MISSING else "?"}'
+            )
 
         # Check if the field annotation is an `Annotated` type. If so,
         # look for any `JSON` objects in the arguments; for each object,
         # update the class-specific mapping of JSON key to dataclass field
         # name.
-        if is_annotated(field_type):
+        elif is_annotated(field_type):
             ann_type, *extras = get_args(field_type)
             for extra in extras:
                 if isinstance(extra, JSON):
@@ -223,28 +229,34 @@ def setup_dump_config_for_cls_if_needed(cls: Type):
 
     for f in dataclass_fields(cls):
 
+        field_type = f.type = eval_forward_ref_if_needed(f.type, cls)
+
+        # isinstance(f, Field) == True
+
         # Check if the field is a `Field` type or a subclass. If so, update
         # the class-specific mapping of dataclass field name to JSON key.
-        if isinstance(f, Field):
+        if isinstance(f, JSONField):
+            if not f.json.dump:
+                dataclass_to_json_field[f.name] = ExplicitNull
+            elif f.json.all:
+                dataclass_to_json_field[f.name] = f.json.keys[0]
 
-            if isinstance(f, JSONField):
-                if not f.json.dump:
-                    dataclass_to_json_field[f.name] = ExplicitNull
-                elif f.json.all:
-                    dataclass_to_json_field[f.name] = f.json.keys[0]
+        else:
+            value = f.metadata.get('__remapping__')
+            if value and isinstance(value, JSON) and value.all:
+                dataclass_to_json_field[f.name] = value.keys[0]
 
-            else:
-                value = f.metadata.get('__remapping__')
-                if value and isinstance(value, JSON) and value.all:
-                    dataclass_to_json_field[f.name] = value.keys[0]
+        # Check for a "Catch All" field
+        if field_type is CatchAll:
+            dataclass_to_json_field[f.name] = ExplicitNull
+            dataclass_to_json_field[CATCH_ALL] = f.name
 
         # Check if the field annotation is an `Annotated` type. If so,
         # look for any `JSON` objects in the arguments; for each object,
         # update the class-specific mapping of dataclass field name to JSON
         # key.
-        f.type = eval_forward_ref_if_needed(f.type, cls)
-        if is_annotated(f.type):
-            for extra in get_args(f.type)[1:]:
+        if is_annotated(field_type):
+            for extra in get_args(field_type)[1:]:
                 if isinstance(extra, JSON):
                     if not extra.dump:
                         dataclass_to_json_field[f.name] = ExplicitNull
