@@ -39,6 +39,7 @@ requirements:
   host:
     - python
     - pip
+    - setuptools
   run:
     - python
     - typing-extensions >=4  # [py<=310]
