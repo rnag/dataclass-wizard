@@ -478,6 +478,70 @@ Example below:
     # Assert we get the same dictionary object when serializing the instance.
     assert c.to_dict() == d
 
+Map Nested JSON Keys to Dataclass Fields
+-----------------------------------------
+
+The ``dataclass-wizard`` library lets you map deeply nested JSON keys to dataclass fields using custom path notation. This is ideal for handling complex or non-standard JSON structures.
+
+You can specify paths to JSON keys with the ``KeyPath`` or ``path_field`` helpers. For example, the deeply nested key ``data.items.myJSONKey`` can be mapped to a dataclass field, such as ``my_str``:
+
+.. code:: python3
+
+    from dataclasses import dataclass
+    from dataclass_wizard import path_field, JSONWizard
+
+    @dataclass
+    class MyData(JSONWizard):
+        my_str: str = path_field('data.items.myJSONKey', default="default_value")
+
+    input_dict = {'data': {'items': {'myJSONKey': 'Some value'}}}
+    data_instance = MyData.from_dict(input_dict)
+    print(data_instance.my_str)  # Output: 'Some value'
+
+Custom Paths for Complex JSON
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+You can use custom paths to access nested keys and map them to specific fields, even when keys contain special characters or follow non-standard conventions.
+
+Example with nested and complex keys:
+
+.. code:: python3
+
+    from dataclasses import dataclass
+    from typing import Annotated
+    from dataclass_wizard import JSONWizard, path_field, KeyPath
+
+
+    @dataclass
+    class NestedData(JSONWizard):
+        my_str: str = path_field('data[0].details["key with space"]', default="default_value")
+        my_int: Annotated[int, KeyPath('data[0].items[3.14].True')] = 0
+
+
+    input_dict = {
+        'data': [
+            {
+                'details': {'key with space': 'Another value'},
+                'items': {3.14: {True: "42"}}
+            }
+        ]
+    }
+
+    # Deserialize JSON to dataclass
+    data = NestedData.from_dict(input_dict)
+    print(data.my_str)  # Output: 'Another value'
+
+    # Serialize back to JSON
+    output_dict = data.to_dict()
+    print(output_dict)  # {'data': {0: {'details': {'key with space': 'Another value'}, 'items': {3.14: {True: 42}}}}}
+
+    # Verify data consistency
+    assert data == NestedData.from_dict(output_dict)
+
+    # Handle empty input gracefully
+    data = NestedData.from_dict({'data': []})
+    print(repr(data))  # NestedData(my_str='default_value', my_int=0)
+
 Extending from ``Meta``
 -----------------------
 
@@ -534,6 +598,10 @@ a full list of available settings can be found in the `Meta`_ section in the doc
 
 Debug Mode
 ##########
+
+.. admonition:: **Added in v0.28.0**
+
+   There is now `Easier Debug Mode`_.
 
 Enables additional (more verbose) log output. For example, a message can be
 logged whenever an unknown JSON key is encountered when
@@ -615,6 +683,67 @@ an unknown JSON key is encountered in the  *load* (de-serialization) process.
     else:
         print('Successfully de-serialized the JSON object.')
         print(repr(c))
+
+See the section on `Handling Unknown JSON Keys`_ for more info.
+
+Save or "Catch-All" Unknown JSON Keys
+######################################
+
+When calling ``from_dict`` or ``from_json``, any unknown or extraneous JSON keys
+that are not mapped to fields in the dataclass are typically ignored or raise an error.
+However, you can capture these undefined keys in a catch-all field of type ``CatchAll``,
+allowing you to handle them as needed later.
+
+For example, suppose you have the following dictionary::
+
+    dump_dict = {
+        "endpoint": "some_api_endpoint",
+        "data": {"foo": 1, "bar": "2"},
+        "undefined_field_name": [1, 2, 3]
+    }
+
+You can save the undefined keys in a catch-all field and process them later.
+Simply define a field of type ``CatchAll`` in your dataclass. This field will act
+as a dictionary to store any unmapped keys and their values. If there are no
+undefined keys, the field will default to an empty dictionary.
+
+.. code:: python
+
+    from dataclasses import dataclass
+    from typing import Any
+    from dataclass_wizard import CatchAll, JSONWizard
+
+    @dataclass
+    class UnknownAPIDump(JSONWizard):
+        endpoint: str
+        data: dict[str, Any]
+        unknown_things: CatchAll
+
+    dump_dict = {
+        "endpoint": "some_api_endpoint",
+        "data": {"foo": 1, "bar": "2"},
+        "undefined_field_name": [1, 2, 3]
+    }
+
+    dump = UnknownAPIDump.from_dict(dump_dict)
+    print(f'{dump!r}')
+    # > UnknownAPIDump(endpoint='some_api_endpoint', data={'foo': 1, 'bar': '2'},
+    #       unknown_things={'undefined_field_name': [1, 2, 3]})
+
+    print(dump.to_dict())
+    # > {'endpoint': 'some_api_endpoint', 'data': {'foo': 1, 'bar': '2'}, 'undefined_field_name': [1, 2, 3]}
+
+.. note::
+    - When using a "catch-all" field, it is strongly recommended to define exactly **one** field of type ``CatchAll`` in the dataclass.
+
+    - ``LetterCase`` transformations do not apply to keys stored in the ``CatchAll`` field; the keys remain as they are provided.
+
+    - If you specify a default (or a default factory) for the ``CatchAll`` field, such as
+      ``unknown_things: CatchAll = None``, the default value will be used instead of an
+      empty dictionary when no undefined parameters are present.
+
+    - The ``CatchAll`` functionality is guaranteed only when using ``from_dict`` or ``from_json``.
+      Currently, unknown keyword arguments passed to ``__init__`` will not be written to a ``CatchAll`` field.
 
 Date and Time with Custom Patterns
 ----------------------------------
@@ -982,3 +1111,5 @@ This package was created with Cookiecutter_ and the `rnag/cookiecutter-pypackage
 .. _`Cyclic or "Recursive" Dataclasses`: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/cyclic_or_recursive_dataclasses.html
 .. _as milestones: https://github.com/rnag/dataclass-wizard/milestones
 .. _longstanding issue: https://github.com/rnag/dataclass-wizard/issues/62
+.. _Easier Debug Mode: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/easier_debug_mode.html
+.. _Handling Unknown JSON Keys: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/handling_unknown_json_keys.html
