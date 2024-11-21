@@ -1,5 +1,5 @@
 import json
-from typing import Type, List, Union, AnyStr, Collection
+from typing import AnyStr, Collection, Callable
 
 from .abstractions import AbstractJSONWizard, W
 from .bases_meta import BaseJSONWizardMeta
@@ -34,7 +34,7 @@ class JSONSerializable(AbstractJSONWizard):
             ...
 
     @classmethod
-    def _pre_from_dict(cls: Type[W], o: JSONObject) -> JSONObject:
+    def _pre_from_dict(cls: type[W], o: JSONObject) -> JSONObject:
         """
         Optional hook that runs before the dataclass instance is
         loaded, and before it is converted from a dictionary object
@@ -88,9 +88,9 @@ class JSONSerializable(AbstractJSONWizard):
         ...
 
     @classmethod
-    def from_json(cls: Type[W], string: AnyStr, *,
+    def from_json(cls: type[W], string: AnyStr, *,
                   decoder: Decoder = json.loads,
-                  **decoder_kwargs) -> Union[W, List[W]]:
+                  **decoder_kwargs) -> W | list[W]:
         """
         Converts a JSON `string` to an instance of the dataclass, or a list of
         the dataclass instances.
@@ -98,7 +98,7 @@ class JSONSerializable(AbstractJSONWizard):
         ...
 
     @classmethod
-    def from_list(cls: Type[W], o: ListOfJSONObject) -> List[W]:
+    def from_list(cls: type[W], o: ListOfJSONObject) -> list[W]:
         """
         Converts a Python `list` object to a list of the dataclass instances.
         """
@@ -106,7 +106,7 @@ class JSONSerializable(AbstractJSONWizard):
         ...
 
     @classmethod
-    def from_dict(cls: Type[W], o: JSONObject) -> W:
+    def from_dict(cls: type[W], o: JSONObject) -> W:
         """
         Converts a Python `dict` object to an instance of the dataclass.
         """
@@ -151,8 +151,8 @@ class JSONSerializable(AbstractJSONWizard):
         ...
 
     @classmethod
-    def list_to_json(cls: Type[W],
-                     instances: List[W],
+    def list_to_json(cls: type[W],
+                     instances: list[W],
                      encoder: Encoder = json.dumps,
                      **encoder_kwargs) -> AnyStr:
         """
@@ -162,7 +162,9 @@ class JSONSerializable(AbstractJSONWizard):
         ...
 
     # noinspection PyShadowingBuiltins
-    def __init_subclass__(cls, str=True, debug=False):
+    def __init_subclass__(cls,
+                          str: bool = True,
+                          debug: bool = False):
         """
         Checks for optional settings and flags that may be passed in by the
         sub-class, and calls the Meta initializer when :class:`Meta` is sub-classed.
@@ -172,3 +174,11 @@ class JSONSerializable(AbstractJSONWizard):
           this library's DEBUG (and above) log messages are visible.
         """
         ...
+
+
+def _str_fn() -> Callable[[W], str]:
+    """
+    Converts the dataclass instance to a *prettified* JSON string
+    representation, when the `str()` method is invoked.
+    """
+    ...
