@@ -9,10 +9,9 @@ from .bases import META
 from .constants import PY310_OR_ABOVE
 from .decorators import cached_property
 from .type_def import T, DT, Encoder, FileEncoder
-
+from .utils.object_path import PathPart, PathType
 
 CatchAll = Mapping | None
-
 
 # Type for a string or a collection of strings.
 _STR_COLLECTION = Union[str, Collection[str]]
@@ -28,6 +27,30 @@ class Extras(TypedDict):
 
 
 def json_key(*keys: str, all=False, dump=True):
+    """
+    Represents a mapping of one or more JSON key names for a dataclass field.
+
+    This is only in *addition* to the default key transform; for example, a
+    JSON key appearing as "myField", "MyField" or "my-field" will already map
+    to a dataclass field "my_field" by default (assuming the key transform
+    converts to snake case).
+
+    The mapping to each JSON key name is case-sensitive, so passing "myfield"
+    will not match a "myField" key in a JSON string or a Python dict object.
+
+    :param keys: A list of one of more JSON keys to associate with the
+      dataclass field.
+    :param all: True to also associate the reverse mapping, i.e. from
+      dataclass field to JSON key. If multiple JSON keys are passed in, it
+      uses the first one provided in this case. This mapping is then used when
+      `to_dict` or `to_json` is called, instead of the default key transform.
+    :param dump: False to skip this field in the serialization process to
+      JSON. By default, this field and its value is included.
+    """
+    ...
+
+
+def KeyPath(*keys: str, all=True, dump=True):
     """
     Represents a mapping of one or more JSON key names for a dataclass field.
 
@@ -85,6 +108,59 @@ def json_field(keys: _STR_COLLECTION, *,
     ...
 
 
+def path_field(keys: _STR_COLLECTION, *,
+               all=True, dump=True,
+               default=MISSING,
+               default_factory: 'Callable[[], MISSING]' = MISSING,
+               init=True, repr=True,
+               hash=None, compare=True, metadata=None):
+    """
+    Creates a dataclass field mapped to one or more nested JSON paths.
+
+    This function is an alias for ``dataclasses.field(...)``, with additional
+    logic for associating a field with one or more JSON key paths, including
+    nested structures. It can be used to specify custom mappings between
+    dataclass fields and complex, nested JSON key names.
+
+    This mapping is **case-sensitive** and applies to the provided JSON keys
+    or nested paths. For example, passing "myField" will not match "myfield"
+    in JSON, and vice versa.
+
+    `keys` represents one or more nested JSON keys (as strings or a collection of strings)
+    to associate with the dataclass field. The keys can include paths like `a.b.c`
+    or even more complex nested paths such as `a["nested"]["key"]`.
+
+    Arguments:
+        keys (_STR_COLLECTION): The JSON key(s) or nested path(s) to associate with the dataclass field.
+        all (bool): If True (default), it also associates the reverse mapping
+                    (from dataclass field to JSON path) for serialization.
+                    This reverse mapping is used during `to_dict` or `to_json` instead
+                    of the default key transform.
+        dump (bool): If False (default is True), excludes this field from
+                     serialization to JSON.
+        default (Any): The default value for the field. Mutually exclusive with `default_factory`.
+        default_factory (Callable[[], Any]): A callable to generate the default value.
+                                             Mutually exclusive with `default`.
+        init (bool): Include the field in the generated `__init__` method. Defaults to True.
+        repr (bool): Include the field in the `__repr__` output. Defaults to True.
+        hash (bool): Include the field in the `__hash__` method. Defaults to None.
+        compare (bool): Include the field in comparison methods. Defaults to True.
+        metadata (dict): Metadata to associate with the field. Defaults to None.
+
+    Returns:
+        JSONField: A dataclass field with logic for mapping to one or more nested JSON paths.
+
+    Example:
+        >>> from dataclasses import dataclass
+        >>> @dataclass
+        >>> class Example:
+        >>>     my_str: str = path_field(['a.b.c.1', 'x.y["-1"].z'], default=42)
+        >>> # Maps nested paths ('a', 'b', 'c', 1) and 'x', 'y', '-1', 'z')
+        >>> # to the `my_str` attribute.
+    """
+    ...
+
+
 class JSON:
     """
     Represents one or more mappings of JSON keys.
@@ -93,9 +169,15 @@ class JSON:
     """
     __slots__ = ('keys',
                  'all',
-                 'dump')
+                 'dump',
+                 'path')
 
-    def __init__(self, *keys: str, all=False, dump=True):
+    keys: tuple[str, ...] | PathType
+    all: bool
+    dump: bool
+    path: bool
+
+    def __init__(self, *keys: str | PathPart, all=False, dump=True, path=False):
         ...
 
 
@@ -108,6 +190,8 @@ class JSONField(Field):
     """
     __slots__ = ('json', )
 
+    json: JSON
+
     # In Python 3.10, dataclasses adds a new parameter to the :class:`Field`
     # constructor: `kw_only`
     #
@@ -115,13 +199,13 @@ class JSONField(Field):
     if PY310_OR_ABOVE:  # pragma: no cover
         def __init__(self, keys: _STR_COLLECTION, all: bool, dump: bool,
                      default, default_factory, init, repr, hash, compare,
-                     metadata):
+                     metadata, path: bool = False):
             ...
 
     else:  # pragma: no cover
         def __init__(self, keys: _STR_COLLECTION, all: bool, dump: bool,
                      default, default_factory, init, repr, hash, compare,
-                     metadata):
+                     metadata, path: bool = False):
             ...
 
 

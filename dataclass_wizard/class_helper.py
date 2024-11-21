@@ -17,6 +17,10 @@ from .utils.typing_compat import (
 # `dataclasses.fields()`.
 _FIELDS: Dict[Type, Tuple[Field, ...]] = {}
 
+# A cached mapping of dataclass to a mapping of field name
+# to default value, as returned by `dataclasses.fields()`.
+_FIELD_TO_DEFAULT: Dict[Type, Dict[str, Any]] = {}
+
 # Mapping of main dataclass to its `load` function.
 _CLASS_TO_LOAD_FUNC: Dict[Type, Any] = {}
 
@@ -42,6 +46,10 @@ _IS_DUMP_CONFIG_SETUP: Dict[Type, bool] = {}
 # A cached mapping, per dataclass, of JSON field to instance field name
 _JSON_FIELD_TO_DATACLASS_FIELD: Dict[
     Type, Dict[str, Union[str, ExplicitNullType]]] = defaultdict(dict)
+
+# A cached mapping, per dataclass, of instance field name to JSON path
+_DATACLASS_FIELD_TO_JSON_PATH: Dict[
+    Type, Dict[str, 'list[str | int | bool | float]']] = defaultdict(dict)
 
 # A cached mapping, per dataclass, of instance field name to JSON field
 _DATACLASS_FIELD_TO_JSON_FIELD: Dict[Type, Dict[str, str]] = defaultdict(dict)
@@ -100,6 +108,13 @@ def json_field_to_dataclass_field(cls: Type):
     return _JSON_FIELD_TO_DATACLASS_FIELD[cls]
 
 
+def dataclass_field_to_json_path(cls: Type):
+    """
+    Returns a mapping of dataclass field to JSON path.
+    """
+    return _DATACLASS_FIELD_TO_JSON_PATH[cls]
+
+
 def dataclass_field_to_json_field(cls):
     """
     Returns a mapping of dataclass field to JSON field.
@@ -148,26 +163,44 @@ def _setup_load_config_for_cls(cls_loader: Type[AbstractLoader],
           attribute.
     """
     json_to_dataclass_field = _JSON_FIELD_TO_DATACLASS_FIELD[cls]
+
+    dataclass_field_to_path = _DATACLASS_FIELD_TO_JSON_PATH[cls]
+    set_paths = False if dataclass_field_to_path else True
+
     name_to_parser = {}
 
-    for f in dataclass_init_fields(cls):
+    for f in  dataclass_init_fields(cls):
         field_extras: Extras = {'config': config}
 
         field_type = f.type = eval_forward_ref_if_needed(f.type, cls)
 
         # isinstance(f, Field) == True
 
-        # Check if the field is a `Field` type or a subclass. If so, update
+        # Check if the field is a known `Field` subclass. If so, update
         # the class-specific mapping of JSON key to dataclass field name.
         if isinstance(f, JSONField):
-            for key in f.json.keys:
-                json_to_dataclass_field[key] = f.name
+
+            if f.json.path:
+                keys = f.json.keys
+                json_to_dataclass_field[keys[0]] = ExplicitNull
+                if set_paths:
+                    dataclass_field_to_path[f.name] = keys
+            else:
+                for key in f.json.keys:
+                    json_to_dataclass_field[key] = f.name
 
         else:
             value = f.metadata.get('__remapping__')
-            if value and isinstance(value, JSON):
-                for key in value.keys:
-                    json_to_dataclass_field[key] = f.name
+            if value:
+                if isinstance(value, JSON):
+                    if value.path:
+                        keys = value.keys
+                        json_to_dataclass_field[keys[0]] = ExplicitNull
+                        if set_paths:
+                            dataclass_field_to_path[f.name] = keys
+                    else:
+                        for key in value.keys:
+                            json_to_dataclass_field[key] = f.name
 
         # Check for a "Catch All" field
         if field_type is CatchAll:
@@ -183,8 +216,14 @@ def _setup_load_config_for_cls(cls_loader: Type[AbstractLoader],
             ann_type, *extras = get_args(field_type)
             for extra in extras:
                 if isinstance(extra, JSON):
-                    for key in extra.keys:
-                        json_to_dataclass_field[key] = f.name
+                    if extra.path:
+                        keys = extra.keys
+                        json_to_dataclass_field[keys[0]] = ExplicitNull
+                        if set_paths:
+                            dataclass_field_to_path[f.name] = keys
+                    else:
+                        for key in extra.keys:
+                            json_to_dataclass_field[key] = f.name
                 elif isinstance(extra, _PatternedDT):
                     field_extras['pattern'] = extra
 
@@ -227,24 +266,39 @@ def setup_dump_config_for_cls_if_needed(cls: Type):
 
     dataclass_to_json_field = _DATACLASS_FIELD_TO_JSON_FIELD[cls]
 
+    dataclass_field_to_path = _DATACLASS_FIELD_TO_JSON_PATH[cls]
+    set_paths = False if dataclass_field_to_path else True
+
     for f in dataclass_fields(cls):
 
         field_type = f.type = eval_forward_ref_if_needed(f.type, cls)
 
         # isinstance(f, Field) == True
 
-        # Check if the field is a `Field` type or a subclass. If so, update
+        # Check if the field is a known `Field` subclass. If so, update
         # the class-specific mapping of dataclass field name to JSON key.
         if isinstance(f, JSONField):
             if not f.json.dump:
                 dataclass_to_json_field[f.name] = ExplicitNull
             elif f.json.all:
-                dataclass_to_json_field[f.name] = f.json.keys[0]
+                keys = f.json.keys
+                if f.json.path:
+                    if set_paths:
+                        dataclass_field_to_path[f.name] = keys
+                    dataclass_to_json_field[f.name] = ''
+                else:
+                    dataclass_to_json_field[f.name] = keys[0]
 
         else:
             value = f.metadata.get('__remapping__')
             if value and isinstance(value, JSON) and value.all:
-                dataclass_to_json_field[f.name] = value.keys[0]
+                keys = value.keys
+                if value.path:
+                    if set_paths:
+                        dataclass_field_to_path[f.name] = keys
+                    dataclass_to_json_field[f.name] = ''
+                else:
+                    dataclass_to_json_field[f.name] = keys[0]
 
         # Check for a "Catch All" field
         if field_type is CatchAll:
@@ -261,7 +315,13 @@ def setup_dump_config_for_cls_if_needed(cls: Type):
                     if not extra.dump:
                         dataclass_to_json_field[f.name] = ExplicitNull
                     elif extra.all:
-                        dataclass_to_json_field[f.name] = extra.keys[0]
+                        keys = extra.keys
+                        if extra.path:
+                            if set_paths:
+                                dataclass_field_to_path[f.name] = keys
+                            dataclass_to_json_field[f.name] = ''
+                        else:
+                            dataclass_to_json_field[f.name] = keys[0]
 
     # Mark the dataclass as processed, as the initial dump process is set up.
     _IS_DUMP_CONFIG_SETUP[cls] = True
@@ -310,14 +370,15 @@ def dataclass_field_names(cls) -> Tuple[str, ...]:
 
 def dataclass_field_to_default(cls) -> Dict[str, Any]:
     """Get default values for the (optional) dataclass fields."""
-    defaults = {}
-    for f in dataclass_fields(cls):
-        if f.default is not MISSING:
-            defaults[f.name] = f.default
-        elif f.default_factory is not MISSING:
-            defaults[f.name] = f.default_factory()
+    if cls not in _FIELD_TO_DEFAULT:
+        defaults = _FIELD_TO_DEFAULT[cls] = {}
+        for f in dataclass_fields(cls):
+            if f.default is not MISSING:
+                defaults[f.name] = f.default
+            elif f.default_factory is not MISSING:
+                defaults[f.name] = f.default_factory()
 
-    return defaults
+    return _FIELD_TO_DEFAULT[cls]
 
 
 def is_builtin_class(cls):

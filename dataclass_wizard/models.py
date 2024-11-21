@@ -2,7 +2,7 @@ import json
 from dataclasses import MISSING, Field
 from datetime import date, datetime, time
 from typing import (cast, Collection, Callable,
-                    Optional, List, Union, Type, Generic, Mapping, NewType, TYPE_CHECKING)
+                    Optional, List, Union, Type, Generic, Mapping, NewType)
 
 from .bases import META
 from .constants import PY310_OR_ABOVE, PY312_OR_ABOVE
@@ -10,12 +10,12 @@ from .decorators import cached_property
 from .type_def import T, DT, Encoder, PyTypedDict, FileEncoder
 # noinspection PyProtectedMember
 from .utils.dataclass_compat import _create_fn
+from .utils.object_path import split_object_path
 from .utils.type_conv import as_datetime, as_time, as_date
 
 
 # Type for a string or a collection of strings.
 _STR_COLLECTION = Union[str, Collection[str]]
-
 
 # The `type` statement is introduced in Python 3.12
 # Ref: https://docs.python.org/3.12/reference/simple_stmts.html#type
@@ -59,9 +59,44 @@ def json_key(*keys: str, all=False, dump=True):
     return JSON(*keys, all=all, dump=dump)
 
 
+def KeyPath(*keys: str, all=True, dump=True):
+    """
+    Represents a mapping of one or more "nested" key names in JSON
+    for a dataclass field.
+
+    This is only in *addition* to the default key transform; for example, a
+    JSON key appearing as "myField", "MyField" or "my-field" will already map
+    to a dataclass field "my_field" by default (assuming the key transform
+    converts to snake case).
+
+    The mapping to each JSON key name is case-sensitive, so passing "myfield"
+    will not match a "myField" key in a JSON string or a Python dict object.
+
+    :param keys: A list of one of more "nested" JSON keys to associate
+      with the dataclass field.
+    :param all: True to also associate the reverse mapping, i.e. from
+      dataclass field to "nested" JSON key. If multiple JSON keys are passed in, it
+      uses the first one provided in this case. This mapping is then used when
+      `to_dict` or `to_json` is called, instead of the default key transform.
+    :param dump: False to skip this field in the serialization process to
+      JSON. By default, this field and its value is included.
+
+    Example:
+
+    >>> my_str: Annotated[str, KeyPath('my."7".nested.path.-321')]
+    >>> # where path.keys == ('my', '7', 'nested', 'path', -321)
+    """
+
+    if len(keys) == 1:
+        keys = split_object_path(keys[0])
+
+    return JSON(*keys, all=all, dump=dump, path=True)
+
+
 def json_field(keys: _STR_COLLECTION, *,
                all=False, dump=True,
-               default=MISSING, default_factory=MISSING,
+               default=MISSING,
+               default_factory: 'Callable[[], MISSING]' = MISSING,
                init=True, repr=True,
                hash=None, compare=True, metadata=None):
     """
@@ -106,12 +141,15 @@ class JSON:
     """
     __slots__ = ('keys',
                  'all',
-                 'dump')
+                 'dump',
+                 'path')
 
-    def __init__(self, *keys: str, all=False, dump=True):
-        self.keys = keys
+    def __init__(self, *keys: str, all=False, dump=True, path=False):
+        self.keys = (split_object_path(keys)
+                     if path and isinstance(keys, str) else keys)
         self.all = all
         self.dump = dump
+        self.path = path
 
 
 class JSONField(Field):
@@ -130,20 +168,20 @@ class JSONField(Field):
     if PY310_OR_ABOVE:  # pragma: no cover
         def __init__(self, keys: _STR_COLLECTION, all: bool, dump: bool,
                      default, default_factory, init, repr, hash, compare,
-                     metadata):
+                     metadata, path: bool = False):
 
             super().__init__(default, default_factory, init, repr, hash,
                              compare, metadata, False)
 
             if isinstance(keys, str):
-                keys = (keys, )
+                keys = split_object_path(keys) if path else (keys,)
 
-            self.json = JSON(*keys, all=all, dump=dump)
+            self.json = JSON(*keys, all=all, dump=dump, path=path)
 
     else:  # pragma: no cover
         def __init__(self, keys: _STR_COLLECTION, all: bool, dump: bool,
                      default, default_factory, init, repr, hash, compare,
-                     metadata):
+                     metadata, path: bool = False):
 
             super().__init__(default, default_factory, init, repr, hash,
                              compare, metadata)
@@ -151,7 +189,7 @@ class JSONField(Field):
             if isinstance(keys, str):
                 keys = (keys, )
 
-            self.json = JSON(*keys, all=all, dump=dump)
+            self.json = JSON(*keys, all=all, dump=dump, path=path)
 
 
 # noinspection PyPep8Naming
@@ -406,3 +444,17 @@ class Container(List[T]):
 
         with open(file, mode) as out_file:
             encoder(list_of_dict, out_file, **encoder_kwargs)
+
+
+def path_field(keys: _STR_COLLECTION, *,
+               all=True, dump=True,
+               default=MISSING,
+               default_factory=MISSING,
+               init=True, repr=True,
+               hash=None, compare=True, metadata=None):
+
+    if default is not MISSING and default_factory is not MISSING:
+        raise ValueError('cannot specify both default and default_factory')
+
+    return JSONField(keys, all, dump, default, default_factory, init, repr,
+                    hash, compare, metadata, True)

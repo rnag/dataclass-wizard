@@ -26,7 +26,7 @@ from .class_helper import (
     dataclass_field_to_json_field,
     dataclass_to_dumper, set_class_dumper,
     _CLASS_TO_DUMP_FUNC, setup_dump_config_for_cls_if_needed, get_meta,
-    dataclass_field_to_load_parser,
+    dataclass_field_to_load_parser, dataclass_field_to_json_path,
 )
 from .constants import _DUMP_HOOKS, TAG, CATCH_ALL
 from .decorators import _alias
@@ -36,6 +36,7 @@ from .type_def import (
     ExplicitNull, NoneType, JSONObject,
     DD, LSQ, E, U, LT, NT, T
 )
+from .utils.dict_helper import NestedDict
 from .utils.function_builder import FunctionBuilder
 from .utils.dataclass_compat import _set_new_attribute
 from .utils.string_conv import to_camel_case
@@ -317,6 +318,10 @@ def dump_func_for_dataclass(cls: Type[T],
     catch_all_field = dataclass_to_json_field.get(CATCH_ALL)
     has_catch_all = catch_all_field is not None
 
+    field_to_path = dataclass_field_to_json_path(cls)
+    num_paths = len(field_to_path)
+    has_json_paths = True if num_paths else False
+
     _locals = {
         'config': config,
         'asdict': _asdict_inner,
@@ -359,6 +364,10 @@ def dump_func_for_dataclass(cls: Type[T],
         # Initialize result list to hold field mappings
         fn_gen.add_line("result = []")
 
+        if has_json_paths:
+            _locals['NestedDict'] = NestedDict
+            fn_gen.add_line('paths = NestedDict()')
+
         if field_names:
 
             skip_field_assignments = []
@@ -393,8 +402,17 @@ def dump_func_for_dataclass(cls: Type[T],
                 # Exclude any dataclass fields that are explicitly ignored.
                 if json_field is not ExplicitNull:
                     field_assignments.append(f"if not {skip_field}:")
-                    field_assignments.append(f"  result.append(('{json_field}',"
-                                             f"asdict(o.{field},dict_factory,hooks,config,cls_to_asdict)))")
+                    if json_field:
+                        field_assignments.append(f"  result.append(('{json_field}',"
+                                                 f"asdict(o.{field},dict_factory,hooks,config,cls_to_asdict)))")
+                    # Empty string, will be the case for a dataclass
+                    # field which specifies a "JSON Path".
+                    else:
+                        path = field_to_path[field]
+                        key_part = ''.join(f'[{p!r}]' for p in path)
+                        field_assignments.append(
+                            f'  paths{key_part} = asdict(o.{field},dict_factory,hooks,config,cls_to_asdict)')
+
                 elif has_catch_all and catch_all_field == field:
                     field_assignments.append(f"if not {skip_field}:")
                     field_assignments.append(f"  for k, v in o.{field}.items():")
@@ -411,6 +429,9 @@ def dump_func_for_dataclass(cls: Type[T],
                     fn_gen.add_lines(*skip_default_assignments)
 
             fn_gen.add_lines(*field_assignments)
+
+        if has_json_paths:
+            fn_gen.add_line("result and paths.update(result); result = paths")
 
         # Return the final dictionary result
         if meta.tag:

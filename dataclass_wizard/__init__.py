@@ -89,6 +89,8 @@ __all__ = [
     # Models
     'json_field',
     'json_key',
+    'path_field',
+    'KeyPath',
     'Container',
     'Pattern',
     'DatePattern',
@@ -102,7 +104,7 @@ import logging
 from .bases_meta import LoadMeta, DumpMeta
 from .dumpers import DumpMixin, setup_default_dumper, asdict
 from .loaders import LoadMixin, setup_default_loader, fromlist, fromdict
-from .models import (json_field, json_key, Container,
+from .models import (json_field, json_key, path_field, KeyPath, Container,
                      Pattern, DatePattern, TimePattern, DateTimePattern, CatchAll)
 from .property_wizard import property_wizard
 from .serial_json import JSONSerializable
