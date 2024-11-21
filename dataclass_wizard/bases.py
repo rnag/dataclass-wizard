@@ -122,7 +122,7 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
     # a JSON object to a dataclass instance.
     #
     # Note there is a minor performance impact when DEBUG mode is enabled.
-    debug_enabled: ClassVar[bool] = False
+    debug_enabled: ClassVar['bool | int | str'] = False
 
     # When enabled, a specified Meta config for the main dataclass (i.e. the
     # class on which `from_dict` and `to_dict` is called) will cascade down

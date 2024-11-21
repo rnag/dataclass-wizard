@@ -164,14 +164,17 @@ class JSONSerializable(AbstractJSONWizard):
     # noinspection PyShadowingBuiltins
     def __init_subclass__(cls,
                           str: bool = True,
-                          debug: bool = False):
+                          debug: bool | str | int = False):
         """
         Checks for optional settings and flags that may be passed in by the
         sub-class, and calls the Meta initializer when :class:`Meta` is sub-classed.
 
-        :param str: True to add a default `__str__` method to the subclass.
+        :param str: True to add a default ``__str__`` method to the subclass.
         :param debug: True to enable debug mode and setup logging, so that
-          this library's DEBUG (and above) log messages are visible.
+          this library's DEBUG (and above) log messages are visible. If
+          ``debug`` is a string or integer, it is assumed to be the desired
+          "minimum logging level", and will be passed to ``logging.setLevel``.
+
         """
         ...
 

@@ -40,17 +40,18 @@ The example below demonstrates how to configure the library to raise a
 
     @dataclass
     class Container(JSONWizard):
-
         class _(JSONWizard.Meta):
-            debug_enabled = True
+            debug_enabled = 'INFO'
             raise_on_unknown_json_key = True
 
         element: 'MyElement'
+
 
     @dataclass
     class MyElement:
         my_str: str
         my_float: float
+
 
     d = {
         'element': {

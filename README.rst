@@ -478,8 +478,8 @@ Example below:
     # Assert we get the same dictionary object when serializing the instance.
     assert c.to_dict() == d
 
-Map Nested JSON Keys to Dataclass Fields
------------------------------------------
+Mapping Nested JSON Keys
+------------------------
 
 The ``dataclass-wizard`` library lets you map deeply nested JSON keys to dataclass fields using custom path notation. This is ideal for handling complex or non-standard JSON structures.
 
@@ -636,10 +636,15 @@ an unknown JSON key is encountered in the  *load* (de-serialization) process.
 
     from dataclass_wizard import JSONWizard
     from dataclass_wizard.errors import UnknownJSONKey
+    from dataclass_wizard.log import LOG
 
 
     # Sets up application logging if we haven't already done so
-    logging.basicConfig(level='INFO')
+    logging.basicConfig(level='DEBUG')
+
+    # or:
+    #   logging.getLogger('dataclass_wizard').setLevel('INFO')
+    LOG.setLevel(logging.INFO)
 
 
     @dataclass

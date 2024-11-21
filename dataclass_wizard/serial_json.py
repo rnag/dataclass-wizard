@@ -64,8 +64,12 @@ class JSONSerializable(AbstractJSONWizard):
         if str:
             _set_new_attribute(cls, '__str__', _str_fn())
         if debug:
-            logging.basicConfig(level='DEBUG')
-            LoadMeta(debug_enabled=True).bind_to(cls)
+            default_lvl = logging.DEBUG
+            logging.basicConfig(level=default_lvl)
+            # minimum logging level for logs by this library
+            min_level = default_lvl if isinstance(debug, bool) else debug
+            # set `debug_enabled` flag for the class's Meta
+            LoadMeta(debug_enabled=min_level).bind_to(cls)
 
 
 def _str_fn():
