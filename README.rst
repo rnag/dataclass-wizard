@@ -501,7 +501,7 @@ You can specify paths to JSON keys with the ``KeyPath`` or ``path_field`` helper
 Custom Paths for Complex JSON
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-You can use custom paths to access nested keys and map them to specific fields, even when keys contain special characters or follow non-standard conventions.
+You can use `custom paths to access nested keys`_ and map them to specific fields, even when keys contain special characters or follow non-standard conventions.
 
 Example with nested and complex keys:
 
@@ -636,15 +636,9 @@ an unknown JSON key is encountered in the  *load* (de-serialization) process.
 
     from dataclass_wizard import JSONWizard
     from dataclass_wizard.errors import UnknownJSONKey
-    from dataclass_wizard.log import LOG
-
 
     # Sets up application logging if we haven't already done so
     logging.basicConfig(level='DEBUG')
-
-    # or:
-    #   logging.getLogger('dataclass_wizard').setLevel('INFO')
-    LOG.setLevel(logging.INFO)
 
 
     @dataclass
@@ -652,7 +646,10 @@ an unknown JSON key is encountered in the  *load* (de-serialization) process.
 
         class _(JSONWizard.Meta):
             # True to enable Debug mode for additional (more verbose) log output.
-            debug_enabled = True
+            #
+            # Pass in a `str` to `int` to set the minimum log level:
+            #   logging.getLogger('dataclass_wizard').setLevel('INFO')
+            debug_enabled = logging.INFO
             # True to raise an class:`UnknownJSONKey` when an unmapped JSON key is
             # encountered when `from_dict` or `from_json` is called. Note that by
             # default, this is also recursively applied to any nested dataclasses.
@@ -1118,3 +1115,4 @@ This package was created with Cookiecutter_ and the `rnag/cookiecutter-pypackage
 .. _longstanding issue: https://github.com/rnag/dataclass-wizard/issues/62
 .. _Easier Debug Mode: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/easier_debug_mode.html
 .. _Handling Unknown JSON Keys: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/handling_unknown_json_keys.html
+.. _custom paths to access nested keys: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/nested_key_paths.html
