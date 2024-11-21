@@ -5,7 +5,7 @@ from typing import Dict, Tuple, Type, Union, Callable, Optional, Any
 from .abstractions import W, AbstractLoader, AbstractDumper, AbstractParser
 from .bases import AbstractMeta, META
 from .constants import CATCH_ALL
-from .models import JSONField, JSON, Extras, _PatternedDT, CatchAll
+from .models import JSONField, JSON, Extras, PatternedDT, CatchAll
 from .type_def import ExplicitNull, ExplicitNullType, T
 from .utils.dict_helper import DictWithLowerStore
 from .utils.typing_compat import (
@@ -224,7 +224,7 @@ def _setup_load_config_for_cls(cls_loader: Type[AbstractLoader],
                     else:
                         for key in extra.keys:
                             json_to_dataclass_field[key] = f.name
-                elif isinstance(extra, _PatternedDT):
+                elif isinstance(extra, PatternedDT):
                     field_extras['pattern'] = extra
 
         # Lookup the Parser (dispatcher) for each field based on its annotated

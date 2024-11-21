@@ -1,20 +1,21 @@
-from typing import TypedDict
+from typing import TypedDict, overload
 import json
 from dataclasses import MISSING, Field
 from datetime import date, datetime, time
 from typing import (Collection, Callable,
-                    Optional, List, Union, Type, Generic, Mapping)
+                    Generic, Mapping)
 
 from .bases import META
-from .constants import PY310_OR_ABOVE
 from .decorators import cached_property
 from .type_def import T, DT, Encoder, FileEncoder
 from .utils.object_path import PathPart, PathType
 
+
+# Define a simple type (alias) for the `CatchAll` field
 CatchAll = Mapping | None
 
 # Type for a string or a collection of strings.
-_STR_COLLECTION = Union[str, Collection[str]]
+_STR_COLLECTION = str | Collection[str]
 
 
 class Extras(TypedDict):
@@ -22,8 +23,7 @@ class Extras(TypedDict):
     "Extra" config that can be used in the load / dump process.
     """
     config: META
-    # noinspection PyTypedDict
-    pattern: '_PatternedDT'
+    pattern: PatternedDT
 
 
 def json_key(*keys: str, all=False, dump=True):
@@ -50,9 +50,11 @@ def json_key(*keys: str, all=False, dump=True):
     ...
 
 
-def KeyPath(*keys: str, all=True, dump=True):
+# noinspection PyPep8Naming
+def KeyPath(keys: PathType | str, all: bool = True, dump: bool = True):
     """
-    Represents a mapping of one or more JSON key names for a dataclass field.
+    Represents a mapping of one or more "nested" key names in JSON
+    for a dataclass field.
 
     This is only in *addition* to the default key transform; for example, a
     JSON key appearing as "myField", "MyField" or "my-field" will already map
@@ -62,21 +64,28 @@ def KeyPath(*keys: str, all=True, dump=True):
     The mapping to each JSON key name is case-sensitive, so passing "myfield"
     will not match a "myField" key in a JSON string or a Python dict object.
 
-    :param keys: A list of one of more JSON keys to associate with the
-      dataclass field.
+    :param keys: A list of one of more "nested" JSON keys to associate
+      with the dataclass field.
     :param all: True to also associate the reverse mapping, i.e. from
-      dataclass field to JSON key. If multiple JSON keys are passed in, it
+      dataclass field to "nested" JSON key. If multiple JSON keys are passed in, it
       uses the first one provided in this case. This mapping is then used when
       `to_dict` or `to_json` is called, instead of the default key transform.
     :param dump: False to skip this field in the serialization process to
       JSON. By default, this field and its value is included.
+
+    Example:
+
+    >>> from typing import Annotated
+    >>> my_str: Annotated[str, KeyPath('my."7".nested.path.-321')]
+    >>> # where path.keys == ('my', '7', 'nested', 'path', -321)
     """
     ...
 
 
 def json_field(keys: _STR_COLLECTION, *,
                all=False, dump=True,
-               default=MISSING, default_factory=MISSING,
+               default=MISSING,
+               default_factory: Callable[[], MISSING] = MISSING,
                init=True, repr=True,
                hash=None, compare=True, metadata=None):
     """
@@ -111,7 +120,7 @@ def json_field(keys: _STR_COLLECTION, *,
 def path_field(keys: _STR_COLLECTION, *,
                all=True, dump=True,
                default=MISSING,
-               default_factory: 'Callable[[], MISSING]' = MISSING,
+               default_factory: Callable[[], MISSING] = MISSING,
                init=True, repr=True,
                hash=None, compare=True, metadata=None):
     """
@@ -155,7 +164,7 @@ def path_field(keys: _STR_COLLECTION, *,
         >>> @dataclass
         >>> class Example:
         >>>     my_str: str = path_field(['a.b.c.1', 'x.y["-1"].z'], default=42)
-        >>> # Maps nested paths ('a', 'b', 'c', 1) and 'x', 'y', '-1', 'z')
+        >>> # Maps nested paths ('a', 'b', 'c', 1) and ('x', 'y', '-1', 'z')
         >>> # to the `my_str` attribute.
     """
     ...
@@ -196,17 +205,17 @@ class JSONField(Field):
     # constructor: `kw_only`
     #
     # Ref: https://docs.python.org/3.10/library/dataclasses.html#dataclasses.dataclass
-    if PY310_OR_ABOVE:  # pragma: no cover
-        def __init__(self, keys: _STR_COLLECTION, all: bool, dump: bool,
-                     default, default_factory, init, repr, hash, compare,
-                     metadata, path: bool = False):
-            ...
+    @overload
+    def __init__(self, keys: _STR_COLLECTION, all: bool, dump: bool,
+                 default, default_factory, init, repr, hash, compare,
+                 metadata, path: bool = False):
+        ...
 
-    else:  # pragma: no cover
-        def __init__(self, keys: _STR_COLLECTION, all: bool, dump: bool,
-                     default, default_factory, init, repr, hash, compare,
-                     metadata, path: bool = False):
-            ...
+    @overload
+    def __init__(self, keys: _STR_COLLECTION, all: bool, dump: bool,
+                 default, default_factory, init, repr, hash, compare,
+                 metadata, path: bool = False):
+        ...
 
 
 # noinspection PyPep8Naming
@@ -230,7 +239,7 @@ class _PatternBase:
     """Base "subscriptable" pattern for date/time/datetime."""
     __slots__ = ()
 
-    def __class_getitem__(cls, pattern: str) -> _PatternedDT[date | time | datetime]:
+    def __class_getitem__(cls, pattern: str) -> PatternedDT[date | time | datetime]:
         ...
 
     __getitem__ = _PatternBase.__class_getitem__
@@ -266,7 +275,7 @@ class DateTimePattern(datetime, _PatternBase):
     __slots__ = ()
 
 
-class _PatternedDT(Generic[DT]):
+class PatternedDT(Generic[DT]):
     """
     Base class for pattern matching using :meth:`datetime.strptime` when
     loading (de-serializing) a string to a date / time / datetime object.
@@ -277,12 +286,15 @@ class _PatternedDT(Generic[DT]):
     __slots__ = ('cls',
                  'pattern')
 
-    def __init__(self, pattern: str, cls: Optional[Type[DT]] = None):
+    cls: type[DT] | None
+    pattern: str
+
+    def __init__(self, pattern: str, cls: type[DT] | None = None):
         ...
 
     def get_transform_func(self) -> Callable[[str], DT]:
         """
-        Build an return a load function which takes a `date_string` as an
+        Build and return a load function which takes a `date_string` as an
         argument, and returns a new object of type :attr:`cls`.
 
         We try to parse the input string to a `cls` object in the following
@@ -294,7 +306,7 @@ class _PatternedDT(Generic[DT]):
               below for more details.
             - Next, we parse with :meth:`datetime.strptime` by passing in the
               :attr:`pattern` to match against. If the pattern is invalid, the
-              method raises a ValueError, which is is re-raised by our
+              method raises a ValueError, which is re-raised by our
               `Parser` implementation.
 
         Ref: https://stackoverflow.com/questions/13468126/a-faster-strptime
@@ -308,7 +320,7 @@ class _PatternedDT(Generic[DT]):
         ...
 
 
-class Container(List[T]):
+class Container(list[T]):
     """Convenience wrapper around a collection of dataclass instances.
 
     For all intents and purposes, this should behave exactly as a `list`
@@ -330,7 +342,7 @@ class Container(List[T]):
                  '__orig_class__')
 
     @cached_property
-    def __model__(self) -> Type[T]:
+    def __model__(self) -> type[T]:
         """
         Given a declaration like Container[T], this returns the subscripted
         value of the generic type T.

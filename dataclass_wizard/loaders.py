@@ -26,7 +26,7 @@ from .decorators import _alias, _single_arg_alias, resolve_alias_func, _identity
 from .errors import (ParseError, MissingFields, UnknownJSONKey,
                      MissingData, RecursiveClassError)
 from .log import LOG
-from .models import Extras, _PatternedDT
+from .models import Extras, PatternedDT
 from .parsers import *
 from .type_def import (
     ExplicitNull, FrozenKeys, DefFactory, NoneType, JSONObject,
@@ -348,7 +348,7 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
                             cls.get_parser_for_annotation
                         )
 
-                elif isinstance(base_type, _PatternedDT):
+                elif isinstance(base_type, PatternedDT):
                     # Check for a field that was initially annotated like:
                     #   DateTimePattern('%m/%d/%y %H:%M:%S')]
                     return PatternedDTParser(base_cls, extras, base_type)
