@@ -104,7 +104,7 @@ class TOMLWizard:
                 *encoder_args,
                 encoder=None,
                 multiline_strings=False,
-                indent=4) -> AnyStr:
+                indent=4):
 
         if encoder is None:  # pragma: no cover
             encoder = toml_w.dumps
@@ -116,7 +116,7 @@ class TOMLWizard:
     def to_toml_file(self, file, mode='wb',
                      encoder=None,
                      multiline_strings=False,
-                     indent=4) -> None:
+                     indent=4):
 
         if encoder is None:  # pragma: no cover
             encoder = toml_w.dump
