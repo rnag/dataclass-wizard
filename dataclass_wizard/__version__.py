@@ -9,6 +9,6 @@ __description__ = 'Marshal dataclasses to/from JSON. Use field properties ' \
 __url__ = 'https://github.com/rnag/dataclass-wizard'
 __version__ = '0.28.0'
 __author__ = 'Ritvik Nag'
-__author_email__ = 'rv.kvetch@gmail.com'
+__author_email__ = 'me@ritviknag.com'
 __license__ = 'Apache 2.0'
 __copyright__ = 'Copyright 2021 Ritvik Nag'
