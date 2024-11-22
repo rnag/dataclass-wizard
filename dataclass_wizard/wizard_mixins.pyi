@@ -7,6 +7,7 @@ __all__ = ['JSONListWizard',
            'YAMLWizard']
 
 import json
+from os import PathLike
 from typing import AnyStr, TextIO, BinaryIO
 
 from .abstractions import W
@@ -15,6 +16,11 @@ from .models import Container
 from .serial_json import JSONSerializable, SerializerHookMixin
 from .type_def import (T, ListOfJSONObject,
                        Encoder, Decoder, FileDecoder, FileEncoder, ParseFloat)
+
+
+# A type that can be string or `path.Path`
+# https://stackoverflow.com/a/78070015/10237506
+type FileType = str | bytes | PathLike
 
 
 class JSONListWizard(JSONSerializable, str=False):
@@ -63,7 +69,7 @@ class JSONFileWizard(SerializerHookMixin):
 
     """
     @classmethod
-    def from_json_file(cls: type[T], file: str, *,
+    def from_json_file(cls: type[T], file: FileType, *,
                        decoder: FileDecoder = json.load,
                        **decoder_kwargs) -> T | list[T]:
         """
@@ -72,7 +78,7 @@ class JSONFileWizard(SerializerHookMixin):
         """
         ...
 
-    def to_json_file(self: T, file: str, mode: str = 'w',
+    def to_json_file(self: T, file: FileType, mode: str = 'w',
                      encoder: FileEncoder = json.dump,
                      **encoder_kwargs) -> None:
         """
@@ -119,7 +125,7 @@ class TOMLWizard(SerializerHookMixin):
         ...
 
     @classmethod
-    def from_toml_file(cls: type[T], file: str, *,
+    def from_toml_file(cls: type[T], file: FileType, *,
                        decoder: FileDecoder | None = None,
                        header: str = 'items',
                        parse_float: ParseFloat = float) -> T | list[T]:
@@ -147,7 +153,7 @@ class TOMLWizard(SerializerHookMixin):
         """
         ...
 
-    def to_toml_file(self: T, file: str, mode: str = 'wb',
+    def to_toml_file(self: T, file: FileType, mode: str = 'wb',
                      encoder: FileEncoder | None = None,
                      multiline_strings: bool = False,
                      indent: int = 4) -> None:
@@ -204,7 +210,7 @@ class YAMLWizard(SerializerHookMixin):
         ...
 
     @classmethod
-    def from_yaml_file(cls: type[T], file: str, *,
+    def from_yaml_file(cls: type[T], file: FileType, *,
                        decoder: FileDecoder | None = None,
                        **decoder_kwargs) -> T | list[T]:
         """
@@ -221,7 +227,7 @@ class YAMLWizard(SerializerHookMixin):
         """
         ...
 
-    def to_yaml_file(self: T, file: str, mode: str = 'w',
+    def to_yaml_file(self: T, file: FileType, mode: str = 'w',
                      encoder: FileEncoder | None = None,
                      **encoder_kwargs) -> None:
         """
