@@ -17,10 +17,18 @@ from .utils.type_conv import as_datetime, as_time, as_date
 #
 # The `type` statement is introduced in Python 3.12
 # Ref: https://docs.python.org/3.12/reference/simple_stmts.html#type
-if PY312_OR_ABOVE:
-    type CatchAll = Mapping
-else:
-    CatchAll = NewType('CatchAll', Mapping)
+#
+# TODO: Remove function declaration once we drop support
+#   for Python 3.9-3.11
+def get_catch_all():
+    if PY312_OR_ABOVE:
+        type CatchAll = Mapping
+        return CatchAll
+    else:
+        return NewType('CatchAll', Mapping)
+
+
+CatchAll = get_catch_all()
 
 
 class Extras(PyTypedDict):
