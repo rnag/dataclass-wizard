@@ -1,5 +1,5 @@
 import json
-from typing import AnyStr, Collection, Callable
+from typing import AnyStr, Collection, Callable, Protocol
 
 from .abstractions import AbstractJSONWizard, W
 from .bases_meta import BaseJSONWizardMeta
@@ -10,29 +10,7 @@ from .type_def import Decoder, Encoder, JSONObject, ListOfJSONObject
 JSONWizard = JSONSerializable
 
 
-class JSONSerializable(AbstractJSONWizard):
-    """
-    Mixin class to allow a `dataclass` sub-class to be easily converted
-    to and from JSON.
-
-    """
-    __slots__ = ()
-
-    class Meta(BaseJSONWizardMeta):
-        """
-        Inner meta class that can be extended by sub-classes for additional
-        customization with the JSON load / dump process.
-        """
-        __slots__ = ()
-
-        # Class attribute to enable detection of the class type.
-        __is_inner_meta__ = True
-
-        def __init_subclass__(cls):
-            # Set the `__init_subclass__` method here, so we can ensure it
-            # doesn't run for the `JSONSerializable.Meta` class.
-            ...
-
+class SerializerHookMixin(Protocol):
     @classmethod
     def _pre_from_dict(cls: type[W], o: JSONObject) -> JSONObject:
         """
@@ -87,6 +65,29 @@ class JSONSerializable(AbstractJSONWizard):
                 """
         ...
 
+
+class JSONSerializable(AbstractJSONWizard, SerializerHookMixin):
+    """
+    Mixin class to allow a `dataclass` sub-class to be easily converted
+    to and from JSON.
+
+    """
+    __slots__ = ()
+
+    class Meta(BaseJSONWizardMeta):
+        """
+        Inner meta class that can be extended by sub-classes for additional
+        customization with the JSON load / dump process.
+        """
+        __slots__ = ()
+
+        # Class attribute to enable detection of the class type.
+        __is_inner_meta__ = True
+
+        def __init_subclass__(cls):
+            # Set the `__init_subclass__` method here, so we can ensure it
+            # doesn't run for the `JSONSerializable.Meta` class.
+            ...
     @classmethod
     def from_json(cls: type[W], string: AnyStr, *,
                   decoder: Decoder = json.loads,
