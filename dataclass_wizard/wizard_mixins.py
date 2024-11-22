@@ -17,8 +17,6 @@ from .lazy_imports import toml, toml_w, yaml
 from .loaders import fromdict, fromlist
 from .models import Container
 from .serial_json import JSONSerializable
-from .type_def import (T, ListOfJSONObject,
-                       Encoder, Decoder, FileDecoder, FileEncoder, ParseFloat)
 
 
 class JSONListWizard(JSONSerializable, str=False):
