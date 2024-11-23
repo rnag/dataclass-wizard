@@ -4,7 +4,7 @@ from datetime import date, datetime, time
 from typing import Generic, Mapping, NewType
 
 from .bases import META
-from .constants import PY310_OR_ABOVE, PY312_OR_ABOVE
+from .constants import PY310_OR_ABOVE
 from .decorators import cached_property
 from .type_def import T, DT, PyTypedDict
 # noinspection PyProtectedMember

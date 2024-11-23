@@ -2,6 +2,17 @@
 History
 =======
 
+0.29.0 (2024-11-23)
+-------------------
+
+**Features and Improvements**
+
+- *Nested JSON Mapping* (:issue:`60`): Map nested JSON keys to dataclass fields using helper functions :func:`KeyPath` or :func:`json_field`.
+- *Catch-All Keys* (:issue:`57`): Save unknown JSON keys with ease.
+- *Cleaner Codebase*: Remove comments and type annotations for Python files with ``.pyi`` counterparts.
+- *Enhanced Debugging*: ``debug_enabled`` now supports ``bool | int | str``, allowing flexible logging levels.
+- *Documentation Updates*: Improved and expanded docs!
+
 0.28.0 (2024-11-15)
 -------------------
 

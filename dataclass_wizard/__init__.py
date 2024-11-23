@@ -64,7 +64,7 @@ Sample Usage:
 For full documentation and more advanced usage, please see
 <https://dataclass-wizard.readthedocs.io>.
 
-:copyright: (c) 2021 by Ritvik Nag.
+:copyright: (c) 2021-2025 by Ritvik Nag.
 :license: Apache 2.0, see LICENSE for more details.
 """
 

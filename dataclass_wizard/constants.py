@@ -14,9 +14,6 @@ PY310_OR_ABOVE = _PY_VERSION >= (3, 10)
 # Check if currently running Python 3.11 or higher
 PY311_OR_ABOVE = _PY_VERSION >= (3, 11)
 
-# Check if currently running Python 3.12 or higher
-PY312_OR_ABOVE = _PY_VERSION >= (3, 12)
-
 # Check if currently running Python 3.13 or higher
 PY313_OR_ABOVE = _PY_VERSION >= (3, 13)
 
