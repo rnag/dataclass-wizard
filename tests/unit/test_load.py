@@ -2143,7 +2143,6 @@ def test_from_dict_with_nested_object_key_path_with_skip_defaults():
     }
 
     a = A.from_dict(d)
-    print(repr(a))
     assert repr(a).endswith("A(an_int=1, a_bool=False, my_str='xyz1', other_bool=False)")
 
     d = a.to_dict()

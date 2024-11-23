@@ -107,7 +107,7 @@ class JSONField(Field):
                              compare, metadata)
 
             if isinstance(keys, str):
-                keys = (keys, )
+                keys = split_object_path(keys) if path else (keys,)
 
             self.json = JSON(*keys, all=all, dump=dump, path=path)
 

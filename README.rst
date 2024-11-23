@@ -74,34 +74,32 @@ interacting with the Python ``dataclasses`` module.
 Installation
 ------------
 
-The Dataclass Wizard library is available `on PyPI`_, and can be installed with ``pip``:
+Dataclass Wizard is available on `PyPI`_. Install with ``pip``:
 
 .. code-block:: shell
 
     $ pip install dataclass-wizard
 
-Alternatively, this library is available `on conda`_ under the `conda-forge`_ channel:
+Also available on `conda`_ via `conda-forge`_. Install with ``conda``:
 
 .. code-block:: shell
 
     $ conda install dataclass-wizard -c conda-forge
 
-The ``dataclass-wizard`` library officially supports **Python 3.9** or higher.
+This library supports **Python 3.9** or higher.
 
-.. _on conda: https://anaconda.org/conda-forge/dataclass-wizard
+.. _PyPI: https://pypi.org/project/dataclass-wizard/
+.. _conda: https://anaconda.org/conda-forge/dataclass-wizard
 .. _conda-forge: https://conda-forge.org/
 
 Features
 --------
 
-Here are the supported features that ``dataclass-wizard`` currently provides:
+Here are the key features that ``dataclass-wizard`` offers:
 
--  *JSON/YAML (de)serialization*: marshal dataclasses to/from JSON, YAML, and Python
-   ``dict`` objects.
--  *Field properties*: support for using properties with default
-   values in dataclass instances.
--  *JSON to Dataclass generation*: construct a dataclass schema with a JSON file
-   or string input.
+-   *Flexible (de)serialization*: Marshal dataclasses to/from JSON, TOML, YAML, or ``dict``.
+-  *Field properties*: Use properties with default values in dataclass instances.
+-  *JSON to Dataclass generation*: Auto-generate a dataclass schema from a JSON file or string.
 
 
 Wizard Mixins
@@ -1086,7 +1084,6 @@ This package was created with Cookiecutter_ and the `rnag/cookiecutter-pypackage
 
 .. _Read The Docs: https://dataclass-wizard.readthedocs.io
 .. _Installation: https://dataclass-wizard.readthedocs.io/en/latest/installation.html
-.. _on PyPI: https://pypi.org/project/dataclass-wizard/
 .. _Cookiecutter: https://github.com/cookiecutter/cookiecutter
 .. _`rnag/cookiecutter-pypackage`: https://github.com/rnag/cookiecutter-pypackage
 .. _`Contributing`: https://dataclass-wizard.readthedocs.io/en/latest/contributing.html
