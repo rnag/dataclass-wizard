@@ -40,3 +40,9 @@ IDENTITY = '__IDENTITY__'
 # Note that this key can also be customized in the `Meta` config for a class,
 # via the :attr:`tag_key` field.
 TAG = '__tag__'
+
+
+# INTERNAL USE ONLY: The dictionary key that the library
+# sets/uses to identify a "catch all" field, which captures
+# JSON key/values that don't map to any known dataclass fields.
+CATCH_ALL = '<-|CatchAll|->'

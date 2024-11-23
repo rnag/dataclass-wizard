@@ -64,7 +64,7 @@ Sample Usage:
 For full documentation and more advanced usage, please see
 <https://dataclass-wizard.readthedocs.io>.
 
-:copyright: (c) 2021 by Ritvik Nag.
+:copyright: (c) 2021-2025 by Ritvik Nag.
 :license: Apache 2.0, see LICENSE for more details.
 """
 
@@ -89,11 +89,14 @@ __all__ = [
     # Models
     'json_field',
     'json_key',
+    'path_field',
+    'KeyPath',
     'Container',
     'Pattern',
     'DatePattern',
     'TimePattern',
     'DateTimePattern',
+    'CatchAll',
 ]
 
 import logging
@@ -101,8 +104,8 @@ import logging
 from .bases_meta import LoadMeta, DumpMeta
 from .dumpers import DumpMixin, setup_default_dumper, asdict
 from .loaders import LoadMixin, setup_default_loader, fromlist, fromdict
-from .models import (json_field, json_key, Container,
-                     Pattern, DatePattern, TimePattern, DateTimePattern)
+from .models import (json_field, json_key, path_field, KeyPath, Container,
+                     Pattern, DatePattern, TimePattern, DateTimePattern, CatchAll)
 from .property_wizard import property_wizard
 from .serial_json import JSONSerializable
 from .wizard_mixins import JSONListWizard, JSONFileWizard, TOMLWizard, YAMLWizard

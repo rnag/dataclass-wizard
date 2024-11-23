@@ -117,6 +117,10 @@ html_theme_options = {
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
 
+html_css_files = [
+    'custom.css',
+]
+
 # Custom sidebar templates, maps document names to template names.
 html_sidebars = {
     "index": ["sidebarintro.html", "sourcelink.html", "sidebar_modindex.html", "searchbox.html", "hacks.html"],

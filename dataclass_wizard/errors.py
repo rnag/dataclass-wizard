@@ -80,6 +80,7 @@ class ParseError(JSONWizardError):
             if _default_class else None
         self._field_name = _field_name
         self._json_object = _json_object
+        self.fields = None
 
     @property
     def class_name(self) -> Optional[str]:
@@ -115,10 +116,16 @@ class ParseError(JSONWizardError):
 
     @property
     def message(self) -> str:
+
+        ann_type = self.name(
+            self.ann_type if self.ann_type is not None
+            else next((f.type for f in self.fields
+                       if f.name == self._field_name), None))
+
         msg = self._TEMPLATE.format(
             cls=self.class_name, field=self.field_name,
             e=self.base_error, o=self.obj,
-            ann_type=self.name(self.ann_type),
+            ann_type=ann_type,
             obj_type=self.name(self.obj_type))
 
         if self.json_object:

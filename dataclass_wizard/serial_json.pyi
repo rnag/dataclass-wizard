@@ -1,5 +1,5 @@
 import json
-from typing import Type, List, Union, AnyStr, Collection
+from typing import AnyStr, Collection, Callable, Protocol
 
 from .abstractions import AbstractJSONWizard, W
 from .bases_meta import BaseJSONWizardMeta
@@ -10,31 +10,9 @@ from .type_def import Decoder, Encoder, JSONObject, ListOfJSONObject
 JSONWizard = JSONSerializable
 
 
-class JSONSerializable(AbstractJSONWizard):
-    """
-    Mixin class to allow a `dataclass` sub-class to be easily converted
-    to and from JSON.
-
-    """
-    __slots__ = ()
-
-    class Meta(BaseJSONWizardMeta):
-        """
-        Inner meta class that can be extended by sub-classes for additional
-        customization with the JSON load / dump process.
-        """
-        __slots__ = ()
-
-        # Class attribute to enable detection of the class type.
-        __is_inner_meta__ = True
-
-        def __init_subclass__(cls):
-            # Set the `__init_subclass__` method here, so we can ensure it
-            # doesn't run for the `JSONSerializable.Meta` class.
-            ...
-
+class SerializerHookMixin(Protocol):
     @classmethod
-    def _pre_from_dict(cls: Type[W], o: JSONObject) -> JSONObject:
+    def _pre_from_dict(cls: type[W], o: JSONObject) -> JSONObject:
         """
         Optional hook that runs before the dataclass instance is
         loaded, and before it is converted from a dictionary object
@@ -87,10 +65,33 @@ class JSONSerializable(AbstractJSONWizard):
                 """
         ...
 
+
+class JSONSerializable(AbstractJSONWizard, SerializerHookMixin):
+    """
+    Mixin class to allow a `dataclass` sub-class to be easily converted
+    to and from JSON.
+
+    """
+    __slots__ = ()
+
+    class Meta(BaseJSONWizardMeta):
+        """
+        Inner meta class that can be extended by sub-classes for additional
+        customization with the JSON load / dump process.
+        """
+        __slots__ = ()
+
+        # Class attribute to enable detection of the class type.
+        __is_inner_meta__ = True
+
+        def __init_subclass__(cls):
+            # Set the `__init_subclass__` method here, so we can ensure it
+            # doesn't run for the `JSONSerializable.Meta` class.
+            ...
     @classmethod
-    def from_json(cls: Type[W], string: AnyStr, *,
+    def from_json(cls: type[W], string: AnyStr, *,
                   decoder: Decoder = json.loads,
-                  **decoder_kwargs) -> Union[W, List[W]]:
+                  **decoder_kwargs) -> W | list[W]:
         """
         Converts a JSON `string` to an instance of the dataclass, or a list of
         the dataclass instances.
@@ -98,7 +99,7 @@ class JSONSerializable(AbstractJSONWizard):
         ...
 
     @classmethod
-    def from_list(cls: Type[W], o: ListOfJSONObject) -> List[W]:
+    def from_list(cls: type[W], o: ListOfJSONObject) -> list[W]:
         """
         Converts a Python `list` object to a list of the dataclass instances.
         """
@@ -106,7 +107,7 @@ class JSONSerializable(AbstractJSONWizard):
         ...
 
     @classmethod
-    def from_dict(cls: Type[W], o: JSONObject) -> W:
+    def from_dict(cls: type[W], o: JSONObject) -> W:
         """
         Converts a Python `dict` object to an instance of the dataclass.
         """
@@ -151,8 +152,8 @@ class JSONSerializable(AbstractJSONWizard):
         ...
 
     @classmethod
-    def list_to_json(cls: Type[W],
-                     instances: List[W],
+    def list_to_json(cls: type[W],
+                     instances: list[W],
                      encoder: Encoder = json.dumps,
                      **encoder_kwargs) -> AnyStr:
         """
@@ -162,13 +163,26 @@ class JSONSerializable(AbstractJSONWizard):
         ...
 
     # noinspection PyShadowingBuiltins
-    def __init_subclass__(cls, str=True, debug=False):
+    def __init_subclass__(cls,
+                          str: bool = True,
+                          debug: bool | str | int = False):
         """
         Checks for optional settings and flags that may be passed in by the
         sub-class, and calls the Meta initializer when :class:`Meta` is sub-classed.
 
-        :param str: True to add a default `__str__` method to the subclass.
+        :param str: True to add a default ``__str__`` method to the subclass.
         :param debug: True to enable debug mode and setup logging, so that
-          this library's DEBUG (and above) log messages are visible.
+          this library's DEBUG (and above) log messages are visible. If
+          ``debug`` is a string or integer, it is assumed to be the desired
+          "minimum logging level", and will be passed to ``logging.setLevel``.
+
         """
         ...
+
+
+def _str_fn() -> Callable[[W], str]:
+    """
+    Converts the dataclass instance to a *prettified* JSON string
+    representation, when the `str()` method is invoked.
+    """
+    ...

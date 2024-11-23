@@ -1860,3 +1860,299 @@ def test_with_self_referential_dataclasses_2():
     # input `dict` works as expected.
     a = fromdict(A, {'b': {'a': {'b': {'a': None}}}})
     assert a == A(b=B(a=A(b=B())))
+
+
+def test_catch_all():
+    """'Catch All' support with no default field value."""
+    @dataclass
+    class MyData(TOMLWizard):
+        my_str: str
+        my_float: float
+        extra: CatchAll
+
+    toml_string = '''
+    my_extra_str = "test!"
+    my_str = "test"
+    my_float = 3.14
+    my_bool = true
+    '''
+
+    # Load from TOML string
+    data = MyData.from_toml(toml_string)
+
+    assert data.extra == {'my_extra_str': 'test!', 'my_bool': True}
+
+    # Save to TOML string
+    toml_string = data.to_toml()
+
+    assert toml_string == """\
+my_str = "test"
+my_float = 3.14
+my_extra_str = "test!"
+my_bool = true
+"""
+
+    # Read back from the TOML string
+    new_data = MyData.from_toml(toml_string)
+
+    assert new_data.extra == {'my_extra_str': 'test!', 'my_bool': True}
+
+
+def test_catch_all_with_default():
+    """'Catch All' support with a default field value."""
+
+    @dataclass
+    class MyData(JSONWizard):
+        class _(JSONWizard.Meta):
+            skip_defaults = True
+
+        my_str: str
+        my_float: float
+        extra_data: CatchAll = False
+
+    # Case 1: Extra Data is provided
+
+    input_dict = {
+        'my_str': "test",
+        'my_float': 3.14,
+        'my_other_str': "test!",
+        'my_bool': True
+    }
+
+    # Load from TOML string
+    data = MyData.from_dict(input_dict)
+
+    assert data.extra_data == {'my_other_str': 'test!', 'my_bool': True}
+
+    # Save to TOML file
+    output_dict = data.to_dict()
+
+    assert output_dict == {
+        "myStr": "test",
+        "myFloat": 3.14,
+        "my_other_str": "test!",
+        "my_bool": True
+    }
+
+    new_data = MyData.from_dict(output_dict)
+
+    assert new_data.extra_data == {'my_other_str': 'test!', 'my_bool': True}
+
+    # Case 2: Extra Data is not provided
+
+    input_dict = {
+        'my_str': "test",
+        'my_float': 3.14,
+    }
+
+    # Load from TOML string
+    data = MyData.from_dict(input_dict)
+
+    assert data.extra_data is False
+
+    # Save to TOML file
+    output_dict = data.to_dict()
+
+    assert output_dict == {
+        "myStr": "test",
+        "myFloat": 3.14,
+    }
+
+    new_data = MyData.from_dict(output_dict)
+
+    assert new_data.extra_data is False
+
+
+def test_from_dict_with_nested_object_key_path():
+    """
+    Specifying a custom mapping of "nested" JSON key to dataclass field,
+    via the `KeyPath` and `path_field` helper functions.
+    """
+
+    @dataclass
+    class A(JSONWizard, debug=True):
+        an_int: int
+        a_bool: Annotated[bool, KeyPath('x.y.z.0')]
+        my_str: str = path_field(['a', 'b', 'c', -1], default='xyz')
+
+    # Failures
+
+    d = {'my_str': 'test'}
+
+    with pytest.raises(ParseError) as e:
+        _ = A.from_dict(d)
+
+    err = e.value
+    assert err.field_name == 'a_bool'
+    assert err.base_error.args == ('x', )
+    assert err.kwargs['current_path'] == "'x'"
+
+    d = {'a': {'b': {'c': []}},
+         'x': {'y': {}}, 'an_int': 3}
+
+    with pytest.raises(ParseError) as e:
+        _ = A.from_dict(d)
+
+    err = e.value
+    assert err.field_name == 'a_bool'
+    assert err.base_error.args == ('z', )
+    assert err.kwargs['current_path'] == "'z'"
+
+    # Successes
+
+    # Case 1
+    d = {'a': {'b': {'c': [1, 5, 7]}},
+         'x': {'y': {'z': [False]}}, 'an_int': 3}
+
+    a = A.from_dict(d)
+    assert repr(a).endswith("A(an_int=3, a_bool=False, my_str='7')")
+
+    d = a.to_dict()
+
+    assert d == {
+        'x': {
+            'y': {
+                'z': { 0: False }
+            }
+        },
+        'a': {
+            'b': {
+                'c': { -1: '7' }
+            }
+        },
+        'anInt': 3
+    }
+
+    a = A.from_dict(d)
+    assert repr(a).endswith("A(an_int=3, a_bool=False, my_str='7')")
+
+    # Case 2
+    d = {'a': {'b': {}},
+         'x': {'y': {'z': [True, False]}}, 'an_int': 5}
+
+    a = A.from_dict(d)
+    assert repr(a).endswith("A(an_int=5, a_bool=True, my_str='xyz')")
+
+    d = a.to_dict()
+
+    assert d == {
+        'x': {
+            'y': {
+                'z': { 0: True }
+            }
+        },
+        'a': {
+            'b': {
+                'c': { -1: 'xyz' }
+            }
+        },
+        'anInt': 5
+    }
+
+
+def test_from_dict_with_nested_object_key_path_with_skip_defaults():
+    """
+    Specifying a custom mapping of "nested" JSON key to dataclass field,
+    via the `KeyPath` and `path_field` helper functions.
+
+    Test with `skip_defaults=True` and `dump=False`.
+    """
+
+    @dataclass
+    class A(JSONWizard, debug=True):
+        class _(JSONWizard.Meta):
+            skip_defaults = True
+
+        an_int: Annotated[int, KeyPath('my."test value"[here!][0]')]
+        a_bool: Annotated[bool, KeyPath('x.y.z.-1', all=False)]
+        my_str: Annotated[str, KeyPath(['a', 'b', 'c', -1], dump=False)] = 'xyz1'
+        other_bool: bool = path_field('x.y."z z"', default=True)
+
+    # Failures
+
+    d = {'my_str': 'test'}
+
+    with pytest.raises(ParseError) as e:
+        _ = A.from_dict(d)
+
+    err = e.value
+    assert err.field_name == 'an_int'
+    assert err.base_error.args == ('my', )
+    assert err.kwargs['current_path'] == "'my'"
+
+    d = {
+        'my': {'test value': {'here!': [1, 2, 3]}},
+        'a': {'b': {'c': []}},
+         'x': {'y': {}}, 'an_int': 3}
+
+    with pytest.raises(ParseError) as e:
+        _ = A.from_dict(d)
+
+    err = e.value
+    assert err.field_name == 'a_bool'
+    assert err.base_error.args == ('z', )
+    assert err.kwargs['current_path'] == "'z'"
+
+    # Successes
+
+    # Case 1
+    d = {
+        'my': {'test value': {'here!': [1, 2, 3]}},
+        'a': {'b': {'c': [1, 5, 7]}},
+         'x': {'y': {'z': [False]}}, 'an_int': 3
+    }
+
+    a = A.from_dict(d)
+    assert repr(a).endswith("A(an_int=1, a_bool=False, my_str='7', other_bool=True)")
+
+    d = a.to_dict()
+
+    assert d == {
+        'aBool': False,
+        'my': {'test value': {'here!': {0: 1}}},
+    }
+
+    with pytest.raises(ParseError):
+        _ = A.from_dict(d)
+
+    # Case 2
+    d = {
+        'my': {'test value': {'here!': [1, 2, 3]}},
+        'a': {'b': {}},
+         'x': {'y': {
+             'z': [],
+             'z z': False,
+         }},
+    }
+
+    with pytest.raises(ParseError) as e:
+        _ = A.from_dict(d)
+
+    err = e.value
+    assert err.field_name == 'a_bool'
+    assert repr(err.base_error) == "IndexError('list index out of range')"
+
+    # Case 3
+    d = {
+        'my': {'test value': {'here!': [1, 2, 3]}},
+        'a': {'b': {}},
+         'x': {'y': {
+             'z': [True, False],
+             'z z': False,
+         }},
+    }
+
+    a = A.from_dict(d)
+    assert repr(a).endswith("A(an_int=1, a_bool=False, my_str='xyz1', other_bool=False)")
+
+    d = a.to_dict()
+
+    assert d == {
+        'aBool': False,
+        'my': {'test value': {'here!': {0: 1}}},
+        'x': {
+            'y': {
+                'z z': False,
+            }
+        },
+    }

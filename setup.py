@@ -57,6 +57,7 @@ setup(
     include_package_data=True,
     install_requires=requires,
     project_urls={
+        'Discussions': 'https://github.com/rnag/dataclass-wizard/discussions',
         'Changelog': 'https://dataclass-wizard.readthedocs.io/en/latest/history.html',
         'Source': 'https://github.com/rnag/dataclass-wizard',
         'Download': 'https://pypi.org/project/dataclass-wizard',

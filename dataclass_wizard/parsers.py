@@ -25,7 +25,7 @@ from .bases import AbstractMeta
 from .class_helper import get_meta, _META
 from .constants import TAG
 from .errors import ParseError
-from .models import _PatternedDT, Extras
+from .models import PatternedDT, Extras
 from .type_def import (
     FrozenKeys, NoneType, DefFactory,
     T, M, S, DD, LSQ, N, NT, DT
@@ -167,14 +167,14 @@ class LiteralParser(AbstractParser[M, M]):
 
 
 @dataclass
-class PatternedDTParser(AbstractParser[_PatternedDT, DT]):
+class PatternedDTParser(AbstractParser[PatternedDT, DT]):
     __slots__ = ('hook', )
 
-    base_type: _PatternedDT
+    base_type: PatternedDT
 
     # noinspection PyDataclass
     def __post_init__(self, _cls: Type, extras: Extras, *_):
-        if not isinstance(self.base_type, _PatternedDT):
+        if not isinstance(self.base_type, PatternedDT):
             dt_cls = self.base_type
             self.base_type = extras['pattern']
             self.base_type.cls = dt_cls
