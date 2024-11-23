@@ -27,11 +27,12 @@ Full documentation is available at `Read The Docs`_. (`Installation`_)
 
 
 
-This library provides a set of simple, yet elegant *wizarding* tools for
-interacting with the Python ``dataclasses`` module.
+Dataclass Wizard offers simple, elegant, *wizarding* tools for
+interacting with Python's ``dataclasses``.
 
-    The primary use is as a fast serialization framework that enables dataclass instances to
-    be converted to/from JSON; this works well in particular with a *nested dataclass* model.
+    It excels at lightning-fast de/serialization, converting dataclass
+    instances to/from JSON effortlessly -- perfect for *nested dataclass*
+    models!
 
 -------------------
 
