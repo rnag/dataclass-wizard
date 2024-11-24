@@ -2156,3 +2156,67 @@ def test_from_dict_with_nested_object_key_path_with_skip_defaults():
             }
         },
     }
+
+
+def test_auto_assign_tags_and_raise_on_unknown_json_key():
+
+    @dataclass
+    class A:
+        mynumber: int
+
+    @dataclass
+    class B:
+        mystring: str
+
+    @dataclass
+    class Container(JSONWizard):
+        obj2: Union[A, B]
+
+        class _(JSONWizard.Meta):
+            auto_assign_tags = True
+            raise_on_unknown_json_key = True
+
+    c = Container(obj2=B("bar"))
+
+    output_dict = c.to_dict()
+
+    assert output_dict == {
+        "obj2": {
+            "mystring": "bar",
+            "__tag__": "B"
+        }
+    }
+
+    assert c == Container.from_dict(output_dict)
+
+
+# def test_auto_assign_tags_and_catch_all():
+#
+#     @dataclass
+#     class A:
+#         mynumber: int
+#
+#     @dataclass
+#     class B:
+#         mystring: str
+#
+#     @dataclass
+#     class Container(JSONWizard, debug=True):
+#         obj2: Union[A, B]
+#         extra: CatchAll = None
+#
+#         class _(JSONWizard.Meta):
+#             auto_assign_tags = True
+#
+#     c = Container(obj2=B("bar"))
+#
+#     output_dict = c.to_dict()
+#
+#     assert output_dict == {
+#         "obj2": {
+#             "mystring": "bar",
+#             "__tag__": "B"
+#         }
+#     }
+#
+#     assert c == Container.from_dict(output_dict)

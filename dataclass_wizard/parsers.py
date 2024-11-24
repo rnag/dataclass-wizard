@@ -238,36 +238,39 @@ class UnionParser(AbstractParser[Tuple[Type[T], ...], Optional[T]]):
             self.tag_key = TAG
             auto_assign_tags = False
 
-        # noinspection PyUnboundLocalVariable
-        self.parsers = tuple(
-            parser
-            for t in self.base_type
-            if t is not NoneType
-            and isinstance(parser := get_parser(t, cls, extras), AbstractParser))
-
+        parsers_list = []
         self.tag_to_parser = {}
+
         for t in self.base_type:
             t = eval_forward_ref_if_needed(t, cls)
-            if is_dataclass(t):
-                meta = get_meta(t)
-                tag = meta.tag
-                if not tag and (auto_assign_tags or meta.auto_assign_tags):
-                    cls_name = t.__name__
-                    tag = cls_name
-                    # We don't want to mutate the base Meta class here
-                    if meta is AbstractMeta:
-                        from .bases_meta import BaseJSONWizardMeta
-                        cls_dict = {'__slots__': (), 'tag': tag}
-                        # noinspection PyTypeChecker
-                        meta: type[M] = type(cls_name + 'Meta', (BaseJSONWizardMeta, ), cls_dict)
-                        _META[t] = meta
-                    else:
-                        meta.tag = cls_name
-                if tag:
-                    # TODO see if we can use a mapping of dataclass type to
-                    #   load func (maybe one passed in to __post_init__),
-                    #   rather than generating one on the fly like this.
-                    self.tag_to_parser[tag] = get_parser(t, cls, extras)
+            if t is not NoneType:
+                parser = get_parser(t, cls, extras)
+
+                if isinstance(parser, AbstractParser):
+                    parsers_list.append(parser)
+
+                elif is_dataclass(t):
+                    meta = get_meta(t)
+                    tag = meta.tag
+                    if not tag and (auto_assign_tags or meta.auto_assign_tags):
+                        cls_name = t.__name__
+                        tag = cls_name
+                        # We don't want to mutate the base Meta class here
+                        if meta is AbstractMeta:
+                            from .bases_meta import BaseJSONWizardMeta
+                            cls_dict = {'__slots__': (), 'tag': tag}
+                            # noinspection PyTypeChecker
+                            meta: type[M] = type(cls_name + 'Meta', (BaseJSONWizardMeta, ), cls_dict)
+                            _META[t] = meta
+                        else:
+                            meta.tag = cls_name
+                    if tag:
+                        # TODO see if we can use a mapping of dataclass type to
+                        #   load func (maybe one passed in to __post_init__),
+                        #   rather than generating one on the fly like this.
+                        self.tag_to_parser[tag] = parser
+
+        self.parsers = tuple(parsers_list)
 
     def __contains__(self, item):
         """Check if parser is expected to handle the specified item type."""

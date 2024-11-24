@@ -640,6 +640,11 @@ def load_func_for_dataclass(
     catch_all_field = json_to_field.get(CATCH_ALL)
     has_catch_all = catch_all_field is not None
 
+    # Fix for using `auto_assign_tags` and `raise_on_unknown_json_key` together
+    # See https://github.com/rnag/dataclass-wizard/issues/137
+    if meta.tag is not None:
+        json_to_field[meta.tag_key] = ExplicitNull
+
     _locals = {
         'cls': cls,
         'py_case': cls_loader.transform_json_field,
