@@ -2,6 +2,13 @@
 History
 =======
 
+0.29.1 (2024-11-23)
+-------------------
+
+**Bugfixes**
+
+* Include ``*.pyi`` files in source distribution (packaging).
+
 0.29.0 (2024-11-23)
 -------------------
 

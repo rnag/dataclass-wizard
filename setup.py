@@ -54,6 +54,10 @@ setup(
             f'wiz={package_name}.wizard_cli.cli:main'
         ]
     },
+    package_data={
+        # Include all .pyi files in your package directories
+        '': ['*.pyi'],
+    },
     include_package_data=True,
     install_requires=requires,
     project_urls={
