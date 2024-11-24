@@ -7,7 +7,7 @@ __description__ = ('Effortlessly marshal dataclasses to/from JSON. '
                    'Leverage field properties with default values. '
                    'Generate dataclass schemas from JSON input.')
 __url__ = 'https://github.com/rnag/dataclass-wizard'
-__version__ = '0.29.1'
+__version__ = '0.29.2'
 __author__ = 'Ritvik Nag'
 __author_email__ = 'me@ritviknag.com'
 __license__ = 'Apache 2.0'
