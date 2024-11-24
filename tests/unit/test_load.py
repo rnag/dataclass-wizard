@@ -1903,6 +1903,68 @@ def test_catch_all_with_default():
 
     @dataclass
     class MyData(JSONWizard):
+        my_str: str
+        my_float: float
+        extra_data: CatchAll = False
+
+    # Case 1: Extra Data is provided
+
+    input_dict = {
+        'my_str': "test",
+        'my_float': 3.14,
+        'my_other_str': "test!",
+        'my_bool': True
+    }
+
+    # Load from TOML string
+    data = MyData.from_dict(input_dict)
+
+    assert data.extra_data == {'my_other_str': 'test!', 'my_bool': True}
+
+    # Save to TOML file
+    output_dict = data.to_dict()
+
+    assert output_dict == {
+        "myStr": "test",
+        "myFloat": 3.14,
+        "my_other_str": "test!",
+        "my_bool": True
+    }
+
+    new_data = MyData.from_dict(output_dict)
+
+    assert new_data.extra_data == {'my_other_str': 'test!', 'my_bool': True}
+
+    # Case 2: Extra Data is not provided
+
+    input_dict = {
+        'my_str': "test",
+        'my_float': 3.14,
+    }
+
+    # Load from TOML string
+    data = MyData.from_dict(input_dict)
+
+    assert data.extra_data is False
+
+    # Save to TOML file
+    output_dict = data.to_dict()
+
+    assert output_dict == {
+        "myStr": "test",
+        "myFloat": 3.14,
+    }
+
+    new_data = MyData.from_dict(output_dict)
+
+    assert new_data.extra_data is False
+
+
+def test_catch_all_with_skip_defaults():
+    """'Catch All' support with a default field value and `skip_defaults`."""
+
+    @dataclass
+    class MyData(JSONWizard):
         class _(JSONWizard.Meta):
             skip_defaults = True
 

@@ -414,7 +414,10 @@ def dump_func_for_dataclass(cls: Type[T],
                             f'  paths{key_part} = asdict(o.{field},dict_factory,hooks,config,cls_to_asdict)')
 
                 elif has_catch_all and catch_all_field == field:
-                    field_assignments.append(f"if not {skip_field}:")
+                    if field in field_to_default:
+                        field_assignments.append(f"if o.{field} != {default_value} and not {skip_field}:")
+                    else:
+                        field_assignments.append(f"if not {skip_field}:")
                     field_assignments.append(f"  for k, v in o.{field}.items():")
                     field_assignments.append("    result.append((k,"
                                              "asdict(v,dict_factory,hooks,config,cls_to_asdict)))")
