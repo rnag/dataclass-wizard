@@ -2,6 +2,16 @@
 History
 =======
 
+0.29.2 (2024-11-24)
+-------------------
+
+**Bugfixes**
+
+* Fixed issue with using `Meta.auto_assign_tags` and `Meta.raise_on_unknown_json_key` together.
+* Resolved problem when `CatchAll` field is specified with a default value, but serializing with `skip_defaults=False`.
+* Improved performance in `UnionParser`: ensured that `get_parser()` is only called once per type.
+* Added test case(s) to confirm intended behavior.
+
 0.29.1 (2024-11-23)
 -------------------
 
