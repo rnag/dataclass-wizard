@@ -2,8 +2,9 @@ import json
 import logging
 
 from .abstractions import AbstractJSONWizard
+from .bases import AbstractMeta
 from .bases_meta import BaseJSONWizardMeta, LoadMeta
-from .class_helper import call_meta_initializer_if_needed
+from .class_helper import call_meta_initializer_if_needed, get_meta
 from .dumpers import asdict
 from .loaders import fromdict, fromlist
 # noinspection PyProtectedMember
@@ -69,7 +70,11 @@ class JSONSerializable(AbstractJSONWizard):
             # minimum logging level for logs by this library
             min_level = default_lvl if isinstance(debug, bool) else debug
             # set `debug_enabled` flag for the class's Meta
-            LoadMeta(debug_enabled=min_level).bind_to(cls)
+            cls_meta = get_meta(cls)
+            if cls_meta is not AbstractMeta:
+                cls_meta.debug_enabled = min_level
+            else:
+                LoadMeta(debug_enabled=min_level).bind_to(cls)
 
 
 def _str_fn():

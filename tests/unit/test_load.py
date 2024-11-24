@@ -1903,6 +1903,68 @@ def test_catch_all_with_default():
 
     @dataclass
     class MyData(JSONWizard):
+        my_str: str
+        my_float: float
+        extra_data: CatchAll = False
+
+    # Case 1: Extra Data is provided
+
+    input_dict = {
+        'my_str': "test",
+        'my_float': 3.14,
+        'my_other_str': "test!",
+        'my_bool': True
+    }
+
+    # Load from TOML string
+    data = MyData.from_dict(input_dict)
+
+    assert data.extra_data == {'my_other_str': 'test!', 'my_bool': True}
+
+    # Save to TOML file
+    output_dict = data.to_dict()
+
+    assert output_dict == {
+        "myStr": "test",
+        "myFloat": 3.14,
+        "my_other_str": "test!",
+        "my_bool": True
+    }
+
+    new_data = MyData.from_dict(output_dict)
+
+    assert new_data.extra_data == {'my_other_str': 'test!', 'my_bool': True}
+
+    # Case 2: Extra Data is not provided
+
+    input_dict = {
+        'my_str': "test",
+        'my_float': 3.14,
+    }
+
+    # Load from TOML string
+    data = MyData.from_dict(input_dict)
+
+    assert data.extra_data is False
+
+    # Save to TOML file
+    output_dict = data.to_dict()
+
+    assert output_dict == {
+        "myStr": "test",
+        "myFloat": 3.14,
+    }
+
+    new_data = MyData.from_dict(output_dict)
+
+    assert new_data.extra_data is False
+
+
+def test_catch_all_with_skip_defaults():
+    """'Catch All' support with a default field value and `skip_defaults`."""
+
+    @dataclass
+    class MyData(JSONWizard):
         class _(JSONWizard.Meta):
             skip_defaults = True
 
@@ -2155,4 +2217,78 @@ def test_from_dict_with_nested_object_key_path_with_skip_defaults():
                 'z z': False,
             }
         },
+    }
+
+
+def test_auto_assign_tags_and_raise_on_unknown_json_key():
+
+    @dataclass
+    class A:
+        mynumber: int
+
+    @dataclass
+    class B:
+        mystring: str
+
+    @dataclass
+    class Container(JSONWizard):
+        obj2: Union[A, B]
+
+        class _(JSONWizard.Meta):
+            auto_assign_tags = True
+            raise_on_unknown_json_key = True
+
+    c = Container(obj2=B("bar"))
+
+    output_dict = c.to_dict()
+
+    assert output_dict == {
+        "obj2": {
+            "mystring": "bar",
+            "__tag__": "B"
+        }
+    }
+
+    assert c == Container.from_dict(output_dict)
+
+
+def test_auto_assign_tags_and_catch_all():
+    """Using both `auto_assign_tags` and `CatchAll` does not save tag key in `CatchAll`."""
+    @dataclass
+    class A:
+        mynumber: int
+        extra: CatchAll = None
+
+    @dataclass
+    class B:
+        mystring: str
+        extra: CatchAll = None
+
+    @dataclass
+    class Container(JSONWizard, debug=False):
+        obj2: Union[A, B]
+        extra: CatchAll = None
+
+        class _(JSONWizard.Meta):
+            auto_assign_tags = True
+            tag_key = 'type'
+
+    c = Container(obj2=B("bar"))
+
+    output_dict = c.to_dict()
+
+    assert output_dict == {
+        "obj2": {
+            "mystring": "bar",
+            "type": "B"
+        }
+    }
+
+    c2 = Container.from_dict(output_dict)
+    assert c2 == c == Container(obj2=B(mystring='bar', extra=None), extra=None)
+
+    assert c2.to_dict() == {
+        "obj2": {
+            "mystring": "bar", "type": "B"
+        }
     }

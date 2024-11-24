@@ -79,6 +79,22 @@ class FunctionBuilder:
         """
         return self._with_new_block('if', condition)
 
+    def elif_(self, condition: str) -> 'FunctionBuilder':
+        """Equivalent to the `elif` statement in Python.
+
+        Sample Usage:
+
+            >>> with FunctionBuilder().elif_('something is True'):
+            >>>     ...
+
+        Will generate the following code:
+
+            >>> elif something is True:
+            >>>     ...
+
+        """
+        return self._with_new_block('elif', condition)
+
     def else_(self) -> 'FunctionBuilder':
         """Equivalent to the `else` statement in Python.
 
