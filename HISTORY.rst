@@ -2,6 +2,15 @@
 History
 =======
 
+0.29.3 (2024-11-24)
+-------------------
+
+**Bugfixes**
+
+* Fixed compatibility between `Global Meta Settings`_ and :attr:`recursive_classes` (:issue:`142`).
+
+.. _Global Meta Settings: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/meta.html#global-meta-settings
+
 0.29.2 (2024-11-24)
 -------------------
 
