@@ -7,9 +7,9 @@ History
 
 **Bugfixes**
 
-* Fixed issue with using `Meta.auto_assign_tags` and `Meta.raise_on_unknown_json_key` together.
-* Resolved problem when `CatchAll` field is specified with a default value, but serializing with `skip_defaults=False`.
-* Improved performance in `UnionParser`: ensured that `get_parser()` is only called once per type.
+* Fixed issue with using :attr:`Meta.auto_assign_tags` and :attr:`Meta.raise_on_unknown_json_key` together.
+* Resolved problem when :type:`CatchAll` field is specified with a default value, but serializing with :attr:`skip_defaults=False`.
+* Improved performance in :class:`UnionParser`: ensured that :func:`get_parser` is only called once per annotated type.
 * Added test case(s) to confirm intended behavior.
 
 0.29.1 (2024-11-23)
