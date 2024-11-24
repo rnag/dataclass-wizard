@@ -642,7 +642,8 @@ def load_func_for_dataclass(
 
     # Fix for using `auto_assign_tags` and `raise_on_unknown_json_key` together
     # See https://github.com/rnag/dataclass-wizard/issues/137
-    if meta.tag is not None:
+    has_tag_assigned = meta.tag is not None
+    if has_tag_assigned:
         json_to_field[meta.tag_key] = ExplicitNull
 
     _locals = {
@@ -762,8 +763,13 @@ def load_func_for_dataclass(
                             fn_gen.add_line("raise")
 
                     if has_catch_all:
-                        with fn_gen.else_():
-                            fn_gen.add_line('catch_all[json_key] = o[json_key]')
+                        line = 'catch_all[json_key] = o[json_key]'
+                        if has_tag_assigned:
+                            with fn_gen.elif_(f'json_key != {meta.tag_key!r}'):
+                                fn_gen.add_line(line)
+                        else:
+                            with fn_gen.else_():
+                                fn_gen.add_line(line)
 
             with fn_gen.except_(TypeError):
                 # If the object `o` is None, then raise an error with the relevant info included.

@@ -2252,33 +2252,43 @@ def test_auto_assign_tags_and_raise_on_unknown_json_key():
     assert c == Container.from_dict(output_dict)
 
 
-# def test_auto_assign_tags_and_catch_all():
-#
-#     @dataclass
-#     class A:
-#         mynumber: int
-#
-#     @dataclass
-#     class B:
-#         mystring: str
-#
-#     @dataclass
-#     class Container(JSONWizard, debug=True):
-#         obj2: Union[A, B]
-#         extra: CatchAll = None
-#
-#         class _(JSONWizard.Meta):
-#             auto_assign_tags = True
-#
-#     c = Container(obj2=B("bar"))
-#
-#     output_dict = c.to_dict()
-#
-#     assert output_dict == {
-#         "obj2": {
-#             "mystring": "bar",
-#             "__tag__": "B"
-#         }
-#     }
-#
-#     assert c == Container.from_dict(output_dict)
+def test_auto_assign_tags_and_catch_all():
+    """Using both `auto_assign_tags` and `CatchAll` does not save tag key in `CatchAll`."""
+    @dataclass
+    class A:
+        mynumber: int
+        extra: CatchAll = None
+
+    @dataclass
+    class B:
+        mystring: str
+        extra: CatchAll = None
+
+    @dataclass
+    class Container(JSONWizard, debug=False):
+        obj2: Union[A, B]
+        extra: CatchAll = None
+
+        class _(JSONWizard.Meta):
+            auto_assign_tags = True
+            tag_key = 'type'
+
+    c = Container(obj2=B("bar"))
+
+    output_dict = c.to_dict()
+
+    assert output_dict == {
+        "obj2": {
+            "mystring": "bar",
+            "type": "B"
+        }
+    }
+
+    c2 = Container.from_dict(output_dict)
+    assert c2 == c == Container(obj2=B(mystring='bar', extra=None), extra=None)
+
+    assert c2.to_dict() == {
+        "obj2": {
+            "mystring": "bar", "type": "B"
+        }
+    }
