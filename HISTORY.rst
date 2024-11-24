@@ -8,6 +8,7 @@ History
 **Bugfixes**
 
 * Fixed issue with using :attr:`Meta.auto_assign_tags` and :attr:`Meta.raise_on_unknown_json_key` together.
+* Fix ``JSONWizard.debug`` so it does not overwrite existing class meta.
 * Resolved problem when :type:`CatchAll` field is specified with a default value, but serializing with :attr:`skip_defaults=False`.
 * Improved performance in :class:`UnionParser`: ensured that :func:`get_parser` is only called once per annotated type.
 * Added test case(s) to confirm intended behavior.
