@@ -302,7 +302,7 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
 
                         # enable support for cyclic / self-referential dataclasses
                         # see https://github.com/rnag/dataclass-wizard/issues/62
-                        if config and config.recursive_classes:
+                        if AbstractMeta.recursive_classes or (config and config.recursive_classes):
                             # noinspection PyTypeChecker
                             return RecursionSafeParser(
                                 base_cls, extras, base_type, hook=None
