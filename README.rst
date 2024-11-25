@@ -946,15 +946,18 @@ Conditional Field Skipping
 
 .. admonition:: **Added in v0.30.0**
 
-   Dataclass Wizard now supports `conditional skipping`_ of fields during serialization using ``Meta`` settings,
-   per-field `annotations`_ using ``SkipIf()``, or `field`_ wrappers.
+    Dataclass Wizard introduces `conditional skipping`_ to omit fields during JSON serialization based on user-defined conditions. This feature works seamlessly with:
+
+    - **Global rules** via ``Meta`` settings.
+    - **Per-field controls** using ``SkipIf()`` `annotations`_.
+    - **Field wrappers** for maximum flexibility.
 
 Quick Examples
 ~~~~~~~~~~~~~~
 
 1. **Globally Skip Fields Matching a Condition**
 
-  Use the ``Meta.skip_if`` option to define a global rule for skipping fields:
+  Define a global skip rule using ``Meta.skip_if``:
 
   .. code-block:: python3
 
@@ -978,15 +981,11 @@ Quick Examples
 
   Skip fields with default values matching a specific condition using ``Meta.skip_defaults_if``:
 
-  .. note::
-    Using ``skip_defaults_if`` automatically enables ``skip_defaults=True``.
-
   .. code-block:: python3
 
     from __future__ import annotations  # Can remove in PY 3.10+
 
     from dataclasses import dataclass
-
     from dataclass_wizard import JSONPyWizard, IS
 
 
@@ -1003,8 +1002,13 @@ Quick Examples
     print(Example(str_with_no_default=None, my_str=None).to_dict())
     #> {'str_with_no_default': None, 'my_bool': False}
 
+
+  .. note::
+      Setting ``skip_defaults_if`` also enables ``skip_defaults=True`` automatically.
+
 3. **Per-Field Conditional Skipping**
-  Use type annotations or ``skip_if_field`` for fine-grained control:
+
+  Apply skip rules to specific fields with `annotations`_ or ``skip_if_field``:
 
   .. code-block:: python3
 
@@ -1056,7 +1060,8 @@ Quick Examples
      - ``IS``, ``IS_NOT``: Identity checks.
      - ``EQ``, ``NE``, ``LT``, ``LE``, ``GT``, ``GE``: Comparison operators.
      - ``IS_TRUTHY``, ``IS_FALSY``: Skip fields based on truthy or falsy values.
-     - Combine these for flexible serialization rules.
+
+   Combine these helpers for flexible serialization rules!
 
 .. _conditional skipping: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/serialization_options.html#skip-if-functionality
 
@@ -1262,5 +1267,4 @@ This package was created with Cookiecutter_ and the `rnag/cookiecutter-pypackage
 .. _Easier Debug Mode: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/easier_debug_mode.html
 .. _Handling Unknown JSON Keys: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/handling_unknown_json_keys.html
 .. _custom paths to access nested keys: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/nested_key_paths.html
-.. _field: https://docs.python.org/3/library/dataclasses.html#dataclasses.field
 .. _annotations: https://docs.python.org/3/library/typing.html#typing.Annotated
