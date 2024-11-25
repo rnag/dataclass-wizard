@@ -1044,6 +1044,93 @@ Additionally, here is an example to demonstrate usage of both these approaches:
 
     assert out_dict == {'myStr': 'my string'}
 
+Conditional Field Skipping
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Dataclass Wizard now supports **conditional skipping** of fields during serialization using global settings, per-field annotations, or field wrappers.
+
+Quick Examples
+##############
+
+1. **Globally Skip Fields Matching a Condition**
+
+  Use the ``Meta.skip_if`` option to define a global rule for skipping fields:
+
+  .. code-block:: python3
+
+    from dataclasses import dataclass
+    from dataclass_wizard import JSONWizard, IS_NOT
+
+
+    @dataclass
+    class Example(JSONWizard):
+        class _(JSONWizard.Meta):
+            skip_if = IS_NOT(True)  # Skip fields if not `True`.
+
+        my_bool: bool
+        my_str: 'str | None'
+
+
+    print(Example(my_bool=True, my_str=None).to_dict())
+    # Output: {'myBool': True}
+
+2. **Skip Defaults Based on a Condition**
+  Use ``Meta.skip_defaults_if`` to skip fields with default values matching a condition.
+
+  .. note::
+    Using ``skip_defaults_if`` automatically enables ``skip_defaults=True``.
+
+  .. code-block:: python3
+
+    from dataclasses import dataclass
+
+    from dataclass_wizard import JSONWizard, IS
+
+
+    @dataclass
+    class Example(JSONWizard):
+        class _(JSONWizard.Meta):
+            key_transform_with_dump = 'NONE'
+            skip_defaults_if = IS(None)  # Skip default `None` values.
+
+        my_str: 'str | None' = None
+        my_bool: bool = False
+
+
+    print(Example(my_str=None).to_dict())
+    # Output: {'my_bool': False}
+
+3. **Per-Field Conditional Skipping**
+  Use type annotations or ``skip_if_field`` for fine-grained control:
+
+  .. code-block:: python3
+
+    from __future__ import annotations  # can be removed in Python 3.10+
+
+    from dataclasses import dataclass
+    from typing import Annotated
+
+    from dataclass_wizard import JSONWizard, SkipIfNone, skip_if_field, EQ
+
+
+    @dataclass
+    class Example(JSONWizard):
+        my_str: Annotated[str | None, SkipIfNone]  # Skip if `None`.
+        other_str: str | None = skip_if_field(EQ(''), default=None)  # Skip if empty.
+
+    print(Example(my_str=None, other_str='').to_dict())
+    # Output: {}
+
+Special Cases
+#############
+
+- **SkipIfNone**: Alias for ``SkipIf(IS(None))``, skips fields with a value of ``None``.
+- **Condition Helpers**:
+
+  - ``IS``, ``IS_NOT``: Identity checks.
+  - ``EQ``, ``NE``, ``GT``, etc.: Comparison operators.
+  - Combine these for flexible serialization rules.
+
 Field Properties
 ----------------
 

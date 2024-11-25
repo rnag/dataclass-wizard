@@ -2346,7 +2346,7 @@ def test_skip_defaults_if():
     assert ex.to_dict() == {'my_str': None}
 
 
-def test_skip_if_with_condition_in_annotation_and_skip_if_field():
+def test_per_field_skip_if():
     """
     Test per-field `skip_if` functionality, with the ``SkipIf``
     condition in type annotation, and also specified in
