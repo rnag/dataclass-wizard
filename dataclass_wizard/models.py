@@ -349,7 +349,7 @@ class Condition:
     def __str__(self):
         return f"{self.op} {self.val!r}"
 
-    def evaluate(self, other) -> bool:
+    def evaluate(self, other) -> bool:  # pragma: no cover
         # Optionally support runtime evaluation of the condition
         operators = {
             "==": lambda a, b: a == b,

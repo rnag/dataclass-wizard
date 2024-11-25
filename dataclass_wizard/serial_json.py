@@ -2,9 +2,8 @@ import json
 import logging
 
 from .abstractions import AbstractJSONWizard
-from .bases import AbstractMeta
 from .bases_meta import BaseJSONWizardMeta, LoadMeta, DumpMeta
-from .class_helper import call_meta_initializer_if_needed, get_meta
+from .class_helper import call_meta_initializer_if_needed
 from .dumpers import asdict
 from .loaders import fromdict, fromlist
 # noinspection PyProtectedMember
@@ -66,11 +65,7 @@ class JSONSerializable(AbstractJSONWizard):
             # minimum logging level for logs by this library
             min_level = default_lvl if isinstance(debug, bool) else debug
             # set `debug_enabled` flag for the class's Meta
-            cls_meta = get_meta(cls)
-            if cls_meta is not AbstractMeta:
-                cls_meta.debug_enabled = min_level
-            else:
-                LoadMeta(debug_enabled=min_level).bind_to(cls)
+            LoadMeta(debug_enabled=min_level).bind_to(cls)
 
         # Calls the Meta initializer when inner :class:`Meta` is sub-classed.
         call_meta_initializer_if_needed(cls)
@@ -96,5 +91,7 @@ class JSONPyWizard(JSONWizard):
 
     def __init_subclass__(cls, str=True, debug=False):
         """Bind child class to DumpMeta with no key transformation."""
-        super().__init_subclass__(str, debug)
+        # set `key_transform_with_dump` for the class's Meta
         DumpMeta(key_transform='NONE').bind_to(cls)
+        # Call JSONSerializable.__init_subclass__()
+        super().__init_subclass__(str, debug)

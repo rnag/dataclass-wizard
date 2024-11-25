@@ -177,12 +177,12 @@ def skip_if_field(condition: Condition, *,
                   hash=None, compare=True, metadata=None,
                   kw_only: bool = MISSING):
     """
-    Creates a dataclass field with a ``SkipIf`` condition.
+    Defines a dataclass field with a ``SkipIf`` condition.
 
-    This function is an alias for ``dataclasses.field(...)``, with additional
-    logic for associating a field with one or more JSON key paths, including
-    nested structures. It can be used to specify custom mappings between
-    dataclass fields and complex, nested JSON key names.
+    This function is a shortcut for ``dataclasses.field(...)``,
+    adding metadata to specify a condition. If the condition
+    evaluates to ``True``, the field is skipped during
+    JSON serialization.
 
     Arguments:
         condition (Condition): The condition, if true skips serializing the field.

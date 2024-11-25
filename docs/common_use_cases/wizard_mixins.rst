@@ -18,8 +18,9 @@ ensuring that keys are not transformed during JSON serialization (e.g., no ``cam
 
         def __init_subclass__(cls, str=True, debug=False):
             """Bind child class to DumpMeta with no key transformation."""
-            super().__init_subclass__(str, debug)
             DumpMeta(key_transform='NONE').bind_to(cls)
+            super().__init_subclass__(str, debug)
+
 
 Use Case
 --------
