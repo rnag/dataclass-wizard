@@ -2,6 +2,26 @@
 History
 =======
 
+0.30.0 (2024-11-25)
+-------------------
+
+**Features and Improvements**
+
+- **Conditional Field Skipping**: Omit fields during JSON serialization based on user-defined conditions.
+    - Introduced new :class:`Meta` settings:
+        - :attr:`skip_if` — Skips all fields matching a condition.
+        - :attr:`skip_defaults_if` — Skips fields with default values matching a condition.
+    - Added per-field controls using :func:`SkipIf()` annotations.
+    - Introduced the :func:`skip_if_field` wrapper for maximum flexibility.
+
+- **New Helper Class**: :class:`JSONPyWizard`
+    - A ``JSONWizard`` helper to disable *camelCase* transformation and keep keys as-is.
+
+- **Typing Improvements**: Added more ``*.pyi`` files for enhanced type checking and IDE support.
+
+- **Documentation Updates**:
+    - Added details about upcoming changes in the next major release, ``v1.0``.
+
 0.29.3 (2024-11-24)
 -------------------
 

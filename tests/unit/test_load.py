@@ -18,7 +18,7 @@ import pytest
 from dataclass_wizard import *
 from dataclass_wizard.constants import TAG
 from dataclass_wizard.errors import (
-    ParseError, MissingFields, UnknownJSONKey, MissingData
+    ParseError, MissingFields, UnknownJSONKey, MissingData, InvalidConditionError
 )
 from dataclass_wizard.models import Extras, _PatternBase
 from dataclass_wizard.parsers import (
@@ -2426,3 +2426,18 @@ def test_skip_if_truthy_or_falsy():
     # Test with truthy `my_str` and `my_bool` should include the field
     obj = SkipExample(my_str="", my_bool=True)
     assert obj.to_dict() == {'myStr': '', 'myBool': True}
+
+
+def test_invalid_condition_annotation_raises_error():
+    """
+    Test that using a Condition (e.g., LT) directly as a field annotation
+    without wrapping it in SkipIf() raises an InvalidConditionError.
+    """
+    with pytest.raises(InvalidConditionError, match="Wrap conditions inside SkipIf()"):
+
+        @dataclass
+        class Example(JSONWizard):
+            my_field: Annotated[int, LT(5)]  # Invalid: LT is not wrapped in SkipIf.
+
+        # Attempt to serialize an instance, which should raise the error.
+        Example(my_field=3).to_dict()

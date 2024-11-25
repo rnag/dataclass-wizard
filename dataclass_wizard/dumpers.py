@@ -39,6 +39,7 @@ from .type_def import (
 )
 from .utils.dict_helper import NestedDict
 from .utils.function_builder import FunctionBuilder
+# noinspection PyProtectedMember
 from .utils.dataclass_compat import _set_new_attribute
 from .utils.string_conv import to_camel_case
 
@@ -254,8 +255,23 @@ def asdict(o: T,
 
 def finalize_skip_if(skip_if: Condition,
                      operand_1: str,
-                     conditional: str):
+                     conditional: str) -> str:
+    """
+    Finalizes the skip condition by generating the appropriate string based on the condition.
 
+    Args:
+        skip_if (Condition): The condition to evaluate, containing truthiness and operation info.
+        operand_1 (str): The primary operand for the condition (e.g., a variable or value).
+        conditional (str): The conditional operator to use (e.g., '==', '!=').
+
+    Returns:
+        str: The resulting skip condition as a string.
+
+    Example:
+        >>> cond = Condition(t_or_f=True, op='+', val=None)
+        >>> finalize_skip_if(cond, 'my_var', '==')
+        'my_var'
+    """
     if skip_if.t_or_f:
         return operand_1 if skip_if.op == '+' else f'not {operand_1}'
 
@@ -264,8 +280,24 @@ def finalize_skip_if(skip_if: Condition,
 
 def get_skip_if_condition(skip_if: Condition,
                           _locals: dict[str, Any],
-                          operand_2: str):
+                          operand_2: str) -> 'str | bool':
+    """
+    Retrieves the skip condition based on the provided `Condition` object.
 
+    Args:
+        skip_if (Condition): The condition to evaluate.
+        _locals (dict[str, Any]): A dictionary of local variables for condition evaluation.
+        operand_2 (str): The secondary operand (e.g., a variable or value).
+
+    Returns:
+        Any: The result of the evaluated condition or a string representation for custom values.
+
+    Example:
+        >>> cond = Condition(t_or_f=False, op='==', val=10)
+        >>> locals_dict = {}
+        >>> get_skip_if_condition(cond, locals_dict, 'other_var')
+        '== other_var'
+    """
     if skip_if is None:
         return False
 
