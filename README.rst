@@ -27,12 +27,12 @@ Full documentation is available at `Read The Docs`_. (`Installation`_)
 
 
 
-Dataclass Wizard offers simple, elegant, *wizarding* tools for
+**Dataclass Wizard** offers simple, elegant, *wizarding* 🪄 tools for
 interacting with Python's ``dataclasses``.
 
-    It excels at lightning-fast de/serialization, converting dataclass
-    instances to/from JSON effortlessly -- perfect for *nested dataclass*
-    models!
+    It excels at ⚡️ lightning-fast de/serialization, effortlessly
+    converting dataclass instances to/from JSON -- perfect for
+    *nested dataclass* models!
 
 -------------------
 
