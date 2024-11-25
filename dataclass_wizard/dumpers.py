@@ -25,13 +25,14 @@ from .class_helper import (
     dataclass_field_names, dataclass_field_to_default,
     dataclass_field_to_json_field,
     dataclass_to_dumper, set_class_dumper,
-    _CLASS_TO_DUMP_FUNC, setup_dump_config_for_cls_if_needed, get_meta,
-    dataclass_field_to_load_parser, dataclass_field_to_json_path,
+    CLASS_TO_DUMP_FUNC, setup_dump_config_for_cls_if_needed, get_meta,
+    dataclass_field_to_load_parser, dataclass_field_to_json_path, is_builtin, dataclass_field_to_skip_if,
 )
 from .constants import _DUMP_HOOKS, TAG, CATCH_ALL
 from .decorators import _alias
 from .errors import show_deprecation_warning
 from .log import LOG
+from .models import Condition
 from .type_def import (
     ExplicitNull, NoneType, JSONObject,
     DD, LSQ, E, U, LT, NT, T
@@ -244,11 +245,26 @@ def asdict(o: T,
     cls = cls or type(o)
 
     try:
-        dump = _CLASS_TO_DUMP_FUNC[cls]
+        dump = CLASS_TO_DUMP_FUNC[cls]
     except KeyError:
         dump = dump_func_for_dataclass(cls)
 
     return dump(o, dict_factory, exclude, **kwargs)
+
+
+def get_skip_if_condition(skip_if: Condition,
+                          _locals: dict[str, Any],
+                          field_name: str):
+
+    if skip_if is None:
+        return False
+
+    if is_builtin(skip_if.val):
+        return str(skip_if)
+
+    # Update locals (as `val` is not a builtin)
+    _locals[field_name] = skip_if.val
+    return f'{skip_if.op} {field_name}'
 
 
 def dump_func_for_dataclass(cls: Type[T],
@@ -297,6 +313,9 @@ def dump_func_for_dataclass(cls: Type[T],
     # via a `default` or `default_factory` argument.
     field_to_default = dataclass_field_to_default(cls)
 
+    # A cached mapping of dataclass field name to its SkipIf condition.
+    field_to_skip_if = dataclass_field_to_skip_if(cls)
+
     # A collection of field names in the dataclass.
     field_names = dataclass_field_names(cls)
 
@@ -322,6 +341,8 @@ def dump_func_for_dataclass(cls: Type[T],
     num_paths = len(field_to_path)
     has_json_paths = True if num_paths else False
 
+    skip_defaults = True if meta.skip_defaults or meta.skip_defaults_if else False
+
     _locals = {
         'config': config,
         'asdict': _asdict_inner,
@@ -333,6 +354,12 @@ def dump_func_for_dataclass(cls: Type[T],
         'T': T,
     }
 
+    skip_if_condition = get_skip_if_condition(
+        meta.skip_if, _locals, '_skip_value')
+
+    skip_defaults_if_condition = get_skip_if_condition(
+        meta.skip_defaults_if, _locals, '_skip_defaults_value')
+
     # Initialize FuncBuilder
     fn_gen = FunctionBuilder()
 
@@ -341,7 +368,7 @@ def dump_func_for_dataclass(cls: Type[T],
                          ['o:T',
                           'dict_factory=dict',
                           "exclude:'list[str]|None'=None",
-                          f'skip_defaults:bool={meta.skip_defaults}'],
+                          f'skip_defaults:bool={skip_defaults}'],
                          return_type='JSONObject'):
 
         if (
@@ -378,6 +405,7 @@ def dump_func_for_dataclass(cls: Type[T],
             # Loop over the dataclass fields
             for i, field in enumerate(field_names):
                 skip_field = f'_skip_{i}'
+                skip_if_field = f'_skip_if_{i}'
                 default_value = f'_default_{i}'
 
                 skip_field_assignments.append(skip_field)
@@ -385,10 +413,15 @@ def dump_func_for_dataclass(cls: Type[T],
                     f'{skip_field}={field!r} in exclude'
                 )
                 if field in field_to_default:
-                    _locals[default_value] = field_to_default[field]
-                    skip_default_assignments.append(
-                        f"{skip_field} = {skip_field} or o.{field} == {default_value}"
-                    )
+                    if skip_defaults_if_condition:
+                        skip_default_assignments.append(
+                            f"{skip_field} = {skip_field} or o.{field} {skip_defaults_if_condition}"
+                        )
+                    else:
+                        _locals[default_value] = field_to_default[field]
+                        skip_default_assignments.append(
+                            f"{skip_field} = {skip_field} or o.{field} == {default_value}"
+                        )
 
                 # Get the resolved JSON field name
                 try:
@@ -401,7 +434,18 @@ def dump_func_for_dataclass(cls: Type[T],
 
                 # Exclude any dataclass fields that are explicitly ignored.
                 if json_field is not ExplicitNull:
-                    field_assignments.append(f"if not {skip_field}:")
+                    # If field has an explicit `SkipIf` condition
+                    if field in field_to_skip_if:
+                        skip_if_condition = get_skip_if_condition(
+                            field_to_skip_if[field], _locals, skip_if_field)
+                        field_assignments.append(f'if not ({skip_field} or o.{field} {skip_if_condition}):')
+                    # If Meta `skip_if` has a value
+                    elif skip_if_condition:
+                        field_assignments.append(f'if not ({skip_field} or o.{field} {skip_if_condition}):')
+                    # Else, proceed as normal
+                    else:
+                        field_assignments.append(f"if not {skip_field}:")
+
                     if json_field:
                         field_assignments.append(f"  result.append(('{json_field}',"
                                                  f"asdict(o.{field},dict_factory,hooks,config,cls_to_asdict)))")
@@ -459,7 +503,7 @@ def dump_func_for_dataclass(cls: Type[T],
         # equivalent to `asdict`.
         if getattr(cls, 'to_dict', None) is asdict:
             _set_new_attribute(cls, 'to_dict', asdict_func)
-        _CLASS_TO_DUMP_FUNC[cls] = asdict_func
+        CLASS_TO_DUMP_FUNC[cls] = asdict_func
     else:
         nested_cls_to_dump_func[cls] = asdict_func
 

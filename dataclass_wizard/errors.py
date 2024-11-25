@@ -39,6 +39,15 @@ class JSONWizardError(ABC, Exception):
 
     _TEMPLATE: ClassVar[str]
 
+    @staticmethod
+    def name(obj) -> str:
+        """Return the type or class name of an object"""
+        # Uses short-circuiting with `or` to efficiently
+        # return the first valid name.
+        return (getattr(obj, '__qualname__', None)
+                or getattr(obj, '__name__', None)
+                or str(obj))
+
     @property
     @abstractmethod
     def message(self) -> str:
@@ -108,11 +117,6 @@ class ParseError(JSONWizardError):
     def json_object(self, json_obj):
         if self._json_object is None:
             self._json_object = json_obj
-
-    @staticmethod
-    def name(obj) -> str:
-        """Return the type or class name of an object"""
-        return getattr(obj, '__qualname__', getattr(obj, '__name__', obj))
 
     @property
     def message(self) -> str:
@@ -187,11 +191,6 @@ class MissingFields(JSONWizardError):
         self.kwargs = kwargs
         self.class_name: str = self.name(cls)
 
-    @staticmethod
-    def name(obj) -> str:
-        """Return the type or class name of an object"""
-        return getattr(obj, '__qualname__', getattr(obj, '__name__', obj))
-
     @property
     def message(self) -> str:
         msg = self._TEMPLATE.format(
@@ -236,11 +235,6 @@ class UnknownJSONKey(JSONWizardError):
         self.kwargs = kwargs
         self.class_name: str = self.name(cls)
 
-    @staticmethod
-    def name(obj) -> str:
-        """Return the type or class name of an object"""
-        return getattr(obj, '__qualname__', getattr(obj, '__name__', obj))
-
     @property
     def message(self) -> str:
         msg = self._TEMPLATE.format(
@@ -272,11 +266,6 @@ class MissingData(ParseError):
     def __init__(self, nested_cls: Type, **kwargs):
         super().__init__(self, None, nested_cls, **kwargs)
         self.nested_class_name: str = self.name(nested_cls)
-
-    @staticmethod
-    def name(obj) -> str:
-        """Return the type or class name of an object"""
-        return getattr(obj, '__qualname__', getattr(obj, '__name__', obj))
 
     @property
     def message(self) -> str:
@@ -315,15 +304,28 @@ class RecursiveClassError(JSONWizardError):
 
         self.class_name: str = self.name(cls)
 
-    @staticmethod
-    def name(obj) -> str:
-        """Return the type or class name of an object"""
-        # Uses short-circuiting with `or` to efficiently
-        # return the first valid name.
-        return (getattr(obj, '__qualname__', None)
-                or getattr(obj, '__name__', None)
-                or str(obj))
-
     @property
     def message(self) -> str:
         return self._TEMPLATE.format(cls=self.class_name)
+
+
+class InvalidConditionError(JSONWizardError):
+    """
+    Error raised when a condition is not wrapped in ``SkipIf``.
+    """
+
+    _TEMPLATE = ('Failure parsing annotations for class `{cls}`. '
+                 'Field has an invalid condition.\n'
+                 '  dataclass field: {field!r}\n'
+                 '  resolution: Wrap conditions inside SkipIf().`')
+
+    def __init__(self, cls: Type, field_name: str):
+        super().__init__()
+
+        self.class_name: str = self.name(cls)
+        self.field_name: str = field_name
+
+    @property
+    def message(self) -> str:
+        return self._TEMPLATE.format(cls=self.class_name,
+                                     field=self.field_name)

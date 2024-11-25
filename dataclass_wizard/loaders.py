@@ -18,7 +18,7 @@ from .class_helper import (
     create_new_class,
     dataclass_to_loader, set_class_loader,
     dataclass_field_to_load_parser, json_field_to_dataclass_field,
-    _CLASS_TO_LOAD_FUNC, dataclass_fields, get_meta, is_subclass_safe, dataclass_field_to_json_path,
+    CLASS_TO_LOAD_FUNC, dataclass_fields, get_meta, is_subclass_safe, dataclass_field_to_json_path,
     dataclass_init_fields, dataclass_field_to_default,
 )
 from .constants import _LOAD_HOOKS, SINGLE_ARG_ALIAS, IDENTITY, CATCH_ALL
@@ -564,7 +564,7 @@ def fromdict(cls: Type[T], d: JSONObject) -> T:
 
     """
     try:
-        load = _CLASS_TO_LOAD_FUNC[cls]
+        load = CLASS_TO_LOAD_FUNC[cls]
     except KeyError:
         load = load_func_for_dataclass(cls)
 
@@ -580,7 +580,7 @@ def fromlist(cls: Type[T], list_of_dict: List[JSONObject]) -> List[T]:
 
     """
     try:
-        load = _CLASS_TO_LOAD_FUNC[cls]
+        load = CLASS_TO_LOAD_FUNC[cls]
     except KeyError:
         load = load_func_for_dataclass(cls)
 
@@ -812,6 +812,6 @@ def load_func_for_dataclass(
         if ((from_dict := getattr(cls, 'from_dict', None)) is not None
                 and getattr(from_dict, '__func__', None) is fromdict):
             _set_new_attribute(cls, 'from_dict', cls_fromdict)
-        _CLASS_TO_LOAD_FUNC[cls] = cls_fromdict
+        CLASS_TO_LOAD_FUNC[cls] = cls_fromdict
 
     return cls_fromdict

@@ -90,6 +90,7 @@ __all__ = [
     'json_field',
     'json_key',
     'path_field',
+    'skip_if_field',
     'KeyPath',
     'Container',
     'Pattern',
@@ -97,6 +98,16 @@ __all__ = [
     'TimePattern',
     'DateTimePattern',
     'CatchAll',
+    'SkipIf',
+    'SkipIfNone',
+    'EQ',
+    'NE',
+    'LT',
+    'LE',
+    'GT',
+    'GE',
+    'IS',
+    'IS_NOT',
 ]
 
 import logging
@@ -104,8 +115,11 @@ import logging
 from .bases_meta import LoadMeta, DumpMeta
 from .dumpers import DumpMixin, setup_default_dumper, asdict
 from .loaders import LoadMixin, setup_default_loader, fromlist, fromdict
-from .models import (json_field, json_key, path_field, KeyPath, Container,
-                     Pattern, DatePattern, TimePattern, DateTimePattern, CatchAll)
+from .models import (json_field, json_key, path_field, skip_if_field,
+                     KeyPath, Container,
+                     Pattern, DatePattern, TimePattern, DateTimePattern,
+                     CatchAll, SkipIf, SkipIfNone,
+                     EQ, NE, LT, LE, GT, GE, IS, IS_NOT)
 from .property_wizard import property_wizard
 from .serial_json import JSONSerializable
 from .wizard_mixins import JSONListWizard, JSONFileWizard, TOMLWizard, YAMLWizard

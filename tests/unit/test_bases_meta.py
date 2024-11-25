@@ -25,7 +25,7 @@ def mock_log(mocker: MockerFixture):
 
 @pytest.fixture
 def mock_meta_initializers(mocker: MockerFixture):
-    return mocker.patch('dataclass_wizard.bases_meta._META_INITIALIZER')
+    return mocker.patch('dataclass_wizard.bases_meta.META_INITIALIZER')
 
 
 @pytest.fixture

@@ -59,11 +59,7 @@ class JSONSerializable(AbstractJSONWizard):
     def __init_subclass__(cls, str=True, debug=False):
 
         super().__init_subclass__()
-        # Calls the Meta initializer when inner :class:`Meta` is sub-classed.
-        call_meta_initializer_if_needed(cls)
-        # Add a `__str__` method to the subclass, if needed
-        if str:
-            _set_new_attribute(cls, '__str__', _str_fn())
+
         if debug:
             default_lvl = logging.DEBUG
             logging.basicConfig(level=default_lvl)
@@ -75,6 +71,13 @@ class JSONSerializable(AbstractJSONWizard):
                 cls_meta.debug_enabled = min_level
             else:
                 LoadMeta(debug_enabled=min_level).bind_to(cls)
+
+        # Calls the Meta initializer when inner :class:`Meta` is sub-classed.
+        call_meta_initializer_if_needed(cls)
+
+        # Add a `__str__` method to the subclass, if needed
+        if str:
+            _set_new_attribute(cls, '__str__', _str_fn())
 
 
 def _str_fn():
