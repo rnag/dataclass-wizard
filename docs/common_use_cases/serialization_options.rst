@@ -3,7 +3,7 @@ Serialization Options
 
 .. note::
 
-   **Future Behavior Change**: Starting in ``v2.0.0``, keys will no longer be converted to `camelCase` by default.
+   **Future Behavior Change**: Starting in ``v1.0.0``, keys will no longer be converted to `camelCase` by default.
    To enforce this behavior now, consider using :class:`JSONPyWizard`.
 
 The following parameters can be used to fine-tune and control how the serialization of a

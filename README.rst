@@ -1189,14 +1189,14 @@ mixin class.
 For more examples and important how-to's on properties with default values,
 refer to the `Using Field Properties`_ section in the documentation.
 
-What's New in v2.0
+What's New in v1.0
 ------------------
 
 .. warning::
 
    **Default Key Transformation Update**
 
-   Starting with ``v2.0.0``, the default key transformation for JSON serialization
+   Starting with ``v1.0.0``, the default key transformation for JSON serialization
    will change to keep keys *as-is* instead of converting them to `camelCase`.
 
    - **New Default Behavior**: ``key_transform='NONE'`` will be the standard setting.
