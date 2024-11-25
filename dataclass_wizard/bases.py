@@ -114,6 +114,9 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
 
     # True to enable Debug mode for additional (more verbose) log output.
     #
+    # The value can also be a `str` or `int` which specifies
+    # the minimum level for logs in this library to show up.
+    #
     # For example, a message is logged whenever an unknown JSON key is
     # encountered when `from_dict` or `from_json` is called.
     #
@@ -206,8 +209,8 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
     # the :func:`dataclasses.field`) in the serialization process.
     skip_defaults: ClassVar[bool] = False
 
-    # Determines the condition to skip / omit fields
-    # in the serialization process.
+    # Determines the :class:`Condition` to skip / omit dataclass
+    # fields in the serialization process.
     skip_if: ClassVar[Condition] = None
 
     # Determines the condition to skip / omit fields with default values
