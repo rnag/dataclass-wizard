@@ -5,10 +5,10 @@ In addition to the :class:`JSONWizard`, here a few extra Wizard Mixin
 classes that might prove to be quite convenient to use.
 
 
-Class: `JSONPyWizard`
+:class:`JSONPyWizard`
 ~~~~~~~~~~~~~~~~~~~~~
 
-A subclass of `JSONWizard` that disables the default key transformation behavior,
+A subclass of :class:`JSONWizard` that disables the default key transformation behavior,
 ensuring that keys are not transformed during JSON serialization (e.g., no ``camelCase`` transformation).
 
 .. code-block:: python3
@@ -24,7 +24,7 @@ ensuring that keys are not transformed during JSON serialization (e.g., no ``cam
 Use Case
 --------
 
-Use :class:`JSONPyWizard` when you want to prevent the automatic camelCase conversion of dictionary keys during serialization, keeping them in their original ``snake_case`` format.
+Use :class:`JSONPyWizard` when you want to prevent the automatic ``camelCase`` conversion of dictionary keys during serialization, keeping them in their original ``snake_case`` format.
 
 :class:`JSONListWizard`
 ~~~~~~~~~~~~~~~~~~~~~~~

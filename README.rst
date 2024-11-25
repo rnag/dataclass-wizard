@@ -106,9 +106,9 @@ Here are the key features that ``dataclass-wizard`` offers:
 Wizard Mixins
 -------------
 
-In addition to the ``JSONWizard``, here are a few extra Mixin_ classes that might prove quite convenient to use.
+In addition to ``JSONWizard``, these handy Mixin_ classes simplify your workflow:
 
-* `JSONPyWizard`_ -- Extends ``JSONWizard`` to disable default key transform on dump, ensuring that keys are not camel-cased during JSON serialization.
+* `JSONPyWizard`_ — Extends ``JSONWizard`` to skip `camelCase` transformation during JSON serialization, keeping keys as-is.
 * `JSONListWizard`_ -- Extends ``JSONWizard`` to return `Container`_ -- instead of *list* -- objects where possible.
 * `JSONFileWizard`_ -- Makes it easier to convert dataclass instances from/to JSON files on a local drive.
 * `TOMLWizard`_ -- Provides support to convert dataclass instances to/from TOML.
