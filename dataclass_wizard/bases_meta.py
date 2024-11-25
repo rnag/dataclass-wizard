@@ -11,7 +11,7 @@ from typing import Type, Optional, Dict, Union
 from .abstractions import AbstractJSONWizard
 from .bases import AbstractMeta, META
 from .class_helper import (
-    _META_INITIALIZER, _META,
+    META_INITIALIZER, _META,
     get_outer_class_name, get_class_name, create_new_class,
     json_field_to_dataclass_field, dataclass_field_to_json_field
 )
@@ -22,6 +22,7 @@ from .enums import LetterCase, DateTimeTo
 from .errors import ParseError
 from .loaders import get_loader
 from .log import LOG
+from .models import Condition
 from .type_def import E
 from .utils.type_conv import date_to_timestamp, as_enum
 
@@ -59,7 +60,7 @@ class BaseJSONWizardMeta(AbstractMeta):
         # `__init_subclass__` method of any inner classes are run before the
         # one for the outer class.
         if outer_cls_name is not None:
-            _META_INITIALIZER[outer_cls_name] = cls.bind_to
+            META_INITIALIZER[outer_cls_name] = cls.bind_to
         else:
             # The `Meta` class is defined as an outer class. Emit a warning
             # here, just so we can ensure awareness of this special case.
@@ -230,7 +231,10 @@ def DumpMeta(*, debug_enabled: 'bool | int | str' = False,
              marshal_date_time_as: Union[DateTimeTo, str] = None,
              key_transform: Union[LetterCase, str] = None,
              tag: str = None,
-             skip_defaults: bool = False) -> META:
+             skip_defaults: bool = False,
+             skip_if: Condition = None,
+             skip_defaults_if: Condition = None,
+             ) -> META:
     """
     Helper function to setup the ``Meta`` Config for the JSON dump
     (serialization) process, which is intended for use alongside the
@@ -254,6 +258,8 @@ def DumpMeta(*, debug_enabled: 'bool | int | str' = False,
         'marshal_date_time_as': marshal_date_time_as,
         'key_transform_with_dump': key_transform,
         'skip_defaults': skip_defaults,
+        'skip_if': skip_if,
+        'skip_defaults_if': skip_defaults_if,
         'debug_enabled': debug_enabled,
         'recursive': recursive,
         'tag': tag,

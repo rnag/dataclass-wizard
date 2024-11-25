@@ -3,7 +3,6 @@ from dataclasses import MISSING, Field
 from datetime import date, datetime, time
 from typing import Generic, Mapping, NewType
 
-from .bases import META
 from .constants import PY310_OR_ABOVE
 from .decorators import cached_property
 from .type_def import T, DT, PyTypedDict
@@ -26,7 +25,8 @@ CatchAll = NewType('CatchAll', Mapping)
 
 
 class Extras(PyTypedDict):
-    config: META
+    # noinspection PyUnresolvedReferences,PyTypedDict
+    config: 'META'
     pattern: 'PatternedDT'
 
 
@@ -295,3 +295,106 @@ def path_field(keys, *,
 
     return JSONField(keys, all, dump, default, default_factory, init, repr,
                     hash, compare, metadata, True)
+
+
+# In Python 3.10, dataclasses adds a new parameter to the :class:`Field`
+# constructor: `kw_only`
+#
+# Ref: https://docs.python.org/3.10/library/dataclasses.html#dataclasses.dataclass
+if PY310_OR_ABOVE:  # pragma: no cover
+    def skip_if_field(condition, *, default=MISSING, default_factory=MISSING, init=True, repr=True,
+                      hash=None, compare=True, metadata=None, kw_only=MISSING):
+
+        if default is not MISSING and default_factory is not MISSING:
+            raise ValueError('cannot specify both default and default_factory')
+
+        if metadata is None:
+            metadata = {}
+
+        metadata['__skip_if__'] = condition
+
+        return Field(default, default_factory, init, repr, hash,
+                     compare, metadata, kw_only)
+else:  # pragma: no cover
+    def skip_if_field(condition, *, default=MISSING, default_factory=MISSING, init=True, repr=True,
+                      hash=None, compare=True, metadata=None):
+
+        if default is not MISSING and default_factory is not MISSING:
+            raise ValueError('cannot specify both default and default_factory')
+
+        if metadata is None:
+            metadata = {}
+
+        metadata['__skip_if__'] = condition
+
+        # noinspection PyArgumentList
+        return Field(default, default_factory, init, repr, hash,
+                     compare, metadata)
+
+
+class Condition:
+
+    __slots__ = (
+        'op',
+        'val',
+        't_or_f',
+        '_wrapped',
+    )
+
+    def __init__(self, operator, value):
+        self.op = operator
+        self.val = value
+        self.t_or_f = operator in {'+', '!'}
+
+    def __str__(self):
+        return f"{self.op} {self.val!r}"
+
+    def evaluate(self, other) -> bool:  # pragma: no cover
+        # Optionally support runtime evaluation of the condition
+        operators = {
+            "==": lambda a, b: a == b,
+            "!=": lambda a, b: a != b,
+            "<": lambda a, b: a < b,
+            "<=": lambda a, b: a <= b,
+            ">": lambda a, b: a > b,
+            ">=": lambda a, b: a >= b,
+            "is": lambda a, b: a is b,
+            "is not": lambda a, b: a is not b,
+            "+": lambda a, _: True if a else False,
+            "!": lambda a, _: not a,
+        }
+        return operators[self.op](other, self.val)
+
+
+# Aliases for conditions
+
+# noinspection PyPep8Naming
+def EQ(value): return Condition("==", value)
+# noinspection PyPep8Naming
+def NE(value): return Condition("!=", value)
+# noinspection PyPep8Naming
+def LT(value): return Condition("<", value)
+# noinspection PyPep8Naming
+def LE(value): return Condition("<=", value)
+# noinspection PyPep8Naming
+def GT(value): return Condition(">", value)
+# noinspection PyPep8Naming
+def GE(value): return Condition(">=", value)
+# noinspection PyPep8Naming
+def IS(value): return Condition("is", value)
+# noinspection PyPep8Naming
+def IS_NOT(value): return Condition("is not", value)
+# noinspection PyPep8Naming
+def IS_TRUTHY(): return Condition("+", None)
+# noinspection PyPep8Naming
+def IS_FALSY(): return Condition("!", None)
+
+
+# noinspection PyPep8Naming
+def SkipIf(condition):
+    condition._wrapped = True  # Set a marker attribute
+    return condition
+
+
+# Convenience alias, to skip serializing field if value is None
+SkipIfNone = SkipIf(IS(None))

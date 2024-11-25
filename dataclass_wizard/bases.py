@@ -4,6 +4,7 @@ from typing import Callable, Type, Dict, Optional, ClassVar, Union, TypeVar
 from .constants import TAG
 from .decorators import cached_class_property
 from .enums import DateTimeTo, LetterCase
+from .models import Condition
 from .type_def import FrozenKeys
 
 
@@ -113,6 +114,9 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
 
     # True to enable Debug mode for additional (more verbose) log output.
     #
+    # The value can also be a `str` or `int` which specifies
+    # the minimum level for logs in this library to show up.
+    #
     # For example, a message is logged whenever an unknown JSON key is
     # encountered when `from_dict` or `from_json` is called.
     #
@@ -204,6 +208,15 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
     # (based on the `default` or `default_factory` argument specified for
     # the :func:`dataclasses.field`) in the serialization process.
     skip_defaults: ClassVar[bool] = False
+
+    # Determines the :class:`Condition` to skip / omit dataclass
+    # fields in the serialization process.
+    skip_if: ClassVar[Condition] = None
+
+    # Determines the condition to skip / omit fields with default values
+    # (based on the `default` or `default_factory` argument specified for
+    # the :func:`dataclasses.field`) in the serialization process.
+    skip_defaults_if: ClassVar[Condition] = None
 
     # noinspection PyMethodParameters
     @cached_class_property

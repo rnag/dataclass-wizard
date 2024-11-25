@@ -1,4 +1,4 @@
-from typing import TypedDict, overload
+from typing import TypedDict, overload, Any
 import json
 from dataclasses import MISSING, Field
 from datetime import date, datetime, time
@@ -168,6 +168,44 @@ def path_field(keys: _STR_COLLECTION, *,
         >>> # to the `my_str` attribute.
     """
     ...
+
+
+def skip_if_field(condition: Condition, *,
+                  default=MISSING,
+                  default_factory: Callable[[], MISSING] = MISSING,
+                  init=True, repr=True,
+                  hash=None, compare=True, metadata=None,
+                  kw_only: bool = MISSING):
+    """
+    Defines a dataclass field with a ``SkipIf`` condition.
+
+    This function is a shortcut for ``dataclasses.field(...)``,
+    adding metadata to specify a condition. If the condition
+    evaluates to ``True``, the field is skipped during
+    JSON serialization.
+
+    Arguments:
+        condition (Condition): The condition, if true skips serializing the field.
+        default (Any): The default value for the field. Mutually exclusive with `default_factory`.
+        default_factory (Callable[[], Any]): A callable to generate the default value.
+                                             Mutually exclusive with `default`.
+        init (bool): Include the field in the generated `__init__` method. Defaults to True.
+        repr (bool): Include the field in the `__repr__` output. Defaults to True.
+        hash (bool): Include the field in the `__hash__` method. Defaults to None.
+        compare (bool): Include the field in comparison methods. Defaults to True.
+        metadata (dict): Metadata to associate with the field. Defaults to None.
+        kw_only (bool): If true, the field will become a keyword-only parameter to __init__().
+    Returns:
+        Field: A dataclass field with correct metadata set.
+
+    Example:
+        >>> from dataclasses import dataclass
+        >>> @dataclass
+        >>> class Example:
+        >>>     my_str: str = skip_if_field(IS_NOT(True))
+        >>> # Creates a condition which skips serializing `my_str`
+        >>> # if its value `is not True`.
+    """
 
 
 class JSON:
@@ -377,3 +415,80 @@ class Container(list[T]):
         Serializes the list of instances and writes it to a JSON file.
         """
         ...
+
+
+class Condition:
+
+    op: str         # Operator
+    val: Any        # Value
+    t_or_f: bool    # Truthy or falsy
+    _wrapped: bool  # True if wrapped in `SkipIf()`
+
+    def __init__(self, operator: str, value: Any):
+        ...
+
+    def __str__(self):
+        ...
+
+    def evaluate(self, other) -> bool:
+        ...
+
+
+# Aliases for conditions
+# noinspection PyPep8Naming
+def EQ(value: Any) -> Condition:
+    """Create a condition for equality (==)."""
+
+
+# noinspection PyPep8Naming
+def NE(value: Any) -> Condition:
+    """Create a condition for inequality (!=)."""
+
+
+# noinspection PyPep8Naming
+def LT(value: Any) -> Condition:
+    """Create a condition for less than (<)."""
+
+
+# noinspection PyPep8Naming
+def LE(value: Any) -> Condition:
+    """Create a condition for less than or equal to (<=)."""
+
+
+# noinspection PyPep8Naming
+def GT(value: Any) -> Condition:
+    """Create a condition for greater than (>)."""
+
+
+# noinspection PyPep8Naming
+def GE(value: Any) -> Condition:
+    """Create a condition for greater than or equal to (>=)."""
+
+
+# noinspection PyPep8Naming
+def IS(value: Any) -> Condition:
+    """Create a condition for identity (is)."""
+
+
+# noinspection PyPep8Naming
+def IS_NOT(value: Any) -> Condition:
+    """Create a condition for non-identity (is not)."""
+
+
+# noinspection PyPep8Naming
+def IS_TRUTHY() -> Condition:
+    """Create a "truthy" condition for evaluation (if <var>)."""
+
+
+# noinspection PyPep8Naming
+def IS_FALSY() -> Condition:
+    """Create a "falsy" condition for evaluation (if not <var>)."""
+
+
+# noinspection PyPep8Naming
+def SkipIf(condition: Condition) -> Condition:
+    """
+    Mark a condition to be used as a skip directive during serialization.
+    """
+
+SkipIfNone: Condition

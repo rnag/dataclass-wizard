@@ -18,7 +18,7 @@ import pytest
 from dataclass_wizard import *
 from dataclass_wizard.constants import TAG
 from dataclass_wizard.errors import (
-    ParseError, MissingFields, UnknownJSONKey, MissingData
+    ParseError, MissingFields, UnknownJSONKey, MissingData, InvalidConditionError
 )
 from dataclass_wizard.models import Extras, _PatternBase
 from dataclass_wizard.parsers import (
@@ -2292,3 +2292,152 @@ def test_auto_assign_tags_and_catch_all():
             "mystring": "bar", "type": "B"
         }
     }
+
+
+def test_skip_if():
+    """
+    Using Meta config `skip_if` to conditionally
+    skip serializing dataclass fields.
+    """
+    @dataclass
+    class Example(JSONWizard, debug=True):
+        class _(JSONWizard.Meta):
+            skip_if = IS_NOT(True)
+            key_transform_with_dump = 'NONE'
+
+        my_str: 'str | None'
+        my_bool: bool
+        other_bool: bool = False
+
+    ex = Example(my_str=None, my_bool=True)
+
+    assert ex.to_dict() == {'my_bool': True}
+
+
+def test_skip_defaults_if():
+    """
+    Using Meta config `skip_defaults_if` to conditionally
+    skip serializing dataclass fields with default values.
+    """
+    @dataclass
+    class Example(JSONWizard, debug=True):
+        class _(JSONWizard.Meta):
+            key_transform_with_dump = 'None'
+            skip_defaults_if = IS(None)
+
+        my_str: 'str | None'
+        other_str: 'str | None' = None
+        third_str: 'str | None' = None
+        my_bool: bool = False
+
+    ex = Example(my_str=None, other_str='')
+
+    assert ex.to_dict() == {
+        'my_str': None,
+        'other_str': '',
+        'my_bool': False
+    }
+
+    ex = Example('testing', other_str='', third_str='')
+    assert ex.to_dict() == {'my_str': 'testing', 'other_str': '',
+                            'third_str': '', 'my_bool': False}
+
+    ex = Example(None, my_bool=None)
+    assert ex.to_dict() == {'my_str': None}
+
+
+def test_per_field_skip_if():
+    """
+    Test per-field `skip_if` functionality, with the ``SkipIf``
+    condition in type annotation, and also specified in
+    ``skip_if_field()`` which wraps ``dataclasses.Field``.
+    """
+    @dataclass
+    class Example(JSONWizard, debug=True):
+        class _(JSONWizard.Meta):
+            key_transform_with_dump = 'None'
+
+        my_str: Annotated['str | None', SkipIfNone]
+        other_str: 'str | None' = None
+        third_str: 'str | None' = skip_if_field(EQ(''), default=None)
+        my_bool: bool = False
+        other_bool: Annotated[bool, SkipIf(IS(True))] = True
+
+    ex = Example(my_str='test')
+    assert ex.to_dict() == {
+        'my_str': 'test',
+        'other_str': None,
+        'third_str': None,
+        'my_bool': False
+    }
+
+    ex = Example(None, other_str='', third_str='', my_bool=True, other_bool=False)
+    assert ex.to_dict() == {'other_str': '',
+                            'my_bool': True,
+                            'other_bool': False}
+
+    ex = Example('None', other_str='test', third_str='None', my_bool=None, other_bool=True)
+    assert ex.to_dict() == {'my_str': 'None', 'other_str': 'test',
+                            'third_str': 'None', 'my_bool': None}
+
+
+def test_is_truthy_and_is_falsy_conditions():
+    """
+    Test both IS_TRUTHY and IS_FALSY conditions within a single test case.
+    """
+
+    # Define the Example class within the test case and apply the conditions
+    @dataclass
+    class Example(JSONPyWizard):
+        my_str: Annotated['str | None', SkipIf(IS_TRUTHY())]  # Skip if truthy
+        my_bool: bool = skip_if_field(IS_FALSY())  # Skip if falsy
+        my_int: Annotated['int | None', SkipIf(IS_FALSY())] = None  # Skip if falsy
+
+    # Test IS_TRUTHY condition (field will be skipped if truthy)
+    obj = Example(my_str="Hello", my_bool=True, my_int=5)
+    assert obj.to_dict() == {'my_bool': True, 'my_int': 5}  # `my_str` is skipped because it is truthy
+
+    # Test IS_FALSY condition (field will be skipped if falsy)
+    obj = Example(my_str=None, my_bool=False, my_int=0)
+    assert obj.to_dict() == {'my_str': None}  # `my_str` is None (falsy), so it is not skipped
+
+    # Test a mix of truthy and falsy values
+    obj = Example(my_str="Not None", my_bool=True, my_int=None)
+    assert obj.to_dict() == {'my_bool': True}  # `my_str` is truthy, so it is skipped, `my_int` is falsy and skipped
+
+    # Test with both IS_TRUTHY and IS_FALSY applied (both `my_bool` and `my_in
+
+
+def test_skip_if_truthy_or_falsy():
+    """
+    Test skip if condition is truthy or falsy for individual fields.
+    """
+
+    # Use of SkipIf with IS_TRUTHY
+    @dataclass
+    class SkipExample(JSONWizard):
+        my_str: Annotated['str | None', SkipIf(IS_TRUTHY())]
+        my_bool: bool = skip_if_field(IS_FALSY())
+
+    # Test with truthy `my_str` and falsy `my_bool` should be skipped
+    obj = SkipExample(my_str="Test", my_bool=False)
+    assert obj.to_dict() == {}
+
+    # Test with truthy `my_str` and `my_bool` should include the field
+    obj = SkipExample(my_str="", my_bool=True)
+    assert obj.to_dict() == {'myStr': '', 'myBool': True}
+
+
+def test_invalid_condition_annotation_raises_error():
+    """
+    Test that using a Condition (e.g., LT) directly as a field annotation
+    without wrapping it in SkipIf() raises an InvalidConditionError.
+    """
+    with pytest.raises(InvalidConditionError, match="Wrap conditions inside SkipIf()"):
+
+        @dataclass
+        class Example(JSONWizard):
+            my_field: Annotated[int, LT(5)]  # Invalid: LT is not wrapped in SkipIf.
+
+        # Attempt to serialize an instance, which should raise the error.
+        Example(my_field=3).to_dict()

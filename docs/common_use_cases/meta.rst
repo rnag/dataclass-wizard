@@ -25,19 +25,22 @@ does not matter, but for demo purposes it's named the same as the base class her
     from dataclasses import dataclass
     from datetime import date
 
-    from dataclass_wizard import JSONSerializable
+    from dataclass_wizard import JSONWizard, IS, NE
     from dataclass_wizard.enums import DateTimeTo, LetterCase
 
-    # Sets up logging, so that library logs are visible in the console.
+    # (Optional) sets up logging, so that library logs are visible in the console.
     logging.basicConfig(level='INFO')
 
 
     @dataclass
-    class MyClass(JSONSerializable):
+    class MyClass(JSONWizard):
 
-        class Meta(JSONSerializable.Meta):
+        class Meta(JSONWizard.Meta):
 
             # True to enable Debug mode for additional (more verbose) log output.
+            #
+            # The value can also be a `str` or `int` which specifies
+            # the minimum level for logs in this library to show up.
             #
             # For example, a message is logged whenever an unknown JSON key is
             # encountered when `from_dict` or `from_json` is called.
@@ -48,7 +51,7 @@ does not matter, but for demo purposes it's named the same as the base class her
             # a JSON object to a dataclass instance.
             #
             # Note there is a minor performance impact when DEBUG mode is enabled.
-            debug_enabled = True
+            debug_enabled = logging.DEBUG
 
             # When enabled, a specified Meta config for the main dataclass (i.e. the
             # class on which `from_dict` and `to_dict` is called) will cascade down
@@ -59,6 +62,12 @@ does not matter, but for demo purposes it's named the same as the base class her
             # The default behavior is True, so the Meta config (if provided) will
             # apply in a recursive manner.
             recursive = True
+
+            # True to support cyclic or self-referential dataclasses. For example,
+            # the type of a dataclass field in class `A` refers to `A` itself.
+            #
+            # See https://github.com/rnag/dataclass-wizard/issues/62 for more details.
+            recursive_classes = False
 
             # True to raise an class:`UnknownJSONKey` when an unmapped JSON key is
             # encountered when `from_dict` or `from_json` is called; an unknown key is
@@ -80,7 +89,7 @@ does not matter, but for demo purposes it's named the same as the base class her
             # used in this case.
             json_key_to_field = {}
 
-            # How should :class:`date` and :class:`datetime` objects be serialized
+            # How should :class:`time` and :class:`datetime` objects be serialized
             # when converted to a Python dictionary object or a JSON string.
             marshal_date_time_as = DateTimeTo.TIMESTAMP
 
@@ -92,11 +101,12 @@ does not matter, but for demo purposes it's named the same as the base class her
 
             # The field name that identifies the tag for a class.
             #
-            # When set to a value, a '__tag__' field will be populated in the
-            # dictionary object in the dump (serialization) process. When loading
-            # (or de-serializing) a dictionary object, the '__tag__' field will be
-            # used to load the corresponding dataclass, assuming the dataclass field
-            # is properly annotated as a Union type, ex.:
+            # When set to a value, an :attr:`TAG` (``__tag__``) field will
+            # be populated in the dictionary object in the dump (serialization)
+            # process. When loading (or de-serializing) a dictionary object,
+            # the :attr:`TAG` field will be used to load the corresponding
+            # dataclass, assuming the dataclass field is properly annotated
+            # as a Union type, ex.:
             #   my_data: Union[Data1, Data2, Data3]
             tag = ''
 
@@ -107,15 +117,26 @@ does not matter, but for demo purposes it's named the same as the base class her
             # Defaults to '__tag__' if not specified.
             tag_key = ''
 
-            # Auto-assign the class name as a dictionary "tag" key, for any dataclass
-            # fields which are in a `Union` declaration, ex.:
+            # Auto-assign the class name as a dictionary "tag" key, for
+            # any dataclass fields which are in a `Union` declaration, ex.:
             #   my_data: Union[Data1, Data2, Data3]
             auto_assign_tags = False
 
-            # Determines whether we should we skip / omit fields with default values
-            # (based on the `default` or `default_factory` argument specified for
-            # the :func:`dataclasses.field`) in the serialization process.
+            # Determines whether we should we skip / omit fields with
+            # default values (based on the `default` or `default_factory`
+            # argument specified for the :func:`dataclasses.field`) in
+            # the serialization process.
             skip_defaults = True
+
+            # Determines the :class:`Condition` to skip / omit dataclass
+            # fields in the serialization process.
+            skip_if = IS(None)
+
+            # Determines the :class:`Condition` to skip / omit fields with
+            # default values (based on the `default` or `default_factory`
+            # argument specified for the :func:`dataclasses.field`) in the
+            # serialization process.
+            skip_defaults_if = NE('value')
 
         MyStr: str
         MyDate: date

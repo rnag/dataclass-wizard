@@ -2,9 +2,8 @@ import json
 import logging
 
 from .abstractions import AbstractJSONWizard
-from .bases import AbstractMeta
-from .bases_meta import BaseJSONWizardMeta, LoadMeta
-from .class_helper import call_meta_initializer_if_needed, get_meta
+from .bases_meta import BaseJSONWizardMeta, LoadMeta, DumpMeta
+from .class_helper import call_meta_initializer_if_needed
 from .dumpers import asdict
 from .loaders import fromdict, fromlist
 # noinspection PyProtectedMember
@@ -59,22 +58,21 @@ class JSONSerializable(AbstractJSONWizard):
     def __init_subclass__(cls, str=True, debug=False):
 
         super().__init_subclass__()
-        # Calls the Meta initializer when inner :class:`Meta` is sub-classed.
-        call_meta_initializer_if_needed(cls)
-        # Add a `__str__` method to the subclass, if needed
-        if str:
-            _set_new_attribute(cls, '__str__', _str_fn())
+
         if debug:
             default_lvl = logging.DEBUG
             logging.basicConfig(level=default_lvl)
             # minimum logging level for logs by this library
             min_level = default_lvl if isinstance(debug, bool) else debug
             # set `debug_enabled` flag for the class's Meta
-            cls_meta = get_meta(cls)
-            if cls_meta is not AbstractMeta:
-                cls_meta.debug_enabled = min_level
-            else:
-                LoadMeta(debug_enabled=min_level).bind_to(cls)
+            LoadMeta(debug_enabled=min_level).bind_to(cls)
+
+        # Calls the Meta initializer when inner :class:`Meta` is sub-classed.
+        call_meta_initializer_if_needed(cls)
+
+        # Add a `__str__` method to the subclass, if needed
+        if str:
+            _set_new_attribute(cls, '__str__', _str_fn())
 
 
 def _str_fn():
@@ -82,3 +80,18 @@ def _str_fn():
     return _create_fn('__str__',
                       ('self', ),
                       ['return self.to_json(indent=2)'])
+
+
+# A handy alias in case it comes in useful to anyone :)
+JSONWizard = JSONSerializable
+
+
+class JSONPyWizard(JSONWizard):
+    """Helper for JSONWizard that ensures dumping to JSON keeps keys as-is."""
+
+    def __init_subclass__(cls, str=True, debug=False):
+        """Bind child class to DumpMeta with no key transformation."""
+        # set `key_transform_with_dump` for the class's Meta
+        DumpMeta(key_transform='NONE').bind_to(cls)
+        # Call JSONSerializable.__init_subclass__()
+        super().__init_subclass__(str, debug)

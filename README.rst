@@ -27,12 +27,12 @@ Full documentation is available at `Read The Docs`_. (`Installation`_)
 
 
 
-Dataclass Wizard offers simple, elegant, *wizarding* tools for
+**Dataclass Wizard** offers simple, elegant, *wizarding* 🪄 tools for
 interacting with Python's ``dataclasses``.
 
-    It excels at lightning-fast de/serialization, converting dataclass
-    instances to/from JSON effortlessly -- perfect for *nested dataclass*
-    models!
+    It excels at ⚡️ lightning-fast de/serialization, effortlessly
+    converting dataclass instances to/from JSON -- perfect for
+    *nested dataclass* models!
 
 -------------------
 
@@ -106,8 +106,9 @@ Here are the key features that ``dataclass-wizard`` offers:
 Wizard Mixins
 -------------
 
-In addition to the ``JSONWizard``, here are a few extra Mixin_ classes that might prove quite convenient to use.
+In addition to ``JSONWizard``, these handy Mixin_ classes simplify your workflow:
 
+* `JSONPyWizard`_ — A ``JSONWizard`` helper to skip *camelCase* and keep keys as-is.
 * `JSONListWizard`_ -- Extends ``JSONWizard`` to return `Container`_ -- instead of *list* -- objects where possible.
 * `JSONFileWizard`_ -- Makes it easier to convert dataclass instances from/to JSON files on a local drive.
 * `TOMLWizard`_ -- Provides support to convert dataclass instances to/from TOML.
@@ -940,6 +941,130 @@ dataclasses in ``Union`` types. For more info, check out the
     # True
     assert c == c.from_json(c.to_json())
 
+Conditional Field Skipping
+--------------------------
+
+.. admonition:: **Added in v0.30.0**
+
+    Dataclass Wizard introduces `conditional skipping`_ to omit fields during JSON serialization based on user-defined conditions. This feature works seamlessly with:
+
+    - **Global rules** via ``Meta`` settings.
+    - **Per-field controls** using ``SkipIf()`` `annotations`_.
+    - **Field wrappers** for maximum flexibility.
+
+Quick Examples
+~~~~~~~~~~~~~~
+
+1. **Globally Skip Fields Matching a Condition**
+
+  Define a global skip rule using ``Meta.skip_if``:
+
+  .. code-block:: python3
+
+    from dataclasses import dataclass
+    from dataclass_wizard import JSONWizard, IS_NOT
+
+
+    @dataclass
+    class Example(JSONWizard):
+        class _(JSONWizard.Meta):
+            skip_if = IS_NOT(True)  # Skip fields if the value is not `True`
+
+        my_bool: bool
+        my_str: 'str | None'
+
+
+    print(Example(my_bool=True, my_str=None).to_dict())
+    # Output: {'myBool': True}
+
+2. **Skip Defaults Based on a Condition**
+
+  Skip fields with default values matching a specific condition using ``Meta.skip_defaults_if``:
+
+  .. code-block:: python3
+
+    from __future__ import annotations  # Can remove in PY 3.10+
+
+    from dataclasses import dataclass
+    from dataclass_wizard import JSONPyWizard, IS
+
+
+    @dataclass
+    class Example(JSONPyWizard):
+        class _(JSONPyWizard.Meta):
+            skip_defaults_if = IS(None)  # Skip default `None` values.
+
+        str_with_no_default: str | None
+        my_str: str | None = None
+        my_bool: bool = False
+
+
+    print(Example(str_with_no_default=None, my_str=None).to_dict())
+    #> {'str_with_no_default': None, 'my_bool': False}
+
+
+  .. note::
+      Setting ``skip_defaults_if`` also enables ``skip_defaults=True`` automatically.
+
+3. **Per-Field Conditional Skipping**
+
+  Apply skip rules to specific fields with `annotations`_ or ``skip_if_field``:
+
+  .. code-block:: python3
+
+    from __future__ import annotations  # can be removed in Python 3.10+
+
+    from dataclasses import dataclass
+    from typing import Annotated
+
+    from dataclass_wizard import JSONWizard, SkipIfNone, skip_if_field, EQ
+
+
+    @dataclass
+    class Example(JSONWizard):
+        my_str: Annotated[str | None, SkipIfNone]  # Skip if `None`.
+        other_str: str | None = skip_if_field(EQ(''), default=None)  # Skip if empty.
+
+    print(Example(my_str=None, other_str='').to_dict())
+    # Output: {}
+
+4. **Skip Fields Based on Truthy or Falsy Values**
+
+   Use the ``IS_TRUTHY`` and ``IS_FALSY`` helpers to conditionally skip fields based on their truthiness:
+
+   .. code-block:: python3
+
+    from dataclasses import dataclass, field
+    from dataclass_wizard import JSONWizard, IS_FALSY
+
+
+    @dataclass
+    class ExampleWithFalsy(JSONWizard):
+        class _(JSONWizard.Meta):
+            skip_if = IS_FALSY()  # Skip fields if they evaluate as "falsy".
+
+        my_bool: bool
+        my_list: list = field(default_factory=list)
+        my_none: None = None
+
+    print(ExampleWithFalsy(my_bool=False, my_list=[], my_none=None).to_dict())
+    #> {}
+
+.. note::
+
+   *Special Cases*
+
+   - **SkipIfNone**: Alias for ``SkipIf(IS(None))``, skips fields with a value of ``None``.
+   - **Condition Helpers**:
+
+     - ``IS``, ``IS_NOT``: Identity checks.
+     - ``EQ``, ``NE``, ``LT``, ``LE``, ``GT``, ``GE``: Comparison operators.
+     - ``IS_TRUTHY``, ``IS_FALSY``: Skip fields based on truthy or falsy values.
+
+   Combine these helpers for flexible serialization rules!
+
+.. _conditional skipping: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/serialization_options.html#skip-if-functionality
+
 Serialization Options
 ---------------------
 
@@ -1064,6 +1189,33 @@ mixin class.
 For more examples and important how-to's on properties with default values,
 refer to the `Using Field Properties`_ section in the documentation.
 
+What's New in v1.0
+------------------
+
+.. warning::
+
+   **Default Key Transformation Update**
+
+   Starting with ``v1.0.0``, the default key transformation for JSON serialization
+   will change to keep keys *as-is* instead of converting them to `camelCase`.
+
+   - **New Default Behavior**: ``key_transform='NONE'`` will be the standard setting.
+
+   **How to Prepare**:
+   You can enforce this future behavior right now by using the ``JSONPyWizard`` helper:
+
+   .. code-block:: python3
+
+      from dataclasses import dataclass
+      from dataclass_wizard import JSONPyWizard
+
+      @dataclass
+      class MyModel(JSONPyWizard):
+          my_field: str
+
+      print(MyModel(my_field="value").to_dict())
+      # Output: {'my_field': 'value'}
+
 Contributing
 ------------
 
@@ -1089,6 +1241,7 @@ This package was created with Cookiecutter_ and the `rnag/cookiecutter-pypackage
 .. _`rnag/cookiecutter-pypackage`: https://github.com/rnag/cookiecutter-pypackage
 .. _`Contributing`: https://dataclass-wizard.readthedocs.io/en/latest/contributing.html
 .. _`open an issue`: https://github.com/rnag/dataclass-wizard/issues
+.. _`JSONPyWizard`: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/wizard_mixins.html#jsonpywizard
 .. _`JSONListWizard`: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/wizard_mixins.html#jsonlistwizard
 .. _`JSONFileWizard`: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/wizard_mixins.html#jsonfilewizard
 .. _`TOMLWizard`: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/wizard_mixins.html#tomlwizard
@@ -1114,3 +1267,4 @@ This package was created with Cookiecutter_ and the `rnag/cookiecutter-pypackage
 .. _Easier Debug Mode: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/easier_debug_mode.html
 .. _Handling Unknown JSON Keys: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/handling_unknown_json_keys.html
 .. _custom paths to access nested keys: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/nested_key_paths.html
+.. _annotations: https://docs.python.org/3/library/typing.html#typing.Annotated
