@@ -66,6 +66,15 @@ class SerializerHookMixin(Protocol):
         ...
 
 
+class JSONPyWizard(JSONSerializable, SerializerHookMixin):
+    """Helper for JSONWizard that ensures dumping to JSON keeps keys as-is."""
+
+    def __init_subclass__(cls,
+                          str: bool = True,
+                          debug: bool | str | int = False):
+        """Bind child class to DumpMeta with no key transformation."""
+
+
 class JSONSerializable(AbstractJSONWizard, SerializerHookMixin):
     """
     Mixin class to allow a `dataclass` sub-class to be easily converted

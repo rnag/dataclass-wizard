@@ -419,9 +419,10 @@ class Container(list[T]):
 
 class Condition:
 
-    op: str
-    val: Any
-    _wrapped: bool
+    op: str         # Operator
+    val: Any        # Value
+    t_or_f: bool    # Truthy or falsy
+    _wrapped: bool  # True if wrapped in `SkipIf()`
 
     def __init__(self, operator: str, value: Any):
         ...
@@ -472,6 +473,16 @@ def IS(value: Any) -> Condition:
 # noinspection PyPep8Naming
 def IS_NOT(value: Any) -> Condition:
     """Create a condition for non-identity (is not)."""
+
+
+# noinspection PyPep8Naming
+def IS_TRUTHY() -> Condition:
+    """Create a "truthy" condition for evaluation (if <var>)."""
+
+
+# noinspection PyPep8Naming
+def IS_FALSY() -> Condition:
+    """Create a "falsy" condition for evaluation (if not <var>)."""
 
 
 # noinspection PyPep8Naming

@@ -71,6 +71,7 @@ For full documentation and more advanced usage, please see
 __all__ = [
     # Base exports
     'JSONSerializable',
+    'JSONPyWizard',
     'JSONWizard',
     'LoadMixin',
     'DumpMixin',
@@ -108,6 +109,8 @@ __all__ = [
     'GE',
     'IS',
     'IS_NOT',
+    'IS_TRUTHY',
+    'IS_FALSY',
 ]
 
 import logging
@@ -119,18 +122,15 @@ from .models import (json_field, json_key, path_field, skip_if_field,
                      KeyPath, Container,
                      Pattern, DatePattern, TimePattern, DateTimePattern,
                      CatchAll, SkipIf, SkipIfNone,
-                     EQ, NE, LT, LE, GT, GE, IS, IS_NOT)
+                     EQ, NE, LT, LE, GT, GE, IS, IS_NOT, IS_TRUTHY, IS_FALSY)
 from .property_wizard import property_wizard
-from .serial_json import JSONSerializable
+from .serial_json import JSONWizard, JSONPyWizard, JSONSerializable
 from .wizard_mixins import JSONListWizard, JSONFileWizard, TOMLWizard, YAMLWizard
 
 
 # Set up logging to ``/dev/null`` like a library is supposed to.
 # http://docs.python.org/3.3/howto/logging.html#configuring-logging-for-a-library
 logging.getLogger('dataclass_wizard').addHandler(logging.NullHandler())
-
-# A handy alias in case it comes in useful to anyone :)
-JSONWizard = JSONSerializable
 
 # Setup the default type hooks to use when converting `str` (json) or a Python
 # `dict` object to a `dataclass` instance.

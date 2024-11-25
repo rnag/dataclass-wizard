@@ -4,6 +4,28 @@ Wizard Mixin Classes
 In addition to the :class:`JSONWizard`, here a few extra Wizard Mixin
 classes that might prove to be quite convenient to use.
 
+
+Class: `JSONPyWizard`
+~~~~~~~~~~~~~~~~~~~~~
+
+A subclass of `JSONWizard` that disables the default key transformation behavior,
+ensuring that keys are not transformed during JSON serialization (e.g., no ``camelCase`` transformation).
+
+.. code-block:: python3
+
+    class JSONPyWizard(JSONWizard):
+        """Helper for JSONWizard that ensures dumping to JSON keeps keys as-is."""
+
+        def __init_subclass__(cls, str=True, debug=False):
+            """Bind child class to DumpMeta with no key transformation."""
+            super().__init_subclass__(str, debug)
+            DumpMeta(key_transform='NONE').bind_to(cls)
+
+Use Case
+--------
+
+Use :class:`JSONPyWizard` when you want to prevent the automatic camelCase conversion of dictionary keys during serialization, keeping them in their original ``snake_case`` format.
+
 :class:`JSONListWizard`
 ~~~~~~~~~~~~~~~~~~~~~~~
 

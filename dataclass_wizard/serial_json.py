@@ -3,7 +3,7 @@ import logging
 
 from .abstractions import AbstractJSONWizard
 from .bases import AbstractMeta
-from .bases_meta import BaseJSONWizardMeta, LoadMeta
+from .bases_meta import BaseJSONWizardMeta, LoadMeta, DumpMeta
 from .class_helper import call_meta_initializer_if_needed, get_meta
 from .dumpers import asdict
 from .loaders import fromdict, fromlist
@@ -85,3 +85,16 @@ def _str_fn():
     return _create_fn('__str__',
                       ('self', ),
                       ['return self.to_json(indent=2)'])
+
+
+# A handy alias in case it comes in useful to anyone :)
+JSONWizard = JSONSerializable
+
+
+class JSONPyWizard(JSONWizard):
+    """Helper for JSONWizard that ensures dumping to JSON keeps keys as-is."""
+
+    def __init_subclass__(cls, str=True, debug=False):
+        """Bind child class to DumpMeta with no key transformation."""
+        super().__init_subclass__(str, debug)
+        DumpMeta(key_transform='NONE').bind_to(cls)

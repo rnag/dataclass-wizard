@@ -252,19 +252,32 @@ def asdict(o: T,
     return dump(o, dict_factory, exclude, **kwargs)
 
 
+def finalize_skip_if(skip_if: Condition,
+                     operand_1: str,
+                     conditional: str):
+
+    if skip_if.t_or_f:
+        return operand_1 if skip_if.op == '+' else f'not {operand_1}'
+
+    return f'{operand_1} {conditional}'
+
+
 def get_skip_if_condition(skip_if: Condition,
                           _locals: dict[str, Any],
-                          field_name: str):
+                          operand_2: str):
 
     if skip_if is None:
         return False
+
+    if skip_if.t_or_f:  # Truthy or falsy condition, no operand
+        return True
 
     if is_builtin(skip_if.val):
         return str(skip_if)
 
     # Update locals (as `val` is not a builtin)
-    _locals[field_name] = skip_if.val
-    return f'{skip_if.op} {field_name}'
+    _locals[operand_2] = skip_if.val
+    return f'{skip_if.op} {operand_2}'
 
 
 def dump_func_for_dataclass(cls: Type[T],
@@ -414,8 +427,10 @@ def dump_func_for_dataclass(cls: Type[T],
                 )
                 if field in field_to_default:
                     if skip_defaults_if_condition:
+                        _final_skip_if = finalize_skip_if(
+                            meta.skip_defaults_if, f'o.{field}', skip_defaults_if_condition)
                         skip_default_assignments.append(
-                            f"{skip_field} = {skip_field} or o.{field} {skip_defaults_if_condition}"
+                            f"{skip_field} = {skip_field} or {_final_skip_if}"
                         )
                     else:
                         _locals[default_value] = field_to_default[field]
@@ -436,12 +451,17 @@ def dump_func_for_dataclass(cls: Type[T],
                 if json_field is not ExplicitNull:
                     # If field has an explicit `SkipIf` condition
                     if field in field_to_skip_if:
+                        _skip_condition = field_to_skip_if[field]
                         _skip_if = get_skip_if_condition(
-                            field_to_skip_if[field], _locals, skip_if_field)
-                        field_assignments.append(f'if not ({skip_field} or o.{field} {_skip_if}):')
+                            _skip_condition, _locals, skip_if_field)
+                        _final_skip_if = finalize_skip_if(
+                            _skip_condition, f'o.{field}', _skip_if)
+                        field_assignments.append(f'if not ({skip_field} or {_final_skip_if}):')
                     # If Meta `skip_if` has a value
                     elif skip_if_condition:
-                        field_assignments.append(f'if not ({skip_field} or o.{field} {skip_if_condition}):')
+                        _final_skip_if = finalize_skip_if(
+                            meta.skip_if, f'o.{field}', skip_if_condition)
+                        field_assignments.append(f'if not ({skip_field} or {_final_skip_if}):')
                     # Else, proceed as normal
                     else:
                         field_assignments.append(f"if not {skip_field}:")

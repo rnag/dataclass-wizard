@@ -2379,3 +2379,50 @@ def test_per_field_skip_if():
     ex = Example('None', other_str='test', third_str='None', my_bool=None, other_bool=True)
     assert ex.to_dict() == {'my_str': 'None', 'other_str': 'test',
                             'third_str': 'None', 'my_bool': None}
+
+
+def test_is_truthy_and_is_falsy_conditions():
+    """
+    Test both IS_TRUTHY and IS_FALSY conditions within a single test case.
+    """
+
+    # Define the Example class within the test case and apply the conditions
+    @dataclass
+    class Example(JSONPyWizard):
+        my_str: Annotated['str | None', SkipIf(IS_TRUTHY())]  # Skip if truthy
+        my_bool: bool = skip_if_field(IS_FALSY())  # Skip if falsy
+        my_int: Annotated['int | None', SkipIf(IS_FALSY())] = None  # Skip if falsy
+
+    # Test IS_TRUTHY condition (field will be skipped if truthy)
+    obj = Example(my_str="Hello", my_bool=True, my_int=5)
+    assert obj.to_dict() == {'my_bool': True, 'my_int': 5}  # `my_str` is skipped because it is truthy
+
+    # Test IS_FALSY condition (field will be skipped if falsy)
+    obj = Example(my_str=None, my_bool=False, my_int=0)
+    assert obj.to_dict() == {'my_str': None}  # `my_str` is None (falsy), so it is not skipped
+
+    # Test a mix of truthy and falsy values
+    obj = Example(my_str="Not None", my_bool=True, my_int=None)
+    assert obj.to_dict() == {'my_bool': True}  # `my_str` is truthy, so it is skipped, `my_int` is falsy and skipped
+
+    # Test with both IS_TRUTHY and IS_FALSY applied (both `my_bool` and `my_in
+
+
+def test_skip_if_truthy_or_falsy():
+    """
+    Test skip if condition is truthy or falsy for individual fields.
+    """
+
+    # Use of SkipIf with IS_TRUTHY
+    @dataclass
+    class SkipExample(JSONWizard):
+        my_str: Annotated['str | None', SkipIf(IS_TRUTHY())]
+        my_bool: bool = skip_if_field(IS_FALSY())
+
+    # Test with truthy `my_str` and falsy `my_bool` should be skipped
+    obj = SkipExample(my_str="Test", my_bool=False)
+    assert obj.to_dict() == {}
+
+    # Test with truthy `my_str` and `my_bool` should include the field
+    obj = SkipExample(my_str="", my_bool=True)
+    assert obj.to_dict() == {'myStr': '', 'myBool': True}
