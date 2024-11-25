@@ -2292,3 +2292,90 @@ def test_auto_assign_tags_and_catch_all():
             "mystring": "bar", "type": "B"
         }
     }
+
+
+def test_skip_if():
+    """
+    Using Meta config `skip_if` to conditionally
+    skip serializing dataclass fields.
+    """
+    @dataclass
+    class Example(JSONWizard, debug=True):
+        class _(JSONWizard.Meta):
+            skip_if = IS_NOT(True)
+            key_transform_with_dump = 'NONE'
+
+        my_str: 'str | None'
+        my_bool: bool
+        other_bool: bool = False
+
+    ex = Example(my_str=None, my_bool=True)
+
+    assert ex.to_dict() == {'my_bool': True}
+
+
+def test_skip_defaults_if():
+    """
+    Using Meta config `skip_defaults_if` to conditionally
+    skip serializing dataclass fields with default values.
+    """
+    @dataclass
+    class Example(JSONWizard, debug=True):
+        class _(JSONWizard.Meta):
+            key_transform_with_dump = 'None'
+            skip_defaults_if = IS(None)
+
+        my_str: 'str | None'
+        other_str: 'str | None' = None
+        third_str: 'str | None' = None
+        my_bool: bool = False
+
+    ex = Example(my_str=None, other_str='')
+
+    assert ex.to_dict() == {
+        'my_str': None,
+        'other_str': '',
+        'my_bool': False
+    }
+
+    ex = Example('testing', other_str='', third_str='')
+    assert ex.to_dict() == {'my_str': 'testing', 'other_str': '',
+                            'third_str': '', 'my_bool': False}
+
+    ex = Example(None, my_bool=None)
+    assert ex.to_dict() == {'my_str': None}
+
+
+def test_skip_if_with_condition_in_annotation_and_skip_if_field():
+    """
+    Test per-field `skip_if` functionality, with the ``SkipIf``
+    condition in type annotation, and also specified in
+    ``skip_if_field()`` which wraps ``dataclasses.Field``.
+    """
+    @dataclass
+    class Example(JSONWizard, debug=True):
+        class _(JSONWizard.Meta):
+            key_transform_with_dump = 'None'
+
+        my_str: Annotated['str | None', SkipIfNone]
+        other_str: 'str | None' = None
+        third_str: 'str | None' = skip_if_field(EQ(''), default=None)
+        my_bool: bool = False
+        other_bool: Annotated[bool, SkipIf(IS(True))] = True
+
+    ex = Example(my_str='test')
+    assert ex.to_dict() == {
+        'my_str': 'test',
+        'other_str': None,
+        'third_str': None,
+        'my_bool': False
+    }
+
+    ex = Example(None, other_str='', third_str='', my_bool=True, other_bool=False)
+    assert ex.to_dict() == {'other_str': '',
+                            'my_bool': True,
+                            'other_bool': False}
+
+    ex = Example('None', other_str='test', third_str='None', my_bool=None, other_bool=True)
+    assert ex.to_dict() == {'my_str': 'None', 'other_str': 'test',
+                            'third_str': 'None', 'my_bool': None}

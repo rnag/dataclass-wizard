@@ -436,9 +436,9 @@ def dump_func_for_dataclass(cls: Type[T],
                 if json_field is not ExplicitNull:
                     # If field has an explicit `SkipIf` condition
                     if field in field_to_skip_if:
-                        skip_if_condition = get_skip_if_condition(
+                        _skip_if = get_skip_if_condition(
                             field_to_skip_if[field], _locals, skip_if_field)
-                        field_assignments.append(f'if not ({skip_field} or o.{field} {skip_if_condition}):')
+                        field_assignments.append(f'if not ({skip_field} or o.{field} {_skip_if}):')
                     # If Meta `skip_if` has a value
                     elif skip_if_condition:
                         field_assignments.append(f'if not ({skip_field} or o.{field} {skip_if_condition}):')
