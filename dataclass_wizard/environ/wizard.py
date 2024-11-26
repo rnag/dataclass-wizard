@@ -1,22 +1,23 @@
 import json
 import logging
-from dataclasses import MISSING, dataclass, fields, Field
-from typing import AnyStr, Callable, dataclass_transform
+from dataclasses import MISSING, dataclass, fields
+from typing import Callable, dataclass_transform
 
 from .dumpers import asdict
 from .lookups import Env, lookup_exact, clean
 from ..abstractions import AbstractEnvWizard
 from ..bases import AbstractEnvMeta
-from ..bases_meta import BaseEnvWizardMeta, LoadMeta, EnvMeta
+from ..bases_meta import BaseEnvWizardMeta, EnvMeta
 from ..class_helper import (call_meta_initializer_if_needed, get_meta,
                             field_to_env_var, dataclass_field_to_json_field)
-from ..decorators import cached_class_property, _alias
+from ..decorators import cached_class_property
 from ..environ.loaders import EnvLoader
 from ..errors import ExtraData, MissingVars, ParseError, type_name
 from ..loaders import get_loader
 from ..models import Extras, JSONField
-from ..type_def import JSONObject, Encoder, EnvFileType, ExplicitNull
+from ..type_def import EnvFileType, ExplicitNull, JSONObject
 from ..utils.function_builder import FunctionBuilder
+
 
 _to_dataclass = dataclass(init=False)
 
@@ -26,10 +27,7 @@ class EnvWizard(AbstractEnvWizard):
     __slots__ = ()
 
     class Meta(BaseEnvWizardMeta):
-        """
-        Inner meta class that can be extended by sub-classes for additional
-        customization with the environment load process.
-        """
+
         __slots__ = ()
 
         # Class attribute to enable detection of the class type.
@@ -40,9 +38,9 @@ class EnvWizard(AbstractEnvWizard):
             # doesn't run for the `EnvWizard.Meta` class.
             return cls._init_subclass()
 
-    # noinspection PyMethodParameters
+    # noinspection PyMethodParameters,PyUnresolvedReferences
     @cached_class_property
-    def __fields__(cls: 'E') -> 'dict[str, Field]':
+    def __fields__(cls: type['E']):
         cls_fields = {}
         field_to_var = field_to_env_var(cls)
 
@@ -62,30 +60,13 @@ class EnvWizard(AbstractEnvWizard):
 
         return cls_fields
 
-    @_alias(asdict)
-    def to_dict(self: 'E', exclude: 'list[str]' = None,
-                skip_defaults: bool = False) -> JSONObject:
-        """
-        Converts the `EnvWizard` subclass to a Python dictionary object that
-        is JSON serializable.
-        """
-        # alias: asdict(self)
-        ...
+    to_dict = asdict
 
-    def to_json(self: 'E', *,
-                encoder: Encoder = json.dumps,
-                **encoder_kwargs) -> AnyStr:
-        """
-        Converts the `EnvWizard` subclass to a JSON `string` representation.
-        """
+    def to_json(self, *,
+                encoder = json.dumps,
+                **encoder_kwargs):
+
         return encoder(asdict(self), **encoder_kwargs)
-
-    # # stub for type hinting purposes.
-    # def __init__(self, *,
-    #              _env_file: EnvFileType = None,
-    #              _reload_env: bool = False,
-    #              **init_kwargs) -> None:
-    #     ...
 
     def __init_subclass__(cls, *, reload_env=False, debug=False):
 
@@ -106,16 +87,11 @@ class EnvWizard(AbstractEnvWizard):
         # Calls the Meta initializer when inner :class:`Meta` is sub-classed.
         call_meta_initializer_if_needed(cls)
 
-        # create and set the `__init__()` method.
-        cls.__init__ = cls._init_fn()
+        # create and set methods such as `__init__()`.
+        cls._create_methods()
 
     @classmethod
-    def _init_fn(cls) -> Callable:
-        """
-        Returns a generated ``__init__()`` constructor method for the
-        :class:`EnvWizard` subclass, vis-à-vis how the ``dataclasses``
-        module does it, with a few noticeable differences.
-        """
+    def _create_methods(cls):
 
         meta = get_meta(cls, base_cls=AbstractEnvMeta)
         cls_loader = get_loader(cls, base_cls=EnvLoader)
@@ -132,7 +108,7 @@ class EnvWizard(AbstractEnvWizard):
         # noinspection PyArgumentList
         extras = Extras(config=None)
 
-        cls_fields: 'dict[str, Field]' = cls.__fields__
+        cls_fields = cls.__fields__
         field_names = frozenset(cls_fields)
 
         _meta_env_file = meta.env_file
@@ -235,12 +211,19 @@ class EnvWizard(AbstractEnvWizard):
                 #             with fn_gen.for_('attr in extra_kwargs'):
                 #                 fn_gen.add_line('setattr(self, attr, init_kwargs[attr])')
 
+        with fn_gen.function('dict', ['self'], JSONObject):
+            parts = ','.join([f'{name!r}:self.{name}' for name, f in cls.__fields__.items()])
+            fn_gen.add_line(f'return {{{parts}}}')
+
         functions = fn_gen.create_functions(globals=_globals, locals=_locals)
 
-        return functions['__init__']
+        # set the `__init__()` method.
+        cls.__init__ = functions['__init__']
+        # set the `dict()` method.
+        cls.dict = functions['dict']
 
 
-def _add_missing_var(missing_vars: list, name: str, tp: type):
+def _add_missing_var(missing_vars, name, tp):
     # noinspection PyBroadException
     try:
         suggested = tp()
@@ -250,9 +233,7 @@ def _add_missing_var(missing_vars: list, name: str, tp: type):
     missing_vars.append((name, tn, suggested))
 
 
-def _handle_parse_error(e: ParseError,
-                        cls: type, name: str,
-                        var_name: 'str | None'):
+def _handle_parse_error(e, cls, name, var_name):
 
     # We run into a parsing error while loading the field
     # value; Add additional info on the Exception object

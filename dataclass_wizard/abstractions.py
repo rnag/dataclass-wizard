@@ -32,8 +32,7 @@ class AbstractEnvWizard(ABC):
     __fields__: dict[str, Field]
 
     def dict(self):
-
-        return {f: getattr(self, f) for f in self.__class__.__fields__}
+        ...
 
     @abstractmethod
     def to_dict(self):
