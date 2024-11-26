@@ -110,7 +110,7 @@ def dump_func_for_env_subclass(cls: 'type[E]',
         """
 
         # Call the optional hook that runs before we process the subclass
-        cls_dumper.__pre_as_dict__(obj)
+        # cls_dumper.__pre_as_dict__(obj)
 
         # This a list that contains a mapping of each `EnvWizard` field to its
         # serialized value.
