@@ -2,6 +2,14 @@
 History
 =======
 
+0.30.1 (2024-11-25)
+-------------------
+
+**Bugfixes**
+
+* Resolved inconsistent behavior with dataclasses in ``Union`` when ``Meta`` :attr:`tag_key`
+  is also defined as a dataclass field (:issue:`148`).
+
 0.30.0 (2024-11-25)
 -------------------
 
