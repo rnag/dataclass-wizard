@@ -400,6 +400,9 @@ def IS_FALSY(): return Condition("!", None)
 
 # noinspection PyPep8Naming
 def SkipIf(condition):
+    """
+    Mark a condition to be used as a skip directive during serialization.
+    """
     condition._wrapped = True  # Set a marker attribute
     return condition
 

@@ -37,7 +37,10 @@ extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.viewcode',
     'sphinx_issues',
+    'sphinx_autodoc_typehints',
 ]
+
+autodoc_typehints = "description"
 
 github_user = 'rnag'
 github_repo = 'dataclass-wizard'

@@ -487,8 +487,7 @@ def IS_FALSY() -> Condition:
 
 # noinspection PyPep8Naming
 def SkipIf(condition: Condition) -> Condition:
-    """
-    Mark a condition to be used as a skip directive during serialization.
-    """
+    ...
+
 
 SkipIfNone: Condition
