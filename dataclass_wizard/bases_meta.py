@@ -25,7 +25,7 @@ from .errors import ParseError
 from .loaders import get_loader
 from .log import LOG
 from .models import Condition
-from .type_def import E
+from .type_def import E, EnvFileType
 from .utils.type_conv import date_to_timestamp, as_enum
 
 
@@ -202,7 +202,7 @@ class BaseEnvWizardMeta(AbstractEnvMeta):
         outer_cls_name = get_outer_class_name(cls, raise_=False)
 
         if outer_cls_name is not None:
-            _META_INITIALIZER[outer_cls_name] = cls.bind_to
+            META_INITIALIZER[outer_cls_name] = cls.bind_to
         else:
             # The `Meta` class is defined as an outer class. Emit a warning
             # here, just so we can ensure awareness of this special case.
@@ -255,8 +255,6 @@ class BaseEnvWizardMeta(AbstractEnvMeta):
         # will allow us to access this config as part of the JSON load/dump
         # process if needed.
 
-        # TODO fix type issue (should be straightforward)
-        # noinspection PyTypeChecker
         _META[env_class] = cls
 
 
@@ -349,3 +347,47 @@ def DumpMeta(*, debug_enabled: 'bool | int | str' = False,
     # Create a new subclass of :class:`AbstractMeta`
     # noinspection PyTypeChecker
     return type('Meta', (BaseJSONWizardMeta, ), base_dict)
+
+
+# noinspection PyPep8Naming
+def EnvMeta(*, debug_enabled: 'bool | int | str' = False,
+             env_file: EnvFileType = None,
+             extra: Extra = None,
+             field_to_env_var: dict[str, str] = None,
+             key_lookup_with_load: Union[LetterCasePriority, str] = LetterCasePriority.SCREAMING_SNAKE,
+             key_transform_with_dump: Union[LetterCase, str] = LetterCase.SNAKE,
+             # marshal_date_time_as: Union[DateTimeTo, str] = None,
+             # tag: str = None,
+             skip_defaults: bool = False,
+             # skip_if: Condition = None,
+             # skip_defaults_if: Condition = None,
+             ) -> META:
+    """
+    Helper function to setup the ``Meta`` Config for the EnvWizard.
+
+    For descriptions on what each of these params does, refer to the `Docs`_
+    below, or check out the :class:`AbstractEnvMeta` definition (I want to avoid
+    duplicating the descriptions for params here).
+
+    Examples::
+
+        >>> EnvMeta(key_transform_with_dump='SNAKE').bind_to(MyClass)
+
+    .. _Docs: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/meta.html
+    """
+
+    # Set meta attributes here.
+    base_dict = {
+        '__slots__': (),
+        'debug_enabled': debug_enabled,
+        'env_file': env_file,
+        'extra': extra,
+        'field_to_env_var': field_to_env_var,
+        'key_lookup_with_load': key_lookup_with_load,
+        'key_transform_with_dump': key_transform_with_dump,
+        'skip_defaults': skip_defaults,
+    }
+
+    # Create a new subclass of :class:`AbstractMeta`
+    # noinspection PyTypeChecker
+    return type('Meta', (BaseEnvWizardMeta, ), base_dict)

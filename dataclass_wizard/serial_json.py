@@ -5,7 +5,6 @@ from .abstractions import AbstractJSONWizard
 from .bases_meta import BaseJSONWizardMeta, LoadMeta, DumpMeta
 from .class_helper import call_meta_initializer_if_needed
 from .dumpers import asdict
-from .helpers import create_fn
 from .loaders import fromdict, fromlist
 # noinspection PyProtectedMember
 from .utils.dataclass_compat import _create_fn, _set_new_attribute

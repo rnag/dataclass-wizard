@@ -40,14 +40,12 @@ test_requirements = [
     'pytest-runner~=5.3.1'
 ]
 
-extras_require = {
-    'dotenv': ['python-dotenv>=0.19.0'],
-    'timedelta': ['pytimeparse>=1.1.7'],
-    'yaml': ['PyYAML>=5.3'],
-}
+# extras_require = {
+#     'dotenv': ['python-dotenv>=0.19.0'],
+# }
 
 # Ref: https://stackoverflow.com/a/71166228/10237506
-extras_require['all'] = list(itertools.chain.from_iterable(extras_require.values()))
+# extras_require['all'] = list(itertools.chain.from_iterable(extras_require.values()))
 
 about = {}
 exec((here / package_name / '__version__.py').read_text(), about)
@@ -107,6 +105,7 @@ setup(
     test_suite='tests',
     tests_require=test_requirements,
     extras_require={
+        'dotenv': ['python-dotenv>=1,<2'],
         'timedelta': ['pytimeparse>=1.1.7'],
         'toml': [
             'tomli>=2,<3; python_version=="3.9"',

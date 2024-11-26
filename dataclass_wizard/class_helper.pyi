@@ -112,6 +112,12 @@ def dataclass_field_to_skip_if(cls: type) -> dict[str, Condition]:
     """
 
 
+def field_to_env_var(cls: type) -> dict[str, str]:
+    """
+    Returns a mapping of field in the `EnvWizard` subclass to env variable.
+    """
+
+
 def dataclass_field_to_load_parser(
         cls_loader: type[AbstractLoader],
         cls: type,
