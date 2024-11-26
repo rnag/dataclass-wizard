@@ -7,8 +7,8 @@ from unittest.mock import ANY
 import pytest
 from pytest_mock import MockerFixture
 
+from dataclass_wizard.bases import META
 from dataclass_wizard import JSONWizard, EnvWizard
-from dataclass_wizard.bases import M
 from dataclass_wizard.bases_meta import BaseJSONWizardMeta
 from dataclass_wizard.enums import LetterCase, DateTimeTo
 from dataclass_wizard.errors import ParseError
@@ -20,7 +20,7 @@ log = logging.getLogger(__name__)
 
 @pytest.fixture
 def mock_meta_initializers(mocker: MockerFixture):
-    return mocker.patch('dataclass_wizard.bases_meta._META_INITIALIZER')
+    return mocker.patch('dataclass_wizard.bases_meta.META_INITIALIZER')
 
 
 @pytest.fixture
@@ -57,7 +57,7 @@ def test_merge_meta_with_or():
         json_key_to_field = {'k2': 'v2'}
 
     # Merge the two Meta config together
-    merged_meta: M = A | B
+    merged_meta: META = A | B
 
     # Assert we are a subclass of A, which subclasses from `BaseJSONWizardMeta`
     assert issubclass(merged_meta, BaseJSONWizardMeta)
@@ -100,7 +100,7 @@ def test_merge_meta_with_and():
         json_key_to_field = {'k2': 'v2'}
 
     # Merge the two Meta config together
-    merged_meta: M = A & B
+    merged_meta: META = A & B
 
     # Assert we are a subclass of A, which subclasses from `BaseJSONWizardMeta`
     assert issubclass(merged_meta, BaseJSONWizardMeta)

@@ -39,8 +39,8 @@ Let's start out with an example, which aims to demonstrate the simplest usage of
 dataclasses in ``Union`` types.
 
 .. note::
-   The below example should work for **Python 3.7+** with the included ``__future__``
-   import. Note that for 3.6, the ``A | B`` syntax -- which represents `Union`_ types --
+   The below example should work for **Python 3.9+** with the included ``__future__``
+   import. In Python 3.9, without the ``__future__`` import, the ``A | B`` syntax -- which represents `Union`_ types --
    can be replaced with ``typing.Union[A, B]`` instead. Similarly, the subscripted
    ``dict`` usage can be substituted with a ``typing.Dict`` as needed.
 

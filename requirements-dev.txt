@@ -1,18 +1,20 @@
+# TODO It seems `pip-upgrader` does not support Python 3.11+
+# pip-upgrader==1.4.15
+flake8>=3  # pyup: ignore
+tox==4.23.2
+# Extras
+pytimeparse==1.1.8
+# [toml] extra
+tomli>=2,<3; python_version=="3.9"
+tomli>=2,<3; python_version=="3.10"
+tomli-w>=1,<2
+# TODO I don't know if we need the below on CI
+coverage>=6.2
 pip>=21.3.1
 bump2version==1.0.1
-wheel==0.37.1
-watchdog[watchmedo]==2.1.6
-flake8>=3  # pyup: ignore
-tox==3.24.5
-coverage>=6.2
-Sphinx==4.4.0
-twine==3.8.0
-# Test requirements
-pytest==7.0.1
-pytest-mock>=3.6.1
-pytest-cov==3.0.0
-# pytest-runner==5.3.1
-# Benchmark tests
-dataclasses-json==0.5.6
-jsons==1.6.1
-dataclass-factory==2.12  # pyup: ignore
+wheel==0.45.1
+watchdog[watchmedo]==6.0.0
+Sphinx==7.4.7; python_version == "3.9"
+Sphinx==8.1.3; python_version >= "3.10"
+twine==5.1.1
+dataclass-wizard[toml]

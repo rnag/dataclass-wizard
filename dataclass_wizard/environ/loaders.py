@@ -4,7 +4,7 @@ from typing import (
     Union, AnyStr, Optional, Callable,
 )
 
-from ..abstractions import AbstractParser, FieldToParser
+from ..abstractions import AbstractParser
 from ..bases import META
 from ..decorators import _single_arg_alias
 from ..loaders import LoadMixin, load_func_for_dataclass
@@ -74,7 +74,7 @@ class EnvLoader(LoadMixin):
     @staticmethod
     def load_to_named_tuple(
             o: Union[Dict, List, Tuple], base_type: Type[NT],
-            field_to_parser: FieldToParser,
+            field_to_parser: 'FieldToParser',
             field_parsers: List[AbstractParser]) -> NT:
 
         # TODO check for both list and dict
@@ -112,7 +112,7 @@ class EnvLoader(LoadMixin):
     @staticmethod
     def load_to_typed_dict(
             o: Dict, base_type: Type[M],
-            key_to_parser: FieldToParser,
+            key_to_parser: 'FieldToParser',
             required_keys: FrozenKeys,
             optional_keys: FrozenKeys) -> M:
 

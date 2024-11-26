@@ -9,13 +9,13 @@ obtained from http://www.apache.org/licenses/LICENSE-2.0.
 See the end of this file for the original Apache license from this library.
 """
 from collections import defaultdict, deque
-# noinspection PyProtectedMember, PyUnresolvedReferences
+# noinspection PyProtectedMember,PyUnresolvedReferences
 from dataclasses import _is_dataclass_instance
 from datetime import datetime, time, date, timedelta
 from decimal import Decimal
 from enum import Enum
-# noinspection PyProtectedMember, PyUnresolvedReferences
-from typing import Type, List, Dict, Any, NamedTupleMeta, Optional, Callable
+# noinspection PyProtectedMember,PyUnresolvedReferences
+from typing import Type, List, Dict, Any, NamedTupleMeta, Optional, Callable, Collection
 from uuid import UUID
 
 from .abstractions import AbstractDumper
@@ -25,16 +25,22 @@ from .class_helper import (
     dataclass_field_names, dataclass_field_to_default,
     dataclass_field_to_json_field,
     dataclass_to_dumper, set_class_dumper,
-    _CLASS_TO_DUMP_FUNC, setup_dump_config_for_cls_if_needed, get_meta,
-    dataclass_field_to_load_parser,
+    CLASS_TO_DUMP_FUNC, setup_dump_config_for_cls_if_needed, get_meta,
+    dataclass_field_to_load_parser, dataclass_field_to_json_path, is_builtin, dataclass_field_to_skip_if,
 )
-from .constants import _DUMP_HOOKS, TAG
+from .constants import _DUMP_HOOKS, TAG, CATCH_ALL
 from .decorators import _alias
+from .errors import show_deprecation_warning
 from .log import LOG
+from .models import Condition
 from .type_def import (
     ExplicitNull, NoneType, JSONObject,
     DD, LSQ, E, U, LT, NT, T
 )
+from .utils.dict_helper import NestedDict
+from .utils.function_builder import FunctionBuilder
+# noinspection PyProtectedMember
+from .utils.dataclass_compat import _set_new_attribute
 from .utils.string_conv import to_camel_case
 
 
@@ -200,9 +206,11 @@ def get_dumper(cls=None, create=True) -> Type[DumpMixin]:
         return set_class_dumper(cls, DumpMixin)
 
 
-def asdict(obj: T,
-           *, cls=None, dict_factory=dict,
-           exclude: List[str] = None, **kwargs) -> JSONObject:
+def asdict(o: T,
+           *, cls=None,
+           dict_factory=dict,
+           exclude: 'Collection[str] | None' = None,
+           **kwargs) -> JSONObject:
     # noinspection PyUnresolvedReferences
     """Return the fields of a dataclass instance as a new dictionary mapping
     field names to field values.
@@ -235,20 +243,81 @@ def asdict(obj: T,
     # if not _is_dataclass_instance(obj):
     #     raise TypeError("asdict() should be called on dataclass instances")
 
-    cls = cls or type(obj)
+    cls = cls or type(o)
 
     try:
-        dump = _CLASS_TO_DUMP_FUNC[cls]
+        dump = CLASS_TO_DUMP_FUNC[cls]
     except KeyError:
         dump = dump_func_for_dataclass(cls)
 
-    return dump(obj, dict_factory, exclude, **kwargs)
+    return dump(o, dict_factory, exclude, **kwargs)
+
+
+def finalize_skip_if(skip_if: Condition,
+                     operand_1: str,
+                     conditional: str) -> str:
+    """
+    Finalizes the skip condition by generating the appropriate string based on the condition.
+
+    Args:
+        skip_if (Condition): The condition to evaluate, containing truthiness and operation info.
+        operand_1 (str): The primary operand for the condition (e.g., a variable or value).
+        conditional (str): The conditional operator to use (e.g., '==', '!=').
+
+    Returns:
+        str: The resulting skip condition as a string.
+
+    Example:
+        >>> cond = Condition(t_or_f=True, op='+', val=None)
+        >>> finalize_skip_if(cond, 'my_var', '==')
+        'my_var'
+    """
+    if skip_if.t_or_f:
+        return operand_1 if skip_if.op == '+' else f'not {operand_1}'
+
+    return f'{operand_1} {conditional}'
+
+
+def get_skip_if_condition(skip_if: Condition,
+                          _locals: dict[str, Any],
+                          operand_2: str) -> 'str | bool':
+    """
+    Retrieves the skip condition based on the provided `Condition` object.
+
+    Args:
+        skip_if (Condition): The condition to evaluate.
+        _locals (dict[str, Any]): A dictionary of local variables for condition evaluation.
+        operand_2 (str): The secondary operand (e.g., a variable or value).
+
+    Returns:
+        Any: The result of the evaluated condition or a string representation for custom values.
+
+    Example:
+        >>> cond = Condition(t_or_f=False, op='==', val=10)
+        >>> locals_dict = {}
+        >>> get_skip_if_condition(cond, locals_dict, 'other_var')
+        '== other_var'
+    """
+    if skip_if is None:
+        return False
+
+    if skip_if.t_or_f:  # Truthy or falsy condition, no operand
+        return True
+
+    if is_builtin(skip_if.val):
+        return str(skip_if)
+
+    # Update locals (as `val` is not a builtin)
+    _locals[operand_2] = skip_if.val
+    return f'{skip_if.op} {operand_2}'
 
 
 def dump_func_for_dataclass(cls: Type[T],
                             config: Optional[META] = None,
                             nested_cls_to_dump_func: Dict[Type, Any] = None,
                             ) -> Callable[[T, Any, Any, Any], JSONObject]:
+
+    # TODO dynamically generate for multiple nested classes at once
 
     # Get the dumper for the class, or create a new one as needed.
     cls_dumper = get_dumper(cls)
@@ -266,12 +335,12 @@ def dump_func_for_dataclass(cls: Type[T],
         if meta.recursive and meta is not AbstractMeta:
             config = meta
 
-    else:  # we are being run for a nested dataclass
-        if config:
-            # we want to apply the meta config from the main dataclass
-            # recursively.
-            meta = meta | config
-            meta.bind_to(cls, is_default=False)
+    # we are being run for a nested dataclass
+    elif config:
+        # we want to apply the meta config from the main dataclass
+        # recursively.
+        meta = meta | config
+        meta.bind_to(cls, is_default=False)
 
     # This contains the dump hooks for the dataclass. If the class
     # sub-classes from `DumpMixIn`, these hooks could be customized.
@@ -288,6 +357,9 @@ def dump_func_for_dataclass(cls: Type[T],
     # A cached mapping of dataclass field name to its default value, either
     # via a `default` or `default_factory` argument.
     field_to_default = dataclass_field_to_default(cls)
+
+    # A cached mapping of dataclass field name to its SkipIf condition.
+    field_to_skip_if = dataclass_field_to_skip_if(cls)
 
     # A collection of field names in the dataclass.
     field_names = dataclass_field_names(cls)
@@ -307,81 +379,185 @@ def dump_func_for_dataclass(cls: Type[T],
     # Tag key to populate when a dataclass is in a `Union` with other types.
     tag_key = meta.tag_key or TAG
 
-    def cls_asdict(obj: T, dict_factory=dict,
-                   exclude: List[str] = None,
-                   skip_defaults=meta.skip_defaults) -> JSONObject:
-        """
-        Serialize a dataclass of type `cls` to a Python dictionary object.
-        """
+    catch_all_field = dataclass_to_json_field.get(CATCH_ALL)
+    has_catch_all = catch_all_field is not None
 
-        # Call the optional hook that runs before we process the dataclass
-        cls_dumper.__pre_as_dict__(obj)
+    field_to_path = dataclass_field_to_json_path(cls)
+    num_paths = len(field_to_path)
+    has_json_paths = True if num_paths else False
 
-        # This a list that contains a mapping of each dataclass field to its
-        # serialized value.
-        result = []
+    skip_defaults = True if meta.skip_defaults or meta.skip_defaults_if else False
 
-        # Loop over the dataclass fields
-        for field in field_names:
+    _locals = {
+        'config': config,
+        'asdict': _asdict_inner,
+        'hooks': hooks,
+        'cls_to_asdict': nested_cls_to_dump_func,
+    }
 
-            # Get the resolved JSON field name
-            try:
-                json_field = dataclass_to_json_field[field]
+    _globals = {
+        'T': T,
+    }
 
-            except KeyError:
-                # Normalize the dataclass field name (by default to camel
-                # case)
-                json_field = cls_dumper.transform_dataclass_field(field)
-                dataclass_to_json_field[field] = json_field
+    skip_if_condition = get_skip_if_condition(
+        meta.skip_if, _locals, '_skip_value')
 
-            # Exclude any dataclass fields that are explicitly ignored.
-            if json_field is ExplicitNull:
-                continue
-            if exclude and field in exclude:
-                continue
+    skip_defaults_if_condition = get_skip_if_condition(
+        meta.skip_defaults_if, _locals, '_skip_defaults_value')
 
-            # -- This line is *mostly* the same as in the original version --
-            fv = getattr(obj, field)
+    # Initialize FuncBuilder
+    fn_gen = FunctionBuilder()
 
-            # Check if we need to strip defaults, and the field currently
-            # is assigned a default value.
-            #
-            # TODO: maybe it makes sense to move this logic to a separate
-            #   function, as it might be slightly more performant.
-            if skip_defaults and field in field_to_default \
-                    and fv == field_to_default[field]:
-                continue
+    # Code for `cls_asdict`
+    with fn_gen.function('cls_asdict',
+                         ['o:T',
+                          'dict_factory=dict',
+                          "exclude:'list[str]|None'=None",
+                          f'skip_defaults:bool={skip_defaults}'],
+                         return_type='JSONObject'):
 
-            value = _asdict_inner(fv, dict_factory, hooks, config,
-                                  nested_cls_to_dump_func)
+        if (
+            _pre_dict := getattr(cls, '_pre_dict', None)
+        ) is not None:
+            # class defines a `_pre_dict()`
+            _locals['__pre_dict__'] = _pre_dict
+            fn_gen.add_line('__pre_dict__(o)')
+        elif (
+            _pre_dict := getattr(cls_dumper, '__pre_as_dict__', None)
+        ) is not None:
+            # deprecated since v0.28.0
+            # subclass of `DumpMixin` defines a `__pre_as_dict__()`
+            reason = "use `_pre_dict` instead - no need to subclass from DumpMixin"
+            show_deprecation_warning(_pre_dict, reason)
 
-            # -- This line is *mostly* the same as in the original version --
-            result.append((json_field, value))
+            _locals['__pre_dict__'] = _pre_dict
 
-        # -- This line is the same as in the original version --
-        return dict_factory(result)
+            # Call the optional hook that runs before we process the dataclass
+            fn_gen.add_line('__pre_dict__(o)')
 
-    def cls_asdict_with_tag(obj: T, dict_factory=dict,
-                            exclude: List[str] = None,
-                            **kwargs) -> JSONObject:
-        """
-        Serialize a dataclass of type `cls` to a Python dictionary object.
-        Adds a tag field when `tag` field is passed in Meta.
-        """
-        result = cls_asdict(obj, dict_factory, exclude, **kwargs)
-        result[tag_key] = meta.tag
+        # Initialize result list to hold field mappings
+        fn_gen.add_line("result = []")
 
-        return result
+        if has_json_paths:
+            _locals['NestedDict'] = NestedDict
+            fn_gen.add_line('paths = NestedDict()')
 
-    if meta.tag:
-        asdict_func = cls_asdict_with_tag
-    else:
-        asdict_func = cls_asdict
+        if field_names:
+
+            skip_field_assignments = []
+            exclude_assignments = []
+            skip_default_assignments = []
+            field_assignments = []
+
+            # Loop over the dataclass fields
+            for i, field in enumerate(field_names):
+                skip_field = f'_skip_{i}'
+                skip_if_field = f'_skip_if_{i}'
+                default_value = f'_default_{i}'
+
+                skip_field_assignments.append(skip_field)
+                exclude_assignments.append(
+                    f'{skip_field}={field!r} in exclude'
+                )
+                if field in field_to_default:
+                    if skip_defaults_if_condition:
+                        _final_skip_if = finalize_skip_if(
+                            meta.skip_defaults_if, f'o.{field}', skip_defaults_if_condition)
+                        skip_default_assignments.append(
+                            f"{skip_field} = {skip_field} or {_final_skip_if}"
+                        )
+                    else:
+                        _locals[default_value] = field_to_default[field]
+                        skip_default_assignments.append(
+                            f"{skip_field} = {skip_field} or o.{field} == {default_value}"
+                        )
+
+                # Get the resolved JSON field name
+                try:
+                    json_field = dataclass_to_json_field[field]
+                except KeyError:
+                    # Normalize the dataclass field name (by default to camel
+                    # case)
+                    json_field = cls_dumper.transform_dataclass_field(field)
+                    dataclass_to_json_field[field] = json_field
+
+                # Exclude any dataclass fields that are explicitly ignored.
+                if json_field is not ExplicitNull:
+                    # If field has an explicit `SkipIf` condition
+                    if field in field_to_skip_if:
+                        _skip_condition = field_to_skip_if[field]
+                        _skip_if = get_skip_if_condition(
+                            _skip_condition, _locals, skip_if_field)
+                        _final_skip_if = finalize_skip_if(
+                            _skip_condition, f'o.{field}', _skip_if)
+                        field_assignments.append(f'if not ({skip_field} or {_final_skip_if}):')
+                    # If Meta `skip_if` has a value
+                    elif skip_if_condition:
+                        _final_skip_if = finalize_skip_if(
+                            meta.skip_if, f'o.{field}', skip_if_condition)
+                        field_assignments.append(f'if not ({skip_field} or {_final_skip_if}):')
+                    # Else, proceed as normal
+                    else:
+                        field_assignments.append(f"if not {skip_field}:")
+
+                    if json_field:
+                        field_assignments.append(f"  result.append(('{json_field}',"
+                                                 f"asdict(o.{field},dict_factory,hooks,config,cls_to_asdict)))")
+                    # Empty string, will be the case for a dataclass
+                    # field which specifies a "JSON Path".
+                    else:
+                        path = field_to_path[field]
+                        key_part = ''.join(f'[{p!r}]' for p in path)
+                        field_assignments.append(
+                            f'  paths{key_part} = asdict(o.{field},dict_factory,hooks,config,cls_to_asdict)')
+
+                elif has_catch_all and catch_all_field == field:
+                    if field in field_to_default:
+                        field_assignments.append(f"if o.{field} != {default_value} and not {skip_field}:")
+                    else:
+                        field_assignments.append(f"if not {skip_field}:")
+                    field_assignments.append(f"  for k, v in o.{field}.items():")
+                    field_assignments.append("    result.append((k,"
+                                             "asdict(v,dict_factory,hooks,config,cls_to_asdict)))")
+
+            with fn_gen.if_('exclude is None'):
+                fn_gen.add_line('='.join(skip_field_assignments) + '=False')
+            with fn_gen.else_():
+                fn_gen.add_line(';'.join(exclude_assignments))
+
+            if skip_default_assignments:
+                with fn_gen.if_('skip_defaults'):
+                    fn_gen.add_lines(*skip_default_assignments)
+
+            fn_gen.add_lines(*field_assignments)
+
+        if has_json_paths:
+            fn_gen.add_line("result and paths.update(result); result = paths")
+
+        # Return the final dictionary result
+        if meta.tag:
+            fn_gen.add_line("result = dict_factory(result)")
+            fn_gen.add_line(f"result[{tag_key!r}] = {meta.tag!r}")
+            # Return the result with the tag added
+            fn_gen.add_line("return result")
+        else:
+            fn_gen.add_line("return dict_factory(result)")
+
+    # Compile the code into a dynamic string
+    functions = fn_gen.create_functions(locals=_locals, globals=_globals)
+
+    cls_asdict = functions['cls_asdict']
+
+    asdict_func = cls_asdict
 
     # In any case, save the dump function for the class, so we don't need to
     # run this logic each time.
     if is_main_class:
-        _CLASS_TO_DUMP_FUNC[cls] = asdict_func
+        # Check if the class has a `to_dict`, and it's
+        # equivalent to `asdict`.
+        if getattr(cls, 'to_dict', None) is asdict:
+            _set_new_attribute(cls, 'to_dict', asdict_func)
+        CLASS_TO_DUMP_FUNC[cls] = asdict_func
     else:
         nested_cls_to_dump_func[cls] = asdict_func
 
@@ -420,16 +596,23 @@ def _asdict_inner(obj, dict_factory, hooks, meta, cls_to_dump_func) -> Any:
             # treated (see below), but we just need to create them
             # differently because a namedtuple's __init__ needs to be
             # called differently (see bpo-34363).
-            return hooks[NamedTupleMeta](*hook_args)
+            dump_hook = hooks[NamedTupleMeta]
 
         else:
             for t in hooks:
                 if isinstance(obj, t):
-                    return hooks[t](*hook_args)
+                    # cache the hook for the subtype, so that next time this
+                    # logic isn't run again.
+                    dump_hook = hooks[cls] = hooks[t]
+                    break
+            else:
+                LOG.warning('Using default dumper, object=%r, type=%r', obj, cls)
 
-        LOG.warning('Using default dumper, object=%r, type=%r', obj, cls)
+                # cache the hook for the custom type, so that next time this
+                # logic isn't run again.
+                dump_hook = hooks[cls] = DumpMixin.default_dump_with
 
-        return DumpMixin.default_dump_with(*hook_args)
+        return dump_hook(*hook_args)
 
 
 # Copyright 2017-2018 Eric V. Smith

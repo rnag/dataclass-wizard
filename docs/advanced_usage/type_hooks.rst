@@ -1,6 +1,11 @@
 Type Hooks
 ==========
 
+.. note::
+    To customize the load or dump process for dataclass
+    fields instead of annotated types, please see the `Serializer
+    Hooks <serializer_hooks.html>`__ section.
+
 Sometimes you might want to customize the load and dump process for
 (annotated) variable types, rather than for specific dataclass fields.
 Type hooks are very useful and will let you do exactly that.

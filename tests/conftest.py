@@ -1,48 +1,46 @@
 __all__ = [
     'does_not_raise',
     'data_file_path',
-    'PY36',
-    'PY39_OR_ABOVE',
     'PY310_OR_ABOVE',
-    # For compatibility with Python 3.6 and 3.7
-    'Literal',
+    'PY311_OR_ABOVE',
     'TypedDict',
-    'Annotated',
-    'Deque'
+    # For compatibility with Python 3.9 and 3.10
+    'Required',
+    'NotRequired'
 ]
 
 import sys
+# Ref: https://docs.pytest.org/en/6.2.x/example/parametrize.html#parametrizing-conditional-raising
+from contextlib import nullcontext as does_not_raise
 from pathlib import Path
 
 
 # Directory for test files
 TEST_DATA_DIR = Path(__file__).resolve().parent / 'testdata'
 
-# Check if we are running Python 3.6
-PY36 = sys.version_info[:2] == (3, 6)
-
-# Check if we are running Python 3.9+
-PY39_OR_ABOVE = sys.version_info[:2] >= (3, 9)
-
 # Check if we are running Python 3.10+
 PY310_OR_ABOVE = sys.version_info[:2] >= (3, 10)
 
-# Ref: https://docs.pytest.org/en/6.2.x/example/parametrize.html#parametrizing-conditional-raising
-if sys.version_info[:2] >= (3, 7):
-    from contextlib import nullcontext as does_not_raise
-else:
-    from contextlib import ExitStack as does_not_raise
+# Check if we are running Python 3.11+
+PY311_OR_ABOVE = sys.version_info[:2] >= (3, 11)
 
-try:
-    from typing import Literal
-    from typing import TypedDict
-    from typing import Annotated
-    from typing import Deque
-except ImportError:
-    from typing_extensions import Literal
+# Check if we are running Python 3.9 or 3.10
+PY310_OR_EARLIER = not PY311_OR_ABOVE
+
+# Weird, test cases for `TypedDict` fail in Python 3.9 & 3.10.15 (3.10:latest)
+# So apparently, we need to use the one from `typing_extensions`.
+if PY310_OR_EARLIER:
     from typing_extensions import TypedDict
-    from typing_extensions import Annotated
-    from typing_extensions import Deque
+else:
+    from typing import TypedDict
+
+# typing.Required and typing.NotRequired: Introduced in Python 3.11
+if PY311_OR_ABOVE:
+    from typing import Required
+    from typing import NotRequired
+else:
+    from typing_extensions import Required
+    from typing_extensions import NotRequired
 
 
 def data_file_path(name: str) -> str:

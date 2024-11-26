@@ -3,15 +3,16 @@ from typing import Callable, Type, Dict, Optional, ClassVar, Union, TypeVar
 
 from .constants import TAG
 from .decorators import cached_class_property
+from .models import Condition
 from .enums import DateTimeTo, Extra, LetterCase, LetterCasePriority
 from .type_def import FrozenKeys, EnvFileType
 
 
 # Create a generic variable that can be 'AbstractMeta', or any subclass.
-M = TypeVar('M', bound='AbstractMeta')
-# Use `Type` here explicitly, because we will never have an `M` object.
-M = Type[M]
-META = M  # alias, since `M` is already defined in another module
+# Full word as `M` is already defined in another module
+META_ = TypeVar('META_', bound='AbstractMeta')
+# Use `Type` here explicitly, because we will never have an `META_` object.
+META = Type[META_]
 
 
 class ABCOrAndMeta(ABCMeta):
@@ -24,7 +25,7 @@ class ABCOrAndMeta(ABCMeta):
       - https://stackoverflow.com/a/57351066/10237506
     """
 
-    def __or__(cls: M, other: M) -> M:
+    def __or__(cls: META, other: META) -> META:
         """
         Merge two Meta configs. Priority will be given to the source config
         present in `cls`, e.g. the first operand in the '|' expression.
@@ -73,7 +74,7 @@ class ABCOrAndMeta(ABCMeta):
         # noinspection PyTypeChecker
         return type(new_cls_name, (src, ), base_dict)
 
-    def __and__(cls: M, other: M) -> M:
+    def __and__(cls: META, other: META) -> META:
         """
         Merge the `other` Meta config into the first one, i.e. `cls`. This
         operation does not create a new class, but instead it modifies the
@@ -113,6 +114,9 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
 
     # True to enable Debug mode for additional (more verbose) log output.
     #
+    # The value can also be a `str` or `int` which specifies
+    # the minimum level for logs in this library to show up.
+    #
     # For example, a message is logged whenever an unknown JSON key is
     # encountered when `from_dict` or `from_json` is called.
     #
@@ -122,7 +126,7 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
     # a JSON object to a dataclass instance.
     #
     # Note there is a minor performance impact when DEBUG mode is enabled.
-    debug_enabled: ClassVar[bool] = False
+    debug_enabled: ClassVar['bool | int | str'] = False
 
     # When enabled, a specified Meta config for the main dataclass (i.e. the
     # class on which `from_dict` and `to_dict` is called) will cascade down
@@ -133,6 +137,12 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
     # The default behavior is True, so the Meta config (if provided) will
     # apply in a recursive manner.
     recursive: ClassVar[bool] = True
+
+    # True to support cyclic or self-referential dataclasses. For example,
+    # the type of a dataclass field in class `A` refers to `A` itself.
+    #
+    # See https://github.com/rnag/dataclass-wizard/issues/62 for more details.
+    recursive_classes: ClassVar[bool] = False
 
     # True to raise an class:`UnknownJSONKey` when an unmapped JSON key is
     # encountered when `from_dict` or `from_json` is called; an unknown key is
@@ -198,6 +208,15 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
     # (based on the `default` or `default_factory` argument specified for
     # the :func:`dataclasses.field`) in the serialization process.
     skip_defaults: ClassVar[bool] = False
+
+    # Determines the :class:`Condition` to skip / omit dataclass
+    # fields in the serialization process.
+    skip_if: ClassVar[Condition] = None
+
+    # Determines the condition to skip / omit fields with default values
+    # (based on the `default` or `default_factory` argument specified for
+    # the :func:`dataclasses.field`) in the serialization process.
+    skip_defaults_if: ClassVar[Condition] = None
 
     # noinspection PyMethodParameters
     @cached_class_property

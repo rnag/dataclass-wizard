@@ -4,17 +4,19 @@ Import scenario if we move it there, since the `loaders` and `dumpers` modules
 both import directly from `bases`.
 
 """
+import logging
 from datetime import datetime, date
 from typing import Type, Optional, Dict, Union
 
 from .abstractions import AbstractJSONWizard
-from .bases import AbstractMeta, M, AbstractEnvMeta
+from .bases import AbstractMeta, META, AbstractEnvMeta
 from .class_helper import (
-    _META_INITIALIZER, _META,
+    META_INITIALIZER, _META,
     get_outer_class_name, get_class_name, create_new_class,
     json_field_to_dataclass_field, dataclass_field_to_json_field,
     field_to_env_var,
 )
+from .constants import TAG
 from .decorators import try_with_load
 from .dumpers import get_dumper
 from .enums import DateTimeTo, Extra, LetterCase, LetterCasePriority
@@ -22,6 +24,7 @@ from .environ.loaders import EnvLoader
 from .errors import ParseError
 from .loaders import get_loader
 from .log import LOG
+from .models import Condition
 from .type_def import E
 from .utils.type_conv import date_to_timestamp, as_enum
 
@@ -78,7 +81,7 @@ class BaseJSONWizardMeta(AbstractMeta):
         # `__init_subclass__` method of any inner classes are run before the
         # one for the outer class.
         if outer_cls_name is not None:
-            _META_INITIALIZER[outer_cls_name] = cls.bind_to
+            META_INITIALIZER[outer_cls_name] = cls.bind_to
         else:
             # The `Meta` class is defined as an outer class. Emit a warning
             # here, just so we can ensure awareness of this special case.
@@ -107,7 +110,13 @@ class BaseJSONWizardMeta(AbstractMeta):
             global _debug_was_enabled
             if not _debug_was_enabled:
                 _debug_was_enabled = True
-                LOG.setLevel('DEBUG')
+                # use `debug_enabled` for log level if it's a str or int.
+                possible_lvl = cls.debug_enabled
+                default_lvl = logging.DEBUG
+                # minimum logging level for logs by this library.
+                min_level = default_lvl if isinstance(possible_lvl, bool) else possible_lvl
+                # set the logging level of this library's logger.
+                LOG.setLevel(min_level)
                 LOG.info('DEBUG Mode is enabled')
 
             # Decorate all hooks so they format more helpful messages
@@ -252,13 +261,15 @@ class BaseEnvWizardMeta(AbstractEnvMeta):
 
 
 # noinspection PyPep8Naming
-def LoadMeta(*, debug_enabled: bool = False,
+def LoadMeta(*, debug_enabled: 'bool | int | str' = False,
              recursive: bool = True,
+             recursive_classes: bool = False,
              raise_on_unknown_json_key: bool = False,
              json_key_to_field: Dict[str, str] = None,
              key_transform: Union[LetterCase, str] = None,
-             tag: str = None) -> M:
-    # noinspection PyUnresolvedReferences
+             tag: str = None,
+             tag_key: str = TAG,
+             auto_assign_tags: bool = False) -> META:
     """
     Helper function to setup the ``Meta`` Config for the JSON load
     (de-serialization) process, which is intended for use alongside the
@@ -280,11 +291,14 @@ def LoadMeta(*, debug_enabled: bool = False,
     base_dict = {
         '__slots__': (),
         'raise_on_unknown_json_key': raise_on_unknown_json_key,
+        'recursive_classes': recursive_classes,
         'key_transform_with_load': key_transform,
         'json_key_to_field': json_key_to_field,
         'debug_enabled': debug_enabled,
         'recursive': recursive,
         'tag': tag,
+        'tag_key': tag_key,
+        'auto_assign_tags': auto_assign_tags,
     }
 
     # Create a new subclass of :class:`AbstractMeta`
@@ -293,13 +307,15 @@ def LoadMeta(*, debug_enabled: bool = False,
 
 
 # noinspection PyPep8Naming
-def DumpMeta(*, debug_enabled: bool = False,
+def DumpMeta(*, debug_enabled: 'bool | int | str' = False,
              recursive: bool = True,
              marshal_date_time_as: Union[DateTimeTo, str] = None,
              key_transform: Union[LetterCase, str] = None,
              tag: str = None,
-             skip_defaults: bool = False) -> M:
-    # noinspection PyUnresolvedReferences
+             skip_defaults: bool = False,
+             skip_if: Condition = None,
+             skip_defaults_if: Condition = None,
+             ) -> META:
     """
     Helper function to setup the ``Meta`` Config for the JSON dump
     (serialization) process, which is intended for use alongside the
@@ -323,6 +339,8 @@ def DumpMeta(*, debug_enabled: bool = False,
         'marshal_date_time_as': marshal_date_time_as,
         'key_transform_with_dump': key_transform,
         'skip_defaults': skip_defaults,
+        'skip_if': skip_if,
+        'skip_defaults_if': skip_defaults_if,
         'debug_enabled': debug_enabled,
         'recursive': recursive,
         'tag': tag,

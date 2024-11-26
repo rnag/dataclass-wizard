@@ -80,10 +80,15 @@ Ready to contribute? Here's how to set up `dataclass-wizard` for local developme
    tests, including testing other Python versions with tox::
 
     $ make lint
-    $ make test
+    $ make test  # or: see debug output with `make test-vb`
     $ tox
 
    To get flake8 and tox, just pip install them into your virtualenv.
+
+   To instead run pytest in verbose mode `-vvv` and also show
+   log output in terminal for debugging purposes, use::
+
+   $ make test-vb
 
 6. Commit your changes and push your branch to GitHub::
 
@@ -102,7 +107,7 @@ Before you submit a pull request, check that it meets these guidelines:
 2. If the pull request adds functionality, the docs should be updated. Put
    your new functionality into a function with a docstring, and add the
    feature to the list in README.rst.
-3. The pull request should work for Python 3.6, 3.7, 3.8, 3.9 and 3.10, and for PyPy. Check
+3. The pull request should work for Python 3.9, 3.10, 3.11, 3.12 and 3.13, and for PyPy. Check
    https://github.com/rnag/dataclass-wizard/actions/workflows/dev.yml
    and make sure that the tests pass for all supported Python versions.
 

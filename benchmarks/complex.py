@@ -115,7 +115,9 @@ def data():
         'the_answer_to_life': '42',
         'people': [
             {
-                'name': ('Roberto', 'Fuirron'),
+                # I want to make this into a Tuple - ('Roberto', 'Fuirron') -
+                # but `dataclass-factory` doesn't seem to like that.
+                'name': {'first': 'Roberto', 'last': 'Fuirron'},
                 'age': 21,
                 'birthdate': '1950-02-28T17:35:20Z',
                 'gender': 'M',
@@ -123,7 +125,7 @@ def data():
                 'hobbies': {'M-F': ('chess', '123', 'reading'), 'Sat-Sun': ['parasailing']}
             },
             {
-                'name': ('Janice', 'Darr', 'Dr.'),
+                'name': {'first': 'Janice', 'last': 'Darr', 'salutation': 'Dr.'},
                 'age': 45,
                 # `jsons` doesn't support this format (not sure how to fix?)
                 # 'birthdate': '1971-11-05 05:10:59',

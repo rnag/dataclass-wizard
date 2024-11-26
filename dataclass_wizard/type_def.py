@@ -5,6 +5,8 @@ __all__ = [
     'PyDeque',
     'PyTypedDict',
     'PyTypedDicts',
+    'PyRequired',
+    'PyNotRequired',
     'FrozenKeys',
     'DefFactory',
     'NoneType',
@@ -17,6 +19,7 @@ __all__ = [
     'FileType',
     'EnvFileType',
     'StrCollection',
+    'ParseFloat',
     'Encoder',
     'FileEncoder',
     'Decoder',
@@ -41,15 +44,17 @@ from datetime import date, time, datetime
 from enum import Enum
 from os import PathLike
 from typing import (
-    Any, Type, TypeVar,
-    Collection, Iterable, Sequence, Mapping,
-    List, Dict, DefaultDict, FrozenSet,
-    Union, NamedTuple, Callable, AnyStr, TextIO, BinaryIO
+    Any, Type, TypeVar, Sequence, Mapping, List, Dict, DefaultDict, FrozenSet,
+    Union, NamedTuple, Callable, AnyStr, TextIO, BinaryIO,
+    Deque as PyDeque,
+    ForwardRef as PyForwardRef,
+    Literal as PyLiteral,
+    Protocol as PyProtocol,
+    TypedDict as PyTypedDict, Iterable, Collection,
 )
 from uuid import UUID
 
-from .constants import PY36, PY38_OR_ABOVE
-from .decorators import discard_kwargs
+from .constants import PY311_OR_ABOVE
 
 
 # Type check for numeric types - needed because `bool` is technically
@@ -58,6 +63,7 @@ NUMBERS = int, float
 
 # Generic type
 T = TypeVar('T')
+TT = TypeVar('TT')
 
 # Enum subclass type
 E = TypeVar('E', bound=Enum)
@@ -78,7 +84,7 @@ DT = TypeVar('DT', date, time, datetime)
 DD = TypeVar('DD', bound=DefaultDict)
 
 # Numeric type
-N = TypeVar('N', int, float, complex)
+N = Union[int, float]
 
 # Sequence type
 S = TypeVar('S', bound=Sequence)
@@ -127,60 +133,25 @@ EnvFileType = Union[bool, FileType, Iterable[FileType], None]
 StrCollection = Union[str, Collection[str]]
 
 
-if PY38_OR_ABOVE:  # pragma: no cover
-    from typing import ForwardRef as PyForwardRef
-    from typing import Literal as PyLiteral
-    from typing import Protocol as PyProtocol
-    from typing import TypedDict as PyTypedDict
-    from typing import Deque as PyDeque
-
-    PyTypedDicts.append(PyTypedDict)
-    # Python 3.8+ users might import from either `typing` or
-    # `typing_extensions`, so check for both types.
-    try:
-        # noinspection PyUnresolvedReferences
-        from typing_extensions import TypedDict as PyTypedDict
-        PyTypedDicts.append(PyTypedDict)
-    except ImportError:
-        pass
-else:  # pragma: no cover
-    from typing_extensions import Literal as PyLiteral
-    from typing_extensions import Protocol as PyProtocol
+PyTypedDicts.append(PyTypedDict)
+# Python 3.9+ users might import from either `typing` or
+# `typing_extensions`, so check for both types.
+try:  # pragma: no cover
+    # noinspection PyUnresolvedReferences
     from typing_extensions import TypedDict as PyTypedDict
-    # Seems like `Deque` was only introduced to `typing` in 3.6.1, so Python
-    # 3.6.0 won't have it; to be safe, we'll instead import from the
-    # `typing_extensions` module here.
-    from typing_extensions import Deque as PyDeque
-
     PyTypedDicts.append(PyTypedDict)
+except ImportError:
+    pass
 
-    if PY36:
-        import typing
-        from typing import _ForwardRef as PyForwardRef
-        from functools import wraps
-
-        # Need to wrap the constructor to discard arguments like `is_argument`
-        PyForwardRef.__init__ = discard_kwargs(PyForwardRef.__init__)
-
-        # This is needed to avoid an`AttributeError` when using PyForwardRef
-        # as an argument to `TypeVar`, as we do below.
-        #
-        # See https://stackoverflow.com/a/69436981/10237506.
-        _old_type_check = typing._type_check
-
-        @wraps(_old_type_check)
-        def _new_type_check(arg, message):
-            if arg is PyForwardRef:
-                return arg
-            return _old_type_check(arg, message)
-
-        typing._type_check = _new_type_check
-        # ensure the global namespace is the same for users
-        # regardless of the version of Python they're using
-        del _new_type_check, typing, wraps
-
-    else:
-        from typing import ForwardRef as PyForwardRef
+# Python 3.11 introduced `Required` and `NotRequired` wrappers for
+# `TypedDict` fields (PEP 655). Python 3.9+ users can import the
+# wrappers from `typing_extensions`.
+if PY311_OR_ABOVE:  # pragma: no cover
+    from typing import Required as PyRequired
+    from typing import NotRequired as PyNotRequired
+else:
+    from typing_extensions import Required as PyRequired
+    from typing_extensions import NotRequired as PyNotRequired
 
 
 # Forward references can be either strings or explicit `ForwardRef` objects.
@@ -188,18 +159,28 @@ else:  # pragma: no cover
 FREF = TypeVar('FREF', str, PyForwardRef)
 
 
-# Create our own "nullish" type for explicit type assertions
 class ExplicitNullType:
-    __slots__ = ()
+    __slots__ = ()  # Saves memory by preventing the creation of instance dictionaries
+
+    _instance = None  # Class-level instance variable for singleton control
+
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super(ExplicitNullType, cls).__new__(cls)
+        return cls._instance
 
     def __bool__(self):
         return False
 
     def __repr__(self):
-        return self.__class__.__qualname__
+        return '<ExplicitNull>'
 
 
+# Create the singleton instance
 ExplicitNull = ExplicitNullType()
+
+# Type annotations
+ParseFloat = Callable[[str], Any]
 
 
 class Encoder(PyProtocol):
@@ -209,6 +190,8 @@ class Encoder(PyProtocol):
     """
 
     def __call__(self, obj: Union[JSONObject, JSONList],
+                 /,
+                 *args,
                  **kwargs) -> AnyStr:
         ...
 

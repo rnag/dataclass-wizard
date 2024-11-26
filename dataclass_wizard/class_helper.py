@@ -1,11 +1,11 @@
 from collections import defaultdict
-from dataclasses import MISSING, Field, fields
-from typing import Dict, Tuple, Type, Union, Callable, Optional, Any
+from dataclasses import MISSING, fields
 
-from .abstractions import W, E, AbstractLoader, AbstractDumper, AbstractParser
-from .bases import M, AbstractMeta
-from .models import JSONField, JSON, Extras, _PatternedDT
-from .type_def import ExplicitNull, ExplicitNullType, T
+from .bases import AbstractMeta
+from .constants import CATCH_ALL
+from .errors import InvalidConditionError
+from .models import JSONField, JSON, Extras, PatternedDT, CatchAll, Condition
+from .type_def import ExplicitNull
 from .utils.dict_helper import DictWithLowerStore
 from .utils.typing_compat import (
     is_annotated, get_args, eval_forward_ref_if_needed
@@ -14,184 +14,193 @@ from .utils.typing_compat import (
 
 # A cached mapping of dataclass to the list of fields, as returned by
 # `dataclasses.fields()`.
-_FIELDS: Dict[Type, Tuple[Field, ...]] = {}
+FIELDS = {}
+
+# A cached mapping of dataclass to a mapping of field name
+# to default value, as returned by `dataclasses.fields()`.
+FIELD_TO_DEFAULT = {}
 
 # Mapping of main dataclass to its `load` function.
-_CLASS_TO_LOAD_FUNC: Dict[Type, Any] = {}
+CLASS_TO_LOAD_FUNC = {}
 
 # Mapping of main dataclass to its `dump` function.
-_CLASS_TO_DUMP_FUNC: Dict[Type, Any] = {}
+CLASS_TO_DUMP_FUNC = {}
 
 # A mapping of dataclass to its loader.
-_CLASS_TO_LOADER: Dict[Type, Type[AbstractLoader]] = {}
+CLASS_TO_LOADER = {}
 
 # A mapping of dataclass to its dumper.
-_CLASS_TO_DUMPER: Dict[Type, Type[AbstractDumper]] = {}
+CLASS_TO_DUMPER = {}
 
 # A cached mapping of a dataclass to each of its case-insensitive field names
 # and load hook.
-#
-# Note: need to create a `ForwardRef` here, because Python 3.6 complains.
-_FIELD_NAME_TO_LOAD_PARSER: Dict[
-    Type, 'DictWithLowerStore[str, AbstractParser]'] = {}
+FIELD_NAME_TO_LOAD_PARSER = {}
 
 # Since the dump process doesn't use Parsers currently, we use a sentinel
 # mapping to confirm if we need to setup the dump config for a dataclass
 # on an initial run.
-_IS_DUMP_CONFIG_SETUP: Dict[Type, bool] = {}
+IS_DUMP_CONFIG_SETUP = {}
 
 # A cached mapping, per dataclass, of JSON field to instance field name
-_JSON_FIELD_TO_DATACLASS_FIELD: Dict[
-    Type, Dict[str, Union[str, ExplicitNullType]]] = defaultdict(dict)
+JSON_FIELD_TO_DATACLASS_FIELD = defaultdict(dict)
+
+# A cached mapping, per dataclass, of instance field name to JSON path
+DATACLASS_FIELD_TO_JSON_PATH = defaultdict(dict)
 
 # A cached mapping, per dataclass, of instance field name to JSON field
-_DATACLASS_FIELD_TO_JSON_FIELD: Dict[Type, Dict[str, str]] = defaultdict(dict)
+DATACLASS_FIELD_TO_JSON_FIELD = defaultdict(dict)
+
+# A cached mapping, per dataclass, of instance field name to `SkipIf` condition
+DATACLASS_FIELD_TO_SKIP_IF = defaultdict(dict)
 
 # A cached mapping, per `EnvWizard` subclass, of field name to env variable
-_FIELD_TO_ENV_VAR: Dict[Type, Dict[str, str]] = defaultdict(dict)
+FIELD_TO_ENV_VAR = defaultdict(dict)
 
 # A mapping of dataclass name to its Meta initializer (defined in
 # :class:`bases.BaseJSONWizardMeta`), which is only set when the
 # :class:`JSONSerializable.Meta` is sub-classed.
-_META_INITIALIZER: Dict[
-    str, Callable[[Type[W]], None]] = {}
+META_INITIALIZER = {}
 
 
 # Mapping of dataclass to its Meta inner class, which will only be set when
 # the :class:`JSONSerializable.Meta` is sub-classed.
-_META: Dict[Type, M] = {}
+_META = {}
 
 
 def dataclass_to_loader(cls):
-    """
-    Returns the loader for a dataclass.
-    """
-    return _CLASS_TO_LOADER[cls]
+
+    return CLASS_TO_LOADER[cls]
 
 
-def dataclass_to_dumper(cls: Type):
-    """
-    Returns the dumper for a dataclass.
-    """
-    return _CLASS_TO_DUMPER[cls]
+def dataclass_to_dumper(cls):
+
+    return CLASS_TO_DUMPER[cls]
 
 
-def set_class_loader(class_or_instance, loader: Type[AbstractLoader]):
-    """
-    Set (and return) the loader for a dataclass.
-    """
+def set_class_loader(class_or_instance, loader):
+
     cls = get_class(class_or_instance)
     loader_cls = get_class(loader)
 
-    _CLASS_TO_LOADER[cls] = get_class(loader_cls)
+    CLASS_TO_LOADER[cls] = get_class(loader_cls)
 
-    return _CLASS_TO_LOADER[cls]
-
-
-def set_class_dumper(cls: Type, dumper: Type[AbstractDumper]):
-    """
-    Set (and return) the dumper for a dataclass.
-    """
-    _CLASS_TO_DUMPER[cls] = get_class(dumper)
-
-    return _CLASS_TO_DUMPER[cls]
+    return CLASS_TO_LOADER[cls]
 
 
-def json_field_to_dataclass_field(cls: Type):
-    """
-    Returns a mapping of JSON field to dataclass field.
-    """
-    return _JSON_FIELD_TO_DATACLASS_FIELD[cls]
+def set_class_dumper(cls, dumper):
+
+    CLASS_TO_DUMPER[cls] = get_class(dumper)
+
+    return CLASS_TO_DUMPER[cls]
+
+
+def json_field_to_dataclass_field(cls):
+
+    return JSON_FIELD_TO_DATACLASS_FIELD[cls]
+
+
+def dataclass_field_to_json_path(cls):
+
+    return DATACLASS_FIELD_TO_JSON_PATH[cls]
 
 
 def dataclass_field_to_json_field(cls):
-    """
-    Returns a mapping of dataclass field to JSON field.
-    """
-    return _DATACLASS_FIELD_TO_JSON_FIELD[cls]
+
+    return DATACLASS_FIELD_TO_JSON_FIELD[cls]
+
+
+def dataclass_field_to_skip_if(cls):
+
+    return DATACLASS_FIELD_TO_SKIP_IF[cls]
 
 
 def field_to_env_var(cls):
     """
     Returns a mapping of field in the `EnvWizard` subclass to env variable.
     """
-    return _FIELD_TO_ENV_VAR[cls]
+    return FIELD_TO_ENV_VAR[cls]
 
 
 def dataclass_field_to_load_parser(
-        cls_loader: Type[AbstractLoader],
-        cls: Type,
-        config: M,
-        save: bool = True) -> 'DictWithLowerStore[str, AbstractParser]':
-    """
-    Returns a mapping of each lower-cased field name to its annotated type.
-    """
-    if cls not in _FIELD_NAME_TO_LOAD_PARSER:
+        cls_loader,
+        cls,
+        config,
+        save=True):
+
+    if cls not in FIELD_NAME_TO_LOAD_PARSER:
         return _setup_load_config_for_cls(cls_loader, cls, config, save)
 
-    return _FIELD_NAME_TO_LOAD_PARSER[cls]
+    return FIELD_NAME_TO_LOAD_PARSER[cls]
 
 
-def _setup_load_config_for_cls(cls_loader: Type[AbstractLoader],
-                               cls: Type,
-                               config: M,
-                               save: bool = True
-                               ) -> 'DictWithLowerStore[str, AbstractParser]':
-    """
-    This function processes a class `cls` on an initial run, and sets up the
-    load process for `cls` by iterating over each dataclass field. For each
-    field, it performs the following tasks:
+def _setup_load_config_for_cls(cls_loader,
+                               cls,
+                               config,
+                               save=True
+                               ):
 
-        * Lookup the Parser (dispatcher) for the field based on its type
-          annotation, and then cache it so we don't need to lookup each time.
+    json_to_dataclass_field = JSON_FIELD_TO_DATACLASS_FIELD[cls]
 
-        * Check if the field's annotation is of type ``Annotated``. If so,
-          we iterate over each ``Annotated`` argument and find any special
-          :class:`JSON` objects (this can also be set via the helper function
-          ``json_key``). Assuming we find it, the class-specific mapping of
-          JSON key to dataclass field name is then updated with the input
-          passed in to this object.
+    dataclass_field_to_path = DATACLASS_FIELD_TO_JSON_PATH[cls]
+    set_paths = False if dataclass_field_to_path else True
 
-        * Check if the field type is a :class:`JSONField` object (this can
-          also be set by the helper function ``json_field``). Assuming this is
-          the case, the class-specific mapping of JSON key to dataclass field
-          name is then updated with the input passed in to the :class:`JSON`
-          attribute.
-    """
-    json_to_dataclass_field = _JSON_FIELD_TO_DATACLASS_FIELD[cls]
     name_to_parser = {}
 
-    for f in dataclass_init_fields(cls):
+    for f in  dataclass_init_fields(cls):
         field_extras: Extras = {'config': config}
 
-        f.type = eval_forward_ref_if_needed(f.type, cls)
-        field_type = f.type
+        field_type = f.type = eval_forward_ref_if_needed(f.type, cls)
 
-        # Check if the field is a `Field` type or a subclass. If so, update
+        # isinstance(f, Field) == True
+
+        # Check if the field is a known `Field` subclass. If so, update
         # the class-specific mapping of JSON key to dataclass field name.
-        if isinstance(f, Field):
+        if isinstance(f, JSONField):
 
-            if isinstance(f, JSONField):
+            if f.json.path:
+                keys = f.json.keys
+                json_to_dataclass_field[keys[0]] = ExplicitNull
+                if set_paths:
+                    dataclass_field_to_path[f.name] = keys
+            else:
                 for key in f.json.keys:
                     json_to_dataclass_field[key] = f.name
 
-            else:
-                value = f.metadata.get('__remapping__')
-                if value and isinstance(value, JSON):
-                    for key in value.keys:
-                        json_to_dataclass_field[key] = f.name
+        elif f.metadata:
+            if value := f.metadata.get('__remapping__'):
+                if isinstance(value, JSON):
+                    if value.path:
+                        keys = value.keys
+                        json_to_dataclass_field[keys[0]] = ExplicitNull
+                        if set_paths:
+                            dataclass_field_to_path[f.name] = keys
+                    else:
+                        for key in value.keys:
+                            json_to_dataclass_field[key] = f.name
+
+        # Check for a "Catch All" field
+        if field_type is CatchAll:
+            json_to_dataclass_field[CATCH_ALL] = (
+                f'{f.name}{"" if f.default is MISSING else "?"}'
+            )
 
         # Check if the field annotation is an `Annotated` type. If so,
         # look for any `JSON` objects in the arguments; for each object,
         # update the class-specific mapping of JSON key to dataclass field
         # name.
-        if is_annotated(field_type):
+        elif is_annotated(field_type):
             ann_type, *extras = get_args(field_type)
             for extra in extras:
                 if isinstance(extra, JSON):
-                    for key in extra.keys:
-                        json_to_dataclass_field[key] = f.name
-                elif isinstance(extra, _PatternedDT):
+                    if extra.path:
+                        keys = extra.keys
+                        json_to_dataclass_field[keys[0]] = ExplicitNull
+                        if set_paths:
+                            dataclass_field_to_path[f.name] = keys
+                    else:
+                        for key in extra.keys:
+                            json_to_dataclass_field[key] = f.name
+                elif isinstance(extra, PatternedDT):
                     field_extras['pattern'] = extra
 
         # Lookup the Parser (dispatcher) for each field based on its annotated
@@ -203,130 +212,164 @@ def _setup_load_config_for_cls(cls_loader: Type[AbstractLoader],
     parser_dict = DictWithLowerStore(name_to_parser)
     # only cache the load parser for the class if `save` is enabled
     if save:
-        _FIELD_NAME_TO_LOAD_PARSER[cls] = parser_dict
+        FIELD_NAME_TO_LOAD_PARSER[cls] = parser_dict
 
     return parser_dict
 
 
-def setup_dump_config_for_cls_if_needed(cls: Type):
-    """
-    This function processes a class `cls` on an initial run, and sets up the
-    dump process for `cls` by iterating over each dataclass field. For each
-    field, it performs the following tasks:
+def setup_dump_config_for_cls_if_needed(cls):
 
-        * Check if the field's annotation is of type ``Annotated``. If so,
-          we iterate over each ``Annotated`` argument and find any special
-          :class:`JSON` objects (this can also be set via the helper function
-          ``json_key``). Assuming we find it, the class-specific mapping of
-          dataclass field name to JSON key is then updated with the input
-          passed in to this object.
-
-        * Check if the field type is a :class:`JSONField` object (this can
-          also be set by the helper function ``json_field``). Assuming this is
-          the case, the class-specific mapping of dataclass field name to JSON
-          key is then updated with the input passed in to the :class:`JSON`
-          attribute.
-    """
-
-    if cls in _IS_DUMP_CONFIG_SETUP:
+    if cls in IS_DUMP_CONFIG_SETUP:
         return
 
-    dataclass_to_json_field = _DATACLASS_FIELD_TO_JSON_FIELD[cls]
+    dataclass_to_json_field = DATACLASS_FIELD_TO_JSON_FIELD[cls]
+
+    dataclass_field_to_path = DATACLASS_FIELD_TO_JSON_PATH[cls]
+    set_paths = False if dataclass_field_to_path else True
+
+    dataclass_field_to_skip_if = DATACLASS_FIELD_TO_SKIP_IF[cls]
 
     for f in dataclass_fields(cls):
 
-        # Check if the field is a `Field` type or a subclass. If so, update
+        field_type = f.type = eval_forward_ref_if_needed(f.type, cls)
+
+        # isinstance(f, Field) == True
+
+        # Check if the field is a known `Field` subclass. If so, update
         # the class-specific mapping of dataclass field name to JSON key.
-        if isinstance(f, Field):
+        if isinstance(f, JSONField):
+            if not f.json.dump:
+                dataclass_to_json_field[f.name] = ExplicitNull
+            elif f.json.all:
+                keys = f.json.keys
+                if f.json.path:
+                    if set_paths:
+                        dataclass_field_to_path[f.name] = keys
+                    dataclass_to_json_field[f.name] = ''
+                else:
+                    dataclass_to_json_field[f.name] = keys[0]
 
-            if isinstance(f, JSONField):
-                if not f.json.dump:
-                    dataclass_to_json_field[f.name] = ExplicitNull
-                elif f.json.all:
-                    dataclass_to_json_field[f.name] = f.json.keys[0]
+        elif f.metadata:
+            if value := f.metadata.get('__remapping__'):
+                if isinstance(value, JSON) and value.all:
+                    keys = value.keys
+                    if value.path:
+                        if set_paths:
+                            dataclass_field_to_path[f.name] = keys
+                        dataclass_to_json_field[f.name] = ''
+                    else:
+                        dataclass_to_json_field[f.name] = keys[0]
+            elif value := f.metadata.get('__skip_if__'):
+                if isinstance(value, Condition):
+                    dataclass_field_to_skip_if[f.name] = value
 
-            else:
-                value = f.metadata.get('__remapping__')
-                if value and isinstance(value, JSON) and value.all:
-                    dataclass_to_json_field[f.name] = value.keys[0]
+        # Check for a "Catch All" field
+        if field_type is CatchAll:
+            dataclass_to_json_field[f.name] = ExplicitNull
+            dataclass_to_json_field[CATCH_ALL] = f.name
 
         # Check if the field annotation is an `Annotated` type. If so,
         # look for any `JSON` objects in the arguments; for each object,
         # update the class-specific mapping of dataclass field name to JSON
         # key.
-        f.type = eval_forward_ref_if_needed(f.type, cls)
-        if is_annotated(f.type):
-            for extra in get_args(f.type)[1:]:
+        if is_annotated(field_type):
+            for extra in get_args(field_type)[1:]:
                 if isinstance(extra, JSON):
                     if not extra.dump:
                         dataclass_to_json_field[f.name] = ExplicitNull
                     elif extra.all:
-                        dataclass_to_json_field[f.name] = extra.keys[0]
+                        keys = extra.keys
+                        if extra.path:
+                            if set_paths:
+                                dataclass_field_to_path[f.name] = keys
+                            dataclass_to_json_field[f.name] = ''
+                        else:
+                            dataclass_to_json_field[f.name] = keys[0]
+                elif isinstance(extra, Condition):
+                    if not getattr(extra, '_wrapped', False):
+                        raise InvalidConditionError(cls, f.name) from None
+
+                    dataclass_field_to_skip_if[f.name] = extra
 
     # Mark the dataclass as processed, as the initial dump process is set up.
-    _IS_DUMP_CONFIG_SETUP[cls] = True
+    IS_DUMP_CONFIG_SETUP[cls] = True
 
 
-def call_meta_initializer_if_needed(cls: Type[Union[W, E]]):
+def call_meta_initializer_if_needed(cls):
     """
     Calls the Meta initializer when the inner :class:`Meta` is sub-classed.
     """
     cls_name = get_class_name(cls)
 
-    if cls_name in _META_INITIALIZER:
-        _META_INITIALIZER[cls_name](cls)
+    if cls_name in META_INITIALIZER:
+        META_INITIALIZER[cls_name](cls)
 
 
-def get_meta(cls: Type, base_cls: T = AbstractMeta) -> Union[T, M]:
+def get_meta(cls, base_cls=AbstractMeta):
     """
     Retrieves the Meta config for the :class:`AbstractJSONWizard` subclass.
 
+    return _META.get(cls, AbstractMeta)
     This config is set when the inner :class:`Meta` is sub-classed.
     """
     return _META.get(cls, base_cls)
 
 
-def dataclass_fields(cls) -> Tuple[Field, ...]:
-    """
-    Cache the `dataclasses.fields()` call for each class, as overall that
-    ends up around 5x faster than making a fresh call each time.
+def dataclass_fields(cls):
 
-    """
-    if cls not in _FIELDS:
-        _FIELDS[cls] = fields(cls)
+    if cls not in FIELDS:
+        FIELDS[cls] = fields(cls)
 
-    return _FIELDS[cls]
+    return FIELDS[cls]
 
 
-def dataclass_init_fields(cls) -> Tuple[Field, ...]:
-    """Get only the dataclass fields that would be passed into the constructor."""
+def dataclass_init_fields(cls):
+
     return tuple(f for f in dataclass_fields(cls) if f.init)
 
 
-def dataclass_field_names(cls) -> Tuple[str, ...]:
-    """Get the names of all dataclass fields"""
+def dataclass_field_names(cls):
+
     return tuple(f.name for f in dataclass_fields(cls))
 
 
-def dataclass_field_to_default(cls) -> Dict[str, Any]:
-    """Get default values for the (optional) dataclass fields."""
-    defaults = {}
-    for f in dataclass_fields(cls):
-        if f.default is not MISSING:
-            defaults[f.name] = f.default
-        elif f.default_factory is not MISSING:
-            defaults[f.name] = f.default_factory()
+def dataclass_field_to_default(cls):
 
-    return defaults
+    if cls not in FIELD_TO_DEFAULT:
+        defaults = FIELD_TO_DEFAULT[cls] = {}
+        for f in dataclass_fields(cls):
+            if f.default is not MISSING:
+                defaults[f.name] = f.default
+            elif f.default_factory is not MISSING:
+                defaults[f.name] = f.default_factory()
+
+    return FIELD_TO_DEFAULT[cls]
+
+
+def is_builtin_class(cls):
+
+    return cls.__module__ == 'builtins'
+
+
+def is_builtin(o):
+
+    # Fast path: check if object is a builtin singleton
+    # TODO replace with `match` statement once we drop support for Python 3.9
+    # match x:
+    #     case None: pass
+    #     case True: pass
+    #     case False: pass
+    #     case builtins.Ellipsis: pass
+    if o in {None, True, False, ...}:
+        return True
+
+    return getattr(o, '__class__', o).__module__ == 'builtins'
 
 
 def create_new_class(
-        class_or_instance, bases: Tuple[T, ...],
-        suffix: Optional[str] = None, attr_dict=None) -> T:
-    """
-    Create (dynamically) and return a new class that sub-classes from a list
-    of `bases`.
-    """
+        class_or_instance, bases,
+        suffix=None, attr_dict=None):
+
     if not suffix and bases:
         suffix = get_class_name(bases[0])
 
@@ -339,8 +382,8 @@ def create_new_class(
     )
 
 
-def get_class_name(class_or_instance) -> str:
-    """Return the fully qualified name of a class."""
+def get_class_name(class_or_instance):
+
     try:
         return class_or_instance.__qualname__
     except AttributeError:
@@ -349,15 +392,7 @@ def get_class_name(class_or_instance) -> str:
 
 
 def get_outer_class_name(inner_cls, default=None, raise_=True):
-    """
-    Attempt to return the fully qualified name of the outer (enclosing) class,
-    given a reference to the inner class.
 
-    If any errors occur - such as when `inner_cls` is not a real inner
-    class - then an error will be raised if `raise_` is true, and if not
-    we will return `default` instead.
-
-    """
     try:
         name = get_class_name(inner_cls).rsplit('.', 1)[-2]
         # This is mainly for our test cases, where we nest the class
@@ -374,18 +409,18 @@ def get_outer_class_name(inner_cls, default=None, raise_=True):
 
 
 def get_class(obj):
-    """Get the class for an object `obj`"""
+
     return obj if isinstance(obj, type) else type(obj)
 
 
-def is_subclass(obj, base_cls: Type) -> bool:
-    """Check if `obj` is a sub-class of `base_cls`"""
+def is_subclass(obj, base_cls):
+
     cls = obj if isinstance(obj, type) else type(obj)
     return issubclass(cls, base_cls)
 
 
-def is_subclass_safe(cls, class_or_tuple) -> bool:
-    """Check if `obj` is a sub-class of `base_cls` (safer version)"""
+def is_subclass_safe(cls, class_or_tuple):
+
     try:
         return issubclass(cls, class_or_tuple)
     except TypeError:

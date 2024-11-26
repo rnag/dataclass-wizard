@@ -2,12 +2,11 @@
 from typing import List, Any, Optional, Callable, Dict, Type
 
 from .. import DumpMeta
-from ..abstractions import E
-from ..bases import META
+from ..bases import META as M
 from ..class_helper import (
     dataclass_field_to_default,
     dataclass_field_to_json_field,
-    _CLASS_TO_DUMP_FUNC, _META,
+    CLASS_TO_DUMP_FUNC, _META,
 )
 from ..dumpers import get_dumper, _asdict_inner
 from ..enums import LetterCase
@@ -46,7 +45,7 @@ def asdict(obj: T,
     cls = cls or type(obj)
 
     try:
-        dump = _CLASS_TO_DUMP_FUNC[cls]
+        dump = CLASS_TO_DUMP_FUNC[cls]
     except KeyError:
         dump = dump_func_for_env_subclass(cls)
 
@@ -54,9 +53,9 @@ def asdict(obj: T,
 
 
 def dump_func_for_env_subclass(cls: 'type[E]',
-                               config: Optional[META] = None,
+                               config: 'Optional[M]' = None,
                                nested_cls_to_dump_func: Dict[Type, Any] = None,
-                               ) -> Callable[[E, Any, Any, Any], JSONObject]:
+                               ) -> 'Callable[[E, Any, Any, Any], JSONObject]':
 
     # Get the dumper for the class, or create a new one as needed.
     cls_dumper = get_dumper(cls)
@@ -159,6 +158,6 @@ def dump_func_for_env_subclass(cls: 'type[E]',
 
     # In any case, save the dump function for the class, so we don't need to
     # run this logic each time.
-    _CLASS_TO_DUMP_FUNC[cls] = cls_asdict
+    CLASS_TO_DUMP_FUNC[cls] = cls_asdict
 
     return cls_asdict

@@ -2,6 +2,210 @@
 History
 =======
 
+0.30.1 (2024-11-25)
+-------------------
+
+**Bugfixes**
+
+* Resolved inconsistent behavior with dataclasses in ``Union`` when ``Meta`` :attr:`tag_key`
+  is also defined as a dataclass field (:issue:`148`).
+
+0.30.0 (2024-11-25)
+-------------------
+
+**Features and Improvements**
+
+- **Conditional Field Skipping**: Omit fields during JSON serialization based on user-defined conditions.
+    - Introduced new :class:`Meta` settings:
+        - :attr:`skip_if` — Skips all fields matching a condition.
+        - :attr:`skip_defaults_if` — Skips fields with default values matching a condition.
+    - Added per-field controls using :func:`SkipIf()` annotations.
+    - Introduced the :func:`skip_if_field` wrapper for maximum flexibility.
+
+- **New Helper Class**: :class:`JSONPyWizard`
+    - A ``JSONWizard`` helper to disable *camelCase* transformation and keep keys as-is.
+
+- **Typing Improvements**: Added more ``*.pyi`` files for enhanced type checking and IDE support.
+
+- **Documentation Updates**:
+    - Added details about upcoming changes in the next major release, ``v1.0``.
+
+0.29.3 (2024-11-24)
+-------------------
+
+**Bugfixes**
+
+* Fixed compatibility between `Global Meta Settings`_ and :attr:`recursive_classes` (:issue:`142`).
+
+.. _Global Meta Settings: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/meta.html#global-meta-settings
+
+0.29.2 (2024-11-24)
+-------------------
+
+**Bugfixes**
+
+* Fixed issue with using :attr:`Meta.auto_assign_tags` and :attr:`Meta.raise_on_unknown_json_key` together (:issue:`137`).
+* Fixed :attr:`JSONWizard.debug` to prevent overwriting existing class meta.
+* Resolved issue where both :attr:`auto_assign_tags` and :type:`CatchAll` resulted in the tag key being incorrectly saved in :type:`CatchAll`.
+* Fixed issue when :type:`CatchAll` field was specified with a default value but serialized with :attr:`skip_defaults=False`.
+* Improved performance in :class:`UnionParser`: ensured that :func:`get_parser` is called only once per annotated type.
+* Added test case(s) to confirm intended behavior.
+
+0.29.1 (2024-11-23)
+-------------------
+
+**Bugfixes**
+
+* Include ``*.pyi`` files in source distribution (packaging).
+
+0.29.0 (2024-11-23)
+-------------------
+
+**Features and Improvements**
+
+- *Nested JSON Mapping* (:issue:`60`): Map nested JSON keys to dataclass fields using helper functions :func:`KeyPath` or :func:`json_field`.
+- *Catch-All Keys* (:issue:`57`): Save unknown JSON keys with ease.
+- *Cleaner Codebase*: Remove comments and type annotations for Python files with ``.pyi`` counterparts.
+- *Enhanced Debugging*: ``debug_enabled`` now supports ``bool | int | str``, allowing flexible logging levels.
+- *Documentation Updates*: Improved and expanded docs!
+
+0.28.0 (2024-11-15)
+-------------------
+
+**Features and Improvements**
+
+* Added :class:`TOMLWizard`.
+* Introduced new (pre-process) serializer hooks:
+    * :meth:`_pre_from_dict`
+    * :meth:`_pre_dict`
+* Added ``debug`` parameter to :meth:`JSONWizard.__init_subclass__`.
+* Added ``*.pyi`` stub files for better Type Hinting and Autocompletion in IDEs (e.g., PyCharm):
+    * :file:`abstractions.pyi`
+    * :file:`serial_json.pyi`
+* Introduced utility class :class:`FunctionBuilder` to help build and dynamically ``exec`` a function.
+* Documentation/tests on the new and updated features.
+
+**Changes**
+
+* The returned parser for a dataclass is now the original load/dump function itself (which takes a single argument)
+  rather than a :class:`Parser` instance.
+* Minor optimization and quality-of-life improvement: dynamically ``exec`` dataclass load and dump functions.
+* Improved performance: if a class defines a :meth:`from_dict` method - equivalent to :func:`fromdict` - and a :meth:`to_dict` method
+  - equivalent to :func:`asdict` - replace them with dynamically generated load/dump functions.
+* Deprecated the pre-process hook :meth:`DumpMixin.__pre_as_dict__`.
+
+0.27.0 (2024-11-10)
+-------------------
+
+**Features and Improvements**
+
+* This minor release drops support for Python 3.6, 3.7, and 3.8, all of which have reached End of Life (EOL). Check out the Python End of Life Cycle here_. Key changes resulting from this update include:
+    * Resolved pyup errors, previously flagged as "insecure" due to outdated package versions that lacked support for Python 3.8 or earlier.
+    * Update all requirements to latest versions.
+    * Cleaned up various TODO comments scattered throughout the codebase, as many were specific to older Python versions.
+    * Simplified and improved codebase for easier maintenance.
+    * Remove everything except the ``py.typed`` file (see comment_).
+* Added `test case`_ to satisfy :issue:`89`.
+* Added support for cyclic or "recursive" dataclasses, as first mentioned in :issue:`62` (special thanks to :user:`dlenski` for finalizing this in :pr:`138`!).
+
+**Bugfixes**
+
+* :issue:`62`: Cyclic or "recursive" dataclasses no longer raises a :class:`RecursionError`.
+* Typing locals should now correctly key off the correct Python version, see the commit_ that addressed this.
+
+.. _here: https://devguide.python.org/versions/#status-of-python-versions
+.. _test case: https://github.com/rnag/dataclass-wizard/pull/139/commits/cf2e98cb75c75dc3e566ed0205637dbd4632e159
+.. _comment: https://github.com/rnag/dataclass-wizard/pull/136#issuecomment-2466463153
+.. _commit: https://github.com/rnag/dataclass-wizard/pull/139/commits/310a0c28690fdfdf15a386a427d1ea9aaf8898a1
+
+0.26.1 (2024-11-09)
+-------------------
+
+* Add ``py.typed`` marker, which finalizes :issue:`51`. Credits to :user:`stdedos` in :pr:`136`.
+
+0.26.0 (2024-11-05)
+-------------------
+
+* This will be the latest (minor) release with support for Python 3.6, 3.7, and 3.8 --
+  all of which have reached *end-of-life*!
+
+**Features and Improvements**
+
+* Add compatability and support for **Python 3.13**. Thanks to :user:`benjjs` in :pr:`129`!
+
+**Bugfixes**
+
+* Fix: :meth:`LiteralParser.__contains__` method compares value of item with `Literal`_ arguments.
+  Contributed by :user:`mikeweltevrede` in :pr:`111`.
+
+.. _Literal: https://docs.python.org/3/library/typing.html#typing.Literal
+
+0.25.0 (2024-11-03)
+-------------------
+
+**Features and Improvements**
+
+* Add support for `pathlib.Path`_. Thanks to :user:`assafge` in :pr:`79`.
+
+.. _pathlib.Path: https://docs.python.org/3/library/pathlib.html#basic-use
+
+0.24.1 (2024-11-03)
+-------------------
+
+* Resolve ``mypy`` typing issues. Thanks to :user:`AdiNar` in :pr:`64`.
+
+0.24.0 (2024-11-03)
+-------------------
+
+**Features and Improvements**
+
+* :pr:`125`: add support for ``typing.Required``, ``NotRequired``
+
+**Bugfixes**
+
+* Fixed by :pr:`125`: Annotating ``TypedDict`` field with one of ``Required`` or ``NotRequired`` wrappers introduced in Python 3.11, no longer raises a ``TypeError``
+  -- credits to :user:`claui`.
+
+0.23.0 (2024-09-18)
+-------------------
+
+* :pr:`94`: Allows the ability to define keys in JSON/dataclass
+  that do not undergo transformation -- credits to :user:`cquick01`.
+
+  * ``LetterCase.NONE`` - Performs no conversion on strings.
+
+    * ex: `MY_FIELD_NAME` -> `MY_FIELD_NAME`
+
+0.22.3 (2024-01-29)
+-------------------
+
+**Features and Improvements**
+
+* Add full support for Python 3.11 and 3.12 (Credits to :user:`alexanderilyin` on :pr:`101`)
+* Project-specific development changes
+    * Update CI to run tests on PY 3.11 and 3.12
+    * Update ``wheel`` version
+    * Update ``setup.py`` to add a ``dev`` extra which installs dev-related dependencies
+    * Move test dependencies into ``requirements-test.txt``
+    * Add ``sphinx_issues`` dependency to easily add link in docs to an user/issue/PR on GitHub
+    * Update ``project_urls`` on PyPI to add extra links, such as "Changelog" and "Issue Tracker"
+
+
+**Bugfixes**
+
+* Fix: Loading a Variadic Tuple fails for length 0 (Credits to :user:`intentionally-left-nil` on :pr:`105`)
+* Stop-gap fix for time-string patterns that contain ``-`` or ``+``,
+  as Python 3.11+ can interpret this as timezone data.
+
+0.22.2 (2022-10-11)
+-------------------
+
+**Features and Improvements**
+
+* Minor performance improvement when dumping custom sub-types
+  or unhandled types, such that we cache the dump hook
+  for the type so that subsequent lookups are faster overall.
+
 0.22.1 (2022-05-11)
 -------------------
 

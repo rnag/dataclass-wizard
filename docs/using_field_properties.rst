@@ -189,14 +189,12 @@ But fortunately... there is yet an even simpler approach!
 Using the `Annotated`_ type from the ``typing`` module (introduced in Python 3.9)
 it is possible to set a default value for the field property in the annotation itself.
 This is done by adding a ``field`` extra in the ``Annotated`` definition as
-shown below; here we'll instead import the type from the ``typing-extensions``
-module, just so that the code works for Python 3.6+ without issue.
+shown below.
 
 .. code:: python3
 
     from dataclasses import dataclass, field
-    from typing import Union
-    from typing_extensions import Annotated
+    from typing import Annotated, Union
 
     from dataclass_wizard import property_wizard
 
@@ -294,36 +292,35 @@ types are now set with initial values as expected:
 
     from collections import defaultdict
     from dataclasses import dataclass, field
-    from typing import Union, List, Set, DefaultDict
-    from typing_extensions import Annotated
+    from typing import Annotated, Union
 
     from dataclass_wizard import property_wizard
 
 
     @dataclass
     class Vehicle(metaclass=property_wizard):
-        wheels: List[Union[int, str]]
+        wheels: list[Union[int, str]]
         # Uncomment the field below if you want to make your IDE a bit happier.
-        #   _wheels: List[int] = field(init=False)
+        #   _wheels: list[int] = field(init=False)
 
-        inverse_bools: Set[bool]
+        inverse_bools: set[bool]
         # If we wanted to, we can also define this as below:
-        #   inverse_bools: Annotated[Set[bool], field(default_factory=set)]
+        #   inverse_bools: Annotated[set[bool], field(default_factory=set)]
 
         # We need to use the `field(default_factory=...)` syntax here, because
         # otherwise the value is initialized from the no-args constructor,
         # i.e. `defaultdict()`, which is not what we want.
         inventory: Annotated[
-            DefaultDict[str, List[Union[int, str]]],
+            defaultdict[str, list[Union[int, str]]],
             field(default_factory=lambda: defaultdict(list))
         ]
 
         @property
-        def wheels(self) -> List[int]:
+        def wheels(self) -> list[int]:
             return self._wheels
 
         @wheels.setter
-        def wheels(self, wheels: List[Union[int, str]]):
+        def wheels(self, wheels: list[Union[int, str]]):
             # Try to avoid a list comprehension, as that will defeat the point
             # of this example (as that generates a list with a new "id").
             for i, w in enumerate(wheels):
@@ -331,11 +328,11 @@ types are now set with initial values as expected:
             self._wheels = wheels
 
         @property
-        def inverse_bools(self) -> Set[bool]:
+        def inverse_bools(self) -> set[bool]:
             return self._inverse_bools
 
         @inverse_bools.setter
-        def inverse_bools(self, bool_set: Set[bool]):
+        def inverse_bools(self, bool_set: set[bool]):
             # Again, try to avoid a set comprehension here for demo purposes.
             for b in bool_set:
                 to_add = not b
@@ -346,11 +343,11 @@ types are now set with initial values as expected:
             self._inverse_bools = bool_set
 
         @property
-        def inventory(self) -> DefaultDict[str, List[Union[int, str]]]:
+        def inventory(self) -> defaultdict[str, list[Union[int, str]]]:
             return self._inventory
 
         @inventory.setter
-        def inventory(self, inventory: DefaultDict[str, List[Union[int, str]]]):
+        def inventory(self, inventory: defaultdict[str, list[Union[int, str]]]):
             if 'Keys' in inventory:
                 del inventory['Keys']
             self._inventory = inventory

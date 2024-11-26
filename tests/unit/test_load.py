@@ -10,7 +10,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, date, time, timedelta
 from typing import (
     List, Optional, Union, Tuple, Dict, NamedTuple, Type, DefaultDict,
-    Set, FrozenSet, Generic
+    Set, FrozenSet, Generic, Annotated, Literal
 )
 
 import pytest
@@ -18,7 +18,7 @@ import pytest
 from dataclass_wizard import *
 from dataclass_wizard.constants import TAG
 from dataclass_wizard.errors import (
-    ParseError, MissingFields, UnknownJSONKey, MissingData
+    ParseError, MissingFields, UnknownJSONKey, MissingData, InvalidConditionError
 )
 from dataclass_wizard.models import Extras, _PatternBase
 from dataclass_wizard.parsers import (
@@ -28,7 +28,6 @@ from dataclass_wizard.type_def import NoneType, T
 
 from .conftest import MyUUIDSubclass
 from ..conftest import *
-
 
 log = logging.getLogger(__name__)
 
@@ -122,7 +121,6 @@ def test_fromdict_with_nested_dataclass():
     ]
 
 
-@pytest.mark.skipif(PY36, reason='requires Python 3.7 or higher')
 def test_invalid_types_with_debug_mode_enabled():
     """
     Passing invalid types (i.e. that *can't* be coerced into the annotated
@@ -180,7 +178,6 @@ def test_invalid_types_with_debug_mode_enabled():
     assert (err.ann_type, err.obj_type) == (int, dict)
 
 
-@pytest.mark.skipif(PY36, reason='requires Python 3.7 or higher')
 def test_from_dict_called_with_incorrect_type():
     """
     Calling `from_dict` with a non-`dict` argument should raise a
@@ -203,7 +200,6 @@ def test_from_dict_called_with_incorrect_type():
     assert (err.ann_type, err.obj_type) == (dict, list)
 
 
-@pytest.mark.skipif(PY36, reason='requires Python 3.7 or higher')
 def test_date_times_with_custom_pattern():
     """
     Date, time, and datetime objects with a custom date string
@@ -291,7 +287,6 @@ def test_date_times_with_custom_pattern():
     assert fromdict(MyClass, serialized_dict) == expected_obj
 
 
-@pytest.mark.skipif(PY36, reason='requires Python 3.7 or higher')
 def test_date_times_with_custom_pattern_when_input_is_invalid():
     """
     Date, time, and datetime objects with a custom date string
@@ -308,7 +303,6 @@ def test_date_times_with_custom_pattern_when_input_is_invalid():
         _ = fromdict(MyClass, data)
 
 
-@pytest.mark.skipif(PY36, reason='requires Python 3.7 or higher')
 def test_date_times_with_custom_pattern_when_annotation_is_invalid():
     """
     Date, time, and datetime objects with a custom date string
@@ -748,12 +742,7 @@ def test_optional(input, expectation, expected):
         # The actual value would end up being 0 (int) if we checked the type
         # using `isinstance` instead. However, we do an exact `type` check for
         # :class:`Union` types.
-        #
-        # NOTE: This is an xfail on Python 3.6 as mentioned below.
-        # https://stackoverflow.com/q/60154326/10237506
-        pytest.param(False, does_not_raise(), False,
-                     marks=pytest.mark.skipif(
-                         PY36, reason='requires python 3.7 or higher')),
+        (False, does_not_raise(), False),
         (0, does_not_raise(), 0),
         (None, does_not_raise(), None),
         # Since it's a float value, that results in a `TypeError` which gets
@@ -914,10 +903,7 @@ def test_timedelta(input, expectation, base_err):
         log.debug('timedelta string value: %s', result.my_td)
 
     if e:  # if an error was raised, assert the underlying error type
-        # Because on 3.6, we run into a strange error (shown below)
-        #   AttributeError: 'ExitStack' object has no attribute 'value'
-        if not PY36:
-            assert type(e.value.base_error) == base_err
+        assert type(e.value.base_error) == base_err
 
 
 @pytest.mark.parametrize(
@@ -975,7 +961,7 @@ def test_deque(input, expectation, expected):
 
     @dataclass
     class MyClass(JSONSerializable):
-        my_deque: Deque[int]
+        my_deque: deque[int]
 
     d = {'My_Deque': input}
 
@@ -1151,6 +1137,8 @@ def test_tuple_without_type_hinting(input, expectation, expected):
             # conversion to `int` still succeeds. Might need to change this
             # behavior later if needed.
             [{}], does_not_raise(), (0, )),
+        (
+            [], does_not_raise(), tuple()),
         (
             [True, False, True], pytest.raises(TypeError), None),
         (
@@ -1402,7 +1390,7 @@ def test_typed_dict(input, expectation, expected):
         )
     ]
 )
-def test_typed_dict_with_optional_fields(input, expectation, expected):
+def test_typed_dict_with_all_fields_optional(input, expectation, expected):
     """
     Test case for loading to a TypedDict which has `total=False`, indicating
     that all fields are optional.
@@ -1412,6 +1400,128 @@ def test_typed_dict_with_optional_fields(input, expectation, expected):
         my_str: str
         my_bool: bool
         my_int: int
+
+    @dataclass
+    class MyClass(JSONSerializable):
+        my_typed_dict: MyDict
+
+    d = {'myTypedDict': input}
+
+    with expectation:
+        result = MyClass.from_dict(d)
+
+        log.debug('Parsed object: %r', result)
+        assert result.my_typed_dict == expected
+
+
+@pytest.mark.parametrize(
+    'input,expectation,expected',
+    [
+        (
+            {}, pytest.raises(ParseError), None
+        ),
+        (
+            {'key': 'value'}, pytest.raises(ParseError), {}
+        ),
+        (
+            {'my_str': 'test', 'my_int': 2,
+             'my_bool': True, 'other_key': 'testing'}, does_not_raise(),
+            {'my_str': 'test', 'my_int': 2, 'my_bool': True}
+        ),
+        (
+            {'my_str': 3}, pytest.raises(ParseError), None
+        ),
+        (
+            {'my_str': 'test', 'my_int': 'test', 'my_bool': True},
+            pytest.raises(ValueError), None,
+        ),
+        (
+            {'my_str': 'test', 'my_int': 2, 'my_bool': True},
+            does_not_raise(),
+            {'my_str': 'test', 'my_int': 2, 'my_bool': True}
+        ),
+        (
+            {'my_str': 'test', 'my_bool': True},
+            does_not_raise(),
+            {'my_str': 'test', 'my_bool': True}
+        ),
+        (
+            # Incorrect type - `list`, but should be a `dict`
+            [{'my_str': 'test', 'my_int': 2, 'my_bool': True}],
+            pytest.raises(ParseError), None
+        )
+    ]
+)
+def test_typed_dict_with_one_field_not_required(input, expectation, expected):
+    """
+    Test case for loading to a TypedDict whose fields are all mandatory
+    except for one field, whose annotated type is NotRequired.
+
+    """
+    class MyDict(TypedDict):
+        my_str: str
+        my_bool: bool
+        my_int: NotRequired[int]
+
+    @dataclass
+    class MyClass(JSONSerializable):
+        my_typed_dict: MyDict
+
+    d = {'myTypedDict': input}
+
+    with expectation:
+        result = MyClass.from_dict(d)
+
+        log.debug('Parsed object: %r', result)
+        assert result.my_typed_dict == expected
+
+
+@pytest.mark.parametrize(
+    'input,expectation,expected',
+    [
+        (
+            {}, pytest.raises(ParseError), None
+        ),
+        (
+            {'my_int': 2}, does_not_raise(), {'my_int': 2}
+        ),
+        (
+            {'key': 'value'}, pytest.raises(ParseError), None
+        ),
+        (
+            {'key': 'value', 'my_int': 2}, does_not_raise(),
+            {'my_int': 2}
+        ),
+        (
+            {'my_str': 'test', 'my_int': 2,
+             'my_bool': True, 'other_key': 'testing'}, does_not_raise(),
+            {'my_str': 'test', 'my_int': 2, 'my_bool': True}
+        ),
+        (
+            {'my_str': 3}, pytest.raises(ParseError), None
+        ),
+        (
+            {'my_str': 'test', 'my_int': 'test', 'my_bool': True},
+            pytest.raises(ValueError),
+            {'my_str': 'test', 'my_int': 'test', 'my_bool': True}
+        ),
+        (
+            {'my_str': 'test', 'my_int': 2, 'my_bool': True},
+            does_not_raise(),
+            {'my_str': 'test', 'my_int': 2, 'my_bool': True}
+        )
+    ]
+)
+def test_typed_dict_with_one_field_required(input, expectation, expected):
+    """
+    Test case for loading to a TypedDict whose fields are all optional
+    except for one field, whose annotated type is Required.
+
+    """
+    class MyDict(TypedDict, total=False):
+        my_str: str
+        my_bool: bool
+        my_int: Required[int]
 
     @dataclass
     class MyClass(JSONSerializable):
@@ -1677,3 +1787,692 @@ def test_load_with_inner_model_when_data_is_wrong_type():
     # the error should mention that we want a dict, but get a list
     assert e.ann_type == dict
     assert e.obj_type == list
+
+
+def test_load_with_python_3_11_regression():
+    """
+    This test case is to confirm intended operation with `typing.Any`
+    (either explicit or implicit in plain `list` or `dict` type
+    annotations).
+
+    Note: I have been unable to reproduce [the issue] posted on GitHub.
+    I've tested this on multiple Python versions on Mac, including
+    3.10.6, 3.11.0, 3.11.5, 3.11.10.
+
+    See [the issue].
+
+    [the issue]: https://github.com/rnag/dataclass-wizard/issues/89
+    """
+
+    @dataclass
+    class Item(JSONSerializable):
+        a: dict
+        b: Optional[dict]
+        c: Optional[list] = None
+
+    item = Item.from_json('{"a": {}, "b": null}')
+
+    assert item.a == {}
+    assert item.b is item.c is None
+
+
+def test_with_self_referential_dataclasses_1():
+    """
+    Test loading JSON data, when a dataclass model has cyclic
+    or self-referential dataclasses. For example, A -> A -> A.
+    """
+    @dataclass
+    class A:
+        a: Optional['A'] = None
+
+    # enable support for self-referential / recursive dataclasses
+    LoadMeta(recursive_classes=True).bind_to(A)
+
+    # Fix for local test cases so the forward reference works
+    globals().update(locals())
+
+    # assert that `fromdict` with a recursive, self-referential
+    # input `dict` works as expected.
+    a = fromdict(A, {'a': {'a': {'a': None}}})
+    assert a == A(a=A(a=A(a=None)))
+
+
+def test_with_self_referential_dataclasses_2():
+    """
+    Test loading JSON data, when a dataclass model has cyclic
+    or self-referential dataclasses. For example, A -> B -> A -> B.
+    """
+    @dataclass
+    class A(JSONWizard):
+        class _(JSONWizard.Meta):
+            # enable support for self-referential / recursive dataclasses
+            recursive_classes = True
+
+        b: Optional['B'] = None
+
+    @dataclass
+    class B:
+        a: Optional['A'] = None
+
+    # Fix for local test cases so the forward reference works
+    globals().update(locals())
+
+    # assert that `fromdict` with a recursive, self-referential
+    # input `dict` works as expected.
+    a = fromdict(A, {'b': {'a': {'b': {'a': None}}}})
+    assert a == A(b=B(a=A(b=B())))
+
+
+def test_catch_all():
+    """'Catch All' support with no default field value."""
+    @dataclass
+    class MyData(TOMLWizard):
+        my_str: str
+        my_float: float
+        extra: CatchAll
+
+    toml_string = '''
+    my_extra_str = "test!"
+    my_str = "test"
+    my_float = 3.14
+    my_bool = true
+    '''
+
+    # Load from TOML string
+    data = MyData.from_toml(toml_string)
+
+    assert data.extra == {'my_extra_str': 'test!', 'my_bool': True}
+
+    # Save to TOML string
+    toml_string = data.to_toml()
+
+    assert toml_string == """\
+my_str = "test"
+my_float = 3.14
+my_extra_str = "test!"
+my_bool = true
+"""
+
+    # Read back from the TOML string
+    new_data = MyData.from_toml(toml_string)
+
+    assert new_data.extra == {'my_extra_str': 'test!', 'my_bool': True}
+
+
+def test_catch_all_with_default():
+    """'Catch All' support with a default field value."""
+
+    @dataclass
+    class MyData(JSONWizard):
+        my_str: str
+        my_float: float
+        extra_data: CatchAll = False
+
+    # Case 1: Extra Data is provided
+
+    input_dict = {
+        'my_str': "test",
+        'my_float': 3.14,
+        'my_other_str': "test!",
+        'my_bool': True
+    }
+
+    # Load from TOML string
+    data = MyData.from_dict(input_dict)
+
+    assert data.extra_data == {'my_other_str': 'test!', 'my_bool': True}
+
+    # Save to TOML file
+    output_dict = data.to_dict()
+
+    assert output_dict == {
+        "myStr": "test",
+        "myFloat": 3.14,
+        "my_other_str": "test!",
+        "my_bool": True
+    }
+
+    new_data = MyData.from_dict(output_dict)
+
+    assert new_data.extra_data == {'my_other_str': 'test!', 'my_bool': True}
+
+    # Case 2: Extra Data is not provided
+
+    input_dict = {
+        'my_str': "test",
+        'my_float': 3.14,
+    }
+
+    # Load from TOML string
+    data = MyData.from_dict(input_dict)
+
+    assert data.extra_data is False
+
+    # Save to TOML file
+    output_dict = data.to_dict()
+
+    assert output_dict == {
+        "myStr": "test",
+        "myFloat": 3.14,
+    }
+
+    new_data = MyData.from_dict(output_dict)
+
+    assert new_data.extra_data is False
+
+
+def test_catch_all_with_skip_defaults():
+    """'Catch All' support with a default field value and `skip_defaults`."""
+
+    @dataclass
+    class MyData(JSONWizard):
+        class _(JSONWizard.Meta):
+            skip_defaults = True
+
+        my_str: str
+        my_float: float
+        extra_data: CatchAll = False
+
+    # Case 1: Extra Data is provided
+
+    input_dict = {
+        'my_str': "test",
+        'my_float': 3.14,
+        'my_other_str': "test!",
+        'my_bool': True
+    }
+
+    # Load from TOML string
+    data = MyData.from_dict(input_dict)
+
+    assert data.extra_data == {'my_other_str': 'test!', 'my_bool': True}
+
+    # Save to TOML file
+    output_dict = data.to_dict()
+
+    assert output_dict == {
+        "myStr": "test",
+        "myFloat": 3.14,
+        "my_other_str": "test!",
+        "my_bool": True
+    }
+
+    new_data = MyData.from_dict(output_dict)
+
+    assert new_data.extra_data == {'my_other_str': 'test!', 'my_bool': True}
+
+    # Case 2: Extra Data is not provided
+
+    input_dict = {
+        'my_str': "test",
+        'my_float': 3.14,
+    }
+
+    # Load from TOML string
+    data = MyData.from_dict(input_dict)
+
+    assert data.extra_data is False
+
+    # Save to TOML file
+    output_dict = data.to_dict()
+
+    assert output_dict == {
+        "myStr": "test",
+        "myFloat": 3.14,
+    }
+
+    new_data = MyData.from_dict(output_dict)
+
+    assert new_data.extra_data is False
+
+
+def test_from_dict_with_nested_object_key_path():
+    """
+    Specifying a custom mapping of "nested" JSON key to dataclass field,
+    via the `KeyPath` and `path_field` helper functions.
+    """
+
+    @dataclass
+    class A(JSONWizard, debug=True):
+        an_int: int
+        a_bool: Annotated[bool, KeyPath('x.y.z.0')]
+        my_str: str = path_field(['a', 'b', 'c', -1], default='xyz')
+
+    # Failures
+
+    d = {'my_str': 'test'}
+
+    with pytest.raises(ParseError) as e:
+        _ = A.from_dict(d)
+
+    err = e.value
+    assert err.field_name == 'a_bool'
+    assert err.base_error.args == ('x', )
+    assert err.kwargs['current_path'] == "'x'"
+
+    d = {'a': {'b': {'c': []}},
+         'x': {'y': {}}, 'an_int': 3}
+
+    with pytest.raises(ParseError) as e:
+        _ = A.from_dict(d)
+
+    err = e.value
+    assert err.field_name == 'a_bool'
+    assert err.base_error.args == ('z', )
+    assert err.kwargs['current_path'] == "'z'"
+
+    # Successes
+
+    # Case 1
+    d = {'a': {'b': {'c': [1, 5, 7]}},
+         'x': {'y': {'z': [False]}}, 'an_int': 3}
+
+    a = A.from_dict(d)
+    assert repr(a).endswith("A(an_int=3, a_bool=False, my_str='7')")
+
+    d = a.to_dict()
+
+    assert d == {
+        'x': {
+            'y': {
+                'z': { 0: False }
+            }
+        },
+        'a': {
+            'b': {
+                'c': { -1: '7' }
+            }
+        },
+        'anInt': 3
+    }
+
+    a = A.from_dict(d)
+    assert repr(a).endswith("A(an_int=3, a_bool=False, my_str='7')")
+
+    # Case 2
+    d = {'a': {'b': {}},
+         'x': {'y': {'z': [True, False]}}, 'an_int': 5}
+
+    a = A.from_dict(d)
+    assert repr(a).endswith("A(an_int=5, a_bool=True, my_str='xyz')")
+
+    d = a.to_dict()
+
+    assert d == {
+        'x': {
+            'y': {
+                'z': { 0: True }
+            }
+        },
+        'a': {
+            'b': {
+                'c': { -1: 'xyz' }
+            }
+        },
+        'anInt': 5
+    }
+
+
+def test_from_dict_with_nested_object_key_path_with_skip_defaults():
+    """
+    Specifying a custom mapping of "nested" JSON key to dataclass field,
+    via the `KeyPath` and `path_field` helper functions.
+
+    Test with `skip_defaults=True` and `dump=False`.
+    """
+
+    @dataclass
+    class A(JSONWizard, debug=True):
+        class _(JSONWizard.Meta):
+            skip_defaults = True
+
+        an_int: Annotated[int, KeyPath('my."test value"[here!][0]')]
+        a_bool: Annotated[bool, KeyPath('x.y.z.-1', all=False)]
+        my_str: Annotated[str, KeyPath(['a', 'b', 'c', -1], dump=False)] = 'xyz1'
+        other_bool: bool = path_field('x.y."z z"', default=True)
+
+    # Failures
+
+    d = {'my_str': 'test'}
+
+    with pytest.raises(ParseError) as e:
+        _ = A.from_dict(d)
+
+    err = e.value
+    assert err.field_name == 'an_int'
+    assert err.base_error.args == ('my', )
+    assert err.kwargs['current_path'] == "'my'"
+
+    d = {
+        'my': {'test value': {'here!': [1, 2, 3]}},
+        'a': {'b': {'c': []}},
+         'x': {'y': {}}, 'an_int': 3}
+
+    with pytest.raises(ParseError) as e:
+        _ = A.from_dict(d)
+
+    err = e.value
+    assert err.field_name == 'a_bool'
+    assert err.base_error.args == ('z', )
+    assert err.kwargs['current_path'] == "'z'"
+
+    # Successes
+
+    # Case 1
+    d = {
+        'my': {'test value': {'here!': [1, 2, 3]}},
+        'a': {'b': {'c': [1, 5, 7]}},
+         'x': {'y': {'z': [False]}}, 'an_int': 3
+    }
+
+    a = A.from_dict(d)
+    assert repr(a).endswith("A(an_int=1, a_bool=False, my_str='7', other_bool=True)")
+
+    d = a.to_dict()
+
+    assert d == {
+        'aBool': False,
+        'my': {'test value': {'here!': {0: 1}}},
+    }
+
+    with pytest.raises(ParseError):
+        _ = A.from_dict(d)
+
+    # Case 2
+    d = {
+        'my': {'test value': {'here!': [1, 2, 3]}},
+        'a': {'b': {}},
+         'x': {'y': {
+             'z': [],
+             'z z': False,
+         }},
+    }
+
+    with pytest.raises(ParseError) as e:
+        _ = A.from_dict(d)
+
+    err = e.value
+    assert err.field_name == 'a_bool'
+    assert repr(err.base_error) == "IndexError('list index out of range')"
+
+    # Case 3
+    d = {
+        'my': {'test value': {'here!': [1, 2, 3]}},
+        'a': {'b': {}},
+         'x': {'y': {
+             'z': [True, False],
+             'z z': False,
+         }},
+    }
+
+    a = A.from_dict(d)
+    assert repr(a).endswith("A(an_int=1, a_bool=False, my_str='xyz1', other_bool=False)")
+
+    d = a.to_dict()
+
+    assert d == {
+        'aBool': False,
+        'my': {'test value': {'here!': {0: 1}}},
+        'x': {
+            'y': {
+                'z z': False,
+            }
+        },
+    }
+
+
+def test_auto_assign_tags_and_raise_on_unknown_json_key():
+
+    @dataclass
+    class A:
+        mynumber: int
+
+    @dataclass
+    class B:
+        mystring: str
+
+    @dataclass
+    class Container(JSONWizard):
+        obj2: Union[A, B]
+
+        class _(JSONWizard.Meta):
+            auto_assign_tags = True
+            raise_on_unknown_json_key = True
+
+    c = Container(obj2=B("bar"))
+
+    output_dict = c.to_dict()
+
+    assert output_dict == {
+        "obj2": {
+            "mystring": "bar",
+            "__tag__": "B"
+        }
+    }
+
+    assert c == Container.from_dict(output_dict)
+
+
+def test_auto_assign_tags_and_catch_all():
+    """Using both `auto_assign_tags` and `CatchAll` does not save tag key in `CatchAll`."""
+    @dataclass
+    class A:
+        mynumber: int
+        extra: CatchAll = None
+
+    @dataclass
+    class B:
+        mystring: str
+        extra: CatchAll = None
+
+    @dataclass
+    class Container(JSONWizard, debug=False):
+        obj2: Union[A, B]
+        extra: CatchAll = None
+
+        class _(JSONWizard.Meta):
+            auto_assign_tags = True
+            tag_key = 'type'
+
+    c = Container(obj2=B("bar"))
+
+    output_dict = c.to_dict()
+
+    assert output_dict == {
+        "obj2": {
+            "mystring": "bar",
+            "type": "B"
+        }
+    }
+
+    c2 = Container.from_dict(output_dict)
+    assert c2 == c == Container(obj2=B(mystring='bar', extra=None), extra=None)
+
+    assert c2.to_dict() == {
+        "obj2": {
+            "mystring": "bar", "type": "B"
+        }
+    }
+
+
+def test_skip_if():
+    """
+    Using Meta config `skip_if` to conditionally
+    skip serializing dataclass fields.
+    """
+    @dataclass
+    class Example(JSONWizard, debug=True):
+        class _(JSONWizard.Meta):
+            skip_if = IS_NOT(True)
+            key_transform_with_dump = 'NONE'
+
+        my_str: 'str | None'
+        my_bool: bool
+        other_bool: bool = False
+
+    ex = Example(my_str=None, my_bool=True)
+
+    assert ex.to_dict() == {'my_bool': True}
+
+
+def test_skip_defaults_if():
+    """
+    Using Meta config `skip_defaults_if` to conditionally
+    skip serializing dataclass fields with default values.
+    """
+    @dataclass
+    class Example(JSONWizard, debug=True):
+        class _(JSONWizard.Meta):
+            key_transform_with_dump = 'None'
+            skip_defaults_if = IS(None)
+
+        my_str: 'str | None'
+        other_str: 'str | None' = None
+        third_str: 'str | None' = None
+        my_bool: bool = False
+
+    ex = Example(my_str=None, other_str='')
+
+    assert ex.to_dict() == {
+        'my_str': None,
+        'other_str': '',
+        'my_bool': False
+    }
+
+    ex = Example('testing', other_str='', third_str='')
+    assert ex.to_dict() == {'my_str': 'testing', 'other_str': '',
+                            'third_str': '', 'my_bool': False}
+
+    ex = Example(None, my_bool=None)
+    assert ex.to_dict() == {'my_str': None}
+
+
+def test_per_field_skip_if():
+    """
+    Test per-field `skip_if` functionality, with the ``SkipIf``
+    condition in type annotation, and also specified in
+    ``skip_if_field()`` which wraps ``dataclasses.Field``.
+    """
+    @dataclass
+    class Example(JSONWizard, debug=True):
+        class _(JSONWizard.Meta):
+            key_transform_with_dump = 'None'
+
+        my_str: Annotated['str | None', SkipIfNone]
+        other_str: 'str | None' = None
+        third_str: 'str | None' = skip_if_field(EQ(''), default=None)
+        my_bool: bool = False
+        other_bool: Annotated[bool, SkipIf(IS(True))] = True
+
+    ex = Example(my_str='test')
+    assert ex.to_dict() == {
+        'my_str': 'test',
+        'other_str': None,
+        'third_str': None,
+        'my_bool': False
+    }
+
+    ex = Example(None, other_str='', third_str='', my_bool=True, other_bool=False)
+    assert ex.to_dict() == {'other_str': '',
+                            'my_bool': True,
+                            'other_bool': False}
+
+    ex = Example('None', other_str='test', third_str='None', my_bool=None, other_bool=True)
+    assert ex.to_dict() == {'my_str': 'None', 'other_str': 'test',
+                            'third_str': 'None', 'my_bool': None}
+
+
+def test_is_truthy_and_is_falsy_conditions():
+    """
+    Test both IS_TRUTHY and IS_FALSY conditions within a single test case.
+    """
+
+    # Define the Example class within the test case and apply the conditions
+    @dataclass
+    class Example(JSONPyWizard):
+        my_str: Annotated['str | None', SkipIf(IS_TRUTHY())]  # Skip if truthy
+        my_bool: bool = skip_if_field(IS_FALSY())  # Skip if falsy
+        my_int: Annotated['int | None', SkipIf(IS_FALSY())] = None  # Skip if falsy
+
+    # Test IS_TRUTHY condition (field will be skipped if truthy)
+    obj = Example(my_str="Hello", my_bool=True, my_int=5)
+    assert obj.to_dict() == {'my_bool': True, 'my_int': 5}  # `my_str` is skipped because it is truthy
+
+    # Test IS_FALSY condition (field will be skipped if falsy)
+    obj = Example(my_str=None, my_bool=False, my_int=0)
+    assert obj.to_dict() == {'my_str': None}  # `my_str` is None (falsy), so it is not skipped
+
+    # Test a mix of truthy and falsy values
+    obj = Example(my_str="Not None", my_bool=True, my_int=None)
+    assert obj.to_dict() == {'my_bool': True}  # `my_str` is truthy, so it is skipped, `my_int` is falsy and skipped
+
+    # Test with both IS_TRUTHY and IS_FALSY applied (both `my_bool` and `my_in
+
+
+def test_skip_if_truthy_or_falsy():
+    """
+    Test skip if condition is truthy or falsy for individual fields.
+    """
+
+    # Use of SkipIf with IS_TRUTHY
+    @dataclass
+    class SkipExample(JSONWizard):
+        my_str: Annotated['str | None', SkipIf(IS_TRUTHY())]
+        my_bool: bool = skip_if_field(IS_FALSY())
+
+    # Test with truthy `my_str` and falsy `my_bool` should be skipped
+    obj = SkipExample(my_str="Test", my_bool=False)
+    assert obj.to_dict() == {}
+
+    # Test with truthy `my_str` and `my_bool` should include the field
+    obj = SkipExample(my_str="", my_bool=True)
+    assert obj.to_dict() == {'myStr': '', 'myBool': True}
+
+
+def test_invalid_condition_annotation_raises_error():
+    """
+    Test that using a Condition (e.g., LT) directly as a field annotation
+    without wrapping it in SkipIf() raises an InvalidConditionError.
+    """
+    with pytest.raises(InvalidConditionError, match="Wrap conditions inside SkipIf()"):
+
+        @dataclass
+        class Example(JSONWizard):
+            my_field: Annotated[int, LT(5)]  # Invalid: LT is not wrapped in SkipIf.
+
+        # Attempt to serialize an instance, which should raise the error.
+        Example(my_field=3).to_dict()
+
+
+def test_dataclass_in_union_when_tag_key_is_field():
+    """
+    Test case for dataclasses in `Union` when the `Meta.tag_key` is a dataclass field.
+    """
+    @dataclass
+    class DataType(JSONWizard):
+        id: int
+        type: str
+
+    @dataclass
+    class XML(DataType):
+        class _(JSONWizard.Meta):
+            tag = "xml"
+
+        field_type_1: str
+
+    @dataclass
+    class HTML(DataType):
+        class _(JSONWizard.Meta):
+            tag = "html"
+
+        field_type_2: str
+
+    @dataclass
+    class Result(JSONWizard):
+        class _(JSONWizard.Meta):
+            tag_key = "type"
+
+        data: Union[XML, HTML]
+
+    t1 = Result.from_dict({"data": {"id": 1, "type": "xml", "field_type_1": "value"}})
+    assert t1 == Result(data=XML(id=1, type='xml', field_type_1='value'))

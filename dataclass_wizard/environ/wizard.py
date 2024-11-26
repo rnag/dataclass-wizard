@@ -4,7 +4,7 @@ from typing import AnyStr, Callable
 
 from .dumpers import asdict
 from .lookups import Env, lookup_exact, clean
-from ..abstractions import AbstractEnvWizard, E
+from ..abstractions import AbstractEnvWizard
 from ..bases import AbstractEnvMeta
 from ..bases_meta import BaseEnvWizardMeta
 from ..class_helper import (call_meta_initializer_if_needed, get_meta,
@@ -43,7 +43,7 @@ class EnvWizard(AbstractEnvWizard):
 
     # noinspection PyMethodParameters
     @cached_class_property
-    def __fields__(cls: E) -> 'dict[str, Field]':
+    def __fields__(cls: 'E') -> 'dict[str, Field]':
         cls_fields = {}
         field_to_var = field_to_env_var(cls)
 
@@ -64,7 +64,7 @@ class EnvWizard(AbstractEnvWizard):
         return cls_fields
 
     @_alias(asdict)
-    def to_dict(self: E, exclude: 'list[str]' = None,
+    def to_dict(self: 'E', exclude: 'list[str]' = None,
                 skip_defaults: bool = False) -> JSONObject:
         """
         Converts the `EnvWizard` subclass to a Python dictionary object that
@@ -73,7 +73,7 @@ class EnvWizard(AbstractEnvWizard):
         # alias: asdict(self)
         ...
 
-    def to_json(self: E, *,
+    def to_json(self: 'E', *,
                 encoder: Encoder = json.dumps,
                 **encoder_kwargs) -> AnyStr:
         """

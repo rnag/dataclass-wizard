@@ -3,7 +3,8 @@ from abc import ABC
 from collections import deque, defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from typing import Set, FrozenSet, Optional, Union, List, DefaultDict
+from typing import (Set, FrozenSet, Optional, Union, List,
+                    DefaultDict, Annotated, Literal)
 from uuid import UUID
 
 import pytest
@@ -343,7 +344,7 @@ def test_deque(input, expected, expectation):
 
     @dataclass
     class MyQClass(JSONSerializable):
-        num_deque: Deque[int]
+        num_deque: deque[int]
         any_deque: deque
 
     input_deque = deque(input)

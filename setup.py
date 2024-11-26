@@ -2,6 +2,7 @@
 import itertools
 import pathlib
 
+from pkg_resources import parse_requirements
 from setuptools import setup, find_packages
 
 
@@ -12,11 +13,26 @@ package_name = 'dataclass_wizard'
 packages = find_packages(include=[package_name, f'{package_name}.*'])
 
 requires = [
-    'typing-extensions>=3.7.4.2; python_version <= "3.9"',
-    'dataclasses; python_version == "3.6"',
-    'backports-datetime-fromisoformat==1.0.0; python_version == "3.6"'
+    'typing-extensions>=4; python_version == "3.9" or python_version == "3.10"',
 ]
 
+if (requires_dev_file := here / 'requirements-dev.txt').exists():
+    with requires_dev_file.open() as requires_dev_txt:
+        dev_requires = [str(req) for req in parse_requirements(requires_dev_txt)]
+else:   # Running on CI
+    dev_requires = []
+
+if (requires_docs_file := here / 'docs' / 'requirements.txt').exists():
+    with requires_docs_file.open() as requires_docs_txt:
+        doc_requires = [str(req) for req in parse_requirements(requires_docs_txt)]
+else:   # Running on CI
+    doc_requires = []
+
+if (requires_test_file := here / 'requirements-test.txt').exists():
+    with requires_test_file.open() as requires_test_txt:
+        test_requirements = [str(req) for req in parse_requirements(requires_test_txt)]
+else:   # Running on CI
+    test_requirements = []
 test_requirements = [
     'pytest~=7.0.1',
     'pytest-mock~=3.6.1',
@@ -54,11 +70,19 @@ setup(
             f'wiz={package_name}.wizard_cli.cli:main'
         ]
     },
+    package_data={
+        # Include all .pyi files in your package directories
+        '': ['*.pyi'],
+    },
     include_package_data=True,
     install_requires=requires,
     project_urls={
-        'Documentation': 'https://dataclass-wizard.readthedocs.io',
+        'Discussions': 'https://github.com/rnag/dataclass-wizard/discussions',
+        'Changelog': 'https://dataclass-wizard.readthedocs.io/en/latest/history.html',
         'Source': 'https://github.com/rnag/dataclass-wizard',
+        'Download': 'https://pypi.org/project/dataclass-wizard',
+        'Documentation': 'https://dataclass-wizard.readthedocs.io',
+        'Bug Tracker': 'https://github.com/rnag/dataclass-wizard/issues',
     },
     license=about['__license__'],
     keywords=['dataclasses', 'dataclass', 'wizard', 'json', 'marshal',
@@ -73,15 +97,24 @@ setup(
         'Natural Language :: English',
         'Programming Language :: Python :: 3 :: Only',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.6',
-        'Programming Language :: Python :: 3.7',
-        'Programming Language :: Python :: 3.8',
         'Programming Language :: Python :: 3.9',
         'Programming Language :: Python :: 3.10',
+        'Programming Language :: Python :: 3.11',
+        'Programming Language :: Python :: 3.12',
+        'Programming Language :: Python :: 3.13',
         'Programming Language :: Python'
     ],
     test_suite='tests',
     tests_require=test_requirements,
-    extras_require=extras_require,
+    extras_require={
+        'timedelta': ['pytimeparse>=1.1.7'],
+        'toml': [
+            'tomli>=2,<3; python_version=="3.9"',
+            'tomli>=2,<3; python_version=="3.10"',
+            'tomli-w>=1,<2'
+        ],
+        'yaml': ['PyYAML>=6,<7'],
+        'dev': dev_requires + doc_requires + test_requirements,
+    },
     zip_safe=False
 )
