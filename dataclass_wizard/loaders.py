@@ -643,7 +643,7 @@ def load_func_for_dataclass(
     # Fix for using `auto_assign_tags` and `raise_on_unknown_json_key` together
     # See https://github.com/rnag/dataclass-wizard/issues/137
     has_tag_assigned = meta.tag is not None
-    if has_tag_assigned:
+    if has_tag_assigned and meta.tag_key not in field_to_parser:
         json_to_field[meta.tag_key] = ExplicitNull
 
     _locals = {

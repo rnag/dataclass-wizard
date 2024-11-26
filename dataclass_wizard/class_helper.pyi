@@ -7,6 +7,7 @@ from .bases import META
 from .models import Condition
 from .type_def import ExplicitNullType, T
 from .utils.dict_helper import DictWithLowerStore
+from .utils.object_path import PathType
 
 
 # A cached mapping of dataclass to the list of fields, as returned by
@@ -31,8 +32,7 @@ CLASS_TO_DUMPER: dict[type, type[AbstractDumper]] = {}
 
 # A cached mapping of a dataclass to each of its case-insensitive field names
 # and load hook.
-FIELD_NAME_TO_LOAD_PARSER: dict[
-    type, DictWithLowerStore[str, AbstractParser]] = {}
+FIELD_NAME_TO_LOAD_PARSER: dict[type, DictWithLowerStore[str, AbstractParser]] = {}
 
 # Since the dump process doesn't use Parsers currently, we use a sentinel
 # mapping to confirm if we need to setup the dump config for a dataclass
@@ -40,12 +40,10 @@ FIELD_NAME_TO_LOAD_PARSER: dict[
 IS_DUMP_CONFIG_SETUP: dict[type, bool] = {}
 
 # A cached mapping, per dataclass, of JSON field to instance field name
-JSON_FIELD_TO_DATACLASS_FIELD: dict[
-    type, dict[str, str | ExplicitNullType]] = defaultdict(dict)
+JSON_FIELD_TO_DATACLASS_FIELD: dict[type, dict[str, str | ExplicitNullType]] = defaultdict(dict)
 
 # A cached mapping, per dataclass, of instance field name to JSON path
-DATACLASS_FIELD_TO_JSON_PATH: dict[
-    type, dict[str, list[str | int | bool | float]]] = defaultdict(dict)
+DATACLASS_FIELD_TO_JSON_PATH: dict[type, dict[str, PathType]] = defaultdict(dict)
 
 # A cached mapping, per dataclass, of instance field name to JSON field
 DATACLASS_FIELD_TO_JSON_FIELD: dict[type, dict[str, str]] = defaultdict(dict)
@@ -56,22 +54,20 @@ DATACLASS_FIELD_TO_SKIP_IF: dict[type, dict[str, Condition]] = defaultdict(dict)
 # A mapping of dataclass name to its Meta initializer (defined in
 # :class:`bases.BaseJSONWizardMeta`), which is only set when the
 # :class:`JSONSerializable.Meta` is sub-classed.
-META_INITIALIZER: dict[
-    str, Callable[[type[W]], None]] = {}
-
+META_INITIALIZER: dict[str, Callable[[type[W]], None]] = {}
 
 # Mapping of dataclass to its Meta inner class, which will only be set when
 # the :class:`JSONSerializable.Meta` is sub-classed.
 _META: dict[type, META] = {}
 
 
-def dataclass_to_loader(cls: type):
+def dataclass_to_loader(cls: type) -> type[AbstractLoader]:
     """
     Returns the loader for a dataclass.
     """
 
 
-def dataclass_to_dumper(cls: type):
+def dataclass_to_dumper(cls: type) -> type[AbstractDumper]:
     """
     Returns the dumper for a dataclass.
     """
@@ -89,13 +85,13 @@ def set_class_dumper(cls: type, dumper: type[AbstractDumper]):
     """
 
 
-def json_field_to_dataclass_field(cls: type):
+def json_field_to_dataclass_field(cls: type) -> dict[str, str | ExplicitNullType]:
     """
     Returns a mapping of JSON field to dataclass field.
     """
 
 
-def dataclass_field_to_json_path(cls: type):
+def dataclass_field_to_json_path(cls: type) -> dict[str, PathType]:
     """
     Returns a mapping of dataclass field to JSON path.
     """
@@ -151,7 +147,7 @@ def _setup_load_config_for_cls(cls_loader: type[AbstractLoader],
     """
 
 
-def setup_dump_config_for_cls_if_needed(cls: type):
+def setup_dump_config_for_cls_if_needed(cls: type) -> None:
     """
     This function processes a class `cls` on an initial run, and sets up the
     dump process for `cls` by iterating over each dataclass field. For each
@@ -172,7 +168,7 @@ def setup_dump_config_for_cls_if_needed(cls: type):
     """
 
 
-def call_meta_initializer_if_needed(cls: type[W]):
+def call_meta_initializer_if_needed(cls: type[W]) -> None:
     """
     Calls the Meta initializer when the inner :class:`Meta` is sub-classed.
     """
@@ -186,7 +182,7 @@ def get_meta(cls: type) -> META:
     """
 
 
-def dataclass_fields(cls) -> tuple[Field, ...]:
+def dataclass_fields(cls: type) -> tuple[Field, ...]:
     """
     Cache the `dataclasses.fields()` call for each class, as overall that
     ends up around 5x faster than making a fresh call each time.
@@ -194,23 +190,23 @@ def dataclass_fields(cls) -> tuple[Field, ...]:
     """
 
 
-def dataclass_init_fields(cls) -> tuple[Field, ...]:
+def dataclass_init_fields(cls: type) -> tuple[Field, ...]:
     """Get only the dataclass fields that would be passed into the constructor."""
 
 
-def dataclass_field_names(cls) -> tuple[str, ...]:
+def dataclass_field_names(cls: type) -> tuple[str, ...]:
     """Get the names of all dataclass fields"""
 
 
-def dataclass_field_to_default(cls) -> dict[str, Any]:
+def dataclass_field_to_default(cls: type) -> dict[str, Any]:
     """Get default values for the (optional) dataclass fields."""
 
 
-def is_builtin_class(cls):
+def is_builtin_class(cls: type) -> bool:
     """Check if a class is a builtin in Python."""
 
 
-def is_builtin(o: Any):
+def is_builtin(o: Any) -> bool:
     """Check if an object/singleton/class is a builtin in Python."""
 
 
@@ -227,7 +223,7 @@ def get_class_name(class_or_instance) -> str:
     """Return the fully qualified name of a class."""
 
 
-def get_outer_class_name(inner_cls, default=None, raise_=True):
+def get_outer_class_name(inner_cls, default=None, raise_: bool = True) -> str:
     """
     Attempt to return the fully qualified name of the outer (enclosing) class,
     given a reference to the inner class.
@@ -239,11 +235,11 @@ def get_outer_class_name(inner_cls, default=None, raise_=True):
     """
 
 
-def get_class(obj):
+def get_class(obj: Any) -> type:
     """Get the class for an object `obj`"""
 
 
-def is_subclass(obj, base_cls: type) -> bool:
+def is_subclass(obj: Any, base_cls: type) -> bool:
     """Check if `obj` is a sub-class of `base_cls`"""
 
 
