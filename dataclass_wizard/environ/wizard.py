@@ -11,7 +11,6 @@ from ..bases_meta import BaseEnvWizardMeta, LoadMeta, EnvMeta
 from ..class_helper import (call_meta_initializer_if_needed, get_meta,
                             field_to_env_var, dataclass_field_to_json_field)
 from ..decorators import cached_class_property, _alias
-from ..enums import Extra
 from ..environ.loaders import EnvLoader
 from ..errors import ExtraData, MissingVars, ParseError, type_name
 from ..loaders import get_loader
@@ -81,12 +80,12 @@ class EnvWizard(AbstractEnvWizard):
         """
         return encoder(asdict(self), **encoder_kwargs)
 
-    # stub for type hinting purposes.
-    def __init__(self, *,
-                 _env_file: EnvFileType = None,
-                 _reload_env: bool = False,
-                 **init_kwargs) -> None:
-        ...
+    # # stub for type hinting purposes.
+    # def __init__(self, *,
+    #              _env_file: EnvFileType = None,
+    #              _reload_env: bool = False,
+    #              **init_kwargs) -> None:
+    #     ...
 
     def __init_subclass__(cls, *, reload_env=False, debug=False):
 
@@ -136,75 +135,70 @@ class EnvWizard(AbstractEnvWizard):
         cls_fields: 'dict[str, Field]' = cls.__fields__
         field_names = frozenset(cls_fields)
 
-        _extra = meta.extra
         _meta_env_file = meta.env_file
 
         _locals = {'Env': Env,
-                  'EnvFileType': EnvFileType,
-                  'MISSING': MISSING,
-                  'ParseError': ParseError,
-                  'field_names': field_names,
-                  'get_env': get_env,
-                  'lookup_exact': lookup_exact}
+                   'EnvFileType': EnvFileType,
+                   'MISSING': MISSING,
+                   'ParseError': ParseError,
+                   'field_names': field_names,
+                   'get_env': get_env,
+                   'lookup_exact': lookup_exact}
 
         _globals = {'MissingVars': MissingVars,
-                   'add_missing_var': _add_missing_var,
-                   'cls': cls,
-                   'fields_ordered': cls_fields.keys(),
-                   'handle_parse_error': _handle_parse_error}
+                    'add': _add_missing_var,
+                    'cls': cls,
+                    'fields_ordered': cls_fields.keys(),
+                    'handle_err': _handle_parse_error}
 
         # parameters to the `__init__()` method.
-        init_params = ['self', '*',
-                       '_env_file: EnvFileType = None',
-                       '_reload_env: bool = False',
-                       '**init_kwargs']
+        init_params = ['self',
+                       'env_file:EnvFileType=None',
+                       'reload_env:bool=False']
 
         fn_gen = FunctionBuilder()
 
         with fn_gen.function('__init__', init_params, None):
             # reload cached var names from `os.environ` as needed.
-            with fn_gen.if_('_reload_env'):
+            with fn_gen.if_('reload_env'):
                 fn_gen.add_line('Env.reload()')
             # update environment with values in the "dot env" files as needed.
             if _meta_env_file:
                 fn = fn_gen.elif_
                 _globals['_dotenv_values'] = Env.dotenv_values(_meta_env_file)
-                with fn_gen.if_('_env_file is None'):
+                with fn_gen.if_('env_file is None'):
                     fn_gen.add_line('Env.update_with_dotenv(dotenv_values=_dotenv_values)')
             else:
                 fn = fn_gen.if_
-            with fn('_env_file'):
-                fn_gen.add_line('Env.update_with_dotenv(_env_file)')
+            with fn('env_file'):
+                fn_gen.add_line('Env.update_with_dotenv(env_file)')
 
             # iterate over the dataclass fields and (attempt to) resolve
             # each one.
             fn_gen.add_line('missing_vars = []')
-            fn_gen.add_line('has_kwargs = True if init_kwargs else False')
 
             for name, f in cls_fields.items():
-                tp = _globals[f'_type_{name}'] = f.type
+                type_field = f'_tp_{name}'
+                tp = _globals[type_field] = f.type
+
+                init_params.append(f'{name}:{type_field}=MISSING')
 
                 # retrieve value (if it exists) for the environment variable
-                with fn_gen.if_(f'has_kwargs and {name!r} in init_kwargs'):
-                    fn_gen.add_line(f'value = init_kwargs[{name!r}]')
-                    fn_gen.add_line('has_value = True')
-                with fn_gen.else_():
-                    env_var = field_to_var.get(name)
-                    if env_var:
-                        var_name = f'_var_{name}'
-                        _globals[var_name] = env_var
-                        fn_gen.add_line(f'value = lookup_exact({var_name})')
-                    else:
-                        fn_gen.add_line(f'value = get_env({name!r})')
-                    fn_gen.add_line('has_value = value is not MISSING')
-                with fn_gen.if_('has_value'):
+
+                env_var = field_to_var.get(name)
+                if env_var:
+                    part = f'({name} := lookup_exact({env_var!r}))'
+                else:
+                    part = f'({name} := get_env({name!r}))'
+
+                with fn_gen.if_(f'{name} is not MISSING or {part} is not MISSING'):
                     parser_name = f'_parser_{name}'
                     _globals[parser_name] = cls_loader.get_parser_for_annotation(
                         tp, cls, extras)
                     with fn_gen.try_():
-                        fn_gen.add_line(f'self.{name} = {parser_name}(value)')
+                        fn_gen.add_line(f'self.{name} = {parser_name}({name})')
                     with fn_gen.except_(ParseError, 'e'):
-                        fn_gen.add_line(f'handle_parse_error(e, cls, {name!r}, {env_var!r})')
+                        fn_gen.add_line(f'handle_err(e, cls, {name!r}, {env_var!r})')
                 # this `else` block means that a value was not received for the
                 # field, either via keyword arguments or Environment.
                 with fn_gen.else_():
@@ -218,7 +212,7 @@ class EnvWizard(AbstractEnvWizard):
                         _globals[default_name] = f.default_factory
                         fn_gen.add_line(f'self.{name} = {default_name}()')
                     else:
-                        fn_gen.add_line(f'add_missing_var(missing_vars, {name!r}, _type_{name})')
+                        fn_gen.add_line(f'add(missing_vars, {name!r}, {type_field})')
 
             # check for any required fields with missing values
             with fn_gen.if_('missing_vars'):
@@ -226,20 +220,20 @@ class EnvWizard(AbstractEnvWizard):
 
             # if keyword arguments are passed in, confirm that all there
             # aren't any "extra" keyword arguments
-            if _extra is not Extra.IGNORE:
-                with fn_gen.if_('has_kwargs'):
-                    # get a list of keyword arguments that don't map to any fields
-                    fn_gen.add_line('extra_kwargs = set(init_kwargs) - field_names')
-                    with fn_gen.if_('extra_kwargs'):
-                        # the default behavior is "DENY", so an error will be raised here.
-                        if _extra is None or _extra is Extra.DENY:
-                            _globals['ExtraData'] = ExtraData
-                            fn_gen.add_line('raise ExtraData(cls, extra_kwargs, list(fields_ordered)) from None')
-                        else:  # Extra.ALLOW
-                            # else, if we want to "ALLOW" extra keyword arguments, we need to
-                            # store those attributes in the instance.
-                            with fn_gen.for_('attr in extra_kwargs'):
-                                fn_gen.add_line('setattr(self, attr, init_kwargs[attr])')
+            # if _extra is not Extra.IGNORE:
+                # with fn_gen.if_('has_kwargs'):
+                #     # get a list of keyword arguments that don't map to any fields
+                #     fn_gen.add_line('extra_kwargs = set(init_kwargs) - field_names')
+                #     with fn_gen.if_('extra_kwargs'):
+                #         # the default behavior is "DENY", so an error will be raised here.
+                #         if _extra is None or _extra is Extra.DENY:
+                #             _globals['ExtraData'] = ExtraData
+                #             fn_gen.add_line('raise ExtraData(cls, extra_kwargs, list(fields_ordered)) from None')
+                #         else:  # Extra.ALLOW
+                #             # else, if we want to "ALLOW" extra keyword arguments, we need to
+                #             # store those attributes in the instance.
+                #             with fn_gen.for_('attr in extra_kwargs'):
+                #                 fn_gen.add_line('setattr(self, attr, init_kwargs[attr])')
 
         functions = fn_gen.create_functions(globals=_globals, locals=_locals)
 

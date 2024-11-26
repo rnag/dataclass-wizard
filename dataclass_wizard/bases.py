@@ -4,7 +4,7 @@ from typing import Callable, Type, Dict, Optional, ClassVar, Union, TypeVar
 from .constants import TAG
 from .decorators import cached_class_property
 from .models import Condition
-from .enums import DateTimeTo, Extra, LetterCase, LetterCasePriority
+from .enums import DateTimeTo, LetterCase, LetterCasePriority
 from .type_def import FrozenKeys, EnvFileType
 
 
@@ -295,14 +295,6 @@ class AbstractEnvMeta:
     # For example, in below the '.env.last' file takes priority over '.env':
     #   env_file = '.env', '.env.last'
     env_file: ClassVar[EnvFileType] = None
-
-    # How extra keyword arguments (**kwargs) to the constructor or
-    # `__init__()` method should be handled. Note that "extra" keywords are
-    # ones that don't exactly match the field names of an EnvWizard subclass.
-    #
-    # The default behavior is to raise an error if any extra keywords are
-    # passed in to the constructor method.
-    extra: ClassVar[Extra] = None
 
     # A customized mapping of field in the `EnvWizard` subclass to its
     # corresponding environment variable to search for.

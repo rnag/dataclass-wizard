@@ -19,7 +19,7 @@ from .class_helper import (
 from .constants import TAG
 from .decorators import try_with_load
 from .dumpers import get_dumper
-from .enums import DateTimeTo, Extra, LetterCase, LetterCasePriority
+from .enums import DateTimeTo, LetterCase, LetterCasePriority
 from .environ.loaders import EnvLoader
 from .errors import ParseError
 from .loaders import get_loader
@@ -31,6 +31,26 @@ from .utils.type_conv import date_to_timestamp, as_enum
 
 # global flag to determine if debug mode was ever enabled
 _debug_was_enabled = False
+
+
+# use `debug_enabled` for log level if it's a str or int.
+def _enable_debug_mode_if_needed(cls_loader, possible_lvl):
+    global _debug_was_enabled
+    if not _debug_was_enabled:
+        _debug_was_enabled = True
+        # use `debug_enabled` for log level if it's a str or int.
+        default_lvl = logging.DEBUG
+        # minimum logging level for logs by this library.
+        min_level = default_lvl if isinstance(possible_lvl, bool) else possible_lvl
+        # set the logging level of this library's logger.
+        LOG.setLevel(min_level)
+        LOG.info('DEBUG Mode is enabled')
+
+    # Decorate all hooks so they format more helpful messages
+    # on error.
+    load_hooks = cls_loader.__LOAD_HOOKS__
+    for typ in load_hooks:
+        load_hooks[typ] = try_with_load(load_hooks[typ])
 
 
 def _as_enum_safe(cls: type, name: str, base_type: Type[E]) -> Optional[E]:
@@ -107,25 +127,9 @@ class BaseJSONWizardMeta(AbstractMeta):
         cls_dumper = get_dumper(dataclass, create=create)
 
         if cls.debug_enabled:
-            global _debug_was_enabled
-            if not _debug_was_enabled:
-                _debug_was_enabled = True
-                # use `debug_enabled` for log level if it's a str or int.
-                possible_lvl = cls.debug_enabled
-                default_lvl = logging.DEBUG
-                # minimum logging level for logs by this library.
-                min_level = default_lvl if isinstance(possible_lvl, bool) else possible_lvl
-                # set the logging level of this library's logger.
-                LOG.setLevel(min_level)
-                LOG.info('DEBUG Mode is enabled')
+            _enable_debug_mode_if_needed(cls_loader, cls.debug_enabled)
 
-            # Decorate all hooks so they format more helpful messages
-            # on error.
-            load_hooks = cls_loader.__LOAD_HOOKS__
-            for typ in load_hooks:
-                load_hooks[typ] = try_with_load(load_hooks[typ])
-
-        if cls.json_key_to_field:
+        if cls.json_key_to_field is not None:
             add_for_both = cls.json_key_to_field.pop('__all__', None)
 
             json_field_to_dataclass_field(dataclass).update(
@@ -144,7 +148,7 @@ class BaseJSONWizardMeta(AbstractMeta):
                     if field not in dataclass_to_json_field:
                         dataclass_to_json_field[field] = json_key
 
-        if cls.marshal_date_time_as:
+        if cls.marshal_date_time_as is not None:
             enum_val = _as_enum_safe(cls, 'marshal_date_time_as', DateTimeTo)
 
             if enum_val is DateTimeTo.TIMESTAMP:
@@ -161,11 +165,11 @@ class BaseJSONWizardMeta(AbstractMeta):
                 # already serializes using this approach.
                 pass
 
-        if cls.key_transform_with_load:
+        if cls.key_transform_with_load is not None:
             cls_loader.transform_json_field = _as_enum_safe(
                 cls, 'key_transform_with_load', LetterCase)
 
-        if cls.key_transform_with_dump:
+        if cls.key_transform_with_dump is not None:
             cls_dumper.transform_dataclass_field = _as_enum_safe(
                 cls, 'key_transform_with_dump', LetterCase)
 
@@ -228,16 +232,9 @@ class BaseEnvWizardMeta(AbstractEnvMeta):
         cls_dumper = get_dumper(env_class, create=create)
 
         if cls.debug_enabled:
+            _enable_debug_mode_if_needed(cls_loader, cls.debug_enabled)
 
-            LOG.setLevel('DEBUG')
-            LOG.info('DEBUG Mode is enabled')
-            # Decorate all hooks so they format more helpful messages
-            # on error.
-            load_hooks = cls_loader.__LOAD_HOOKS__
-            for typ in load_hooks:
-                load_hooks[typ] = try_with_load(load_hooks[typ])
-
-        if cls.field_to_env_var:
+        if cls.field_to_env_var is not None:
             field_to_env_var(env_class).update(
                 cls.field_to_env_var
             )
@@ -247,9 +244,6 @@ class BaseEnvWizardMeta(AbstractEnvMeta):
 
         cls_dumper.transform_dataclass_field = _as_enum_safe(
             cls, 'key_transform_with_dump', LetterCase)
-
-        if cls.extra:
-            cls.extra = _as_enum_safe(cls, 'extra', Extra)
 
         # Finally, if needed, save the meta config for the outer class. This
         # will allow us to access this config as part of the JSON load/dump
@@ -352,12 +346,10 @@ def DumpMeta(*, debug_enabled: 'bool | int | str' = False,
 # noinspection PyPep8Naming
 def EnvMeta(*, debug_enabled: 'bool | int | str' = False,
              env_file: EnvFileType = None,
-             extra: Extra = None,
              field_to_env_var: dict[str, str] = None,
              key_lookup_with_load: Union[LetterCasePriority, str] = LetterCasePriority.SCREAMING_SNAKE,
              key_transform_with_dump: Union[LetterCase, str] = LetterCase.SNAKE,
              # marshal_date_time_as: Union[DateTimeTo, str] = None,
-             # tag: str = None,
              skip_defaults: bool = False,
              # skip_if: Condition = None,
              # skip_defaults_if: Condition = None,
@@ -381,7 +373,6 @@ def EnvMeta(*, debug_enabled: 'bool | int | str' = False,
         '__slots__': (),
         'debug_enabled': debug_enabled,
         'env_file': env_file,
-        'extra': extra,
         'field_to_env_var': field_to_env_var,
         'key_lookup_with_load': key_lookup_with_load,
         'key_transform_with_dump': key_transform_with_dump,

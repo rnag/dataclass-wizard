@@ -682,7 +682,7 @@ def load_func_for_dataclass(
 
     if has_json_paths:
         loop_over_o = num_paths != len(dataclass_init_fields(cls))
-        _locals['get_safe'] = safe_get
+        _locals['safe_get'] = safe_get
     else:
         loop_over_o = True
 
@@ -710,7 +710,7 @@ def load_func_for_dataclass(
                         extra_args = f', {default_value}'
                     else:
                         extra_args = ''
-                    fn_gen.add_line(f'field={field!r}; init_kwargs[field] = field_to_parser[field](get_safe(o, {path!r}{extra_args}))')
+                    fn_gen.add_line(f'field={field!r}; init_kwargs[field] = field_to_parser[field](safe_get(o, {path!r}{extra_args}))')
 
             with fn_gen.except_(ParseError, 'e'):
                 # We run into a parsing error while loading the field value;
