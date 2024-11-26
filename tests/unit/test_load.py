@@ -2441,3 +2441,37 @@ def test_invalid_condition_annotation_raises_error():
 
         # Attempt to serialize an instance, which should raise the error.
         Example(my_field=3).to_dict()
+
+
+def test_dataclass_in_union_when_tag_key_is_field():
+    """
+    Test case for dataclasses in `Union` when the `Meta.tag_key` is a dataclass field.
+    """
+    @dataclass
+    class DataType(JSONWizard):
+        id: int
+        type: str
+
+    @dataclass
+    class XML(DataType):
+        class _(JSONWizard.Meta):
+            tag = "xml"
+
+        field_type_1: str
+
+    @dataclass
+    class HTML(DataType):
+        class _(JSONWizard.Meta):
+            tag = "html"
+
+        field_type_2: str
+
+    @dataclass
+    class Result(JSONWizard):
+        class _(JSONWizard.Meta):
+            tag_key = "type"
+
+        data: Union[XML, HTML]
+
+    t1 = Result.from_dict({"data": {"id": 1, "type": "xml", "field_type_1": "value"}})
+    assert t1 == Result(data=XML(id=1, type='xml', field_type_1='value'))

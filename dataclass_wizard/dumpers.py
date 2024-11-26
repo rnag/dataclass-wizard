@@ -431,6 +431,8 @@ def dump_func_for_dataclass(cls: Type[T],
             show_deprecation_warning(_pre_dict, reason)
 
             _locals['__pre_dict__'] = _pre_dict
+
+            # Call the optional hook that runs before we process the dataclass
             fn_gen.add_line('__pre_dict__(o)')
 
         # Initialize result list to hold field mappings

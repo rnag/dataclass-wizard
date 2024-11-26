@@ -643,7 +643,11 @@ def load_func_for_dataclass(
     # Fix for using `auto_assign_tags` and `raise_on_unknown_json_key` together
     # See https://github.com/rnag/dataclass-wizard/issues/137
     has_tag_assigned = meta.tag is not None
-    if has_tag_assigned:
+    if (has_tag_assigned and
+            # Ensure `tag_key` isn't a dataclass field before assigning an
+            # `ExplicitNull`, as assigning it directly can cause issues.
+            # See https://github.com/rnag/dataclass-wizard/issues/148
+            meta.tag_key not in field_to_parser):
         json_to_field[meta.tag_key] = ExplicitNull
 
     _locals = {
@@ -743,6 +747,7 @@ def load_func_for_dataclass(
                                 fn_gen.add_line("field = json_to_field[json_key] = ExplicitNull")
                                 fn_gen.add_line("LOG.warning('JSON field %r missing from dataclass schema, "
                                                 "class=%r, parsed field=%r',json_key,cls,py_field)")
+
                                 # Raise an error here (if needed)
                                 if meta.raise_on_unknown_json_key:
                                     _globals['UnknownJSONKey'] = UnknownJSONKey
@@ -759,6 +764,11 @@ def load_func_for_dataclass(
                         with fn_gen.except_(ParseError, 'e'):
                             # We run into a parsing error while loading the field value;
                             # Add additional info on the Exception object before re-raising it.
+                            #
+                            # First confirm these values are not already set by an
+                            # inner dataclass. If so, it likely makes it easier to
+                            # debug the cause. Note that this should already be
+                            # handled by the `setter` methods.
                             fn_gen.add_line("e.class_name, e.field_name, e.json_object = cls, field, o")
                             fn_gen.add_line("raise")
 
@@ -772,9 +782,11 @@ def load_func_for_dataclass(
                                 fn_gen.add_line(line)
 
             with fn_gen.except_(TypeError):
-                # If the object `o` is None, then raise an error with the relevant info included.
+                # If the object `o` is None, then raise an error with
+                # the relevant info included.
                 with fn_gen.if_('o is None'):
                     fn_gen.add_line("raise MissingData(cls) from None")
+
                 # Check if the object `o` is some other type than what we expect -
                 # for example, we could be passed in a `list` type instead.
                 with fn_gen.if_('not isinstance(o, dict)'):
@@ -784,8 +796,6 @@ def load_func_for_dataclass(
                 # Else, just re-raise the error.
                 fn_gen.add_line("raise")
 
-        # Now pass the arguments to the constructor method, and return the new dataclass instance.
-        # If there are any missing fields, we raise them here.
         if has_catch_all:
             if catch_all_field.endswith('?'):  # Default value
                 with fn_gen.if_('catch_all'):
@@ -793,8 +803,13 @@ def load_func_for_dataclass(
             else:
                 fn_gen.add_line(f'init_kwargs[{catch_all_field!r}] = catch_all')
 
+        # Now pass the arguments to the constructor method, and return
+        # the new dataclass instance. If there are any missing fields,
+        # we raise them here.
+
         with fn_gen.try_():
             fn_gen.add_line("return cls(**init_kwargs)")
+
         with fn_gen.except_(TypeError, 'e'):
             fn_gen.add_line("raise MissingFields(e, o, cls, init_kwargs, cls_fields) from None")
 
