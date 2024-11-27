@@ -1,7 +1,7 @@
 import json
 import logging
 from dataclasses import MISSING, dataclass, fields
-from typing import Callable, dataclass_transform
+from typing import Callable
 
 from .dumpers import asdict
 from .lookups import Env, lookup_exact, clean
@@ -15,7 +15,7 @@ from ..environ.loaders import EnvLoader
 from ..errors import ExtraData, MissingVars, ParseError, type_name
 from ..loaders import get_loader
 from ..models import Extras, JSONField
-from ..type_def import EnvFileType, ExplicitNull, JSONObject
+from ..type_def import EnvFileType, ExplicitNull, JSONObject, dataclass_transform
 from ..utils.function_builder import FunctionBuilder
 
 

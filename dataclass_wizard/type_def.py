@@ -37,6 +37,7 @@ __all__ = [
     'LT',
     'LSQ',
     'FREF',
+    'dataclass_transform',
 ]
 
 from collections import deque
@@ -149,9 +150,11 @@ except ImportError:
 if PY311_OR_ABOVE:  # pragma: no cover
     from typing import Required as PyRequired
     from typing import NotRequired as PyNotRequired
+    from typing import dataclass_transform
 else:
     from typing_extensions import Required as PyRequired
     from typing_extensions import NotRequired as PyNotRequired
+    from typing_extensions import dataclass_transform
 
 
 # Forward references can be either strings or explicit `ForwardRef` objects.
