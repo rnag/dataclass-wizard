@@ -106,7 +106,7 @@ class RecursionSafeParser(AbstractParser):
     def __call__(self, o: Any) -> T:
         load_hook = self.hook
 
-        if not load_hook:
+        if load_hook is None:
             load_hook = self.hook = self.load_hook_func()
 
         return load_hook(o)
@@ -201,7 +201,10 @@ class OptionalParser(AbstractParser[T, Optional[T]]):
                       extras: Extras,
                       get_parser: GetParserType):
 
-        self.parser: AbstractParser = get_parser(self.base_type, cls, extras)
+        self.parser: AbstractParser = getattr(
+            p := get_parser(self.base_type, cls, extras),
+            '__call__', p
+        )
 
     def __contains__(self, item):
         """Check if parser is expected to handle the specified item type."""
@@ -337,7 +340,9 @@ class IterableParser(AbstractParser[Type[LSQ], LSQ]):
         #   ex. `List[str]` -> `list`
         self.base_type = get_origin(self.base_type)
 
-        self.elem_parser = get_parser(elem_type, cls, extras)
+        self.elem_parser = getattr(
+            p := get_parser(elem_type, cls, extras), '__call__', p,
+        )
 
     def __call__(self, o: Iterable) -> LSQ:
         """
@@ -481,7 +486,7 @@ class NamedTupleParser(AbstractParser[tuple, NT]):
         type_anns: Dict[str, type[T]] = self.base_type.__annotations__
 
         self.field_to_parser: Optional['FieldToParser'] = {
-            f: get_parser(ftype, cls, extras)
+            f: getattr(p := get_parser(ftype, cls, extras), '__call__', p)
             for f, ftype in type_anns.items()
         }
 
@@ -509,8 +514,8 @@ class NamedTupleUntypedParser(AbstractParser[tuple, NT]):
                       extras: Extras,
                       get_parser: GetParserType):
 
-        self.dict_parser = get_parser(dict, cls, extras)
-        self.list_parser = get_parser(list, cls, extras)
+        self.dict_parser = get_parser(dict, cls, extras).__call__
+        self.list_parser = get_parser(list, cls, extras).__call__
 
     def __call__(self, o: Any) -> NT:
         """
@@ -525,7 +530,8 @@ class NamedTupleUntypedParser(AbstractParser[tuple, NT]):
 class MappingParser(AbstractParser[Type[M], M]):
     __slots__ = ('hook',
                  'key_parser',
-                 'val_parser')
+                 'val_parser',
+                 'val_base_type')
 
     base_type: Type[M]
     hook: Callable[[Any, Type[M], AbstractParser, AbstractParser], M]
@@ -543,8 +549,11 @@ class MappingParser(AbstractParser[Type[M], M]):
         #   ex. `Dict[str, Any]` -> `dict`
         self.base_type: Type[M] = get_origin(self.base_type)
 
-        self.key_parser = get_parser(key_type, cls, extras)
-        self.val_parser = get_parser(val_type, cls, extras)
+        val_parser = get_parser(val_type, cls, extras)
+
+        self.key_parser = getattr(p := get_parser(key_type, cls, extras), '__call__', p)
+        self.val_parser = getattr(val_parser, '__call__', val_parser)
+        self.val_base_type = val_parser.base_type
 
     def __call__(self, o: M) -> M:
         return self.hook(o, self.base_type, self.key_parser, self.val_parser)
@@ -565,7 +574,7 @@ class DefaultDictParser(MappingParser[DD]):
         super().__post_init__(cls, extras, get_parser)
 
         # The default factory argument to pass to the `defaultdict` subclass
-        self.default_factory: DefFactory = self.val_parser.base_type
+        self.default_factory: DefFactory = self.val_base_type
 
     def __call__(self, o: DD) -> DD:
         return self.hook(o, self.base_type, self.default_factory,
@@ -588,7 +597,7 @@ class TypedDictParser(AbstractParser[Type[M], M]):
                       get_parser: GetParserType):
 
         self.key_to_parser: 'FieldToParser' = {
-            k: get_parser(v, cls, extras)
+            k: getattr(p := get_parser(v, cls, extras), '__call__', p)
             for k, v in self.base_type.__annotations__.items()
         }
 

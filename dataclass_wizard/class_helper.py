@@ -205,9 +205,12 @@ def _setup_load_config_for_cls(cls_loader,
 
         # Lookup the Parser (dispatcher) for each field based on its annotated
         # type, and then cache it so we don't need to lookup each time.
-        name_to_parser[f.name] = cls_loader.get_parser_for_annotation(
+        #
+        # Changed in v0.31.0: Get the __call__() method as defined
+        # on `AbstractParser`, if it exists
+        name_to_parser[f.name] = getattr(p := cls_loader.get_parser_for_annotation(
             field_type, cls, field_extras
-        )
+        ), '__call__', p)
 
     parser_dict = DictWithLowerStore(name_to_parser)
     # only cache the load parser for the class if `save` is enabled

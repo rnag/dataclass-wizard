@@ -27,3 +27,8 @@ class MyUUIDSubclass(UUID):
 def mock_log(caplog):
     caplog.set_level('INFO', logger='dataclass_wizard')
     return caplog
+
+@pytest.fixture
+def mock_debug_log(caplog):
+    caplog.set_level('DEBUG', logger='dataclass_wizard')
+    return caplog

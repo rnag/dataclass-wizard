@@ -129,25 +129,25 @@ class EnvWizard(AbstractEnvWizard):
 
         # parameters to the `__init__()` method.
         init_params = ['self',
-                       'env_file:EnvFileType=None',
-                       'reload_env:bool=False']
+                       '_env_file:EnvFileType=None',
+                       '_reload:bool=False']
 
         fn_gen = FunctionBuilder()
 
         with fn_gen.function('__init__', init_params, None):
             # reload cached var names from `os.environ` as needed.
-            with fn_gen.if_('reload_env'):
+            with fn_gen.if_('_reload'):
                 fn_gen.add_line('Env.reload()')
             # update environment with values in the "dot env" files as needed.
             if _meta_env_file:
                 fn = fn_gen.elif_
                 _globals['_dotenv_values'] = Env.dotenv_values(_meta_env_file)
-                with fn_gen.if_('env_file is None'):
+                with fn_gen.if_('_env_file is None'):
                     fn_gen.add_line('Env.update_with_dotenv(dotenv_values=_dotenv_values)')
             else:
                 fn = fn_gen.if_
-            with fn('env_file'):
-                fn_gen.add_line('Env.update_with_dotenv(env_file)')
+            with fn('_env_file'):
+                fn_gen.add_line('Env.update_with_dotenv(_env_file)')
 
             # iterate over the dataclass fields and (attempt to) resolve
             # each one.
@@ -169,8 +169,8 @@ class EnvWizard(AbstractEnvWizard):
 
                 with fn_gen.if_(f'{name} is not MISSING or {part} is not MISSING'):
                     parser_name = f'_parser_{name}'
-                    _globals[parser_name] = cls_loader.get_parser_for_annotation(
-                        tp, cls, extras)
+                    _globals[parser_name] = getattr(p := cls_loader.get_parser_for_annotation(
+                        tp, cls, extras), '__call__', p)
                     with fn_gen.try_():
                         fn_gen.add_line(f'self.{name} = {parser_name}({name})')
                     with fn_gen.except_(ParseError, 'e'):

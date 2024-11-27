@@ -67,8 +67,8 @@ class EnvWizard(AbstractEnvWizard):
 
     # stub for type hinting purposes.
     def __init__(self, *,
-                 env_file: EnvFileType = None,
-                 reload_env: bool = False,
+                 _env_file: EnvFileType = None,
+                 _reload: bool = False,
                  **init_kwargs) -> None:
         ...
 

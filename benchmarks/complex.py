@@ -151,24 +151,27 @@ factory.schemas = {
 }
 
 
-def test_load(data, n):
+def test_load(request, data, n):
     g = globals().copy()
     g.update(locals())
 
-    # Result: 1.753
+    # Result: 0.790
     log.info('dataclass-wizard     %f',
              timeit('MyClassWizard.from_dict(data)', globals=g, number=n))
 
-    # Result: 1.349
+    # Result: 0.774
     log.info('dataclass-factory    %f',
              timeit('factory.load(data, MyClass)', globals=g, number=n))
 
-    # Result: 28.776
+    # Result: 23.40
     #   NOTE: This likely is not an entirely fair comparison, since the
     #   rest load `Person.name` as a `Name` (which is a NamedTuple sub-class),
     #   but in this case we just load it as an `Any` type.
     log.info('dataclasses-json     %f',
              timeit('MyClassDJ.from_dict(data)', globals=g, number=n))
+
+    if not request.config.getoption("--all"):
+        pytest.skip("Skipping benchmarks for the rest by default, unless --all is specified.")
 
     # these ones took a long time xD
     # Result: 70.752
@@ -193,7 +196,7 @@ def test_load(data, n):
     # assert c1.__dict__ == c2.__dict__  == c3.__dict__ == c4.__dict__
 
 
-def test_dump(data, n):
+def test_dump(request, data, n):
 
     c1 = MyClassWizard.from_dict(data)
     c2 = factory.load(data, MyClass)
@@ -203,22 +206,24 @@ def test_dump(data, n):
     g = globals().copy()
     g.update(locals())
 
-    # Result: 2.445
+    # Result: 1.394
     log.info('dataclass-wizard     %f',
              timeit('c1.to_dict()', globals=g, number=n))
 
-    # actually, `dataclasses.asdict` call seems to fail for some reason
-    # (possibly due to a `defaultdict` being used? would be a bug if so :o)
-    # log.info('asdict (dataclasses) %f',
-    #          timeit('asdict(c1)', globals=g, number=n))
+    # Result: 1.804
+    log.info('asdict (dataclasses) %f',
+             timeit('asdict(c1)', globals=g, number=n))
 
-    # Result: 3.468
+    # Result: 0.862
     log.info('dataclass-factory    %f',
              timeit('factory.dump(c2, MyClass)', globals=g, number=n))
 
-    # Result: 15.214
+    # Result: 9.872
     log.info('dataclasses-json     %f',
              timeit('c3.to_dict()', globals=g, number=n))
+
+    if not request.config.getoption("--all"):
+        pytest.skip("Skipping benchmarks for the rest by default, unless --all is specified.")
 
     # Result: 53.686
     log.info('jsons                %f',

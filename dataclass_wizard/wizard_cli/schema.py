@@ -82,8 +82,8 @@ _S = TypeVar('_S')
 
 # Merge both the "truthy" and "falsy" values, so we can determine the criteria
 # under which a string can be considered as a boolean value.
-_FALSY_VALUES = ('FALSE', 'F', 'NO', 'N', '0')
-_BOOL_VALUES = _TRUTHY_VALUES + _FALSY_VALUES
+_FALSY_VALUES = {'FALSE', 'F', 'NO', 'N', '0'}
+_BOOL_VALUES = _TRUTHY_VALUES | _FALSY_VALUES
 
 # Valid types for JSON contents; this can be either a list of any type,
 # or a dictionary with `string` keys and values of any type.

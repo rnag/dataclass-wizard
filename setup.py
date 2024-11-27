@@ -33,12 +33,6 @@ if (requires_test_file := here / 'requirements-test.txt').exists():
         test_requirements = [str(req) for req in parse_requirements(requires_test_txt)]
 else:   # Running on CI
     test_requirements = []
-test_requirements = [
-    'pytest~=7.0.1',
-    'pytest-mock~=3.6.1',
-    'pytest-cov~=2.12.1',
-    'pytest-runner~=5.3.1'
-]
 
 # extras_require = {
 #     'dotenv': ['python-dotenv>=0.19.0'],

@@ -52,23 +52,23 @@ def test_load(data, n):
     g = globals().copy()
     g.update(locals())
 
-    # Result: 0.170
+    # Result: 0.076
     log.info('dataclass-wizard     %f',
              timeit('MyClassWizard.from_dict(data)', globals=g, number=n))
 
-    # Result: 0.314
+    # Result: 0.104
     log.info('dataclass-factory    %f',
              timeit('factory.load(data, MyClass)', globals=g, number=n))
 
-    # Result: 4.953
+    # Result: 3.614
     log.info('dataclasses-json     %f',
              timeit('MyClassDJ.from_dict(data)', globals=g, number=n))
 
-    # Result: 9.543
+    # Result: 4.702
     log.info('jsons                %f',
              timeit('MyClassJsons.load(data)', globals=g, number=n))
 
-    # Result: 12.825
+    # Result: 5.708
     log.info('jsons (strict)       %f',
              timeit('MyClassJsons.load(data, strict=True)', globals=g, number=n))
 
@@ -91,27 +91,27 @@ def test_dump(data, n):
     g = globals().copy()
     g.update(locals())
 
-    # Result: 0.237
+    # Result: 0.067
     log.info('dataclass-wizard     %f',
              timeit('c1.to_dict()', globals=g, number=n))
 
-    # Result: 0.238
+    # Result: 0.090
     log.info('asdict (dataclasses) %f',
-             timeit('c1.to_dict()', globals=g, number=n))
+             timeit('asdict(c1)', globals=g, number=n))
 
-    # Result: 0.513
+    # Result: 0.075
     log.info('dataclass-factory    %f',
              timeit('factory.dump(c2, MyClass)', globals=g, number=n))
 
-    # Result: 1.497
+    # Result: 1.318
     log.info('dataclasses-json     %f',
              timeit('c3.to_dict()', globals=g, number=n))
 
-    # Result: 10.177
+    # Result: 6.207
     log.info('jsons                %f',
              timeit('c4.dump()', globals=g, number=n))
 
-    # Result: 10.099
+    # Result: 6.280
     log.info('jsons (strict)       %f',
              timeit('c4.dump(strict=True)', globals=g, number=n))
 

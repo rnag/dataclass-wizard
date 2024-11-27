@@ -22,7 +22,7 @@ from ..type_def import E, N, NUMBERS
 
 # What values are considered "truthy" when converting to a boolean type.
 # noinspection SpellCheckingInspection
-_TRUTHY_VALUES = ('TRUE', 'T', 'YES', 'Y', '1')
+_TRUTHY_VALUES = frozenset({'true', 't', 'yes', 'y', 'on', '1'})
 
 
 def as_bool(o: Union[str, bool, N]):
@@ -30,13 +30,13 @@ def as_bool(o: Union[str, bool, N]):
     Return `o` if already a boolean, otherwise return the boolean value
     for `o`.
     """
-    if isinstance(o, bool):
+    if (t := type(o)) is bool:
         return o
 
-    if not isinstance(o, str):
-        o = str(o)
+    if t is str:
+        return o.lower() in _TRUTHY_VALUES
 
-    return o.upper() in _TRUTHY_VALUES
+    return o == 1
 
 
 def as_int(o: Union[str, int, float, bool, None], base_type=int,
@@ -57,15 +57,31 @@ def as_int(o: Union[str, int, float, bool, None], base_type=int,
     if t is base_type:
         return o
 
-    if t is bool:
-        raise TypeError(f'as_int: Incorrect type, object={o!r}, type={t}')
+    if t is str:
+        # Check if the string represents a float value, e.g. '2.7'
+
+        # TODO uncomment once we update to v1
+        # if '.' in o:
+        #     if (float_value := float(o)).is_integer():
+        #         return base_type(float_value)
+        #     raise ValueError(f"Cannot cast string float with fractional part: {value}")
+
+        if o:
+            if '.' in o:
+                return base_type(round(float(o)))
+            # Assume direct integer string
+            return base_type(o)
+        return default
 
     if t is float:
+        # TODO uncomment once we update to v1
+        # if o.is_integer():
+        #     return base_type(o)
+        # raise ValueError(f"Cannot cast float with fractional part: {o}")
         return base_type(round(o))
 
-    # Check if the string represents a float value, e.g. '2.7'
-    if t is str and '.' in o:
-        return base_type(round(float(o)))
+    if t is bool:
+        raise TypeError(f'as_int: Incorrect type, object={o!r}, type={t}')
 
     try:
         return base_type(o)
@@ -81,30 +97,12 @@ def as_int(o: Union[str, int, float, bool, None], base_type=int,
         return default
 
 
-def as_str(o: Union[str, None], base_type=str, raise_=True):
+def as_str(o: Union[str, None], base_type=str):
     """
     Return `o` if already a str, otherwise return the string value for `o`.
-    If `o` is None or an empty string, return `default` instead.
-
-    If `o` cannot be converted to an str, raise an error if `raise_` is true,
-    other return `default` instead.
-
+    If `o` is None, return an empty string instead.
     """
-    if isinstance(o, base_type):
-        return o
-
-    if o is None:
-        return base_type()
-
-    try:
-        return base_type(o)
-
-    except ValueError:
-
-        if raise_:
-            raise
-
-        return base_type()
+    return '' if o is None else base_type(o)
 
 
 def as_list(o: Union[str, Iterable], sep=','):

@@ -189,27 +189,30 @@ factory.schemas = {
 }
 
 
-def test_load(data, n):
+def test_load(request, data, n):
     g = globals().copy()
     g.update(locals())
 
-    # Result: 0.811
+    # Result: 0.404
     log.info('dataclass-wizard     %f',
              timeit('MyClassWizard.from_dict(data)', globals=g, number=n))
 
-    # Result: 0.795
+    # Result: 0.427
     log.info('dataclass-factory    %f',
             timeit('factory.load(data, Data1)', globals=g, number=n))
 
-    # Result: 20.571
+    # Result: 15.304
     log.info('dataclasses-json     %f',
              timeit('MyClassDJ.from_dict(data)', globals=g, number=n))
 
-    # Result: 45.352
+    if not request.config.getoption("--all"):
+        pytest.skip("Skipping benchmarks for the rest by default, unless --all is specified.")
+
+    # Result: 26.490
     log.info('jsons                %f',
              timeit('MyClassJsons.load(data)', globals=g, number=n))
 
-    # Result: 62.501
+    # Result: 30.343
     log.info('jsons (strict)       %f',
              timeit('MyClassJsons.load(data, strict=True)', globals=g, number=n))
 
@@ -226,7 +229,7 @@ def test_load(data, n):
     assert c1.__dict__ == c2.__dict__ == c4.__dict__
 
 
-def test_dump(data, n):
+def test_dump(request, data, n):
     c1 = MyClassWizard.from_dict(data)
     c2 = factory.load(data, Data1)
     c3 = MyClassDJ.from_dict(data)
@@ -235,27 +238,30 @@ def test_dump(data, n):
     g = globals().copy()
     g.update(locals())
 
-    # Result: 1.096
+    # Result: 0.431
     log.info('dataclass-wizard     %f',
              timeit('c1.to_dict()', globals=g, number=n))
 
-    # Result: 1.754
+    # Result: 0.628
     log.info('asdict (dataclasses) %f',
              timeit('asdict(c1)', globals=g, number=n))
 
-    # Result: 0.597
+    # Result: 0.217
     log.info('dataclass-factory    %f',
              timeit('factory.dump(c2, Data1)', globals=g, number=n))
 
-    # Result: 7.514
+    # Result: 6.332
     log.info('dataclasses-json     %f',
              timeit('c3.to_dict()', globals=g, number=n))
 
-    # Result: 54.996
+    if not request.config.getoption("--all"):
+        pytest.skip("Skipping benchmarks for the rest by default, unless --all is specified.")
+
+    # Result: 41.752
     log.info('jsons                %f',
              timeit('c4.dump()', globals=g, number=n))
 
-    # Result: 51.893
+    # Result: 38.744
     log.info('jsons (strict)       %f',
              timeit('c4.dump(strict=True)', globals=g, number=n))
 

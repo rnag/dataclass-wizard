@@ -96,9 +96,8 @@ class JSONField(Field):
 
             if isinstance(keys, str):
                 keys = split_object_path(keys) if path else (keys,)
-            #     keys = (keys, )
-            # elif keys is Ellipsis:
-            #     keys = ()
+            elif keys is ...:
+                keys = ()
 
             self.json = JSON(*keys, all=all, dump=dump, path=path)
 
@@ -113,9 +112,8 @@ class JSONField(Field):
 
             if isinstance(keys, str):
                 keys = split_object_path(keys) if path else (keys,)
-            #     keys = (keys, )
-            # elif keys is Ellipsis:
-            #     keys = ()
+            elif keys is ...:
+                keys = ()
 
             self.json = JSON(*keys, all=all, dump=dump, path=path)
 

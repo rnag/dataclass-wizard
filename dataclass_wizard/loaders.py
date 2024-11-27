@@ -320,9 +320,8 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
                             base_type: 'type[T]'
                             # return a dynamically generated `fromdict`
                             # for the `cls` (base_type)
-                            return load_func_for_dataclass(
+                            return cls.load_func_for_dataclass(
                                 base_type,
-                                is_main_class=False,
                                 config=extras['config']
                             )
 
