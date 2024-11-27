@@ -74,19 +74,21 @@ def data():
     }
 
 def test_load(data, n):
+    """
+    [ RESULTS ON MAC OS X ]
+
+    benchmarks.simple.simple - [INFO] dataclass-wizard     0.076336
+    benchmarks.simple.simple - [INFO] dataclass-factory    0.103837
+    benchmarks.simple.simple - [INFO] dataclasses-json     3.941902
+    benchmarks.simple.simple - [INFO] jsons                5.636863
+    benchmarks.simple.simple - [INFO] dacite               0.572661
+    benchmarks.simple.simple - [INFO] pydantic             0.081108
+    benchmarks.simple.simple - [INFO] marshmallow          2.550217
+    benchmarks.simple.simple - [INFO] attrs                0.022822
+    benchmarks.simple.simple - [INFO] mashumaro            0.046641
+    """
     g = globals().copy()
     g.update(locals())
-
-    # [ RESULTS ]
-    # benchmarks.simple.simple - [INFO] dataclass-wizard     0.075491
-    # benchmarks.simple.simple - [INFO] dataclass-factory    0.105838
-    # benchmarks.simple.simple - [INFO] dataclasses-json     3.684969
-    # benchmarks.simple.simple - [INFO] jsons                4.713889
-    # benchmarks.simple.simple - [INFO] dacite               0.480481
-    # benchmarks.simple.simple - [INFO] pydantic             0.073991
-    # benchmarks.simple.simple - [INFO] marshmallow          2.219145
-    # benchmarks.simple.simple - [INFO] attrs                0.020691
-    # benchmarks.simple.simple - [INFO] mashumaro            0.042289
 
     # Add dacite and pydantic benchmarks
     log.info("dataclass-wizard     %f",
@@ -122,6 +124,20 @@ def test_load(data, n):
     assert c1.__dict__ == c2.__dict__ == c3.__dict__ == c4.__dict__ == c5.__dict__ == c6.model_dump() == c7 == c8.__dict__ == c9.to_dict()
 
 def test_dump(data, n):
+    """
+    [ RESULTS ON MAC OS X ]
+
+    benchmarks.simple.simple - [INFO] dataclass-wizard     0.072549
+    benchmarks.simple.simple - [INFO] asdict (dataclasses) 0.101621
+    benchmarks.simple.simple - [INFO] dataclass-factory    0.087357
+    benchmarks.simple.simple - [INFO] dataclasses-json     1.488334
+    benchmarks.simple.simple - [INFO] jsons                8.550752
+    benchmarks.simple.simple - [INFO] dacite (not applicable) -- skipped
+    benchmarks.simple.simple - [INFO] pydantic             0.080157
+    benchmarks.simple.simple - [INFO] marshmallow          0.000578
+    benchmarks.simple.simple - [INFO] attrs                0.146561
+    benchmarks.simple.simple - [INFO] mashumaro            0.010199
+    """
 
     # [ RESULTS ]
     # benchmarks.simple.simple - [INFO] dataclass-wizard     0.065604

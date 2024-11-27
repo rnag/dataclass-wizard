@@ -3,8 +3,9 @@ from collections import defaultdict
 from dataclasses import dataclass, field, asdict
 from datetime import datetime
 from timeit import timeit
-from typing import Optional, TypeVar, Dict, Any, List, Union, NamedTuple, Tuple
+from typing import Optional, TypeVar, Dict, Any, List, Union, NamedTuple, Tuple, Type
 
+import dacite
 import dataclass_factory
 import marshmallow
 import pytest
@@ -39,13 +40,36 @@ class MyClassDJ(DataClassJsonMixin):
     is_enabled: bool = True
 
 
-# New Mashumaro Model
 @dataclass
-class MyClassMashumaro(mashumaro.DataClassDictMixin):
+class MyClassDacite:
     my_ledger: Dict[str, Any]
     the_answer_to_life: Optional[int]
-    people: List['Person']
+    people: List['PersonDJ']
     is_enabled: bool = True
+
+
+# New Pydantic Models
+class MyClassPydantic(BaseModel):
+    my_ledger: Dict[str, Any]
+    the_answer_to_life: Optional[int]
+    people: List['PersonPydantic']
+    is_enabled: bool = True
+
+
+# New Pydantic Models
+class PersonPydantic(BaseModel):
+    name: 'NamePydantic'
+    age: int
+    birthdate: datetime
+    gender: str
+    occupation: Union[str, List[str]]
+    hobbies: Dict[str, List[str]] = defaultdict(list)
+
+
+class NamePydantic(BaseModel):
+    first: str
+    last: str
+    salutation: Optional[str] = 'Mr.'
 
 
 @dataclass
@@ -111,11 +135,6 @@ MyClassMashumaro: MashumaroType = create_new_class(
     attr_dict=vars(MyClass).copy())
 
 
-
-def custom_name_decoder(value):
-    return Name(**value)
-
-
 @pytest.fixture(scope='session')
 def data():
     return {
@@ -159,6 +178,18 @@ def data_2(data):
 
     return d
 
+@pytest.fixture(scope='session')
+def data_dacite(data_2):
+    """data for `dacite`, which has a *TON* of issues."""
+
+    # It's official, I hate this library ;-(
+    d = data_2.copy()
+    d['the_answer_to_life'] = int(d['the_answer_to_life'])
+    d['people'][0]['hobbies'] = data_2['people'][0]['hobbies'].copy()
+    d['people'][0]['hobbies']['M-F'] = list(d['people'][0]['hobbies']['M-F'])
+
+    return d
+
 
 def parse_iso_format(data):
     return as_datetime(data)
@@ -172,7 +203,26 @@ factory.schemas = {
     datetime: iso_format_schema
 }
 
-def test_load(request, data, data_2, n):
+def parse_datetime(value: str) -> datetime:
+    return datetime.fromisoformat(value.rstrip('Z'))  # Remove 'Z' if it's present
+
+dacite_cfg = dacite.Config(
+    type_hooks={datetime: parse_datetime})
+
+
+def test_load(request, data, data_2, data_dacite, n):
+    """
+    [ RESULTS ON MAC OS X ]
+
+    benchmarks.complex.complex - [INFO] dataclass-wizard     0.800521
+    benchmarks.complex.complex - [INFO] dataclass-factory    0.827150
+    benchmarks.complex.complex - [INFO] dataclasses-json     37.087781
+    benchmarks.complex.complex - [INFO] dacite               9.421210
+    benchmarks.complex.complex - [INFO] mashumaro            0.608496
+    benchmarks.complex.complex - [INFO] pydantic             1.039472
+    benchmarks.complex.complex - [INFO] jsons                39.677698
+    benchmarks.complex.complex - [INFO] jsons (strict)       41.592585
+    """
     g = globals().copy()
     g.update(locals())
 
@@ -185,8 +235,27 @@ def test_load(request, data, data_2, n):
     log.info('dataclasses-json     %f',
              timeit('MyClassDJ.from_dict(data_2)', globals=g, number=n))
 
+    log.info('dacite               %f',
+             timeit('dacite_from_dict(MyClassDacite, data_dacite, config=dacite_cfg)',
+                    globals=g, number=n))
+
     log.info('mashumaro            %f',
              timeit('MyClassMashumaro.from_dict(data)', globals=g, number=n))
+
+    log.info('pydantic             %f',
+             timeit('MyClassPydantic(**data_2)', globals=g, number=n))
+
+    # Assert the dataclass instances have the same values for all fields.
+    c1 = MyClassWizard.from_dict(data)
+    c2 = factory.load(data_2, MyClass)
+    c3 = MyClassDJ.from_dict(data_2)
+    c4 = MyClassJsons.load(data)
+    c5 = MyClassMashumaro.from_dict(data)
+    c6 = dacite_from_dict(MyClassDacite, data_dacite, config=dacite_cfg)
+    c7 = MyClassPydantic(**data_2)
+
+    # Since these models might differ slightly, we can skip exact equality checks
+    # assert c1.__dict__ == c2.__dict__ == c3.__dict__ == c4.__dict__ == c5.__dict__
 
     if not request.config.getoption("--all"):
         pytest.skip("Skipping benchmarks for the rest by default, unless --all is specified.")
@@ -197,22 +266,26 @@ def test_load(request, data, data_2, n):
     log.info('jsons (strict)       %f',
              timeit('MyClassJsons.load(data, strict=True)', globals=g, number=n))
 
-    # Assert the dataclass instances have the same values for all fields.
-    c1 = MyClassWizard.from_dict(data)
-    c2 = factory.load(data_2, MyClass)
-    c3 = MyClassDJ.from_dict(data)
-    c4 = MyClassJsons.load(data)
-    c5 = MyClassMashumaro.from_dict(data)
 
-    # Since these models might differ slightly, we can skip exact equality checks
-    # assert c1.__dict__ == c2.__dict__ == c3.__dict__ == c4.__dict__ == c5.__dict__
+def test_dump(request, data, data_2, data_dacite, n):
+    """
+    [ RESULTS ON MAC OS X ]
 
-def test_dump(request, data, data_2, n):
+    benchmarks.complex.complex - [INFO] dataclass-wizard     1.606120
+    benchmarks.complex.complex - [INFO] asdict (dataclasses) 2.006917
+    benchmarks.complex.complex - [INFO] dataclass-factory    0.979412
+    benchmarks.complex.complex - [INFO] dataclasses-json     13.740522
+    benchmarks.complex.complex - [INFO] mashumaro            0.289991
+    benchmarks.complex.complex - [INFO] pydantic             0.384267
+    benchmarks.complex.complex - [INFO] jsons                41.673240
+    benchmarks.complex.complex - [INFO] jsons (strict)       45.934885
+    """
     c1 = MyClassWizard.from_dict(data)
     c2 = factory.load(data_2, MyClass)
     c3 = MyClassDJ.from_dict(data_2)
     c4 = MyClassJsons.load(data)
     c5 = MyClassMashumaro.from_dict(data)
+    c6 = MyClassPydantic(**data_2)
 
     g = globals().copy()
     g.update(locals())
@@ -231,6 +304,9 @@ def test_dump(request, data, data_2, n):
 
     log.info('mashumaro            %f',
              timeit('c5.to_dict()', globals=g, number=n))
+
+    log.info('pydantic             %f',
+             timeit('c6.model_dump()', globals=g, number=n))
 
     if not request.config.getoption("--all"):
         pytest.skip("Skipping benchmarks for the rest by default, unless --all is specified.")

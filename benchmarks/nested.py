@@ -9,6 +9,9 @@ import marshmallow
 import pytest
 from dataclasses_json import DataClassJsonMixin, config
 from jsons import JsonSerializable
+from dacite import from_dict as dacite_from_dict
+from pydantic import BaseModel
+import mashumaro
 
 from dataclass_wizard import JSONWizard
 from dataclass_wizard.class_helper import create_new_class
@@ -18,114 +21,117 @@ from dataclass_wizard.utils.type_conv import as_datetime, as_date
 
 log = logging.getLogger(__name__)
 
-
+# Dataclass Definitions (Same as before, no changes needed)
 @dataclass
 class Data1:
-    """
-    Top-level dataclass for the majority of the cases.
-
-    """
     instance: 'Instance'
     result: 'Result'
 
 
 @dataclass
 class Instance:
-    """
-    Instance dataclass
-
-    """
     name: str
     data: 'Data2'
 
 
 @dataclass
 class Data2:
-    """
-    Data dataclass
-
-    """
     date: date
     owner: str
 
 
 @dataclass
 class Result:
-    """
-    Result dataclass
-
-    """
     status: str
     iteration_results: 'IterationResults'
 
 
 @dataclass
 class IterationResults:
-    """
-    IterationResults dataclass
-
-    """
     iterations: List['Iteration']
 
 
 @dataclass
 class Iteration:
-    """
-    Iteration dataclass
-
-    """
     name: str
     data: 'Data3'
 
 
 @dataclass
 class Data3:
-    """
-    Data dataclass
+    question1: str
+    question2: str
 
-    """
+
+# New Model Class Definitions for Libraries
+
+class MyClassPydantic(BaseModel):
+    instance: 'InstancePydantic'
+    result: 'ResultPydantic'
+
+
+class InstancePydantic(BaseModel):
+    name: str
+    data: 'Data2Pydantic'
+
+
+class Data2Pydantic(BaseModel):
+    date: date
+    owner: str
+
+
+class ResultPydantic(BaseModel):
+    status: str
+    iteration_results: 'IterationResultsPydantic'
+
+
+@dataclass
+class IterationResultsPydantic:
+    iterations: List['IterationPydantic']
+
+
+class IterationPydantic(BaseModel):
+    name: str
+    data: 'Data3Pydantic'
+
+
+class Data3Pydantic(BaseModel):
     question1: str
     question2: str
 
 
 @dataclass
-class MyClassDJ(DataClassJsonMixin):
-    """
-    Top level dataclass for testing with `dataclasses-json`. Just a note
-    this nested definition is a bit painful, but necessary as there seems
-    no way to decode `date` fields automatically by default.
-
-    """
-    instance: 'InstanceJD'
+class MyClassMashumaro(mashumaro.DataClassDictMixin):
+    instance: 'InstanceMashumaro'
     result: 'Result'
 
 
 @dataclass
-class InstanceJD:
-    """
-    Instance dataclass for `dataclasses-json`
-
-    """
+class InstanceMashumaro:
     name: str
-    data: 'Data2JD'
+    data: 'Data2Mashumaro'
 
 
 @dataclass
-class Data2JD:
-    """
-    Data dataclass for `dataclasses-json`. Note this is needed because
-    otherwise we de-serialize strings as strings, instead of `date` type.
-    So we need to tell `dataclasses-json` to de-serialize our field as
-    a `date` type.
+class Data2Mashumaro:
+    date: date
+    owner: str
 
-    """
-    date: date = field(
-        metadata=config(
-            encoder=date.isoformat,
-            decoder=as_date,
-            mm_field=marshmallow.fields.Date(format='iso')
-        )
-    )
+
+# Corrected Definition for `MyClassDJ`
+@dataclass
+class MyClassDJ(DataClassJsonMixin):
+    instance: 'InstanceDJ'
+    result: 'Result'
+
+
+class InstanceDJ:
+    name: str
+    data: 'Data2DJ'
+
+
+class Data2DJ:
+    date: date
     owner: str
 
 
@@ -144,6 +150,12 @@ MyClassWizard: WizType = create_new_class(
 MyClassJsons: JsonsType = create_new_class(
     Data1, (Data1, JsonSerializable), 'Jsons',
     attr_dict=vars(Data1).copy())
+
+# Pydantic Model for Benchmarking
+MyClassPydanticModel = MyClassPydantic
+
+# Mashumaro Model for Benchmarking
+MyClassMashumaroModel = MyClassMashumaro
 
 
 @pytest.fixture(scope='session')
@@ -190,88 +202,111 @@ factory.schemas = {
 
 
 def test_load(request, data, n):
+    """
+    [ RESULTS ON MAC OS X ]
+
+    benchmarks.nested.nested - [INFO] dataclass-wizard     0.397123
+    benchmarks.nested.nested - [INFO] dataclass-factory    0.418530
+    benchmarks.nested.nested - [INFO] dataclasses-json     11.443072
+    benchmarks.nested.nested - [INFO] mashumaro            0.158189
+    benchmarks.nested.nested - [INFO] pydantic             0.346031
+    benchmarks.nested.nested - [INFO] jsons                28.124958
+    benchmarks.nested.nested - [INFO] jsons (strict)       28.816675
+
+    """
     g = globals().copy()
     g.update(locals())
 
-    # Result: 0.404
     log.info('dataclass-wizard     %f',
              timeit('MyClassWizard.from_dict(data)', globals=g, number=n))
 
-    # Result: 0.427
     log.info('dataclass-factory    %f',
-            timeit('factory.load(data, Data1)', globals=g, number=n))
+             timeit('factory.load(data, Data1)', globals=g, number=n))
 
-    # Result: 15.304
     log.info('dataclasses-json     %f',
              timeit('MyClassDJ.from_dict(data)', globals=g, number=n))
+
+    # JUST SKKIPING IN INTERESTS OF TIME
+    # log.info('dacite               %f',
+    #          timeit('dacite_from_dict(MyClass, data)', globals=g, number=n))
+
+    log.info('mashumaro            %f',
+             timeit('MyClassMashumaro.from_dict(data)', globals=g, number=n))
+
+    log.info('pydantic             %f',
+             timeit('MyClassPydantic(**data)', globals=g, number=n))
 
     if not request.config.getoption("--all"):
         pytest.skip("Skipping benchmarks for the rest by default, unless --all is specified.")
 
-    # Result: 26.490
     log.info('jsons                %f',
              timeit('MyClassJsons.load(data)', globals=g, number=n))
 
-    # Result: 30.343
     log.info('jsons (strict)       %f',
              timeit('MyClassJsons.load(data, strict=True)', globals=g, number=n))
 
-    # Assert the dataclass instances have the same values for all fields.
-
-    c1 = MyClassWizard.from_dict(data)
-    c2 = factory.load(data, Data1)
-    c3 = MyClassDJ.from_dict(data)  # TODO unused in comparison
-    c4 = MyClassJsons.load(data)
-
-    # Note: we can't do direct comparison with `dataclasses-json`, because
-    # that uses different model dataclasses (for ex. `InstanceJD` instead
-    # of `Instance`)
-    assert c1.__dict__ == c2.__dict__ == c4.__dict__
-
-
-def test_dump(request, data, n):
     c1 = MyClassWizard.from_dict(data)
     c2 = factory.load(data, Data1)
     c3 = MyClassDJ.from_dict(data)
     c4 = MyClassJsons.load(data)
+    c5 = MyClassMashumaro.from_dict(data)
+    # c6 = dacite_from_dict(MyClass, data)
+    c7 = MyClassPydantic(**data)
+
+    assert c1.__dict__ == c2.__dict__ == c3.__dict__ == c4.__dict__ == c5.__dict__ == c7.__dict__ # == c6.__dict__
+
+
+def test_dump(request, data, n):
+    """
+    [ RESULTS ON MAC OS X ]
+
+    INFO     benchmarks.nested:nested.py:258 dataclass-wizard     0.460812
+    INFO     benchmarks.nested:nested.py:261 asdict (dataclasses) 0.674034
+    INFO     benchmarks.nested:nested.py:264 dataclass-factory    0.233023
+    INFO     benchmarks.nested:nested.py:267 dataclasses-json     5.717344
+    INFO     benchmarks.nested:nested.py:270 mashumaro            0.086356
+    INFO     benchmarks.nested:nested.py:273 pydantic             0.209953
+    INFO     benchmarks.nested:nested.py:279 jsons                49.321013
+    INFO     benchmarks.nested:nested.py:282 jsons (strict)       44.051063
+    """
+    c1 = MyClassWizard.from_dict(data)
+    c2 = factory.load(data, Data1)
+    c3 = MyClassDJ.from_dict(data)
+    c4 = MyClassJsons.load(data)
+    c5 = MyClassMashumaro.from_dict(data)
+    c6 = MyClassPydantic(**data)
 
     g = globals().copy()
     g.update(locals())
 
-    # Result: 0.431
     log.info('dataclass-wizard     %f',
              timeit('c1.to_dict()', globals=g, number=n))
 
-    # Result: 0.628
     log.info('asdict (dataclasses) %f',
              timeit('asdict(c1)', globals=g, number=n))
 
-    # Result: 0.217
     log.info('dataclass-factory    %f',
              timeit('factory.dump(c2, Data1)', globals=g, number=n))
 
-    # Result: 6.332
     log.info('dataclasses-json     %f',
              timeit('c3.to_dict()', globals=g, number=n))
+
+    log.info('mashumaro            %f',
+             timeit('c5.to_dict()', globals=g, number=n))
+
+    log.info('pydantic             %f',
+             timeit('c6.model_dump()', globals=g, number=n))
 
     if not request.config.getoption("--all"):
         pytest.skip("Skipping benchmarks for the rest by default, unless --all is specified.")
 
-    # Result: 41.752
     log.info('jsons                %f',
              timeit('c4.dump()', globals=g, number=n))
 
-    # Result: 38.744
     log.info('jsons (strict)       %f',
              timeit('c4.dump(strict=True)', globals=g, number=n))
 
     # Assert the dict objects which are the result of `to_dict` are all equal.
+    c1_dict = {to_snake_case(f): fval for f, fval in c1.to_dict().items()}
 
-    # Need this step because our lib converts field names to camel-case
-    # by default.
-    # c1_dict = {to_snake_case(f): fval for f, fval in c1.to_dict().items()}
-
-    # I tried to do an assertion but it failed. Even if I remove our result
-    # e.g. `c1_dict`, results are still unequal between the others. I'll
-    # need to dedicate some time to look into this a bit more in depth.
-    # assert c1_dict == factory.dump(c2, Data1) == c3.to_dict() == c4.dump()
+    # assert c1_dict == factory.dump(c2, Data1) == c3.to_dict() == c4.dump() == c5.to_dict()
