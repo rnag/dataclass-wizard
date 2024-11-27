@@ -10,6 +10,8 @@ import pytest
 
 from dataclass_wizard import EnvWizard, json_field
 from dataclass_wizard.errors import MissingVars, ParseError, ExtraData
+import dataclass_wizard.bases_meta
+
 
 from ...conftest import *
 
@@ -438,3 +440,7 @@ def test_init_method_declaration_is_logged_when_debug_mode_is_enabled(mock_debug
     # assert that the __init__() method declaration is logged
     assert mock_debug_log.records[-1].levelname == 'DEBUG'
     assert 'Generated function code' in mock_debug_log.records[-2].message
+
+    # reset global flag for other tests that
+    # rely on `debug_enabled` functionality
+    dataclass_wizard.bases_meta._debug_was_enabled = False
