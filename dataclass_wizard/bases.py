@@ -40,7 +40,7 @@ class ABCOrAndMeta(ABCMeta):
         base_dict = {'__slots__': ()}
 
         # Set meta attributes here.
-        if src is AbstractMeta:
+        if src is AbstractMeta or src is AbstractEnvMeta:
             # Here we can't use `src` because the `bind_to` method isn't
             # defined on the abstract class. Use `other` instead, which
             # *will* be a concrete subclass of `AbstractMeta`.
@@ -249,7 +249,7 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
         """
 
 
-class AbstractEnvMeta:
+class AbstractEnvMeta(metaclass=ABCOrAndMeta):
     """
     Base class definition for the `EnvWizard.Meta` inner class.
     """
@@ -278,6 +278,16 @@ class AbstractEnvMeta:
     #
     # Note there is a minor performance impact when DEBUG mode is enabled.
     debug_enabled: ClassVar[bool] = False
+
+    # When enabled, a specified Meta config for the main dataclass (i.e. the
+    # class on which `from_dict` and `to_dict` is called) will cascade down
+    # and be merged with the Meta config for each *nested* dataclass; note
+    # that during a merge, priority is given to the Meta config specified on
+    # each class.
+    #
+    # The default behavior is True, so the Meta config (if provided) will
+    # apply in a recursive manner.
+    recursive: ClassVar[bool] = True
 
     # `True` to load environment variables from an `.env` file, or a
     # list/tuple of dotenv files.
@@ -317,6 +327,15 @@ class AbstractEnvMeta:
     # in the serialization process.
     skip_defaults: ClassVar[bool] = False
 
+    # Determines the :class:`Condition` to skip / omit dataclass
+    # fields in the serialization process.
+    skip_if: ClassVar[Condition] = None
+
+    # Determines the condition to skip / omit fields with default values
+    # (based on the `default` or `default_factory` argument specified for
+    # the :func:`dataclasses.field`) in the serialization process.
+    skip_defaults_if: ClassVar[Condition] = None
+
     @cached_class_property
     def all_fields(cls) -> FrozenKeys:
         """Return a list of all class attributes"""
@@ -329,7 +348,7 @@ class AbstractEnvMeta:
 
     @classmethod
     @abstractmethod
-    def bind_to(cls, env_class: Type, create=True):
+    def bind_to(cls, env_class: Type, create=True, is_default=True):
         """
         Initialize hook which applies the Meta config to `env_class`, which is
         typically a subclass of :class:`EnvWizard`.
@@ -339,6 +358,8 @@ class AbstractEnvMeta:
           for the class. If disabled, this will access the root loader/dumper,
           so modifying this should affect global settings across all
           dataclasses that use the JSON load/dump process.
+        :param is_default: When enabled, the Meta will be cached as the
+          default Meta config for the dataclass. Defaults to true.
 
         """
 

@@ -491,3 +491,15 @@ def SkipIf(condition: Condition) -> Condition:
 
 
 SkipIfNone: Condition
+
+
+def finalize_skip_if(skip_if: Condition,
+                     operand_1: str,
+                     conditional: str) -> str:
+    ...
+
+
+def get_skip_if_condition(skip_if: Condition,
+                          _locals: dict[str, Any],
+                          operand_2: str) -> 'str | bool':
+    ...

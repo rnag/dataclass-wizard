@@ -226,7 +226,7 @@ class BaseEnvWizardMeta(AbstractEnvMeta):
             cls.bind_to(new_cls, create=False)
 
     @classmethod
-    def bind_to(cls, env_class: Type, create=True):
+    def bind_to(cls, env_class: Type, create=True, is_default=True):
 
         cls_loader = get_loader(env_class, create=create, base_cls=EnvLoader)
         cls_dumper = get_dumper(env_class, create=create)
@@ -248,8 +248,13 @@ class BaseEnvWizardMeta(AbstractEnvMeta):
         # Finally, if needed, save the meta config for the outer class. This
         # will allow us to access this config as part of the JSON load/dump
         # process if needed.
-
-        _META[env_class] = cls
+        if is_default:
+            # Check if the dataclass already has a Meta config; if so, we need to
+            # copy over special attributes so they don't get overwritten.
+            if env_class in _META:
+                _META[env_class] &= cls
+            else:
+                _META[env_class] = cls
 
 
 # noinspection PyPep8Naming
@@ -351,8 +356,8 @@ def EnvMeta(*, debug_enabled: 'bool | int | str' = False,
              key_transform_with_dump: Union[LetterCase, str] = LetterCase.SNAKE,
              # marshal_date_time_as: Union[DateTimeTo, str] = None,
              skip_defaults: bool = False,
-             # skip_if: Condition = None,
-             # skip_defaults_if: Condition = None,
+             skip_if: Condition = None,
+             skip_defaults_if: Condition = None,
              ) -> META:
     """
     Helper function to setup the ``Meta`` Config for the EnvWizard.
@@ -377,6 +382,8 @@ def EnvMeta(*, debug_enabled: 'bool | int | str' = False,
         'key_lookup_with_load': key_lookup_with_load,
         'key_transform_with_dump': key_transform_with_dump,
         'skip_defaults': skip_defaults,
+        'skip_if': skip_if,
+        'skip_defaults_if': skip_defaults_if,
     }
 
     # Create a new subclass of :class:`AbstractMeta`

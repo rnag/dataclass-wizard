@@ -88,6 +88,7 @@ __all__ = [
     'asdict',
     'LoadMeta',
     'DumpMeta',
+    'EnvMeta',
     # Models
     'json_field',
     'json_key',
@@ -116,7 +117,7 @@ __all__ = [
 
 import logging
 
-from .bases_meta import LoadMeta, DumpMeta
+from .bases_meta import LoadMeta, DumpMeta, EnvMeta
 from .dumpers import DumpMixin, setup_default_dumper, asdict
 from .loaders import LoadMixin, setup_default_loader, fromlist, fromdict
 from .models import (json_field, json_key, path_field, skip_if_field,

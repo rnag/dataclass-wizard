@@ -4,6 +4,7 @@ from typing import AnyStr, dataclass_transform, Collection
 
 from ..abstractions import AbstractEnvWizard, E
 from ..bases_meta import BaseEnvWizardMeta
+from ..enums import LetterCase
 from ..errors import ParseError
 from ..type_def import JSONObject, Encoder, EnvFileType
 
@@ -72,7 +73,9 @@ class EnvWizard(AbstractEnvWizard):
                  **init_kwargs) -> None:
         ...
 
-    def __init_subclass__(cls, *, reload_env: bool = False, debug: bool = False):
+    def __init_subclass__(cls, *, reload_env: bool = False,
+                          debug: bool = False,
+                          key_transform=LetterCase.NONE):
         ...
 
     @classmethod

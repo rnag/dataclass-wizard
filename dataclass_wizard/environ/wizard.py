@@ -11,6 +11,7 @@ from ..bases_meta import BaseEnvWizardMeta, EnvMeta
 from ..class_helper import (call_meta_initializer_if_needed, get_meta,
                             field_to_env_var, dataclass_field_to_json_field)
 from ..decorators import cached_class_property
+from ..enums import LetterCase
 from ..environ.loaders import EnvLoader
 from ..errors import ExtraData, MissingVars, ParseError, type_name
 from ..loaders import get_loader
@@ -68,7 +69,8 @@ class EnvWizard(AbstractEnvWizard):
 
         return encoder(asdict(self), **encoder_kwargs)
 
-    def __init_subclass__(cls, *, reload_env=False, debug=False):
+    def __init_subclass__(cls, *, reload_env=False, debug=False,
+                          key_transform=LetterCase.NONE):
 
         if reload_env:  # reload cached var names from `os.environ` as needed.
             Env.reload()
@@ -76,13 +78,19 @@ class EnvWizard(AbstractEnvWizard):
         # apply the `@dataclass(init=False)` decorator to `cls`.
         _to_dataclass(cls)
 
+        # set `key_transform_with_dump` for the class's Meta
+        meta = EnvMeta(key_transform_with_dump=key_transform)
+
         if debug:
             default_lvl = logging.DEBUG
             logging.basicConfig(level=default_lvl)
             # minimum logging level for logs by this library
             min_level = default_lvl if isinstance(debug, bool) else debug
             # set `debug_enabled` flag for the class's Meta
-            EnvMeta(debug_enabled=min_level).bind_to(cls)
+            meta.debug_enabled = min_level
+
+        # Bind child class to DumpMeta with no key transformation.
+        meta.bind_to(cls)
 
         # Calls the Meta initializer when inner :class:`Meta` is sub-classed.
         call_meta_initializer_if_needed(cls)
