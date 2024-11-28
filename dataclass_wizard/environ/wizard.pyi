@@ -14,10 +14,7 @@ class EnvWizard(AbstractEnvWizard):
     __slots__ = ()
 
     class Meta(BaseEnvWizardMeta):
-        """
-        Inner meta class that can be extended by sub-classes for additional
-        customization with the environment load process.
-        """
+
         __slots__ = ()
 
         # Class attribute to enable detection of the class type.
@@ -36,34 +33,11 @@ class EnvWizard(AbstractEnvWizard):
                 exclude: Collection[str] | None = None,
                 skip_defaults: bool | None = None,
                 ) -> JSONObject:
-        """
-        Converts the `EnvWizard` subclass to a Python dictionary object that is
-        JSON serializable.
-
-        Example usage:
-
-          class C(EnvWizard):
-              x: int
-              y: int
-              z: bool = True
-
-          c = C(x=1, y=2, z=True)
-          assert c.to_dict(skip_defaults=True) == {'x': 1, 'y': 2}
-
-        If given, 'dict_factory' will be used instead of built-in dict.
-        The function applies recursively to field values that are
-        dataclass instances. This will also look into built-in containers:
-        tuples, lists, and dicts.
-        """
-        # alias: asdict(self)
         ...
 
     def to_json(self: E, *,
                 encoder: Encoder = json.dumps,
                 **encoder_kwargs) -> AnyStr:
-        """
-        Converts the `EnvWizard` subclass to a JSON `string` representation.
-        """
         ...
 
     # stub for type hinting purposes.
@@ -80,12 +54,7 @@ class EnvWizard(AbstractEnvWizard):
 
     @classmethod
     def _create_methods(cls) -> None:
-        """
-        Generates methods such as the ``__init__()`` constructor method
-        and ``dict()`` for the :class:`EnvWizard` subclass, vis-à-vis
-        how the ``dataclasses`` module does it, with a few noticeable
-        differences.
-        """
+        ...
 
 
 def _add_missing_var(missing_vars: list, name: str, tp: type) -> None:

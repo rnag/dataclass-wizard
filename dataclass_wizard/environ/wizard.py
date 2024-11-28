@@ -28,7 +28,10 @@ class EnvWizard(AbstractEnvWizard):
     __slots__ = ()
 
     class Meta(BaseEnvWizardMeta):
-
+        """
+        Inner meta class that can be extended by sub-classes for additional
+        customization with the environment load process.
+        """
         __slots__ = ()
 
         # Class attribute to enable detection of the class type.
@@ -66,7 +69,9 @@ class EnvWizard(AbstractEnvWizard):
     def to_json(self, *,
                 encoder = json.dumps,
                 **encoder_kwargs):
-
+        """
+        Converts the `EnvWizard` subclass to a JSON `string` representation.
+        """
         return encoder(asdict(self), **encoder_kwargs)
 
     def __init_subclass__(cls, *, reload_env=False, debug=False,
@@ -100,7 +105,12 @@ class EnvWizard(AbstractEnvWizard):
 
     @classmethod
     def _create_methods(cls):
-
+        """
+        Generates methods such as the ``__init__()`` constructor method
+        and ``dict()`` for the :class:`EnvWizard` subclass, vis-à-vis
+        how the ``dataclasses`` module does it, with a few noticeable
+        differences.
+        """
         meta = get_meta(cls, base_cls=AbstractEnvMeta)
         cls_loader = get_loader(cls, base_cls=EnvLoader)
 
