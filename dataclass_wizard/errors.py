@@ -401,36 +401,35 @@ class MissingVars(JSONWizardError):
     (most likely due to missing environment variables in the Environment)
 
     """
-    _TEMPLATE = ('{prefix} in class `{cls}` missing in the Environment:\n'
+    _TEMPLATE = ('\n`{cls}` has {prefix} missing in the environment:\n'
                  '{fields}\n\n'
-                 'resolution #1: set a default value for any optional fields, as below.\n\n'
+                 '**Resolution options**\n\n'
+                 '1. Set a default value for the field:\n\n'
                  '{def_resolution}'
-                 '\n\n...\n'
-                 'resolution #2: pass in values for required fields to {cls}.__init__():\n\n'
+                 '\n\n'
+                 '2. Provide the value during initialization:\n\n'
                  '    {init_resolution}')
 
     def __init__(self,
                  cls: Type,
-                 missing_vars: Sequence[Tuple[str, str, Any]]):
+                 missing_vars: Sequence[Tuple[str, 'str | None', str, Any]]):
 
         super().__init__()
 
         indent = ' ' * 4
 
+        #   - `name` (mapped to `CUSTOM_A_NAME`)
         self.class_name: str = type_name(cls)
-        self.fields = '\n'.join([f'{indent}- {f[0]}' for f in missing_vars])
-        self.def_resolution = '\n'.join([f'class {self.class_name}:'] +
-                                        [f'{indent}{f}: {typ} = {default!r}'
-                                         for (f, typ, default) in missing_vars])
+        self.fields = '\n'.join([f'{indent}- {f[0]} -> {f[1]}' for f in missing_vars])
+        self.def_resolution = '\n'.join([f'{indent}class {self.class_name}:'] +
+                                        [f'{indent * 2}{f}: {typ} = {default!r}'
+                                         for (f, _, typ, default) in missing_vars])
 
-        init_vars = ', '.join([f'{f}={default!r}' for (f, typ, default) in missing_vars])
+        init_vars = ', '.join([f'{f}={default!r}' for (f, _, typ, default) in missing_vars])
         self.init_resolution = f'instance = {self.class_name}({init_vars})'
 
         num_fields = len(missing_vars)
-        if num_fields > 1:
-            self.prefix = f'There are {len(missing_vars)} required fields'
-        else:
-            self.prefix = f'There is {len(missing_vars)} required field'
+        self.prefix = f'{len(missing_vars)} required field{"s" if num_fields > 1 else ""}'
 
     @property
     def message(self) -> str:

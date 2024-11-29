@@ -1,6 +1,6 @@
 import json
 from dataclasses import Field
-from typing import AnyStr, dataclass_transform, Collection
+from typing import AnyStr, dataclass_transform, Collection, Sequence
 
 from ..abstractions import AbstractEnvWizard, E
 from ..bases_meta import BaseEnvWizardMeta
@@ -32,36 +32,37 @@ class EnvWizard(AbstractEnvWizard):
                 dict_factory=dict,
                 exclude: Collection[str] | None = None,
                 skip_defaults: bool | None = None,
-                ) -> JSONObject:
-        ...
+                ) -> JSONObject: ...
 
     def to_json(self: E, *,
                 encoder: Encoder = json.dumps,
-                **encoder_kwargs) -> AnyStr:
-        ...
+                **encoder_kwargs) -> AnyStr: ...
 
     # stub for type hinting purposes.
     def __init__(self, *,
                  _env_file: EnvFileType = None,
                  _reload: bool = False,
-                 **init_kwargs) -> None:
-        ...
+                 _env_prefix:str=None,
+                 _secrets_dir:EnvFileType | Sequence[EnvFileType]=None,
+                 **init_kwargs) -> None: ...
 
     def __init_subclass__(cls, *, reload_env: bool = False,
                           debug: bool = False,
-                          key_transform=LetterCase.NONE):
-        ...
+                          key_transform=LetterCase.NONE): ...
 
     @classmethod
-    def _create_methods(cls) -> None:
-        ...
+    def _create_methods(cls) -> None: ...
 
 
-def _add_missing_var(missing_vars: list, name: str, tp: type) -> None:
-    ...
+def _add_missing_var(missing_vars: list,
+                     name: str,
+                     env_prefix: str | None,
+                     var_name: str | None,
+                     tp: type) -> None: ...
 
 
 def _handle_parse_error(e: ParseError,
-                        cls: type, name: str,
-                        var_name: str | None):
-    ...
+                        cls: type,
+                        name: str,
+                        env_prefix: str | None,
+                        var_name: str | None): ...

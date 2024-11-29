@@ -191,21 +191,22 @@ def test_load_with_missing_env_variables():
     with pytest.raises(MissingVars) as e:
         _ = MyClass()
 
-    assert str(e.value) == dedent("""\
-    There are 3 required fields in class `test_load_with_missing_env_variables.<locals>.MyClass` missing in the Environment:
-        - missing_field_1
-        - missing_field_2
-        - missing_field_3
+    assert str(e.value) == dedent("""
+    `test_load_with_missing_env_variables.<locals>.MyClass` has 3 required fields missing in the environment:
+        - missing_field_1 -> missing_field_1
+        - missing_field_2 -> missing_field_2
+        - missing_field_3 -> missing_field_3
 
-    resolution #1: set a default value for any optional fields, as below.
+    **Resolution options**
 
-    class test_load_with_missing_env_variables.<locals>.MyClass:
-        missing_field_1: str = ''
-        missing_field_2: datetime = None
-        missing_field_3: typing.Dict[str, int] = None
+    1. Set a default value for the field:
 
-    ...
-    resolution #2: pass in values for required fields to test_load_with_missing_env_variables.<locals>.MyClass.__init__():
+        class test_load_with_missing_env_variables.<locals>.MyClass:
+            missing_field_1: str = ''
+            missing_field_2: datetime = None
+            missing_field_3: typing.Dict[str, int] = None
+
+    2. Provide the value during initialization:
 
         instance = test_load_with_missing_env_variables.<locals>.MyClass(missing_field_1='', missing_field_2=None, missing_field_3=None)
     """.rstrip())

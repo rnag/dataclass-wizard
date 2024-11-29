@@ -52,7 +52,7 @@ class Env:
         Cached mapping of `os.environ` key names. This can be refreshed with
         :meth:`reload` as needed.
         """
-        return set(environ)
+        return set(environ) if environ is not None else set()
 
     @classmethod
     def reload(cls, env=None):

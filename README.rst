@@ -110,13 +110,13 @@ Wizard Mixins
 
 In addition to ``JSONWizard``, these handy Mixin_ classes simplify your workflow:
 
-* `JSONPyWizard`_ — A ``JSONWizard`` helper to skip *camelCase* and keep keys as-is.
-* `EnvWizard`_ -- Enables loading of Environment variables and ``.env`` files into strongly-typed class schemas.
-* `JSONListWizard`_ -- Extends ``JSONWizard`` to return `Container`_ -- instead of *list* -- objects where possible.
-* `JSONFileWizard`_ -- Makes it easier to convert dataclass instances from/to JSON files on a local drive.
-* `TOMLWizard`_ -- Provides support to convert dataclass instances to/from TOML.
-* `YAMLWizard`_ -- Provides support to convert dataclass instances to/from YAML, using the default ``PyYAML`` parser.
 
+* `EnvWizard`_ — Seamlessly load environment variables and ``.env`` files into strongly-typed schemas. Handles secret files, with file names as keys.
+* `JSONPyWizard`_ — A ``JSONWizard`` helper to skip *camelCase* and preserve keys as-is.
+* `JSONListWizard`_ — Extends ``JSONWizard`` to return `Container`_ objects instead of *lists* when possible.
+* `JSONFileWizard`_ — Effortlessly convert dataclass instances from/to JSON files on your local drive.
+* `TOMLWizard`_ — Easily map dataclass instances to/from TOML format.
+* `YAMLWizard`_ — Instantly convert dataclass instances to/from YAML, using the default ``PyYAML`` parser.
 
 Supported Types
 ---------------
@@ -135,87 +135,100 @@ in the docs.
 Usage and Examples
 ------------------
 
-Using the built-in JSON marshalling support for dataclasses:
-
-    Note: The following example should work in **Python 3.9+** with the included ``__future__``
-    import.
+Using the built-in JSON marshalling for dataclasses:
 
 .. code:: python3
 
-    from __future__ import annotations  # This can be removed in Python 3.10+
-
+    from __future__ import annotations  # Remove in Python 3.10+
     from dataclasses import dataclass, field
     from datetime import date
     from enum import Enum
 
     from dataclass_wizard import JSONWizard
 
-
     @dataclass
     class Data(JSONWizard):
-
         class _(JSONWizard.Meta):
-            # Sets the target key transform to use for serialization;
-            # defaults to `camelCase` if not specified.
             key_transform_with_dump = 'LISP'
 
         a_sample_bool: bool
         values: list[Inner] = field(default_factory=list)
-
 
     @dataclass
     class Inner:
         vehicle: Car | None
         my_dates: dict[int, date]
 
-
     class Car(Enum):
         SEDAN = 'BMW Coupe'
         SUV = 'Toyota 4Runner'
         JEEP = 'Jeep Cherokee'
 
-
     def main():
-
         my_dict = {
             'values': [
-                {
-                    'vehicle': 'Toyota 4Runner',
-                    'My-Dates': {'123': '2023-01-31'}
-                },
-                {
-                    'vehicle': None,
-                    'my_dates': {}
-                }
+                {'vehicle': 'Toyota 4Runner', 'My-Dates': {'123': '2023-01-31'}},
+                {'vehicle': None, 'my_dates': {}}
             ],
             'aSampleBool': 'TRUE'
         }
 
-        # De-serialize (a JSON string or dictionary data) into a `Data` instance.
+        # Deserialize into Data instance
         data = Data.from_dict(my_dict)
+        print(repr(data))  # Output: Data(a_sample_bool=True, values=[Inner(vehicle=<Car.SUV: 'Toyota 4Runner'>)])
 
-        print(repr(data))
-        # > Data(a_sample_bool=True, values=[Inner(vehicle=<Car.SUV: 'Toyota 4Runner'>, ...)])
-
-        # assert enums values are as expected
         assert data.values[0].vehicle is Car.SUV
+        print(data.to_json(indent=2))  # JSON formatted output
 
-        print(data.to_json(indent=2))
-        # {
-        #   "a-sample-bool": true,
-        #   "values": [
-        #     {
-        #       "vehicle": "Toyota 4Runner",
-        #       "my-dates": {
-        #         "123": "2023-01-31"
-        #       },
-        #   ...
-
-        # True
+        # Check serialization consistency
         assert data == data.from_json(data.to_json())
 
     if __name__ == '__main__':
         main()
+
+Easily map environment variables to Python dataclasses with ``EnvWizard``:
+
+.. code-block:: python3
+
+    import os
+    from dataclass_wizard import EnvWizard
+
+    # Set up environment variables
+    os.environ.update({
+        'APP_NAME': 'Env Wizard',
+        'MAX_CONNECTIONS': '10',
+        'DEBUG_MODE': 'true'
+    })
+
+
+    # Define dataclass using EnvWizard
+    class AppConfig(EnvWizard):
+        app_name: str
+        max_connections: int
+        debug_mode: bool
+
+
+    # Load config from environment variables
+    config = AppConfig()
+    print(config.app_name)    #> Env Wizard
+    print(config.debug_mode)  #> True
+    assert config.max_connections == 10
+
+    # Override with keyword arguments
+    config = AppConfig(app_name='Dataclass Wizard Rocks!', debug_mode='false')
+    print(config.app_name)    #> Dataclass Wizard Rocks!
+    assert config.debug_mode is False
+
+.. note::
+    ``EnvWizard`` is a lightweight tool for mapping environment variables to Python dataclasses. It simplifies configuration with type validation and ``.env`` support. It also handles secret files, where file names become the keys.
+
+    *Features*:
+
+    - **Auto Parsing**: Handles complex data types and nested structures.
+    - **Configurable**: Adjust variable names, prefixes, and dotenv files.
+    - **Validation**: Raises clear errors for missing or malformed variables.
+
+    📖 `Full Documentation <https://dataclass-wizard.readthedocs.io/en/latest/env_magic.html>`_
 
 ... and with the ``property_wizard``, which provides support for
 `field properties`_ with default values in dataclasses:
@@ -303,7 +316,6 @@ Using the built-in JSON marshalling support for dataclasses:
 
         """
         created_at: date
-
 
 JSON Marshalling
 ----------------

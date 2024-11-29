@@ -1,6 +1,5 @@
 import json
 import logging
-from collections.abc import Sequence
 from dataclasses import MISSING, dataclass, fields
 from typing import Callable
 
@@ -17,7 +16,7 @@ from ..environ.loaders import EnvLoader
 from ..errors import ExtraData, MissingVars, ParseError, type_name
 from ..loaders import get_loader
 from ..models import Extras, JSONField
-from ..type_def import EnvFileType, ExplicitNull, JSONObject, dataclass_transform
+from ..type_def import ExplicitNull, JSONObject, dataclass_transform
 from ..utils.function_builder import FunctionBuilder
 
 
@@ -26,6 +25,87 @@ _to_dataclass = dataclass(init=False)
 
 @dataclass_transform(kw_only_default=True)
 class EnvWizard(AbstractEnvWizard):
+    """
+    *Environment Wizard*
+
+    A mixin class for parsing and managing environment variables in Python.
+
+    ``EnvWizard`` makes it easy to map environment variables to Python attributes,
+    handle defaults, and optionally load values from `.env` files.
+
+    Quick Example::
+
+        import os
+        from pathlib import Path
+
+        class MyConfig(EnvWizard):
+            my_var: str
+            my_optional_var: int = 42
+
+        # Set environment variables
+        os.environ["MY_VAR"] = "hello"
+
+        # Load configuration from the environment
+        config = MyConfig()
+        print(config.my_var)  # Output: "hello"
+        print(config.my_optional_var)  # Output: 42
+
+        # Specify configuration explicitly
+        config = MyConfig(my_var='world')
+        print(config.my_var)  # Output: "world"
+        print(config.my_optional_var)  # Output: 42
+
+    Example with ``.env`` file::
+
+        class MyConfigWithEnvFile(EnvWizard):
+            class _(EnvWizard.Meta):
+                env_file = True  # Defaults to loading from `.env`
+
+            my_var: str
+            my_optional_var: int = 42
+
+        # Create an `.env` file in the current directory:
+        # MY_VAR=world
+        config = MyConfigWithEnvFile()
+        print(config.my_var)  # Output: "world"
+        print(config.my_optional_var)  # Output: 42
+
+    Key Features:
+        - Automatically maps environment variables to dataclass fields.
+        - Supports default values for fields if environment variables are not set.
+        - Optionally loads environment variables from `.env` files.
+        - Supports prefixes for environment variables using ``_env_prefix`` or ``Meta.env_prefix``.
+        - Supports loading secrets from directories using ``_secrets_dir`` or ``Meta.secrets_dir``.
+        - Dynamic reloading with ``_reload`` to handle updated environment values.
+
+    Initialization Options:
+        The ``__init__`` method accepts additional parameters for flexibility:
+
+        - ``_env_file`` (optional):
+            Overrides the ``Meta.env_file`` value dynamically. Can be a file path,
+            a sequence of file paths, or ``True`` to use the default `.env` file.
+        - ``_reload`` (optional):
+            Forces a reload of environment variables to bypass caching. Defaults to ``False``.
+        - ``_env_prefix`` (optional):
+            Dynamically overrides ``Meta.env_prefix``, applying a prefix to all environment
+            variables. Defaults to ``None``.
+        - ``_secrets_dir`` (optional):
+            Overrides the ``Meta.secrets_dir`` value dynamically. Can be a directory path
+            or a sequence of paths pointing to directories containing secret files.
+
+    Meta Settings:
+        These class-level attributes can be configured in a nested ``Meta`` class:
+
+        - ``env_file``:
+            The path(s) to `.env` files to load. If set to ``True``, defaults to `.env`.
+        - ``env_prefix``:
+            A prefix applied to all environment variables. Defaults to ``None``.
+        - ``secrets_dir``:
+            A path or sequence of paths to directories containing secret files. Defaults to ``None``.
+
+    Attributes:
+        Defined dynamically based on the dataclass fields in the derived class.
+    """
     __slots__ = ()
 
     class Meta(BaseEnvWizardMeta):
@@ -77,8 +157,6 @@ class EnvWizard(AbstractEnvWizard):
 
     def __init_subclass__(cls, *, reload_env=False, debug=False,
                           key_transform=LetterCase.NONE):
-
-        Env.load_environ()
 
         if reload_env:  # reload cached var names from `os.environ` as needed.
             Env.reload()
@@ -146,8 +224,6 @@ class EnvWizard(AbstractEnvWizard):
                     'cls': cls,
                     'fields_ordered': cls_fields.keys(),
                     'handle_err': _handle_parse_error,
-                    'EnvFileType': EnvFileType,
-                    'Sequence': Sequence,
                     }
 
         if meta.secrets_dir is None:
@@ -158,10 +234,10 @@ class EnvWizard(AbstractEnvWizard):
 
         # parameters to the `__init__()` method.
         init_params = ['self',
-                       '_env_file:EnvFileType=None',
-                       '_reload:bool=False',
-                       f'_env_prefix:str={meta.env_prefix!r}',
-                       f'_secrets_dir:EnvFileType|Sequence[EnvFileType]={_secrets_dir_value}',
+                       '_env_file=None',
+                       '_reload=False',
+                       f'_env_prefix={meta.env_prefix!r}',
+                       f'_secrets_dir={_secrets_dir_value}',
         ]
 
         fn_gen = FunctionBuilder()
@@ -171,6 +247,8 @@ class EnvWizard(AbstractEnvWizard):
             # reload cached var names from `os.environ` as needed.
             with fn_gen.if_('_reload'):
                 fn_gen.add_line('Env.reload()')
+            with fn_gen.else_():
+                fn_gen.add_line('Env.load_environ()')
 
             with fn_gen.if_('_secrets_dir'):
                 fn_gen.add_line('Env.update_with_secret_values(_secrets_dir)')
@@ -188,7 +266,7 @@ class EnvWizard(AbstractEnvWizard):
 
             # iterate over the dataclass fields and (attempt to) resolve
             # each one.
-            fn_gen.add_line('missing_vars = []')
+            fn_gen.add_line('_vars = []')
 
             if field_names:
 
@@ -204,12 +282,12 @@ class EnvWizard(AbstractEnvWizard):
 
                         env_var = var_name = field_to_var.get(name)
                         if env_var:
-                            part = f'({name} := lookup_exact(var_name))'
+                            part = f'({name} := lookup_exact(_var_name))'
                         else:
                             var_name = name
-                            part = f'({name} := get_env(var_name))'
+                            part = f'({name} := get_env(_var_name))'
 
-                        fn_gen.add_line(f'name={name!r}; env_var={env_var!r}; var_name=f"{{_env_prefix}}{var_name}" if _env_prefix else {var_name!r}')
+                        fn_gen.add_line(f'_name={name!r}; _env_var={env_var!r}; _var_name=f"{{_env_prefix}}{var_name}" if _env_prefix else {var_name!r}')
 
                         with fn_gen.if_(f'{name} is not MISSING or {part} is not MISSING'):
                             parser_name = f'_parser_{name}'
@@ -229,14 +307,14 @@ class EnvWizard(AbstractEnvWizard):
                                 _globals[default_name] = f.default_factory
                                 fn_gen.add_line(f'self.{name} = {default_name}()')
                             else:
-                                fn_gen.add_line(f'add(missing_vars, name, {type_field})')
+                                fn_gen.add_line(f'add(_vars, _name, _env_prefix, _env_var, {type_field})')
 
                 with fn_gen.except_(ParseError, 'e'):
-                    fn_gen.add_line('handle_err(e, cls, name, env_var)')
+                    fn_gen.add_line('handle_err(e, cls, _name, _env_prefix, _env_var)')
 
             # check for any required fields with missing values
-            with fn_gen.if_('missing_vars'):
-                fn_gen.add_line('raise MissingVars(cls, missing_vars) from None')
+            with fn_gen.if_('_vars'):
+                fn_gen.add_line('raise MissingVars(cls, _vars) from None')
 
             # if keyword arguments are passed in, confirm that all there
             # aren't any "extra" keyword arguments
@@ -267,17 +345,22 @@ class EnvWizard(AbstractEnvWizard):
         cls.dict = functions['dict']
 
 
-def _add_missing_var(missing_vars, name, tp):
+def _add_missing_var(missing_vars, name, env_prefix, var_name, tp):
     # noinspection PyBroadException
     try:
         suggested = tp()
     except Exception:
         suggested = None
     tn = type_name(tp)
-    missing_vars.append((name, tn, suggested))
+    if var_name is None:
+        env_var = f'{env_prefix}{name}' if env_prefix else name
+        var_name = Env.cleaned_to_env.get(clean(env_var), env_var)
+    elif env_prefix:
+        var_name = f'{env_prefix}{var_name}'
+    missing_vars.append((name, var_name, tn, suggested))
 
 
-def _handle_parse_error(e, cls, name, var_name):
+def _handle_parse_error(e, cls, name, env_prefix, var_name):
 
     # We run into a parsing error while loading the field
     # value; Add additional info on the Exception object
@@ -285,7 +368,10 @@ def _handle_parse_error(e, cls, name, var_name):
     e.class_name = cls
     e.field_name = name
     if var_name is None:
-        var_name = Env.cleaned_to_env.get(clean(name), name)
+        env_var = f'{env_prefix}{name}' if env_prefix else name
+        var_name = Env.cleaned_to_env.get(clean(env_var), env_var)
+    elif env_prefix:
+        var_name = f'{env_prefix}{var_name}'
     e.kwargs['env_variable'] = var_name
 
     raise
