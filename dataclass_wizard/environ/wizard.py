@@ -150,20 +150,31 @@ class EnvWizard(AbstractEnvWizard):
                     'Sequence': Sequence,
                     }
 
+        if meta.secrets_dir is None:
+            _secrets_dir_value = 'None'
+        else:
+            _locals['_secrets_dir_value'] = meta.secrets_dir
+            _secrets_dir_value = '_secrets_dir_value'
+
         # parameters to the `__init__()` method.
         init_params = ['self',
                        '_env_file:EnvFileType=None',
                        '_reload:bool=False',
                        f'_env_prefix:str={meta.env_prefix!r}',
-                       '_secrets_dir:EnvFileType|Sequence[EnvFileType]=None',
+                       f'_secrets_dir:EnvFileType|Sequence[EnvFileType]={_secrets_dir_value}',
         ]
 
         fn_gen = FunctionBuilder()
 
         with fn_gen.function('__init__', init_params, None):
+
             # reload cached var names from `os.environ` as needed.
             with fn_gen.if_('_reload'):
                 fn_gen.add_line('Env.reload()')
+
+            with fn_gen.if_('_secrets_dir'):
+                fn_gen.add_line('Env.update_with_secret_values(_secrets_dir)')
+
             # update environment with values in the "dot env" files as needed.
             if _meta_env_file:
                 fn = fn_gen.elif_

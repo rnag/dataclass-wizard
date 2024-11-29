@@ -1,5 +1,6 @@
 import logging
 import os
+import tempfile
 from dataclasses import field
 from datetime import datetime, time, date, timezone
 from pathlib import Path
@@ -537,3 +538,69 @@ def test_env_prefix_with_env_file():
                             int=123)
 
     assert MyPrefixTest() == expected
+
+
+def test_secrets_dir_and_override():
+    """
+    Test `Meta.secrets_dir` and `_secrets_dir` for handling secrets.
+    """
+    # Create temporary directories and files to simulate secrets
+    with tempfile.TemporaryDirectory() as default_secrets_dir, tempfile.TemporaryDirectory() as override_secrets_dir:
+        # Paths for default secrets
+        default_dir_path = Path(default_secrets_dir)
+        (default_dir_path / "MY_SECRET_KEY").write_text("default-secret-key")
+        (default_dir_path / "ANOTHER_SECRET").write_text("default-another-secret")
+
+        # Paths for override secrets
+        override_dir_path = Path(override_secrets_dir)
+        (override_dir_path / "MY_SECRET_KEY").write_text("override-secret-key")
+        (override_dir_path / "NEW_SECRET").write_text("new-secret-value")
+
+        # Define an EnvWizard class with Meta.secrets_dir
+        class MySecretClass(EnvWizard):
+            class _(EnvWizard.Meta):
+                secrets_dir = default_dir_path  # Static default secrets directory
+
+            my_secret_key: str
+            another_secret: str = "default"
+            new_secret: str = "default-new"
+
+        # Test case 1: Use Meta.secrets_dir
+        instance = MySecretClass()
+        assert instance.dict() == {
+            "my_secret_key": "default-secret-key",
+            "another_secret": "default-another-secret",
+            "new_secret": "default-new",
+        }
+
+        # Test case 2: Override secrets_dir using _secrets_dir
+        instance = MySecretClass(_secrets_dir=override_dir_path)
+        assert instance.dict() == {
+            "my_secret_key": "override-secret-key",  # Overridden by override directory
+            "another_secret": "default-another-secret",  # Still from Meta.secrets_dir
+            "new_secret": "new-secret-value",  # Only in override directory
+        }
+
+        # Test case 3: Missing secrets fallback to defaults
+        instance = MySecretClass(_reload=True)
+        assert instance.dict() == {
+            "my_secret_key": "default-secret-key",  # From default directory
+            "another_secret": "default-another-secret",  # From default directory
+            "new_secret": "default-new",  # From the field default
+        }
+
+        # Test case 4: Invalid secrets_dir scenarios
+        # Case 4a: Directory doesn't exist (ignored with warning)
+        instance = MySecretClass(_secrets_dir=(default_dir_path, Path("/non/existent/directory")),
+                                 _reload=True)
+        assert instance.dict() == {
+            "my_secret_key": "default-secret-key",  # Fallback to default secrets
+            "another_secret": "default-another-secret",
+            "new_secret": "default-new",
+        }
+
+        # Case 4b: secrets_dir is a file (raises error)
+        with tempfile.NamedTemporaryFile() as temp_file:
+            invalid_secrets_path = Path(temp_file.name)
+            with pytest.raises(ValueError, match="Secrets directory .* is a file, not a directory"):
+                MySecretClass(_secrets_dir=invalid_secrets_path, _reload=True)

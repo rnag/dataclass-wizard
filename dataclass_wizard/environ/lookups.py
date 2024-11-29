@@ -1,5 +1,6 @@
 import os
 from dataclasses import MISSING
+from pathlib import Path
 
 from ..decorators import cached_class_property
 from ..lazy_imports import dotenv
@@ -39,6 +40,12 @@ class Env:
                 # were removed (deleted) from `os.environ`
                 cls.var_names = set(environ)
 
+                if cls._accessed_cleaned_to_env:
+                    cls.cleaned_to_env = {
+                        k: v for k, v in cls.cleaned_to_env.items()
+                        if v in cls.var_names
+                    }
+
     @cached_class_property
     def var_names(cls):
         """
@@ -66,6 +73,41 @@ class Env:
             cls.cleaned_to_env.update(
                 (clean(var), var) for var in new_vars
             )
+
+    @classmethod
+    def secret_values(cls, dirs):
+        """
+        Retrieve the values (environment variables) from secret file(s)
+        in a secret directory, or a list/tuple of secret directories.
+        """
+        if isinstance(dirs, (str, os.PathLike)):
+            dirs = [dirs]
+
+        env: Environ = {}
+
+        for d in dirs:
+            d: Path = d if isinstance(dirs, os.PathLike) else Path(d)
+
+            if d.exists():
+                if d.is_dir():
+                    # Iterate over all files in the directory
+                    for f in d.iterdir():
+                        if f.is_file():  # Ensure it's a file, not a subdirectory
+                            env[f.name] = f.read_text()
+                elif d.is_file():
+                    raise ValueError(f'Secrets directory `{d!r}` is a file, not a directory.')
+
+        return env
+
+    @classmethod
+    def update_with_secret_values(cls, dirs):
+
+        secret_values = cls.secret_values(dirs)
+
+        # reload cached mapping of environment variables
+        cls.reload(secret_values)
+        # update `environ` with new environment variables
+        environ.update(secret_values)
 
     @classmethod
     def dotenv_values(cls, files):
