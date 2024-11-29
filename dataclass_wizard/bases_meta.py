@@ -6,7 +6,7 @@ both import directly from `bases`.
 """
 import logging
 from datetime import datetime, date
-from typing import Type, Optional, Dict, Union
+from typing import Type, Optional, Dict, Union, Sequence
 
 from .abstractions import AbstractJSONWizard
 from .bases import AbstractMeta, META, AbstractEnvMeta
@@ -351,6 +351,8 @@ def DumpMeta(*, debug_enabled: 'bool | int | str' = False,
 # noinspection PyPep8Naming
 def EnvMeta(*, debug_enabled: 'bool | int | str' = False,
              env_file: EnvFileType = None,
+             env_prefix: str = '',
+             secrets_dir: 'EnvFileType | Sequence[EnvFileType]' = None,
              field_to_env_var: dict[str, str] = None,
              key_lookup_with_load: Union[LetterCasePriority, str] = LetterCasePriority.SCREAMING_SNAKE,
              key_transform_with_dump: Union[LetterCase, str] = LetterCase.SNAKE,
@@ -378,6 +380,8 @@ def EnvMeta(*, debug_enabled: 'bool | int | str' = False,
         '__slots__': (),
         'debug_enabled': debug_enabled,
         'env_file': env_file,
+        'env_prefix': env_prefix,
+        'secrets_dir': secrets_dir,
         'field_to_env_var': field_to_env_var,
         'key_lookup_with_load': key_lookup_with_load,
         'key_transform_with_dump': key_transform_with_dump,

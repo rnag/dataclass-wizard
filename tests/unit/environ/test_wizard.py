@@ -444,3 +444,96 @@ def test_init_method_declaration_is_logged_when_debug_mode_is_enabled(mock_debug
     # reset global flag for other tests that
     # rely on `debug_enabled` functionality
     dataclass_wizard.bases_meta._debug_was_enabled = False
+
+
+def test_load_with_tuple_of_dotenv_and_env_prefix_param_to_init():
+    """
+    Test when `env_file` is specified as a tuple of dotenv files, and
+    the `_env_file` parameter is also passed in to the constructor
+    or __init__() method. Additionally, test prefixing environment
+    variables using `Meta.env_prefix` and `_env_prefix` in __init__().
+    """
+
+    os.environ.update(
+        PREFIXED_MY_STR='prefixed string',
+        PREFIXED_MY_VALUE='12.34',
+        PREFIXED_OTHER_KEY='10',
+        MY_STR='default from env',
+        MY_VALUE='3322.11',
+        OTHER_KEY='5',
+    )
+
+    class MyClass(EnvWizard):
+        class _(EnvWizard.Meta):
+            env_file = '.env', here / '.env.test'
+            env_prefix = 'PREFIXED_'  # Static prefix
+            key_lookup_with_load = 'PASCAL'
+
+        my_value: float
+        my_str: str
+        other_key: int = 3
+
+    # Test without prefix
+    c = MyClass(_env_file=False, _reload=True,
+                _env_prefix=None)
+
+    assert c.dict() == {'my_str': 'default from env',
+                        'my_value': 3322.11,
+                        'other_key': 5}
+
+    # Test with Meta.env_prefix applied
+    c = MyClass(other_key=7)
+
+    assert c.dict() == {'my_str': 'prefixed string',
+                        'my_value': 12.34,
+                        'other_key': 7}
+
+    # Override prefix dynamically with _env_prefix
+    c = MyClass(_env_file=False, _env_prefix='', _reload=True)
+
+    assert c.dict() == {'my_str': 'default from env',
+                        'my_value': 3322.11,
+                        'other_key': 5}
+
+    # Dynamically set a new prefix via _env_prefix
+    c = MyClass(_env_prefix='PREFIXED_')
+
+    assert c.dict() == {'my_str': 'prefixed string',
+                        'my_value': 12.34,
+                        'other_key': 10}
+
+    # Otherwise, this would take priority, as it's named `My_Value` in `.env.prod`
+    del os.environ['MY_VALUE']
+
+    # Load from `_env_file` argument, ignoring prefixes
+    c = MyClass(_reload=True, _env_file=here / '.env.prod', _env_prefix='')
+
+    assert c.dict() == {'my_str': 'hello world!',
+                        'my_value': 3.21,
+                        'other_key': 5}
+
+
+def test_env_prefix_with_env_file():
+    """
+    Test `env_prefix` with `env_file` where file has prefixed env variables.
+
+    Contents of `.env.prefix`:
+        MY_PREFIX_STR='my prefix value'
+        MY_PREFIX_BOOL=t
+        MY_PREFIX_INT='123.0'
+
+    """
+    class MyPrefixTest(EnvWizard):
+        class _(EnvWizard.Meta):
+            env_prefix = 'MY_PREFIX_'
+            env_file = here / '.env.prefix'
+
+        str: str
+        bool: bool
+        int: int
+
+    expected = MyPrefixTest(str='my prefix value',
+                            bool=True,
+                            int=123)
+
+    assert MyPrefixTest() == expected

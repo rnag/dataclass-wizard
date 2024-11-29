@@ -1,6 +1,5 @@
 import os
 from dataclasses import MISSING
-from os import environ, name
 
 from ..decorators import cached_class_property
 from ..lazy_imports import dotenv
@@ -10,6 +9,9 @@ from ..utils.string_conv import to_snake_case
 # Type of `os.environ` or `DotEnv` dict
 Environ = dict[str, 'str | None']
 
+# noinspection PyTypeChecker
+environ: Environ = None
+
 
 # noinspection PyMethodParameters
 class Env:
@@ -17,6 +19,25 @@ class Env:
     __slots__ = ()
 
     _accessed_cleaned_to_env = False
+
+    @classmethod
+    def load_environ(cls, force_reload=False):
+        """
+        Load :attr:`environ` from ``os.environ``.
+
+        If `force_reload` is true, start fresh
+        and re-copy `os.environ`.
+        """
+        global environ
+
+        if (_env_not_setup := environ is None) or force_reload:
+            # Copy `os.environ`, so as not to mutate it
+            environ = os.environ.copy()
+
+            if not _env_not_setup:
+                # Refresh `var_names`, in case env variables
+                # were removed (deleted) from `os.environ`
+                cls.var_names = set(environ)
 
     @cached_class_property
     def var_names(cls):
@@ -27,9 +48,14 @@ class Env:
         return set(environ)
 
     @classmethod
-    def reload(cls, env=environ):
+    def reload(cls, env=None):
         """Refresh cached environment variable names."""
         env_vars = cls.var_names
+
+        if env is None:
+            cls.load_environ(force_reload=True)
+            env = environ
+
         new_vars = set(env) - env_vars
 
         # update names of environment variables
@@ -72,7 +98,7 @@ class Env:
 
         # reload cached mapping of environment variables
         cls.reload(dotenv_values)
-        # update `os.environ` with new environment variables
+        # update `environ` with new environment variables
         environ.update(dotenv_values)
 
     # noinspection PyDunderSlots,PyUnresolvedReferences,PyClassVar
@@ -104,7 +130,7 @@ def try_cleaned(key):
     return MISSING
 
 
-if name == 'nt':
+if os.name == 'nt':
     # Where Env Var Names Must Be UPPERCASE
     def lookup_exact(var):
         """

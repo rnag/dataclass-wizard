@@ -27,6 +27,9 @@ class Env:
     var_names: EnvVars
 
     @classmethod
+    def load_environ(cls, force_reload=False) -> None: ...
+
+    @classmethod
     def reload(cls, env: dict = environ): ...
 
     @classmethod

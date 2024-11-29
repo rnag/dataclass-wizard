@@ -1,5 +1,6 @@
 from abc import ABCMeta, abstractmethod
-from typing import Callable, Type, Dict, Optional, ClassVar, Union, TypeVar
+from collections.abc import Sequence
+from typing import Callable, Type, Dict, Optional, ClassVar, Union, TypeVar, Sequence
 
 from .constants import TAG
 from .decorators import cached_class_property
@@ -305,6 +306,15 @@ class AbstractEnvMeta(metaclass=ABCOrAndMeta):
     # For example, in below the '.env.last' file takes priority over '.env':
     #   env_file = '.env', '.env.last'
     env_file: ClassVar[EnvFileType] = None
+
+    # Prefix for all environment variables. Defaults to `None`.
+    env_prefix: ClassVar[str] = None
+
+    # secrets_dir: The secret files directory or a sequence of directories. Defaults to `None`.
+    secrets_dir: ClassVar['EnvFileType | Sequence[EnvFileType]'] = None
+
+    # The nested env values delimiter. Defaults to `None`.
+    # env_nested_delimiter: ClassVar[str] = None
 
     # A customized mapping of field in the `EnvWizard` subclass to its
     # corresponding environment variable to search for.

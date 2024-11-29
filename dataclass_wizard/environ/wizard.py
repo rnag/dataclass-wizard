@@ -1,5 +1,6 @@
 import json
 import logging
+from collections.abc import Sequence
 from dataclasses import MISSING, dataclass, fields
 from typing import Callable
 
@@ -77,6 +78,8 @@ class EnvWizard(AbstractEnvWizard):
     def __init_subclass__(cls, *, reload_env=False, debug=False,
                           key_transform=LetterCase.NONE):
 
+        Env.load_environ()
+
         if reload_env:  # reload cached var names from `os.environ` as needed.
             Env.reload()
 
@@ -132,7 +135,6 @@ class EnvWizard(AbstractEnvWizard):
         _meta_env_file = meta.env_file
 
         _locals = {'Env': Env,
-                   'EnvFileType': EnvFileType,
                    'MISSING': MISSING,
                    'ParseError': ParseError,
                    'field_names': field_names,
@@ -143,12 +145,18 @@ class EnvWizard(AbstractEnvWizard):
                     'add': _add_missing_var,
                     'cls': cls,
                     'fields_ordered': cls_fields.keys(),
-                    'handle_err': _handle_parse_error}
+                    'handle_err': _handle_parse_error,
+                    'EnvFileType': EnvFileType,
+                    'Sequence': Sequence,
+                    }
 
         # parameters to the `__init__()` method.
         init_params = ['self',
                        '_env_file:EnvFileType=None',
-                       '_reload:bool=False']
+                       '_reload:bool=False',
+                       f'_env_prefix:str={meta.env_prefix!r}',
+                       '_secrets_dir:EnvFileType|Sequence[EnvFileType]=None',
+        ]
 
         fn_gen = FunctionBuilder()
 
@@ -171,42 +179,49 @@ class EnvWizard(AbstractEnvWizard):
             # each one.
             fn_gen.add_line('missing_vars = []')
 
-            for name, f in cls_fields.items():
-                type_field = f'_tp_{name}'
-                tp = _globals[type_field] = f.type
+            if field_names:
 
-                init_params.append(f'{name}:{type_field}=MISSING')
+                with fn_gen.try_():
 
-                # retrieve value (if it exists) for the environment variable
+                    for name, f in cls_fields.items():
+                        type_field = f'_tp_{name}'
+                        tp = _globals[type_field] = f.type
 
-                env_var = field_to_var.get(name)
-                if env_var:
-                    part = f'({name} := lookup_exact({env_var!r}))'
-                else:
-                    part = f'({name} := get_env({name!r}))'
+                        init_params.append(f'{name}:{type_field}=MISSING')
 
-                with fn_gen.if_(f'{name} is not MISSING or {part} is not MISSING'):
-                    parser_name = f'_parser_{name}'
-                    _globals[parser_name] = getattr(p := cls_loader.get_parser_for_annotation(
-                        tp, cls, extras), '__call__', p)
-                    with fn_gen.try_():
-                        fn_gen.add_line(f'self.{name} = {parser_name}({name})')
-                    with fn_gen.except_(ParseError, 'e'):
-                        fn_gen.add_line(f'handle_err(e, cls, {name!r}, {env_var!r})')
-                # this `else` block means that a value was not received for the
-                # field, either via keyword arguments or Environment.
-                with fn_gen.else_():
-                    # check if the field defines a `default` or `default_factory`
-                    # value; note this is similar to how `dataclasses` does it.
-                    default_name = f'_dflt_{name}'
-                    if f.default is not MISSING:
-                        _globals[default_name] = f.default
-                        fn_gen.add_line(f'self.{name} = {default_name}')
-                    elif f.default_factory is not MISSING:
-                        _globals[default_name] = f.default_factory
-                        fn_gen.add_line(f'self.{name} = {default_name}()')
-                    else:
-                        fn_gen.add_line(f'add(missing_vars, {name!r}, {type_field})')
+                        # retrieve value (if it exists) for the environment variable
+
+                        env_var = var_name = field_to_var.get(name)
+                        if env_var:
+                            part = f'({name} := lookup_exact(var_name))'
+                        else:
+                            var_name = name
+                            part = f'({name} := get_env(var_name))'
+
+                        fn_gen.add_line(f'name={name!r}; env_var={env_var!r}; var_name=f"{{_env_prefix}}{var_name}" if _env_prefix else {var_name!r}')
+
+                        with fn_gen.if_(f'{name} is not MISSING or {part} is not MISSING'):
+                            parser_name = f'_parser_{name}'
+                            _globals[parser_name] = getattr(p := cls_loader.get_parser_for_annotation(
+                                tp, cls, extras), '__call__', p)
+                            fn_gen.add_line(f'self.{name} = {parser_name}({name})')
+                        # this `else` block means that a value was not received for the
+                        # field, either via keyword arguments or Environment.
+                        with fn_gen.else_():
+                            # check if the field defines a `default` or `default_factory`
+                            # value; note this is similar to how `dataclasses` does it.
+                            default_name = f'_dflt_{name}'
+                            if f.default is not MISSING:
+                                _globals[default_name] = f.default
+                                fn_gen.add_line(f'self.{name} = {default_name}')
+                            elif f.default_factory is not MISSING:
+                                _globals[default_name] = f.default_factory
+                                fn_gen.add_line(f'self.{name} = {default_name}()')
+                            else:
+                                fn_gen.add_line(f'add(missing_vars, name, {type_field})')
+
+                with fn_gen.except_(ParseError, 'e'):
+                    fn_gen.add_line('handle_err(e, cls, name, env_var)')
 
             # check for any required fields with missing values
             with fn_gen.if_('missing_vars'):
