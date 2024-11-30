@@ -73,8 +73,6 @@ if PY310_OR_ABOVE:  # pragma: no cover
 
     def _process_forward_annotation(base_type):
         return PyForwardRef(base_type, is_argument=False)
-    # def _process_forward_annotation(base_type):
-    #     return PyForwardRef(base_type, is_argument=False, is_class=True)
 
     def _get_origin(cls, raise_=False):
         if isinstance(cls, types.UnionType):

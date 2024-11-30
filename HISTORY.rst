@@ -2,6 +2,47 @@
 History
 =======
 
+0.31.0 (2024-11-30)
+-------------------
+
+Happy Thanksgiving 🦃, y'all! In this release, Dataclass Wizard introduces the long-awaited :class:`EnvWizard` 😳🎉.
+
+
+**Features and Improvements**
+
+- :class:`EnvWizard`:
+    - Support for working with environment variables, secret files, and `.env` files.
+
+- **New Functions and Helpers**:
+    - :func:`EnvMeta`: Helper function to set up the ``Meta`` Config for :class:`EnvWizard`.
+    - :func:`env_field`: Alias for ``dataclasses.Field()`` to set a custom environment variable for a field.
+    - **Helper Functions**:
+        - :func:`as_bool`, :func:`as_int`, :func:`as_str` optimized.
+        - :func:`as_list`, :func:`as_dict` added.
+
+- **Meta Class Enhancements**:
+    - New meta classes such as :class:`AbstractEnvMeta`.
+    - New fields added to the ``Meta`` class:
+        - :attr:`env_var_to_field`
+        - :attr:`field_to_env_var`
+        - :attr:`debug_enabled`
+        - :attr:`recursive`
+        - :attr:`env_file`
+        - :attr:`env_prefix`
+        - :attr:`secrets_dir`
+        - :attr:`key_lookup_with_load`
+        - :attr:`key_transform_with_dump`
+        - :attr:`skip_defaults`
+        - :attr:`skip_if`
+        - :attr:`skip_defaults_if`
+
+- **Benchmark Updates**:
+    - Updated benchmarks to include new libraries.
+    - Added the ``--all | -A`` option to benchmark tests for running longer tests against some libraries.
+
+- **Documentation**:
+    - General documentation updates.
+
 0.30.1 (2024-11-25)
 -------------------
 
