@@ -1,7 +1,7 @@
 import logging
 import os
 import tempfile
-from dataclasses import field
+from dataclasses import field, dataclass
 from datetime import datetime, time, date, timezone
 from pathlib import Path
 from textwrap import dedent
@@ -605,3 +605,40 @@ def test_secrets_dir_and_override():
             invalid_secrets_path = Path(temp_file.name)
             with pytest.raises(ValueError, match="Secrets directory .* is a file, not a directory"):
                 MySecretClass(_secrets_dir=invalid_secrets_path, _reload=True)
+
+
+def test_env_wizard_handles_nested_dataclass_field_with_multiple_input_types():
+    """
+    Test that EnvWizard correctly handles a field typed as a nested dataclass:
+
+    - When specified as an environment variable (JSON-encoded string).
+    - When passed as a dictionary to the constructor.
+    - When passed as an instance of the nested dataclass.
+    """
+
+    @dataclass
+    class DatabaseSettings:
+        host: str
+        port: int
+
+    class Settings(EnvWizard):
+        database: DatabaseSettings
+
+        class Config(EnvWizard.Meta):
+            env_prefix='test'
+            env_nested_delimiter = '_'
+
+    # Field `database` is specified as an env var
+    os.environ['testdatabase'] = '{"host": "localhost", "port": "5432"}'
+
+    # need to `_reload` due to other test cases
+    settings = Settings(_reload=True)
+    assert settings == Settings(database=DatabaseSettings(host='localhost', port=5432))
+
+    # Field `database` is specified as a dict
+    settings = Settings(database={"host": "localhost", "port": "4000"})
+    assert settings == Settings(database=DatabaseSettings(host='localhost', port=4000))
+
+    # Field `database` is passed in to constructor (__init__)
+    settings = Settings(database=(db := DatabaseSettings(host='localhost', port=27017)))
+    assert settings.database == db
