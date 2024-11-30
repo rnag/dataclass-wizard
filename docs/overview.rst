@@ -109,10 +109,26 @@ Special Cases
 
    However, here a few special cases that are worth going over.
 
+* ``str`` - Effortlessly converts inputs to strings. If already a string,
+  it remains unchanged. Non-strings are converted to their string
+  representation, and ``None`` becomes an empty string.
+
+      *Examples*: ``123`` → ``'123'``, ``None`` → ``''``
+
 * ``bool`` - JSON values that appear as strings or integers will be de-serialized
   to a ``bool`` using a case-insensitive search that matches against the following
   "truthy" values:
-      *TRUE, T, YES, Y, 1*
+      *TRUE, T, YES, Y, ON, 1*
+
+* ``int`` - Converts valid inputs to integers:
+
+  - String representations of integers (e.g., ``"123"``).
+  - Floats or float strings with or without fractional parts (e.g., ``123.4`` or ``"123.4"``), rounded to the nearest integer.
+  - Empty strings or ``None`` return the default value of ``0``.
+
+  .. warning::
+     Starting in v1.0, floats or float strings with fractional parts (e.g., ``123.4`` or
+     ``"123.4"``) will raise an error instead of being rounded.
 
 * ``Enum`` - JSON values (ideally strings) are de-serialized to ``Enum``
   subclasses via the ``value`` attribute, and are serialized back to JSON
