@@ -77,13 +77,13 @@ Installation
 
 Dataclass Wizard is available on `PyPI`_. Install with ``pip``:
 
-.. code-block:: shell
+.. code-block:: console
 
     $ pip install dataclass-wizard
 
 Also available on `conda`_ via `conda-forge`_. Install with ``conda``:
 
-.. code-block:: shell
+.. code-block:: console
 
     $ conda install dataclass-wizard -c conda-forge
 
@@ -99,21 +99,21 @@ Features
 Here are the key features that ``dataclass-wizard`` offers:
 
 -   *Flexible (de)serialization*: Marshal dataclasses to/from JSON, TOML, YAML, or ``dict``.
--  *Field properties*: Use properties with default values in dataclass instances.
--  *JSON to Dataclass generation*: Auto-generate a dataclass schema from a JSON file or string.
-
+-   *Field properties made simple*: Add properties with default values to your dataclasses.
+-  *JSON-to-Dataclass wizardry*: Auto-generate a dataclass schema from a JSON file or string.
+-  *Environment magic*: Easily map env vars and ``dotenv`` files to strongly-typed class fields.
 
 Wizard Mixins
 -------------
 
 In addition to ``JSONWizard``, these handy Mixin_ classes simplify your workflow:
 
-* `JSONPyWizard`_ — A ``JSONWizard`` helper to skip *camelCase* and keep keys as-is.
-* `JSONListWizard`_ -- Extends ``JSONWizard`` to return `Container`_ -- instead of *list* -- objects where possible.
-* `JSONFileWizard`_ -- Makes it easier to convert dataclass instances from/to JSON files on a local drive.
-* `TOMLWizard`_ -- Provides support to convert dataclass instances to/from TOML.
-* `YAMLWizard`_ -- Provides support to convert dataclass instances to/from YAML, using the default ``PyYAML`` parser.
-
+* `EnvWizard`_ — Seamlessly load env variables and ``.env`` files into typed schemas. Supports secret files (file names as keys).
+* `JSONPyWizard`_ — A ``JSONWizard`` helper to skip *camelCase* and preserve keys as-is.
+* `JSONListWizard`_ — Extends ``JSONWizard`` to return `Container`_ objects instead of *lists* when possible.
+* `JSONFileWizard`_ — Effortlessly convert dataclass instances from/to JSON files on your local drive.
+* `TOMLWizard`_ — Easily map dataclass instances to/from TOML format.
+* `YAMLWizard`_ — Instantly convert dataclass instances to/from YAML, using the default ``PyYAML`` parser.
 
 Supported Types
 ---------------
@@ -128,33 +128,27 @@ For a complete list of the supported Python types, including info on the
 load/dump process for special types, check out the `Supported Types`_ section
 in the docs.
 
-
 Usage and Examples
 ------------------
 
-Using the built-in JSON marshalling support for dataclasses:
+.. rubric:: Seamless JSON De/Serialization with ``JSONWizard``
 
-    Note: The following example should work in **Python 3.9+** with the included ``__future__``
-    import.
+.. code-block:: python3
 
-.. code:: python3
-
-    from __future__ import annotations  # This can be removed in Python 3.10+
+    from __future__ import annotations  # Optional in Python 3.10+
 
     from dataclasses import dataclass, field
-    from datetime import date
     from enum import Enum
+    from datetime import date
 
     from dataclass_wizard import JSONWizard
 
 
     @dataclass
     class Data(JSONWizard):
-
+        # Use Meta to customize JSON de/serialization
         class _(JSONWizard.Meta):
-            # Sets the target key transform to use for serialization;
-            # defaults to `camelCase` if not specified.
-            key_transform_with_dump = 'LISP'
+            key_transform_with_dump = 'LISP'  # Transform keys to LISP-case during dump
 
         a_sample_bool: bool
         values: list[Inner] = field(default_factory=list)
@@ -162,6 +156,7 @@ Using the built-in JSON marshalling support for dataclasses:
 
     @dataclass
     class Inner:
+        # Nested data with optional enums and typed dictionaries
         vehicle: Car | None
         my_dates: dict[int, date]
 
@@ -169,55 +164,53 @@ Using the built-in JSON marshalling support for dataclasses:
     class Car(Enum):
         SEDAN = 'BMW Coupe'
         SUV = 'Toyota 4Runner'
-        JEEP = 'Jeep Cherokee'
 
 
-    def main():
+    # Input JSON-like dictionary
+    my_dict = {
+        'values': [{'vehicle': 'Toyota 4Runner', 'My-Dates': {'123': '2023-01-31'}}],
+        'aSampleBool': 'TRUE'
+    }
 
-        my_dict = {
-            'values': [
-                {
-                    'vehicle': 'Toyota 4Runner',
-                    'My-Dates': {'123': '2023-01-31'}
-                },
-                {
-                    'vehicle': None,
-                    'my_dates': {}
-                }
-            ],
-            'aSampleBool': 'TRUE'
-        }
+    # Deserialize into strongly-typed dataclass instances
+    data = Data.from_dict(my_dict)
+    print((v := data.values[0]).vehicle)  # Prints: <Car.SUV: 'Toyota 4Runner'>
+    assert v.my_dates[123] == date(2023, 1, 31)  # > True
 
-        # De-serialize (a JSON string or dictionary data) into a `Data` instance.
-        data = Data.from_dict(my_dict)
+    # Serialize back into pretty-printed JSON
+    print(data.to_json(indent=2))
 
-        print(repr(data))
-        # > Data(a_sample_bool=True, values=[Inner(vehicle=<Car.SUV: 'Toyota 4Runner'>, ...)])
+.. rubric:: Map Environment Variables with ``EnvWizard``
 
-        # assert enums values are as expected
-        assert data.values[0].vehicle is Car.SUV
+Easily map environment variables to Python dataclasses:
 
-        print(data.to_json(indent=2))
-        # {
-        #   "a-sample-bool": true,
-        #   "values": [
-        #     {
-        #       "vehicle": "Toyota 4Runner",
-        #       "my-dates": {
-        #         "123": "2023-01-31"
-        #       },
-        #   ...
+.. code-block:: python3
 
-        # True
-        assert data == data.from_json(data.to_json())
+    import os
+    from dataclass_wizard import EnvWizard
 
-    if __name__ == '__main__':
-        main()
+    os.environ.update({
+        'APP_NAME': 'My App',
+        'MAX_CONNECTIONS': '10',
+        'DEBUG_MODE': 'true'
+    })
 
-... and with the ``property_wizard``, which provides support for
-`field properties`_ with default values in dataclasses:
+    class AppConfig(EnvWizard):
+        app_name: str
+        max_connections: int
+        debug_mode: bool
 
-.. code:: python3
+    config = AppConfig()
+    print(config.app_name)    # My App
+    print(config.debug_mode)  # True
+
+📖 For more, check out the full documentation `on EnvWizard`_.
+
+.. rubric:: Dataclass Properties with ``property_wizard``
+
+Use `field properties`_ in dataclasses with default values, thanks to ``property_wizard``:
+
+.. code-block:: python3
 
     from __future__ import annotations  # This can be removed in Python 3.10+
 
@@ -229,78 +222,54 @@ Using the built-in JSON marshalling support for dataclasses:
 
     @dataclass
     class Vehicle(metaclass=property_wizard):
-        # Note: The example below uses the default value from the `field` extra in
-        # the `Annotated` definition; if `wheels` were annotated as `int | str`,
-        # it would default to 0, because `int` appears as the first type argument.
-        #
-        # Any right-hand value assigned to `wheels` is ignored as it is simply
-        # re-declared by the property; here it is simply omitted for brevity.
         wheels: Annotated[int | str, field(default=4)]
-
-        # This is a shorthand version of the above; here an IDE suggests
-        # `_wheels` as a keyword argument to the constructor method, though
-        # it will actually be named as `wheels`.
-        # _wheels: int | str = 4
+        # or, alternatively:
+        #   _wheels: int | str = 4
 
         @property
         def wheels(self) -> int:
             return self._wheels
 
         @wheels.setter
-        def wheels(self, wheels: int | str):
-            self._wheels = int(wheels)
+        def wheels(self, value: int | str):
+            self._wheels = int(value)
 
 
-    if __name__ == '__main__':
-        v = Vehicle()
-        print(v)
-        # prints:
-        #   Vehicle(wheels=4)
+    v = Vehicle(wheels='2')
+    print(v.wheels)  # 4
+    v.wheels = '6'
+    print(v.wheels)  # 6
 
-        v = Vehicle(wheels=3)
-        print(v)
+    assert v.wheels == 6, 'Setter correctly handles type conversion'
 
-        v = Vehicle('6')
-        print(v)
+📖 For further details, visit the extended documentation on `field properties`_.
 
-        assert v.wheels == 6, 'The constructor should use our setter method'
+.. rubric:: Generate Dataclass Schemas with CLI
 
-        # Confirm that we go through our setter method
-        v.wheels = '123'
-        assert v.wheels == 123
+Quickly generate Python dataclasses from JSON input using the wiz-cli_ tool:
 
-... or generate a dataclass schema for JSON input, via the `wiz-cli`_ tool:
+.. code-block:: console
 
-.. code:: shell
+    $ echo '{"myFloat": "1.23", "Items": [{"created": "2021-01-01"}]}' | wiz gs - output.py
 
-    $ echo '{"myFloat": "1.23", "Products": [{"created_at": "2021-11-17"}]}' | wiz gs - my_file
+.. code-block:: python3
 
-    # Contents of my_file.py
     from dataclasses import dataclass
     from datetime import date
     from typing import List, Union
 
     from dataclass_wizard import JSONWizard
 
-
     @dataclass
     class Data(JSONWizard):
-        """
-        Data dataclass
-
-        """
         my_float: Union[float, str]
-        products: List['Product']
-
+        items: List['Item']
 
     @dataclass
-    class Product:
-        """
-        Product dataclass
+    class Item:
+        created: date
 
-        """
-        created_at: date
-
+📖 See the full CLI documentation at wiz-cli_.
 
 JSON Marshalling
 ----------------
@@ -1169,6 +1138,79 @@ Additionally, here is an example to demonstrate usage of both these approaches:
 
     assert out_dict == {'myStr': 'my string'}
 
+``Environ`` Magic
+-----------------
+
+Easily map environment variables to Python dataclasses with ``EnvWizard``:
+
+.. code-block:: python3
+
+    import os
+    from dataclass_wizard import EnvWizard
+
+    # Set up environment variables
+    os.environ.update({
+        'APP_NAME': 'Env Wizard',
+        'MAX_CONNECTIONS': '10',
+        'DEBUG_MODE': 'true'
+    })
+
+    # Define dataclass using EnvWizard
+    class AppConfig(EnvWizard):
+        app_name: str
+        max_connections: int
+        debug_mode: bool
+
+    # Load config from environment variables
+    config = AppConfig()
+    print(config.app_name)    #> Env Wizard
+    print(config.debug_mode)  #> True
+    assert config.max_connections == 10
+
+    # Override with keyword arguments
+    config = AppConfig(app_name='Dataclass Wizard Rocks!', debug_mode='false')
+    print(config.app_name)    #> Dataclass Wizard Rocks!
+    assert config.debug_mode is False
+
+.. note::
+    ``EnvWizard`` simplifies environment variable mapping with type validation, ``.env`` file support, and secret file handling (file names become keys).
+
+    *Key Features*:
+
+    - **Auto Parsing**: Supports complex types and nested structures.
+    - **Configurable**: Customize variable names, prefixes, and dotenv files.
+    - **Validation**: Errors for missing or malformed variables.
+
+    📖 `Full Documentation <https://dataclass-wizard.readthedocs.io/en/latest/env_magic.html>`_
+
+Advanced Example: Dynamic Prefix Handling
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``EnvWizard`` supports dynamic prefix application, ideal for customizable environments:
+
+.. code-block:: python3
+
+    import os
+    from dataclass_wizard import EnvWizard, env_field
+
+    # Define dataclass with custom prefix support
+    class AppConfig(EnvWizard):
+        class _(EnvWizard.Meta):
+            env_prefix = 'APP_'
+
+        name: str = env_field('A_NAME')
+        debug: bool
+
+    # Set environment variables
+    os.environ['CUSTOM_A_NAME'] = 'Test!'
+    os.environ['CUSTOM_DEBUG'] = 'yes'
+
+    # Apply a dynamic prefix at runtime
+    config = AppConfig(_env_prefix='CUSTOM_')
+
+    print(config)
+    # > AppConfig(name='Test!', debug=True)
+
 Field Properties
 ----------------
 
@@ -1242,6 +1284,8 @@ This package was created with Cookiecutter_ and the `rnag/cookiecutter-pypackage
 .. _`Contributing`: https://dataclass-wizard.readthedocs.io/en/latest/contributing.html
 .. _`open an issue`: https://github.com/rnag/dataclass-wizard/issues
 .. _`JSONPyWizard`: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/wizard_mixins.html#jsonpywizard
+.. _`EnvWizard`: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/wizard_mixins.html#envwizard
+.. _`on EnvWizard`: https://dataclass-wizard.readthedocs.io/en/latest/env_magic.html
 .. _`JSONListWizard`: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/wizard_mixins.html#jsonlistwizard
 .. _`JSONFileWizard`: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/wizard_mixins.html#jsonfilewizard
 .. _`TOMLWizard`: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/wizard_mixins.html#tomlwizard

@@ -2,8 +2,8 @@ from collections import defaultdict
 from dataclasses import Field
 from typing import Any, Callable
 
-from .abstractions import W, AbstractLoader, AbstractDumper, AbstractParser
-from .bases import META
+from .abstractions import W, AbstractLoader, AbstractDumper, AbstractParser, E
+from .bases import META, AbstractMeta
 from .models import Condition
 from .type_def import ExplicitNullType, T
 from .utils.dict_helper import DictWithLowerStore
@@ -50,6 +50,9 @@ DATACLASS_FIELD_TO_JSON_FIELD: dict[type, dict[str, str]] = defaultdict(dict)
 
 # A cached mapping, per dataclass, of instance field name to `SkipIf` condition
 DATACLASS_FIELD_TO_SKIP_IF: dict[type, dict[str, Condition]] = defaultdict(dict)
+
+# A cached mapping, per `EnvWizard` subclass, of field name to env variable
+FIELD_TO_ENV_VAR: dict[type, dict[str, str]] = defaultdict(dict)
 
 # A mapping of dataclass name to its Meta initializer (defined in
 # :class:`bases.BaseJSONWizardMeta`), which is only set when the
@@ -106,6 +109,12 @@ def dataclass_field_to_json_field(cls: type) -> dict[str, str]:
 def dataclass_field_to_skip_if(cls: type) -> dict[str, Condition]:
     """
     Returns a mapping of dataclass field to SkipIf condition.
+    """
+
+
+def field_to_env_var(cls: type[E]) -> dict[str, str]:
+    """
+    Returns a mapping of field in the `EnvWizard` subclass to env variable.
     """
 
 
@@ -168,13 +177,13 @@ def setup_dump_config_for_cls_if_needed(cls: type) -> None:
     """
 
 
-def call_meta_initializer_if_needed(cls: type[W]) -> None:
+def call_meta_initializer_if_needed(cls: type[W | E]) -> None:
     """
     Calls the Meta initializer when the inner :class:`Meta` is sub-classed.
     """
 
 
-def get_meta(cls: type) -> META:
+def get_meta(cls: type, base_cls: T = AbstractMeta) -> T | META:
     """
     Retrieves the Meta config for the :class:`AbstractJSONWizard` subclass.
 

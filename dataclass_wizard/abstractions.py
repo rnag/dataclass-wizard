@@ -2,10 +2,12 @@
 Contains implementations for Abstract Base Classes
 """
 import json
+
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, InitVar
+from dataclasses import dataclass, InitVar, Field
 from typing import Type, TypeVar, Dict, Generic
 
+from .bases import META
 from .models import Extras
 from .type_def import T, TT
 
@@ -13,7 +15,32 @@ from .type_def import T, TT
 # Create a generic variable that can be 'AbstractJSONWizard', or any subclass.
 W = TypeVar('W', bound='AbstractJSONWizard')
 
-FieldToParser = Dict[str, 'AbstractParser']
+
+class AbstractEnvWizard(ABC):
+    """
+    Abstract class that defines the methods a sub-class must implement at a
+    minimum to be considered a "true" Environment Wizard.
+    """
+    __slots__ = ()
+
+    # Extends the `__annotations__` attribute to return only the fields
+    # (variables) of the `EnvWizard` subclass.
+    #
+    # .. NOTE::
+    #    This excludes fields marked as ``ClassVar``, or ones which are
+    #    not type-annotated.
+    __fields__: dict[str, Field]
+
+    def dict(self):
+        ...
+
+    @abstractmethod
+    def to_dict(self):
+        ...
+
+    @abstractmethod
+    def to_json(self, indent=None):
+        ...
 
 
 class AbstractJSONWizard(ABC):
@@ -203,6 +230,17 @@ class AbstractLoader(ABC):
     @abstractmethod
     def load_to_timedelta(o, base_type):
         ...
+
+    # @staticmethod
+    # @abstractmethod
+    # def load_func_for_dataclass(
+    #     cls: Type[T],
+    #     config: Optional[META],
+    # ) -> Callable[[JSONObject], T]:
+    #     """
+    #     Generate and return the load function for a (nested) dataclass of
+    #     type `cls`.
+    #     """
 
     @classmethod
     @abstractmethod

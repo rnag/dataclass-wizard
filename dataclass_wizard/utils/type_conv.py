@@ -2,6 +2,7 @@ __all__ = ['as_bool',
            'as_int',
            'as_str',
            'as_list',
+           'as_dict',
            'as_enum',
            'as_datetime',
            'as_date',
@@ -9,9 +10,10 @@ __all__ = ['as_bool',
            'as_timedelta',
            'date_to_timestamp']
 
-from datetime import datetime, time, date, timedelta
+import json
+from datetime import datetime, time, date, timedelta, timezone
 from numbers import Number
-from typing import Union, List, Type, AnyStr, Optional
+from typing import Union, Type, AnyStr, Optional, Iterable
 
 from ..errors import ParseError
 from ..lazy_imports import pytimeparse
@@ -20,7 +22,7 @@ from ..type_def import E, N, NUMBERS
 
 # What values are considered "truthy" when converting to a boolean type.
 # noinspection SpellCheckingInspection
-_TRUTHY_VALUES = ('TRUE', 'T', 'YES', 'Y', '1')
+_TRUTHY_VALUES = frozenset({'true', 't', 'yes', 'y', 'on', '1'})
 
 
 def as_bool(o: Union[str, bool, N]):
@@ -28,13 +30,13 @@ def as_bool(o: Union[str, bool, N]):
     Return `o` if already a boolean, otherwise return the boolean value
     for `o`.
     """
-    if isinstance(o, bool):
+    if (t := type(o)) is bool:
         return o
 
-    if not isinstance(o, str):
-        o = str(o)
+    if t is str:
+        return o.lower() in _TRUTHY_VALUES
 
-    return o.upper() in _TRUTHY_VALUES
+    return o == 1
 
 
 def as_int(o: Union[str, int, float, bool, None], base_type=int,
@@ -55,15 +57,31 @@ def as_int(o: Union[str, int, float, bool, None], base_type=int,
     if t is base_type:
         return o
 
-    if t is bool:
-        raise TypeError(f'as_int: Incorrect type, object={o!r}, type={t}')
+    if t is str:
+        # Check if the string represents a float value, e.g. '2.7'
+
+        # TODO uncomment once we update to v1
+        # if '.' in o:
+        #     if (float_value := float(o)).is_integer():
+        #         return base_type(float_value)
+        #     raise ValueError(f"Cannot cast string float with fractional part: {value}")
+
+        if o:
+            if '.' in o:
+                return base_type(round(float(o)))
+            # Assume direct integer string
+            return base_type(o)
+        return default
 
     if t is float:
+        # TODO uncomment once we update to v1
+        # if o.is_integer():
+        #     return base_type(o)
+        # raise ValueError(f"Cannot cast float with fractional part: {o}")
         return base_type(round(o))
 
-    # Check if the string represents a float value, e.g. '2.7'
-    if t is str and '.' in o:
-        return base_type(round(float(o)))
+    if t is bool:
+        raise TypeError(f'as_int: Incorrect type, object={o!r}, type={t}')
 
     try:
         return base_type(o)
@@ -79,46 +97,44 @@ def as_int(o: Union[str, int, float, bool, None], base_type=int,
         return default
 
 
-def as_str(o: Union[str, None], base_type=str, raise_=True):
+def as_str(o: Union[str, None], base_type=str):
     """
     Return `o` if already a str, otherwise return the string value for `o`.
-    If `o` is None or an empty string, return `default` instead.
-
-    If `o` cannot be converted to an str, raise an error if `raise_` is true,
-    other return `default` instead.
-
+    If `o` is None, return an empty string instead.
     """
-    if isinstance(o, base_type):
-        return o
-
-    if o is None:
-        return base_type()
-
-    try:
-        return base_type(o)
-
-    except ValueError:
-
-        if raise_:
-            raise
-
-        return base_type()
+    return '' if o is None else base_type(o)
 
 
-def as_list(o: Union[str, List[str]], sep=','):
+def as_list(o: Union[str, Iterable], sep=','):
     """
-    Return `o` if already a list. If `o` is None or an empty string,
-    return an empty list. Otherwise, split the string on `sep` and
+    Return `o` if already a list. If `o` is a string, split it on `sep` and
     return the list result.
 
     """
-    if not o:
-        return []
+    if isinstance(o, str):
+        if o.lstrip().startswith('['):
+            return json.loads(o)
+        else:
+            return [e.strip() for e in o.split(sep)]
 
-    if isinstance(o, list):
-        return o
+    return o
 
-    return o.split(sep)
+
+def as_dict(o: Union[str, Iterable], kv_sep='=', sep=','):
+    """
+    Return `o` if already a dict. If `o` is a string, split it on `sep` and
+    then split each result by `kv_sep`, and return the dict result.
+
+    """
+    if isinstance(o, str):
+        if o.lstrip().startswith('{'):
+            return json.loads(o)
+        else:
+            # noinspection PyTypeChecker
+            return dict(map(str.strip, pair.split(kv_sep, 1))
+                        for pair in o.split(sep))
+
+    return o
 
 
 def as_enum(o: Union[AnyStr, N],
@@ -192,7 +208,7 @@ def as_datetime(o: Union[str, Number, datetime],
         * ``str``: convert datetime strings (in ISO format) via the built-in
           ``fromisoformat`` method.
         * ``Number`` (int or float): Convert a numeric timestamp via the
-            built-in ``fromtimestamp`` method.
+            built-in ``fromtimestamp`` method, and return a UTC datetime.
         * ``datetime``: Return object `o` if it's already of this type or
             sub-type.
 
@@ -214,12 +230,13 @@ def as_datetime(o: Union[str, Number, datetime],
         if t is str:
             # Minor performance fix: if it's a string, we don't need to run
             # the other type checks.
-            pass
+            if raise_:
+                raise
 
         # Check `type` explicitly, because `bool` is a sub-class of `int`
         elif t in NUMBERS:
             # noinspection PyTypeChecker
-            return base_type.fromtimestamp(o)
+            return base_type.fromtimestamp(o, tz=timezone.utc)
 
         elif t is base_type:
             return o
@@ -261,7 +278,8 @@ def as_date(o: Union[str, Number, date],
         if t is str:
             # Minor performance fix: if it's a string, we don't need to run
             # the other type checks.
-            pass
+            if raise_:
+                raise
 
         # Check `type` explicitly, because `bool` is a sub-class of `int`
         elif t in NUMBERS:
@@ -305,7 +323,8 @@ def as_time(o: Union[str, time], base_type=time, default=None, raise_=True):
         if t is str:
             # Minor performance fix: if it's a string, we don't need to run
             # the other type checks.
-            pass
+            if raise_:
+                raise
 
         elif t is base_type:
             return o

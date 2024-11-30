@@ -11,7 +11,7 @@ __all__ = [
     'is_generic',
     'is_annotated',
     'eval_forward_ref',
-    'eval_forward_ref_if_needed'
+    'eval_forward_ref_if_needed',
 ]
 
 import functools

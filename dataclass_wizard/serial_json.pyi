@@ -117,9 +117,6 @@ class JSONSerializable(AbstractJSONWizard, SerializerHookMixin):
 
     @classmethod
     def from_dict(cls: type[W], o: JSONObject) -> W:
-        """
-        Converts a Python `dict` object to an instance of the dataclass.
-        """
         # alias: fromdict(cls, o)
         ...
 

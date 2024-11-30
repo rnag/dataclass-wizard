@@ -5,10 +5,10 @@ from typing import Generic, Mapping, NewType
 
 from .constants import PY310_OR_ABOVE
 from .decorators import cached_property
-from .type_def import T, DT, PyTypedDict
 # noinspection PyProtectedMember
 from .utils.dataclass_compat import _create_fn
 from .utils.object_path import split_object_path
+from .type_def import T, DT, PyTypedDict
 from .utils.type_conv import as_datetime, as_time, as_date
 
 
@@ -22,6 +22,8 @@ from .utils.type_conv import as_datetime, as_time, as_date
 # if PY312_OR_ABOVE:
 #     type CatchAll = Mapping
 CatchAll = NewType('CatchAll', Mapping)
+# A date, time, datetime sub type, or None.
+# DT_OR_NONE = Optional[DT]
 
 
 class Extras(PyTypedDict):
@@ -56,6 +58,9 @@ def json_field(keys, *,
 
     return JSONField(keys, all, dump, default, default_factory, init, repr,
                      hash, compare, metadata)
+
+
+env_field = json_field
 
 
 class JSON:
@@ -94,6 +99,8 @@ class JSONField(Field):
 
             if isinstance(keys, str):
                 keys = split_object_path(keys) if path else (keys,)
+            elif keys is ...:
+                keys = ()
 
             self.json = JSON(*keys, all=all, dump=dump, path=path)
 
@@ -108,6 +115,8 @@ class JSONField(Field):
 
             if isinstance(keys, str):
                 keys = split_object_path(keys) if path else (keys,)
+            elif keys is ...:
+                keys = ()
 
             self.json = JSON(*keys, all=all, dump=dump, path=path)
 
@@ -392,9 +401,70 @@ def IS_FALSY(): return Condition("!", None)
 
 # noinspection PyPep8Naming
 def SkipIf(condition):
+    """
+    Mark a condition to be used as a skip directive during serialization.
+    """
     condition._wrapped = True  # Set a marker attribute
     return condition
 
 
 # Convenience alias, to skip serializing field if value is None
 SkipIfNone = SkipIf(IS(None))
+
+
+def finalize_skip_if(skip_if, operand_1, conditional):
+    """
+    Finalizes the skip condition by generating the appropriate string based on the condition.
+
+    Args:
+        skip_if (Condition): The condition to evaluate, containing truthiness and operation info.
+        operand_1 (str): The primary operand for the condition (e.g., a variable or value).
+        conditional (str): The conditional operator to use (e.g., '==', '!=').
+
+    Returns:
+        str: The resulting skip condition as a string.
+
+    Example:
+        >>> cond = Condition(t_or_f=True, op='+', val=None)
+        >>> finalize_skip_if(cond, 'my_var', '==')
+        'my_var'
+    """
+    if skip_if.t_or_f:
+        return operand_1 if skip_if.op == '+' else f'not {operand_1}'
+
+    return f'{operand_1} {conditional}'
+
+
+def get_skip_if_condition(skip_if, _locals, operand_2):
+    """
+    Retrieves the skip condition based on the provided `Condition` object.
+
+    Args:
+        skip_if (Condition): The condition to evaluate.
+        _locals (dict[str, Any]): A dictionary of local variables for condition evaluation.
+        operand_2 (str): The secondary operand (e.g., a variable or value).
+
+    Returns:
+        Any: The result of the evaluated condition or a string representation for custom values.
+
+    Example:
+        >>> cond = Condition(t_or_f=False, op='==', val=10)
+        >>> locals_dict = {}
+        >>> get_skip_if_condition(cond, locals_dict, 'other_var')
+        '== other_var'
+    """
+    # TODO: To avoid circular import
+    from .class_helper import is_builtin
+
+    if skip_if is None:
+        return False
+
+    if skip_if.t_or_f:  # Truthy or falsy condition, no operand
+        return True
+
+    if is_builtin(skip_if.val):
+        return str(skip_if)
+
+    # Update locals (as `val` is not a builtin)
+    _locals[operand_2] = skip_if.val
+    return f'{skip_if.op} {operand_2}'

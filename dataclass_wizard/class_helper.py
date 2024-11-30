@@ -53,6 +53,9 @@ DATACLASS_FIELD_TO_JSON_FIELD = defaultdict(dict)
 # A cached mapping, per dataclass, of instance field name to `SkipIf` condition
 DATACLASS_FIELD_TO_SKIP_IF = defaultdict(dict)
 
+# A cached mapping, per `EnvWizard` subclass, of field name to env variable
+FIELD_TO_ENV_VAR = defaultdict(dict)
+
 # A mapping of dataclass name to its Meta initializer (defined in
 # :class:`bases.BaseJSONWizardMeta`), which is only set when the
 # :class:`JSONSerializable.Meta` is sub-classed.
@@ -109,6 +112,13 @@ def dataclass_field_to_json_field(cls):
 def dataclass_field_to_skip_if(cls):
 
     return DATACLASS_FIELD_TO_SKIP_IF[cls]
+
+
+def field_to_env_var(cls):
+    """
+    Returns a mapping of field in the `EnvWizard` subclass to env variable.
+    """
+    return FIELD_TO_ENV_VAR[cls]
 
 
 def dataclass_field_to_load_parser(
@@ -195,9 +205,12 @@ def _setup_load_config_for_cls(cls_loader,
 
         # Lookup the Parser (dispatcher) for each field based on its annotated
         # type, and then cache it so we don't need to lookup each time.
-        name_to_parser[f.name] = cls_loader.get_parser_for_annotation(
+        #
+        # Changed in v0.31.0: Get the __call__() method as defined
+        # on `AbstractParser`, if it exists
+        name_to_parser[f.name] = getattr(p := cls_loader.get_parser_for_annotation(
             field_type, cls, field_extras
-        )
+        ), '__call__', p)
 
     parser_dict = DictWithLowerStore(name_to_parser)
     # only cache the load parser for the class if `save` is enabled
@@ -286,16 +299,23 @@ def setup_dump_config_for_cls_if_needed(cls):
 
 
 def call_meta_initializer_if_needed(cls):
-
+    """
+    Calls the Meta initializer when the inner :class:`Meta` is sub-classed.
+    """
     cls_name = get_class_name(cls)
 
     if cls_name in META_INITIALIZER:
         META_INITIALIZER[cls_name](cls)
 
 
-def get_meta(cls):
+def get_meta(cls, base_cls=AbstractMeta):
+    """
+    Retrieves the Meta config for the :class:`AbstractJSONWizard` subclass.
 
     return _META.get(cls, AbstractMeta)
+    This config is set when the inner :class:`Meta` is sub-classed.
+    """
+    return _META.get(cls, base_cls)
 
 
 def dataclass_fields(cls):

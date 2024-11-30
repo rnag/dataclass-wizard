@@ -77,6 +77,7 @@ __all__ = [
     'DumpMixin',
     'property_wizard',
     # Wizard Mixins
+    'EnvWizard',
     'JSONListWizard',
     'JSONFileWizard',
     'TOMLWizard',
@@ -87,7 +88,9 @@ __all__ = [
     'asdict',
     'LoadMeta',
     'DumpMeta',
+    'EnvMeta',
     # Models
+    'env_field',
     'json_field',
     'json_key',
     'path_field',
@@ -115,14 +118,15 @@ __all__ = [
 
 import logging
 
-from .bases_meta import LoadMeta, DumpMeta
+from .bases_meta import LoadMeta, DumpMeta, EnvMeta
 from .dumpers import DumpMixin, setup_default_dumper, asdict
 from .loaders import LoadMixin, setup_default_loader, fromlist, fromdict
-from .models import (json_field, json_key, path_field, skip_if_field,
+from .models import (env_field, json_field, json_key, path_field, skip_if_field,
                      KeyPath, Container,
                      Pattern, DatePattern, TimePattern, DateTimePattern,
                      CatchAll, SkipIf, SkipIfNone,
                      EQ, NE, LT, LE, GT, GE, IS, IS_NOT, IS_TRUTHY, IS_FALSY)
+from .environ.wizard import EnvWizard
 from .property_wizard import property_wizard
 from .serial_json import JSONWizard, JSONPyWizard, JSONSerializable
 from .wizard_mixins import JSONListWizard, JSONFileWizard, TOMLWizard, YAMLWizard

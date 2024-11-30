@@ -82,8 +82,8 @@ _S = TypeVar('_S')
 
 # Merge both the "truthy" and "falsy" values, so we can determine the criteria
 # under which a string can be considered as a boolean value.
-_FALSY_VALUES = ('FALSE', 'F', 'NO', 'N', '0')
-_BOOL_VALUES = _TRUTHY_VALUES + _FALSY_VALUES
+_FALSY_VALUES = {'false', 'f', 'no', 'n', 'off', '0'}
+_BOOL_VALUES = _TRUTHY_VALUES | _FALSY_VALUES
 
 # Valid types for JSON contents; this can be either a list of any type,
 # or a dictionary with `string` keys and values of any type.
@@ -306,7 +306,7 @@ def can_be_bool(o: str) -> bool:
     to be one.
 
     """
-    return o.upper() in _BOOL_VALUES
+    return o.lower() in _BOOL_VALUES
 
 
 class PyDataType(Enum):

@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/environ python
 #
 # dataclass_wizard documentation build configuration file, created by
 # sphinx-quickstart on Fri Jun  9 13:47:02 2017.
@@ -37,7 +37,13 @@ extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.viewcode',
     'sphinx_issues',
+    'sphinx_autodoc_typehints',
+    'sphinx_copybutton',
 ]
+
+copybutton_exclude = '.linenos, .gp, .go'
+
+autodoc_typehints = "description"
 
 github_user = 'rnag'
 github_repo = 'dataclass-wizard'
@@ -60,7 +66,7 @@ master_doc = 'index'
 # General information about the project.
 project = 'Dataclass Wizard'
 author = "Ritvik Nag"
-copyright = f'2021, <a href="https://github.com/{github_user}">{author}</a>'
+copyright = f'2021-2025, <a href="https://github.com/{github_user}">{author}</a>'
 
 # The version info for the project you're documenting, acts as replacement
 # for |version| and |release|, also used in various other places throughout

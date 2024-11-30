@@ -12,7 +12,7 @@ from typing import (
 )
 from uuid import UUID
 
-from .abstractions import AbstractLoader, AbstractParser, FieldToParser
+from .abstractions import AbstractLoader, AbstractParser
 from .bases import BaseLoadHook, AbstractMeta, META
 from .class_helper import (
     create_new_class,
@@ -144,7 +144,7 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
     @staticmethod
     def load_to_named_tuple(
             o: Union[Dict, List, Tuple], base_type: Type[NT],
-            field_to_parser: FieldToParser,
+            field_to_parser: 'FieldToParser',
             field_parsers: List[AbstractParser]) -> NT:
 
         if isinstance(o, dict):
@@ -195,7 +195,7 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
     @staticmethod
     def load_to_typed_dict(
             o: Dict, base_type: Type[M],
-            key_to_parser: FieldToParser,
+            key_to_parser: 'FieldToParser',
             required_keys: FrozenKeys,
             optional_keys: FrozenKeys) -> M:
 
@@ -247,6 +247,15 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
             o: Union[str, N], base_type: Type[timedelta]) -> timedelta:
         # alias: as_timedelta
         ...
+
+    @staticmethod
+    def load_func_for_dataclass(
+        cls: Type[T],
+        config: Optional[META],
+    ) -> Callable[[JSONObject], T]:
+
+        return load_func_for_dataclass(
+            cls, is_main_class=False, config=config)
 
     @classmethod
     def get_parser_for_annotation(cls, ann_type: Type[T],
@@ -311,9 +320,8 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
                             base_type: 'type[T]'
                             # return a dynamically generated `fromdict`
                             # for the `cls` (base_type)
-                            return load_func_for_dataclass(
+                            return cls.load_func_for_dataclass(
                                 base_type,
-                                is_main_class=False,
                                 config=extras['config']
                             )
 
@@ -520,7 +528,8 @@ def setup_default_loader(cls=LoadMixin):
     cls.register_load_hook(timedelta, cls.load_to_timedelta)
 
 
-def get_loader(class_or_instance=None, create=True) -> Type[LoadMixin]:
+def get_loader(class_or_instance=None, create=True,
+               base_cls: T = LoadMixin) -> Type[T]:
     """
     Get the loader for the class, using the following logic:
 
@@ -541,10 +550,10 @@ def get_loader(class_or_instance=None, create=True) -> Type[LoadMixin]:
             return set_class_loader(class_or_instance, class_or_instance)
 
         elif create:
-            cls_loader = create_new_class(class_or_instance, (LoadMixin, ))
+            cls_loader = create_new_class(class_or_instance, (base_cls, ))
             return set_class_loader(class_or_instance, cls_loader)
 
-        return set_class_loader(class_or_instance, LoadMixin)
+        return set_class_loader(class_or_instance, base_cls)
 
 
 def fromdict(cls: Type[T], d: JSONObject) -> T:
@@ -591,6 +600,7 @@ def load_func_for_dataclass(
         cls: Type[T],
         is_main_class: bool = True,
         config: Optional[META] = None,
+        loader_cls=LoadMixin,
 ) -> Callable[[JSONObject], T]:
 
     # TODO dynamically generate for multiple nested classes at once
@@ -598,8 +608,9 @@ def load_func_for_dataclass(
     # Tuple describing the fields of this dataclass.
     cls_fields = dataclass_fields(cls)
 
+
     # Get the loader for the class, or create a new one as needed.
-    cls_loader = get_loader(cls)
+    cls_loader = get_loader(cls, base_cls=loader_cls)
 
     # Get the meta config for the class, or the default config otherwise.
     meta = get_meta(cls)
@@ -670,7 +681,7 @@ def load_func_for_dataclass(
 
     if has_json_paths:
         loop_over_o = num_paths != len(dataclass_init_fields(cls))
-        _locals['get_safe'] = safe_get
+        _locals['safe_get'] = safe_get
     else:
         loop_over_o = True
 
@@ -698,7 +709,7 @@ def load_func_for_dataclass(
                         extra_args = f', {default_value}'
                     else:
                         extra_args = ''
-                    fn_gen.add_line(f'field={field!r}; init_kwargs[field] = field_to_parser[field](get_safe(o, {path!r}{extra_args}))')
+                    fn_gen.add_line(f'field={field!r}; init_kwargs[field] = field_to_parser[field](safe_get(o, {path!r}{extra_args}))')
 
             with fn_gen.except_(ParseError, 'e'):
                 # We run into a parsing error while loading the field value;

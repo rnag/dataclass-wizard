@@ -32,7 +32,7 @@ from .constants import _DUMP_HOOKS, TAG, CATCH_ALL
 from .decorators import _alias
 from .errors import show_deprecation_warning
 from .log import LOG
-from .models import Condition
+from .models import get_skip_if_condition, finalize_skip_if
 from .type_def import (
     ExplicitNull, NoneType, JSONObject,
     DD, LSQ, E, U, LT, NT, T
@@ -251,65 +251,6 @@ def asdict(o: T,
         dump = dump_func_for_dataclass(cls)
 
     return dump(o, dict_factory, exclude, **kwargs)
-
-
-def finalize_skip_if(skip_if: Condition,
-                     operand_1: str,
-                     conditional: str) -> str:
-    """
-    Finalizes the skip condition by generating the appropriate string based on the condition.
-
-    Args:
-        skip_if (Condition): The condition to evaluate, containing truthiness and operation info.
-        operand_1 (str): The primary operand for the condition (e.g., a variable or value).
-        conditional (str): The conditional operator to use (e.g., '==', '!=').
-
-    Returns:
-        str: The resulting skip condition as a string.
-
-    Example:
-        >>> cond = Condition(t_or_f=True, op='+', val=None)
-        >>> finalize_skip_if(cond, 'my_var', '==')
-        'my_var'
-    """
-    if skip_if.t_or_f:
-        return operand_1 if skip_if.op == '+' else f'not {operand_1}'
-
-    return f'{operand_1} {conditional}'
-
-
-def get_skip_if_condition(skip_if: Condition,
-                          _locals: dict[str, Any],
-                          operand_2: str) -> 'str | bool':
-    """
-    Retrieves the skip condition based on the provided `Condition` object.
-
-    Args:
-        skip_if (Condition): The condition to evaluate.
-        _locals (dict[str, Any]): A dictionary of local variables for condition evaluation.
-        operand_2 (str): The secondary operand (e.g., a variable or value).
-
-    Returns:
-        Any: The result of the evaluated condition or a string representation for custom values.
-
-    Example:
-        >>> cond = Condition(t_or_f=False, op='==', val=10)
-        >>> locals_dict = {}
-        >>> get_skip_if_condition(cond, locals_dict, 'other_var')
-        '== other_var'
-    """
-    if skip_if is None:
-        return False
-
-    if skip_if.t_or_f:  # Truthy or falsy condition, no operand
-        return True
-
-    if is_builtin(skip_if.val):
-        return str(skip_if)
-
-    # Update locals (as `val` is not a builtin)
-    _locals[operand_2] = skip_if.val
-    return f'{skip_if.op} {operand_2}'
 
 
 def dump_func_for_dataclass(cls: Type[T],
@@ -569,7 +510,9 @@ def dump_func_for_dataclass(cls: Type[T],
 # method has also been heavily modified from the original implementation in
 # `dataclasses`. However, I will call out specific lines where it is taken
 # directly from the original version.
-def _asdict_inner(obj, dict_factory, hooks, meta, cls_to_dump_func) -> Any:
+def _asdict_inner(obj, dict_factory, hooks, meta, cls_to_dump_func,
+                  # Added for `EnvWizard` (environ/dumpers.py)
+                  dump_func_for_cls=dump_func_for_dataclass) -> Any:
 
     cls = type(obj)
     dump_hook = hooks.get(cls)
@@ -582,7 +525,7 @@ def _asdict_inner(obj, dict_factory, hooks, meta, cls_to_dump_func) -> Any:
         try:
             dump = cls_to_dump_func[cls]
         except KeyError:
-            dump = dump_func_for_dataclass(cls, meta, cls_to_dump_func)
+            dump = dump_func_for_cls(cls, meta, cls_to_dump_func)
         # noinspection PyArgumentList
         return dump(obj, dict_factory=dict_factory)
 

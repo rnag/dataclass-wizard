@@ -4,6 +4,8 @@ Common test fixtures and utilities.
 from dataclasses import dataclass
 from uuid import UUID
 
+import pytest
+
 
 @dataclass
 class SampleClass:
@@ -19,3 +21,14 @@ class MyUUIDSubclass(UUID):
 
     def __str__(self):
         return self.hex
+
+
+@pytest.fixture
+def mock_log(caplog):
+    caplog.set_level('INFO', logger='dataclass_wizard')
+    return caplog
+
+@pytest.fixture
+def mock_debug_log(caplog):
+    caplog.set_level('DEBUG', logger='dataclass_wizard')
+    return caplog

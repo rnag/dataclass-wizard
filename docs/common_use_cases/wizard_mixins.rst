@@ -5,6 +5,18 @@ In addition to the :class:`JSONWizard`, here a few extra Wizard Mixin
 classes that might prove to be quite convenient to use.
 
 
+:class:`EnvWizard`
+~~~~~~~~~~~~~~~~~~
+
+Effortlessly load environment variables and ``.env`` files into typed schemas. Supports secrets via files (file names as keys).
+
+Automatically applies the ``@dataclass`` decorator and supports type hinting with
+string-to-type conversion. Requires subclass instantiation to function.
+
+For a detailed example and advanced features:
+
+- 📖 `Full Documentation <https://dataclass-wizard.readthedocs.io/en/latest/env_magic.html>`_
+
 :class:`JSONPyWizard`
 ~~~~~~~~~~~~~~~~~~~~~
 

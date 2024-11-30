@@ -1,4 +1,5 @@
 """The setup script."""
+import itertools
 import pathlib
 
 from pkg_resources import parse_requirements
@@ -32,6 +33,13 @@ if (requires_test_file := here / 'requirements-test.txt').exists():
         test_requirements = [str(req) for req in parse_requirements(requires_test_txt)]
 else:   # Running on CI
     test_requirements = []
+
+# extras_require = {
+#     'dotenv': ['python-dotenv>=0.19.0'],
+# }
+
+# Ref: https://stackoverflow.com/a/71166228/10237506
+# extras_require['all'] = list(itertools.chain.from_iterable(extras_require.values()))
 
 about = {}
 exec((here / package_name / '__version__.py').read_text(), about)
@@ -91,6 +99,7 @@ setup(
     test_suite='tests',
     tests_require=test_requirements,
     extras_require={
+        'dotenv': ['python-dotenv>=1,<2'],
         'timedelta': ['pytimeparse>=1.1.7'],
         'toml': [
             'tomli>=2,<3; python_version=="3.9"',

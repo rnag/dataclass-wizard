@@ -1,14 +1,26 @@
-import json
 from abc import ABC, abstractmethod
 from dataclasses import Field, MISSING
 from typing import (Any, Type, Dict, Tuple, ClassVar,
-                    Optional, Union, Iterable, Callable)
+                    Optional, Union, Iterable, Callable, Collection, Sequence)
 
 from .utils.string_conv import normalize
 
 
 # added as we can't import from `type_def`, as we run into a circular import.
 JSONObject = Dict[str, Any]
+
+
+def type_name(obj: type) -> str:
+    """Return the type or class name of an object"""
+    from .utils.typing_compat import is_generic
+
+    # for type generics like `dict[str, float]`, we want to return
+    # the subscripted value as is, rather than simply accessing the
+    # `__name__` property, which in this case would be `dict` instead.
+    if is_generic(obj):
+        return str(obj)
+
+    return getattr(obj, '__qualname__', getattr(obj, '__name__', repr(obj)))
 
 
 def show_deprecation_warning(
@@ -134,11 +146,51 @@ class ParseError(JSONWizardError):
 
         if self.json_object:
             self.kwargs['json_object'] = json.dumps(self.json_object, default=str)
+            from .utils.json_util import safe_dumps
+            self.kwargs['json_object'] = safe_dumps(self.json_object)
 
         if self.kwargs:
             sep = '\n  '
             parts = sep.join(f'{k}: {v!r}' for k, v in self.kwargs.items())
             msg = f'{msg}{sep}{parts}'
+
+        return msg
+
+
+class ExtraData(JSONWizardError):
+    """
+    Error raised when extra keyword arguments are passed in to the constructor
+    or `__init__()` method of an `EnvWizard` subclass.
+
+    Note that this error class is raised by default, unless a value for the
+    `extra` field is specified in the :class:`Meta` class.
+    """
+
+    _TEMPLATE = ('{cls}.__init__() received extra keyword arguments:\n'
+                 '  extras: {extra_kwargs!r}\n'
+                 '  fields: {field_names!r}\n'
+                 '  resolution: specify a value for `extra` in the Meta '
+                 'config for the class, to control how extra keyword '
+                 'arguments are handled.')
+
+    def __init__(self,
+                 cls: Type,
+                 extra_kwargs: Collection[str],
+                 field_names: Collection[str]):
+
+        super().__init__()
+
+        self.class_name: str = type_name(cls)
+        self.extra_kwargs = extra_kwargs
+        self.field_names = field_names
+
+    @property
+    def message(self) -> str:
+        msg = self._TEMPLATE.format(
+            cls=self.class_name,
+            extra_kwargs=self.extra_kwargs,
+            field_names=self.field_names,
+        )
 
         return msg
 
@@ -193,9 +245,11 @@ class MissingFields(JSONWizardError):
 
     @property
     def message(self) -> str:
+        from .utils.json_util import safe_dumps
+
         msg = self._TEMPLATE.format(
             cls=self.class_name,
-            json_string=json.dumps(self.obj, default=str),
+            json_string=safe_dumps(self.obj),
             e=self.base_error,
             fields=self.fields,
             missing_fields=self.missing_fields)
@@ -235,11 +289,16 @@ class UnknownJSONKey(JSONWizardError):
         self.kwargs = kwargs
         self.class_name: str = self.name(cls)
 
+        # self.class_name: str = type_name(cls)
+
     @property
     def message(self) -> str:
+        from .utils.json_util import safe_dumps
+
         msg = self._TEMPLATE.format(
             cls=self.class_name,
-            json_string=json.dumps(self.obj, default=str),
+            # json_string=json.dumps(self.obj, default=str),
+            json_string=safe_dumps(self.obj),
             fields=self.fields,
             json_key=self.json_key)
 
@@ -267,12 +326,17 @@ class MissingData(ParseError):
         super().__init__(self, None, nested_cls, **kwargs)
         self.nested_class_name: str = self.name(nested_cls)
 
+        # self.nested_class_name: str = type_name(nested_cls)
+
     @property
     def message(self) -> str:
+        from .utils.json_util import safe_dumps
+
         msg = self._TEMPLATE.format(
             cls=self.class_name,
             nested_cls=self.nested_class_name,
-            json_string=json.dumps(self.obj, default=str),
+            # json_string=json.dumps(self.obj, default=str),
+            json_string=safe_dumps(self.obj),
             field=self.field_name,
             o=self.obj,
         )
@@ -329,3 +393,52 @@ class InvalidConditionError(JSONWizardError):
     def message(self) -> str:
         return self._TEMPLATE.format(cls=self.class_name,
                                      field=self.field_name)
+
+
+class MissingVars(JSONWizardError):
+    """
+    Error raised when unable to create an instance of a EnvWizard subclass
+    (most likely due to missing environment variables in the Environment)
+
+    """
+    _TEMPLATE = ('\n`{cls}` has {prefix} missing in the environment:\n'
+                 '{fields}\n\n'
+                 '**Resolution options**\n\n'
+                 '1. Set a default value for the field:\n\n'
+                 '{def_resolution}'
+                 '\n\n'
+                 '2. Provide the value during initialization:\n\n'
+                 '    {init_resolution}')
+
+    def __init__(self,
+                 cls: Type,
+                 missing_vars: Sequence[Tuple[str, 'str | None', str, Any]]):
+
+        super().__init__()
+
+        indent = ' ' * 4
+
+        #   - `name` (mapped to `CUSTOM_A_NAME`)
+        self.class_name: str = type_name(cls)
+        self.fields = '\n'.join([f'{indent}- {f[0]} -> {f[1]}' for f in missing_vars])
+        self.def_resolution = '\n'.join([f'{indent}class {self.class_name}:'] +
+                                        [f'{indent * 2}{f}: {typ} = {default!r}'
+                                         for (f, _, typ, default) in missing_vars])
+
+        init_vars = ', '.join([f'{f}={default!r}' for (f, _, typ, default) in missing_vars])
+        self.init_resolution = f'instance = {self.class_name}({init_vars})'
+
+        num_fields = len(missing_vars)
+        self.prefix = f'{len(missing_vars)} required field{"s" if num_fields > 1 else ""}'
+
+    @property
+    def message(self) -> str:
+        msg = self._TEMPLATE.format(
+            cls=self.class_name,
+            prefix=self.prefix,
+            fields=self.fields,
+            def_resolution=self.def_resolution,
+            init_resolution=self.init_resolution,
+        )
+
+        return msg

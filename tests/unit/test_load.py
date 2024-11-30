@@ -25,6 +25,7 @@ from dataclass_wizard.parsers import (
     OptionalParser, Parser, IdentityParser, SingleArgParser
 )
 from dataclass_wizard.type_def import NoneType, T
+
 from .conftest import MyUUIDSubclass
 from ..conftest import *
 
@@ -574,7 +575,7 @@ def test_from_dict_key_transform_with_json_key():
     'input,expected,expectation',
     [
         ([1, '2', 3], {1, 2, 3}, does_not_raise()),
-        ('TrUe', True, pytest.raises(ParseError)),
+        ('TrUe', True, pytest.raises(ValueError)),
         ((3.22, 2.11, 1.22), {3, 2, 1}, does_not_raise()),
     ]
 )
@@ -602,7 +603,7 @@ def test_set(input, expected, expectation):
     'input,expected,expectation',
     [
         ([1, '2', 3], {1, 2, 3}, does_not_raise()),
-        ('TrUe', True, pytest.raises(ParseError)),
+        ('TrUe', True, pytest.raises(ValueError)),
         ((3.22, 2.11, 1.22), {1, 2, 3}, does_not_raise()),
     ]
 )
@@ -798,7 +799,7 @@ def test_forward_refs_are_resolved():
 @pytest.mark.parametrize(
     'input,expectation',
     [
-        ('testing', pytest.raises(TypeError)),
+        ('testing', pytest.raises(ValueError)),
         ('2020-01-02T01:02:03Z', does_not_raise()),
         ('2010-12-31 23:59:59-04:00', does_not_raise()),
         (123456789, does_not_raise()),
@@ -822,7 +823,7 @@ def test_datetime(input, expectation):
 @pytest.mark.parametrize(
     'input,expectation',
     [
-        ('testing', pytest.raises(TypeError)),
+        ('testing', pytest.raises(ValueError)),
         ('2020-01-02', does_not_raise()),
         ('2010-12-31', does_not_raise()),
         (123456789, does_not_raise()),
@@ -846,7 +847,7 @@ def test_date(input, expectation):
 @pytest.mark.parametrize(
     'input,expectation',
     [
-        ('testing', pytest.raises(TypeError)),
+        ('testing', pytest.raises(ValueError)),
         ('01:02:03Z', does_not_raise()),
         ('23:59:59-04:00', does_not_raise()),
         (123456789, pytest.raises(TypeError)),
@@ -926,7 +927,7 @@ def test_timedelta(input, expectation, base_err):
             [1, '2', 3], does_not_raise(), [1, 2, 3]
         ),
         (
-            'testing', pytest.raises(ParseError), None
+            'testing', pytest.raises(ValueError), None
         ),
     ]
 )
@@ -949,7 +950,7 @@ def test_list(input, expectation, expected):
     'input,expectation,expected',
     [
         (
-            ['hello', 'world'], pytest.raises(ParseError), None
+            ['hello', 'world'], pytest.raises(ValueError), None
         ),
         (
             [1, '2', 3], does_not_raise(), [1, 2, 3]
@@ -1238,7 +1239,7 @@ def test_dict(input, expectation, expected):
             # Might need to change this behavior if needed: currently it
             # raises an error, which I think is good for now since we don't
             # want to add `null`s to a list anyway.
-            {2: None}, pytest.raises(ParseError), None
+            {2: None}, pytest.raises(TypeError), None
         ),
         (
             # Incorrect type - `list`, but should be a `dict`

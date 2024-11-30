@@ -4,6 +4,7 @@ flake8>=3  # pyup: ignore
 tox==4.23.2
 # Extras
 pytimeparse==1.1.8
+python-dotenv>=1,<2
 # [toml] extra
 tomli>=2,<3; python_version=="3.9"
 tomli>=2,<3; python_version=="3.10"

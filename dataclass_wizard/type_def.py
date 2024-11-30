@@ -16,6 +16,9 @@ __all__ = [
     'JSONObject',
     'ListOfJSONObject',
     'JSONValue',
+    'FileType',
+    'EnvFileType',
+    'StrCollection',
     'ParseFloat',
     'Encoder',
     'FileEncoder',
@@ -34,11 +37,13 @@ __all__ = [
     'LT',
     'LSQ',
     'FREF',
+    'dataclass_transform',
 ]
 
 from collections import deque
 from datetime import date, time, datetime
 from enum import Enum
+from os import PathLike
 from typing import (
     Any, Type, TypeVar, Sequence, Mapping, List, Dict, DefaultDict, FrozenSet,
     Union, NamedTuple, Callable, AnyStr, TextIO, BinaryIO,
@@ -46,7 +51,7 @@ from typing import (
     ForwardRef as PyForwardRef,
     Literal as PyLiteral,
     Protocol as PyProtocol,
-    TypedDict as PyTypedDict,
+    TypedDict as PyTypedDict, Iterable, Collection,
 )
 from uuid import UUID
 
@@ -119,6 +124,15 @@ ListOfJSONObject = List[JSONObject]
 # Valid value types in JSON.
 JSONValue = Union[None, str, bool, int, float, JSONList, JSONObject]
 
+# File-type argument, compatible with the type of `file` for `open`
+FileType = Union[str, bytes, PathLike, int]
+
+# DotEnv file-type argument (string, tuple of string, boolean, or None)
+EnvFileType = Union[bool, FileType, Iterable[FileType], None]
+
+# Type for a string or a collection of strings.
+StrCollection = Union[str, Collection[str]]
+
 
 PyTypedDicts.append(PyTypedDict)
 # Python 3.9+ users might import from either `typing` or
@@ -136,9 +150,11 @@ except ImportError:
 if PY311_OR_ABOVE:  # pragma: no cover
     from typing import Required as PyRequired
     from typing import NotRequired as PyNotRequired
+    from typing import dataclass_transform
 else:
     from typing_extensions import Required as PyRequired
     from typing_extensions import NotRequired as PyNotRequired
+    from typing_extensions import dataclass_transform
 
 
 # Forward references can be either strings or explicit `ForwardRef` objects.

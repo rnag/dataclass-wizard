@@ -6,29 +6,70 @@ both import directly from `bases`.
 """
 import logging
 from datetime import datetime, date
-from typing import Type, Optional, Dict, Union
+from typing import Type, Optional, Dict, Union, Sequence
 
 from .abstractions import AbstractJSONWizard
-from .bases import AbstractMeta, META
+from .bases import AbstractMeta, META, AbstractEnvMeta
 from .class_helper import (
     META_INITIALIZER, _META,
     get_outer_class_name, get_class_name, create_new_class,
-    json_field_to_dataclass_field, dataclass_field_to_json_field
+    json_field_to_dataclass_field, dataclass_field_to_json_field,
+    field_to_env_var,
 )
 from .constants import TAG
 from .decorators import try_with_load
 from .dumpers import get_dumper
-from .enums import LetterCase, DateTimeTo
+from .enums import DateTimeTo, LetterCase, LetterCasePriority
+from .environ.loaders import EnvLoader
 from .errors import ParseError
 from .loaders import get_loader
 from .log import LOG
 from .models import Condition
-from .type_def import E
+from .type_def import E, EnvFileType
 from .utils.type_conv import date_to_timestamp, as_enum
 
 
 # global flag to determine if debug mode was ever enabled
 _debug_was_enabled = False
+
+
+# use `debug_enabled` for log level if it's a str or int.
+def _enable_debug_mode_if_needed(cls_loader, possible_lvl):
+    global _debug_was_enabled
+    if not _debug_was_enabled:
+        _debug_was_enabled = True
+        # use `debug_enabled` for log level if it's a str or int.
+        default_lvl = logging.DEBUG
+        # minimum logging level for logs by this library.
+        min_level = default_lvl if isinstance(possible_lvl, bool) else possible_lvl
+        # set the logging level of this library's logger.
+        LOG.setLevel(min_level)
+        LOG.info('DEBUG Mode is enabled')
+
+    # Decorate all hooks so they format more helpful messages
+    # on error.
+    load_hooks = cls_loader.__LOAD_HOOKS__
+    for typ in load_hooks:
+        load_hooks[typ] = try_with_load(load_hooks[typ])
+
+
+def _as_enum_safe(cls: type, name: str, base_type: Type[E]) -> Optional[E]:
+    """
+    Attempt to return the value for class attribute :attr:`attr_name` as
+    a :type:`base_type`.
+
+    :raises ParseError: If we are unable to convert the value of the class
+      attribute to an Enum of type `base_type`.
+    """
+    try:
+        return as_enum(getattr(cls, name), base_type)
+
+    except ParseError as e:
+        # We run into a parsing error while loading the enum; Add
+        # additional info on the Exception object before re-raising it
+        e.class_name = get_class_name(cls)
+        e.field_name = name
+        raise
 
 
 class BaseJSONWizardMeta(AbstractMeta):
@@ -86,25 +127,9 @@ class BaseJSONWizardMeta(AbstractMeta):
         cls_dumper = get_dumper(dataclass, create=create)
 
         if cls.debug_enabled:
-            global _debug_was_enabled
-            if not _debug_was_enabled:
-                _debug_was_enabled = True
-                # use `debug_enabled` for log level if it's a str or int.
-                possible_lvl = cls.debug_enabled
-                default_lvl = logging.DEBUG
-                # minimum logging level for logs by this library.
-                min_level = default_lvl if isinstance(possible_lvl, bool) else possible_lvl
-                # set the logging level of this library's logger.
-                LOG.setLevel(min_level)
-                LOG.info('DEBUG Mode is enabled')
+            _enable_debug_mode_if_needed(cls_loader, cls.debug_enabled)
 
-            # Decorate all hooks so they format more helpful messages
-            # on error.
-            load_hooks = cls_loader.__LOAD_HOOKS__
-            for typ in load_hooks:
-                load_hooks[typ] = try_with_load(load_hooks[typ])
-
-        if cls.json_key_to_field:
+        if cls.json_key_to_field is not None:
             add_for_both = cls.json_key_to_field.pop('__all__', None)
 
             json_field_to_dataclass_field(dataclass).update(
@@ -123,8 +148,8 @@ class BaseJSONWizardMeta(AbstractMeta):
                     if field not in dataclass_to_json_field:
                         dataclass_to_json_field[field] = json_key
 
-        if cls.marshal_date_time_as:
-            enum_val = cls._as_enum_safe('marshal_date_time_as', DateTimeTo)
+        if cls.marshal_date_time_as is not None:
+            enum_val = _as_enum_safe(cls, 'marshal_date_time_as', DateTimeTo)
 
             if enum_val is DateTimeTo.TIMESTAMP:
                 # Update dump hooks for the `datetime` and `date` types
@@ -140,13 +165,13 @@ class BaseJSONWizardMeta(AbstractMeta):
                 # already serializes using this approach.
                 pass
 
-        if cls.key_transform_with_load:
-            cls_loader.transform_json_field = cls._as_enum_safe(
-                'key_transform_with_load', LetterCase)
+        if cls.key_transform_with_load is not None:
+            cls_loader.transform_json_field = _as_enum_safe(
+                cls, 'key_transform_with_load', LetterCase)
 
-        if cls.key_transform_with_dump:
-            cls_dumper.transform_dataclass_field = cls._as_enum_safe(
-                'key_transform_with_dump', LetterCase)
+        if cls.key_transform_with_dump is not None:
+            cls_dumper.transform_dataclass_field = _as_enum_safe(
+                cls, 'key_transform_with_dump', LetterCase)
 
         # Finally, if needed, save the meta config for the outer class. This
         # will allow us to access this config as part of the JSON load/dump
@@ -159,24 +184,77 @@ class BaseJSONWizardMeta(AbstractMeta):
             else:
                 _META[dataclass] = cls
 
+
+class BaseEnvWizardMeta(AbstractEnvMeta):
+    """
+    Superclass definition for the `EnvWizard.Meta` inner class.
+
+    See the implementation of the :class:`AbstractEnvMeta` class for the
+    available config that can be set, as well as for descriptions on any
+    implemented methods.
+    """
+
+    __slots__ = ()
+
     @classmethod
-    def _as_enum_safe(cls, name: str, base_type: Type[E]) -> Optional[E]:
+    def _init_subclass(cls):
         """
-        Attempt to return the value for class attribute :attr:`attr_name` as
-        a :type:`base_type`.
+        Hook that should ideally be run whenever the `Meta` class is
+        sub-classed.
 
-        :raises ParseError: If we are unable to convert the value of the class
-          attribute to an Enum of type `base_type`.
         """
-        try:
-            return as_enum(getattr(cls, name), base_type)
+        outer_cls_name = get_outer_class_name(cls, raise_=False)
 
-        except ParseError as e:
-            # We run into a parsing error while loading the enum; Add
-            # additional info on the Exception object before re-raising it
-            e.class_name = get_class_name(cls)
-            e.field_name = name
-            raise
+        if outer_cls_name is not None:
+            META_INITIALIZER[outer_cls_name] = cls.bind_to
+        else:
+            # The `Meta` class is defined as an outer class. Emit a warning
+            # here, just so we can ensure awareness of this special case.
+            LOG.warning('The %r class is not declared as an Inner Class, so '
+                        'these are global settings that will apply to all '
+                        'EnvWizard sub-classes.', get_class_name(cls))
+
+            # Copy over global defaults to the :class:`AbstractMeta`
+            for attr in AbstractEnvMeta.fields_to_merge:
+                setattr(AbstractEnvMeta, attr, getattr(cls, attr, None))
+            if cls.field_to_env_var:
+                AbstractEnvMeta.field_to_env_var = cls.field_to_env_var
+
+            # Create a new class of `Type[W]`, and then pass `create=False` so
+            # that we don't create new loader / dumper for the class.
+            new_cls = create_new_class(cls, (AbstractJSONWizard, ))
+            cls.bind_to(new_cls, create=False)
+
+    @classmethod
+    def bind_to(cls, env_class: Type, create=True, is_default=True):
+
+        cls_loader = get_loader(env_class, create=create, base_cls=EnvLoader)
+        cls_dumper = get_dumper(env_class, create=create)
+
+        if cls.debug_enabled:
+            _enable_debug_mode_if_needed(cls_loader, cls.debug_enabled)
+
+        if cls.field_to_env_var is not None:
+            field_to_env_var(env_class).update(
+                cls.field_to_env_var
+            )
+
+        cls.key_lookup_with_load = _as_enum_safe(
+            cls, 'key_lookup_with_load', LetterCasePriority)
+
+        cls_dumper.transform_dataclass_field = _as_enum_safe(
+            cls, 'key_transform_with_dump', LetterCase)
+
+        # Finally, if needed, save the meta config for the outer class. This
+        # will allow us to access this config as part of the JSON load/dump
+        # process if needed.
+        if is_default:
+            # Check if the dataclass already has a Meta config; if so, we need to
+            # copy over special attributes so they don't get overwritten.
+            if env_class in _META:
+                _META[env_class] &= cls
+            else:
+                _META[env_class] = cls
 
 
 # noinspection PyPep8Naming
@@ -268,3 +346,50 @@ def DumpMeta(*, debug_enabled: 'bool | int | str' = False,
     # Create a new subclass of :class:`AbstractMeta`
     # noinspection PyTypeChecker
     return type('Meta', (BaseJSONWizardMeta, ), base_dict)
+
+
+# noinspection PyPep8Naming
+def EnvMeta(*, debug_enabled: 'bool | int | str' = False,
+             env_file: EnvFileType = None,
+             env_prefix: str = '',
+             secrets_dir: 'EnvFileType | Sequence[EnvFileType]' = None,
+             field_to_env_var: dict[str, str] = None,
+             key_lookup_with_load: Union[LetterCasePriority, str] = LetterCasePriority.SCREAMING_SNAKE,
+             key_transform_with_dump: Union[LetterCase, str] = LetterCase.SNAKE,
+             # marshal_date_time_as: Union[DateTimeTo, str] = None,
+             skip_defaults: bool = False,
+             skip_if: Condition = None,
+             skip_defaults_if: Condition = None,
+             ) -> META:
+    """
+    Helper function to setup the ``Meta`` Config for the EnvWizard.
+
+    For descriptions on what each of these params does, refer to the `Docs`_
+    below, or check out the :class:`AbstractEnvMeta` definition (I want to avoid
+    duplicating the descriptions for params here).
+
+    Examples::
+
+        >>> EnvMeta(key_transform_with_dump='SNAKE').bind_to(MyClass)
+
+    .. _Docs: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/meta.html
+    """
+
+    # Set meta attributes here.
+    base_dict = {
+        '__slots__': (),
+        'debug_enabled': debug_enabled,
+        'env_file': env_file,
+        'env_prefix': env_prefix,
+        'secrets_dir': secrets_dir,
+        'field_to_env_var': field_to_env_var,
+        'key_lookup_with_load': key_lookup_with_load,
+        'key_transform_with_dump': key_transform_with_dump,
+        'skip_defaults': skip_defaults,
+        'skip_if': skip_if,
+        'skip_defaults_if': skip_defaults_if,
+    }
+
+    # Create a new subclass of :class:`AbstractMeta`
+    # noinspection PyTypeChecker
+    return type('Meta', (BaseEnvWizardMeta, ), base_dict)
