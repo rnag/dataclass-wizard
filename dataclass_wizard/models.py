@@ -60,6 +60,9 @@ def json_field(keys, *,
                      hash, compare, metadata)
 
 
+env_field = json_field
+
+
 class JSON:
 
     __slots__ = ('keys',

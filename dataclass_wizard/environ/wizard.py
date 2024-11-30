@@ -346,17 +346,15 @@ class EnvWizard(AbstractEnvWizard):
 
 
 def _add_missing_var(missing_vars, name, env_prefix, var_name, tp):
+
+    var_name = _get_var_name(name, env_prefix, var_name)
+    tn = type_name(tp)
     # noinspection PyBroadException
     try:
         suggested = tp()
     except Exception:
         suggested = None
-    tn = type_name(tp)
-    if var_name is None:
-        env_var = f'{env_prefix}{name}' if env_prefix else name
-        var_name = Env.cleaned_to_env.get(clean(env_var), env_var)
-    elif env_prefix:
-        var_name = f'{env_prefix}{var_name}'
+
     missing_vars.append((name, var_name, tn, suggested))
 
 
@@ -367,11 +365,18 @@ def _handle_parse_error(e, cls, name, env_prefix, var_name):
     # before re-raising it.
     e.class_name = cls
     e.field_name = name
+    e.kwargs['env_variable'] = _get_var_name(name, env_prefix, var_name)
+
+    raise
+
+
+def _get_var_name(name, env_prefix, var_name):
+
     if var_name is None:
         env_var = f'{env_prefix}{name}' if env_prefix else name
         var_name = Env.cleaned_to_env.get(clean(env_var), env_var)
+
     elif env_prefix:
         var_name = f'{env_prefix}{var_name}'
-    e.kwargs['env_variable'] = var_name
 
-    raise
+    return var_name

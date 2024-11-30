@@ -38,7 +38,10 @@ extensions = [
     'sphinx.ext.viewcode',
     'sphinx_issues',
     'sphinx_autodoc_typehints',
+    'sphinx_copybutton',
 ]
+
+copybutton_exclude = '.linenos, .gp, .go'
 
 autodoc_typehints = "description"
 
@@ -63,7 +66,7 @@ master_doc = 'index'
 # General information about the project.
 project = 'Dataclass Wizard'
 author = "Ritvik Nag"
-copyright = f'2021, <a href="https://github.com/{github_user}">{author}</a>'
+copyright = f'2021-2025, <a href="https://github.com/{github_user}">{author}</a>'
 
 # The version info for the project you're documenting, acts as replacement
 # for |version| and |release|, also used in various other places throughout

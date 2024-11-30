@@ -82,6 +82,39 @@ def KeyPath(keys: PathType | str, all: bool = True, dump: bool = True):
     ...
 
 
+def env_field(keys: _STR_COLLECTION, *,
+              all=False, dump=True,
+              default=MISSING,
+              default_factory: Callable[[], MISSING] = MISSING,
+              init=True, repr=True,
+              hash=None, compare=True, metadata=None):
+    """
+    This is a helper function that sets the same defaults for keyword
+    arguments as the ``dataclasses.field`` function. It can be thought of as
+    an alias to ``dataclasses.field(...)``, but one which also represents
+    a mapping of one or more environment variable (env var) names to
+    a dataclass field.
+
+    This is only in *addition* to the default key transform; for example, an
+    env var appearing as "myField", "MyField" or "my-field" will already map
+    to a dataclass field "my_field" by default (assuming the key transform
+    converts to snake case).
+
+    `keys` is a string, or a collection (list, tuple, etc.) of strings. It
+    represents one of more env vars to associate with the dataclass field.
+
+    When `all` is passed as True (default is False), it will also associate
+    the reverse mapping, i.e. from dataclass field to env var. If multiple
+    env vars are passed in, it uses the first one provided in this case.
+    This mapping is then used when ``to_dict`` or ``to_json`` is called,
+    instead of the default key transform.
+
+    When `dump` is passed as False (default is True), this field will be
+    skipped, or excluded, in the serialization process to JSON.
+    """
+    ...
+
+
 def json_field(keys: _STR_COLLECTION, *,
                all=False, dump=True,
                default=MISSING,

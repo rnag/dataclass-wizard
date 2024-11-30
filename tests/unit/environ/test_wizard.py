@@ -9,7 +9,7 @@ from typing import ClassVar, List, Dict, Union, DefaultDict, Set
 
 import pytest
 
-from dataclass_wizard import EnvWizard, json_field
+from dataclass_wizard import EnvWizard, env_field
 from dataclass_wizard.errors import MissingVars, ParseError, ExtraData
 import dataclass_wizard.bases_meta
 
@@ -147,13 +147,13 @@ def test_load_and_dump_with_aliases():
                 'emails': ('EMAILS', 'My_Other_List'),
             }
 
-        my_str: str = json_field(('the_string', 'hello_world'))
+        my_str: str = env_field(('the_string', 'hello_world'))
         answer_to_life: int
-        list_of_nums: List[int] = json_field('my_list')
+        list_of_nums: List[int] = env_field('my_list')
         emails: List[str]
         # added for code coverage.
-        # case where `json_field` is used, but an alas is not defined.
-        my_test_value123: int = json_field(..., default=21)
+        # case where `env_field` is used, but an alas is not defined.
+        my_test_value123: int = env_field(..., default=21)
 
     c = MyClass()
     log.debug(c.dict())
@@ -249,7 +249,7 @@ def test_load_with_parse_error_when_env_var_is_specified():
         class _(EnvWizard.Meta):
             debug_enabled = True
 
-        a_string: int = json_field('MY_STR')
+        a_string: int = env_field('MY_STR')
 
     with pytest.raises(ParseError) as e:
         _ = MyClass()
@@ -434,8 +434,8 @@ def test_init_method_declaration_is_logged_when_debug_mode_is_enabled(mock_debug
             debug_enabled = True
             extra = 'ALLOW'
 
-        auth_key: str = json_field('my_auth_key')
-        api_key: str = json_field(('hello', 'test'))
+        auth_key: str = env_field('my_auth_key')
+        api_key: str = env_field(('hello', 'test'))
         domains: Set[str] = field(default_factory=set)
         answer_to_life: int = 42
 

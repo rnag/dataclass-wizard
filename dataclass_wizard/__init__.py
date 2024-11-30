@@ -90,6 +90,7 @@ __all__ = [
     'DumpMeta',
     'EnvMeta',
     # Models
+    'env_field',
     'json_field',
     'json_key',
     'path_field',
@@ -120,7 +121,7 @@ import logging
 from .bases_meta import LoadMeta, DumpMeta, EnvMeta
 from .dumpers import DumpMixin, setup_default_dumper, asdict
 from .loaders import LoadMixin, setup_default_loader, fromlist, fromdict
-from .models import (json_field, json_key, path_field, skip_if_field,
+from .models import (env_field, json_field, json_key, path_field, skip_if_field,
                      KeyPath, Container,
                      Pattern, DatePattern, TimePattern, DateTimePattern,
                      CatchAll, SkipIf, SkipIfNone,

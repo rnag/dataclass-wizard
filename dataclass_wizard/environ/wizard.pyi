@@ -66,3 +66,7 @@ def _handle_parse_error(e: ParseError,
                         name: str,
                         env_prefix: str | None,
                         var_name: str | None): ...
+
+def _get_var_name(name: str,
+                  env_prefix: str | None,
+                  var_name: str | None) -> str: ...

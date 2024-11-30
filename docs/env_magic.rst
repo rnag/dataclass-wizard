@@ -1,9 +1,11 @@
 `Env` Magic
 ===========
 
-The *Environment Wizard* (or ``EnvWizard``) is a tool for effortlessly mapping environment variables to Python dataclass fields.
-It offers built-in type validation, optional ``.env`` file support, and the ability to handle secret files, where the file name
-serves as the key and its content as the value.
+The *Environment Wizard* (or ``EnvWizard``) is a powerful Mixin class for effortlessly mapping environment variables and ``.env`` files to strongly-typed Python dataclass fields.
+
+It provides built-in type validation, automatic string-to-type conversion, and the ability to handle secret files, where the file name serves as the key and its content as the value.
+
+Additionally, :class:`EnvWizard` supports type hinting and automatically applies the ``@dataclass`` decorator to your subclasses.
 
 .. hint::
 
@@ -12,24 +14,24 @@ serves as the key and its content as the value.
 Key Features
 ------------
 - **Auto Mapping**: Seamlessly maps environment variables to dataclass fields, using field names or aliases.
-- **Dotenv Support**: Load environment variables from `.env` files or custom dotenv paths.
+- **Dotenv Support**: Load environment variables from ``.env`` files or custom dotenv paths.
 - **Secret Files**: Handle secret files where filenames act as keys and file contents as values.
 - **Custom Configuration**: Configure variable prefixing, logging, and error handling.
 - **Type Parsing**: Supports basic types (int, float, bool) and collections (list, dict, etc.).
 
 Installation
 ------------
-Install via `pip`:
+Install via ``pip``:
 
-.. code-block:: bash
+.. code-block:: console
 
-   pip install dataclass-wizard
+   $ pip install dataclass-wizard
 
-For `.env` file support, install the `python-dotenv` dependency with the `dotenv` extra:
+For ``.env`` file support, install the ``python-dotenv`` dependency with the ``dotenv`` extra:
 
-.. code-block:: bash
+.. code-block:: console
 
-   pip install dataclass-wizard[dotenv]
+   $ pip install dataclass-wizard[dotenv]
 
 .. _Settings Management: https://docs.pydantic.dev/latest/concepts/pydantic_settings
 .. _python-dotenv: https://saurabh-kumar.com/python-dotenv/
@@ -127,13 +129,13 @@ Use a static or dynamic prefix for environment variable keys:
 
 Configuration Options
 ---------------------
-The `Meta` class provides additional configuration:
+The :class:`Meta` class provides additional configuration:
 
-- `env_file`: Path to a dotenv file. Defaults to `True` for `.env` in the current directory.
-- `env_prefix`: A string prefix to prepend to all variable names.
-- `field_to_env_var`: Map fields to custom variable names.
-- `debug_enabled`: Enable debug logging.
-- `extra`: Handle unexpected fields. Options: `ALLOW`, `DENY`, `IGNORE`.
+- :attr:`env_file`: Path to a dotenv file. Defaults to `True` for `.env` in the current directory.
+- :attr:`env_prefix`: A string prefix to prepend to all variable names.
+- :attr:`field_to_env_var`: Map fields to custom variable names.
+- :attr:`debug_enabled`: Enable debug logging.
+- :attr:`extra`: Handle unexpected fields. Options: ``ALLOW``, ``DENY``, ``IGNORE``.
 
 Error Handling
 --------------
@@ -171,3 +173,86 @@ Examples
 
        db_host: str
        db_port: int
+
+**Complete Example**
+
+Here is a more complete example of using :class:`EnvWizard` to
+load environment variables into a dataclass schema:
+
+.. code:: python3
+
+    from os import environ
+    from datetime import datetime, time
+    from typing import NamedTuple
+    try:
+        from typing import TypedDict
+    except ImportError:
+        from typing_extensions import TypedDict
+
+    from dataclass_wizard import EnvWizard
+
+    # ideally these variables will be set in the environment, like so:
+    #   $ export MY_FLOAT=1.23
+
+    environ.update(
+        myStr='Hello',
+        my_float='432.1',
+        # lists/dicts can also be specified in JSON format
+        MyTuple='[1, "2"]',
+        Keys='{ "k1": "false", "k2": "true" }',
+        # or in shorthand format...
+        MY_PENCIL='sharpened=Y,  uses_left = 3',
+        My_Emails='  first_user@abc.com ,  second-user@xyz.org',
+        SOME_DT_VAL='1651077045',  # 2022-04-27T12:30:45
+    )
+
+
+    class Pair(NamedTuple):
+        first: str
+        second: int
+
+
+    class Pencil(TypedDict):
+        sharpened: bool
+        uses_left: int
+
+
+    class MyClass(EnvWizard):
+
+        class _(EnvWizard.Meta):
+            field_to_env_var = {
+                'my_dt': 'SOME_DT_VAL',
+            }
+
+        my_str: str
+        my_float: float
+        my_tuple: Pair
+        keys: dict[str, bool]
+        my_pencil: Pencil
+        my_emails: list[str]
+        my_dt: datetime
+        my_time: time = time.min
+
+    c = MyClass()
+
+    print('Class Fields:')
+    print(c.dict())
+    # {'my_str': 'Hello', 'my_float': 432.1, ...}
+
+    print()
+
+    print('JSON:')
+    print(c.to_json(indent=2))
+    # {
+    #   "my_str": "Hello",
+    #   "my_float": 432.1,
+    # ...
+
+    assert c.my_pencil['uses_left'] == 3
+    assert c.my_dt.isoformat() == '2022-04-27T16:30:45+00:00'
+
+This code highlights the ability to:
+
+- Load variables from the environment or ``.env`` files.
+- Map fields to specific environment variable names using :attr:`field_to_env_var`.
+- Support complex types such as :class:`NamedTuple`, :class:`TypedDict`, and more.

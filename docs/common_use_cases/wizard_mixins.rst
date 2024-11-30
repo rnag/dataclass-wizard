@@ -5,6 +5,18 @@ In addition to the :class:`JSONWizard`, here a few extra Wizard Mixin
 classes that might prove to be quite convenient to use.
 
 
+:class:`EnvWizard`
+~~~~~~~~~~~~~~~~~~
+
+Effortlessly load environment variables and ``.env`` files into typed schemas. Supports secrets via files (file names as keys).
+
+Automatically applies the ``@dataclass`` decorator and supports type hinting with
+string-to-type conversion. Requires subclass instantiation to function.
+
+For a detailed example and advanced features:
+
+- 📖 `Full Documentation <https://dataclass-wizard.readthedocs.io/en/latest/env_magic.html>`_
+
 :class:`JSONPyWizard`
 ~~~~~~~~~~~~~~~~~~~~~
 
@@ -26,91 +38,6 @@ Use Case
 --------
 
 Use :class:`JSONPyWizard` when you want to prevent the automatic ``camelCase`` conversion of dictionary keys during serialization, keeping them in their original ``snake_case`` format.
-
-:class:`EnvWizard`
-~~~~~~~~~~~~~~~~~~
-
-The Env Wizard is a standalone Mixin class that can be extended to enable
-loading of Environment Variables and ``.env`` files.
-
-Similar to how ``dataclasses`` work, it supports type hinting and auto-conversion
-from strings to annotated field types. However, it does *not* require a
-subclass to be instantiated.
-
-Here is a simple example of usage with Environment Variables:
-
-.. code:: python3
-
-    from __future__ import annotations  # can be removed in Python 3.9+
-
-    from os import environ
-    from datetime import datetime, time
-    from typing import NamedTuple
-    try:
-        from typing import TypedDict
-    except ImportError:
-        from typing_extensions import TypedDict
-
-    from dataclass_wizard import EnvWizard
-
-    # ideally these variables will be set in the environment, like so:
-    #   $ export MY_FLOAT=1.23
-
-    environ.update(
-        myStr='Hello',
-        my_float='432.1',
-        # lists/dicts can also be specified in JSON format
-        MyTuple='[1, "2"]',
-        Keys='{ "k1": "false", "k2": "true" }',
-        # or in shorthand format...
-        MY_PENCIL='sharpened=Y,  uses_left = 3',
-        My_Emails='  first_user@abc.com ,  second-user@xyz.org',
-        SOME_DT_VAL='1651077045',  # 2022-04-27T12:30:45
-    )
-
-
-    class Pair(NamedTuple):
-        first: str
-        second: int
-
-
-    class Pencil(TypedDict):
-        sharpened: bool
-        uses_left: int
-
-
-    class MyClass(EnvWizard):
-
-        class _(EnvWizard.Meta):
-            field_to_env_var = {
-                'my_dt': 'SOME_DT_VAL',
-            }
-
-        my_str: str
-        my_float: float
-        my_tuple: Pair
-        keys: dict[str, bool]
-        my_pencil: Pencil
-        my_emails: list[str]
-        my_dt: datetime
-        my_time: time = time.min
-
-
-    print('Class Fields:')
-    print(MyClass.dict())
-    # {'my_str': 'Hello', 'my_float': 432.1, ...}
-
-    print()
-
-    print('JSON:')
-    print(MyClass.to_json(indent=2))
-    # {
-    #   "my_str": "Hello",
-    #   "my_float": 432.1,
-    # ...
-
-    assert MyClass.my_pencil['uses_left'] == 3
-    assert MyClass.my_dt.isoformat() == '2022-04-27T12:30:45'
 
 :class:`JSONListWizard`
 ~~~~~~~~~~~~~~~~~~~~~~~
