@@ -441,11 +441,12 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
                     )
 
                 elif base_type in (ABCSequence, ABCMutableSequence):
-
                     load_hook = cls.load_to_iterable
-                    # Re-map to list, e.g. `Sequence[int]` -> `list[int]`
-                    ann_type = list[ann_type] if (
-                        ann_type := get_args(ann_type)[0]) else list
+                    # desired (non-generic) origin type
+                    desired_type = list if base_type is ABCMutableSequence else tuple
+                    # Re-map to desired type, e.g. `Sequence[int]` -> `list[int]`
+                    ann_type = desired_type[ann_type] if (
+                        ann_type := get_args(ann_type)[0]) else desired_type
 
                     return IterableParser(
                         base_cls, extras, ann_type, load_hook,
