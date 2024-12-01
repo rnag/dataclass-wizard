@@ -10,6 +10,8 @@ from typing import (
     NamedTupleMeta,
     SupportsFloat, AnyStr, Text, Callable, Optional
 )
+from collections.abc import Sequence as ABCSequence, MutableSequence as ABCMutableSequence
+
 from uuid import UUID
 
 from .abstractions import AbstractLoader, AbstractParser
@@ -434,6 +436,18 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
                         parser = VariadicTupleParser
 
                     return parser(
+                        base_cls, extras, ann_type, load_hook,
+                        cls.get_parser_for_annotation
+                    )
+
+                elif base_type in (ABCSequence, ABCMutableSequence):
+
+                    load_hook = cls.load_to_iterable
+                    # Re-map to list, e.g. `Sequence[int]` -> `list[int]`
+                    ann_type = list[ann_type] if (
+                        ann_type := get_args(ann_type)[0]) else list
+
+                    return IterableParser(
                         base_cls, extras, ann_type, load_hook,
                         cls.get_parser_for_annotation
                     )

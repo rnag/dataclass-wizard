@@ -145,7 +145,6 @@ class ParseError(JSONWizardError):
             obj_type=self.name(self.obj_type))
 
         if self.json_object:
-            self.kwargs['json_object'] = json.dumps(self.json_object, default=str)
             from .utils.json_util import safe_dumps
             self.kwargs['json_object'] = safe_dumps(self.json_object)
 
@@ -297,7 +296,6 @@ class UnknownJSONKey(JSONWizardError):
 
         msg = self._TEMPLATE.format(
             cls=self.class_name,
-            # json_string=json.dumps(self.obj, default=str),
             json_string=safe_dumps(self.obj),
             fields=self.fields,
             json_key=self.json_key)
@@ -335,7 +333,6 @@ class MissingData(ParseError):
         msg = self._TEMPLATE.format(
             cls=self.class_name,
             nested_cls=self.nested_class_name,
-            # json_string=json.dumps(self.obj, default=str),
             json_string=safe_dumps(self.obj),
             field=self.field_name,
             o=self.obj,

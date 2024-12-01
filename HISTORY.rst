@@ -2,6 +2,22 @@
 History
 =======
 
+0.32.0 (2024-11-30)
+-------------------
+
+**Features and Improvements**
+
+- Add support for ``Sequence`` and ``MutableSequence``
+
+**Bugfixes**
+
+* Fix a bug in ``ParseError``
+* Fix issue when field in ``EnvWizard`` is a dataclass, and
+  instance of that type is passed to constructor
+* Fix some logic in ``parsers.py`` that was relying on all parsers
+  being subclass of :class:`AbstractParser`, as they can now be a function
+  instead.
+
 0.31.0 (2024-11-30)
 -------------------
 

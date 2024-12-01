@@ -364,7 +364,8 @@ class TupleParser(AbstractParser[Type[S], S]):
     __slots__ = ('hook',
                  'elem_parsers',
                  'total_count',
-                 'required_count')
+                 'required_count',
+                 'elem_types')
 
     # Base type of the object which is instantiable
     #   ex. `Tuple[bool, int]` -> `tuple`
@@ -378,7 +379,7 @@ class TupleParser(AbstractParser[Type[S], S]):
 
         # Get the subscripted values
         #   ex. `Tuple[bool, int]` -> (bool, int)
-        elem_types = get_args(self.base_type)
+        self.elem_types = elem_types = get_args(self.base_type)
         self.base_type = get_origin(self.base_type)
         # A collection with a parser for each type argument
         elem_parsers = tuple(get_parser(t, cls, extras)
@@ -391,7 +392,8 @@ class TupleParser(AbstractParser[Type[S], S]):
         #   this should exclude the parsers for `Optional` or `Union` types
         #   that have `None` in the list of args.
         self.required_count: int = len(tuple(p for p in elem_parsers
-                                             if None not in p))
+                                             if not isinstance(p, AbstractParser)
+                                             or None not in p))
 
         self.elem_parsers = elem_parsers or None
 
@@ -410,8 +412,9 @@ class TupleParser(AbstractParser[Type[S], S]):
                 desired_count = str(self.total_count)
 
             # self.elem_parsers can be None at this moment
-            elem_parsers_types = [p.base_type for p in self.elem_parsers] \
-                if self.elem_parsers else []
+            elem_parsers_types = [getattr(p, 'base_type', tp) for p, tp in
+                                  zip(self.elem_parsers, self.elem_types)] \
+                if self.elem_parsers else self.elem_types
 
             raise ParseError(
                 e, o, elem_parsers_types,
