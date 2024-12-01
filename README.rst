@@ -1238,27 +1238,41 @@ What's New in v1.0
 
 .. warning::
 
-   **Default Key Transformation Update**
+   - **Default Key Transformation Update**
 
-   Starting with ``v1.0.0``, the default key transformation for JSON serialization
-   will change to keep keys *as-is* instead of converting them to `camelCase`.
+     Starting with ``v1.0.0``, the default key transformation for JSON serialization
+     will change to keep keys *as-is* instead of converting them to `camelCase`.
 
-   - **New Default Behavior**: ``key_transform='NONE'`` will be the standard setting.
+     *New Default Behavior*: ``key_transform='NONE'`` will be the standard setting.
 
-   **How to Prepare**:
-   You can enforce this future behavior right now by using the ``JSONPyWizard`` helper:
+     *How to Prepare*: You can enforce this future behavior right now by using the ``JSONPyWizard`` helper:
 
-   .. code-block:: python3
+     .. code-block:: python3
 
-      from dataclasses import dataclass
-      from dataclass_wizard import JSONPyWizard
+        from dataclasses import dataclass
+        from dataclass_wizard import JSONPyWizard
 
-      @dataclass
-      class MyModel(JSONPyWizard):
-          my_field: str
+        @dataclass
+        class MyModel(JSONPyWizard):
+            my_field: str
 
-      print(MyModel(my_field="value").to_dict())
-      # Output: {'my_field': 'value'}
+        print(MyModel(my_field="value").to_dict())
+        # Output: {'my_field': 'value'}
+
+
+   - **Float to Int Conversion Change**
+
+     Starting in ``v1.0``, floats or float strings with fractional
+     parts (e.g., ``123.4`` or ``"123.4"``) will no longer be silently
+     converted to integers. Instead, they will raise an error.
+     However, floats with no fractional parts (e.g., ``3.0``
+     or ``"3.0"``) will still convert to integers as before.
+
+     *How to Prepare*: To ensure compatibility with the new behavior:
+
+     - Use ``float`` annotations for fields that may include fractional values.
+     - Review your data and avoid passing fractional values (e.g., ``123.4``) to fields annotated as ``int``.
+     - Update tests or logic that rely on the current rounding behavior.
 
 Contributing
 ------------
