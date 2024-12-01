@@ -149,7 +149,7 @@ class EnvLoader(LoadMixin):
         cls: Type[T],
         config: Optional[META],
         is_main_class: bool = False,
-    ) -> Callable[[JSONObject], T]:
+    ) -> Callable[['str | JSONObject | T', Type[T]], T]:
 
         load = load_func_for_dataclass(
             cls,
@@ -159,11 +159,14 @@ class EnvLoader(LoadMixin):
             loader_cls=EnvLoader,
         )
 
-        def load_to_dataclass(o: 'str | JSONObject', *_):
+        def load_to_dataclass(o: 'str | JSONObject | T', *_) -> T:
             """
             Receives either a string or a `dict` as an input, and return a
             dataclass instance of type `cls`.
             """
+            if type(o) is cls:
+                return o
+
             return load(as_dict(o))
 
         return load_to_dataclass

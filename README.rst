@@ -96,12 +96,12 @@ This library supports **Python 3.9** or higher.
 Features
 --------
 
-Here are the key features that ``dataclass-wizard`` offers:
+Unlock the full potential of your `dataclasses`_ with these key features:
 
--   *Flexible (de)serialization*: Marshal dataclasses to/from JSON, TOML, YAML, or ``dict``.
--   *Field properties made simple*: Add properties with default values to your dataclasses.
--  *JSON-to-Dataclass wizardry*: Auto-generate a dataclass schema from a JSON file or string.
--  *Environment magic*: Easily map env vars and ``dotenv`` files to strongly-typed class fields.
+- *Flexible (de)serialization*: Marshal dataclasses to/from JSON, TOML, YAML, or ``dict`` with ease.
+- *Environment magic*: Map env vars and ``dotenv`` files to strongly-typed class fields effortlessly.
+- *Field properties made simple*: Add properties with default values to your dataclasses.
+- *JSON-to-Dataclass wizardry*: Auto-generate a dataclass schema from any JSON file or string instantly.
 
 Wizard Mixins
 -------------
@@ -118,15 +118,16 @@ In addition to ``JSONWizard``, these handy Mixin_ classes simplify your workflow
 Supported Types
 ---------------
 
-The Dataclass Wizard library provides inherent support for standard Python collections
-such as ``list``, ``dict`` and ``set``, as well as most Generics from the typing
-module, such as ``Union`` and ``Any``. Other commonly used types such as ``Enum``,
-``defaultdict``, and date and time objects such as ``datetime`` are also natively
-supported.
+The Dataclass Wizard library natively supports standard Python
+collections like ``list``, ``dict``, and ``set``, along with
+popular `typing`_ module Generics such as ``Union`` and ``Any``.
+Additionally, it handles commonly used types like ``Enum``,
+``defaultdict``, and date/time objects (e.g., ``datetime``)
+with ease.
 
-For a complete list of the supported Python types, including info on the
-load/dump process for special types, check out the `Supported Types`_ section
-in the docs.
+For a detailed list of supported types and insights into the
+load/dump process for special types, visit the
+`Supported Types`_ section of the docs.
 
 Usage and Examples
 ------------------
@@ -204,11 +205,11 @@ Easily map environment variables to Python dataclasses:
     print(config.app_name)    # My App
     print(config.debug_mode)  # True
 
-📖 For more, check out the full documentation `on EnvWizard`_.
+📖 See more `on EnvWizard`_ in the full documentation.
 
 .. rubric:: Dataclass Properties with ``property_wizard``
 
-Use `field properties`_ in dataclasses with default values, thanks to ``property_wizard``:
+Add field properties to your dataclasses with default values using ``property_wizard``:
 
 .. code-block:: python3
 
@@ -235,18 +236,18 @@ Use `field properties`_ in dataclasses with default values, thanks to ``property
             self._wheels = int(value)
 
 
-    v = Vehicle(wheels='2')
+    v = Vehicle()
     print(v.wheels)  # 4
     v.wheels = '6'
     print(v.wheels)  # 6
 
     assert v.wheels == 6, 'Setter correctly handles type conversion'
 
-📖 For further details, visit the extended documentation on `field properties`_.
+📖 For a deeper dive, visit the documentation on `field properties`_.
 
 .. rubric:: Generate Dataclass Schemas with CLI
 
-Quickly generate Python dataclasses from JSON input using the wiz-cli_ tool:
+Quickly generate Python dataclasses from JSON input using the ``wiz-cli`` tool:
 
 .. code-block:: console
 
@@ -269,7 +270,7 @@ Quickly generate Python dataclasses from JSON input using the wiz-cli_ tool:
     class Item:
         created: date
 
-📖 See the full CLI documentation at wiz-cli_.
+📖 Check out the full CLI documentation at wiz-cli_.
 
 JSON Marshalling
 ----------------
@@ -1195,10 +1196,11 @@ Advanced Example: Dynamic Prefix Handling
 
     # Define dataclass with custom prefix support
     class AppConfig(EnvWizard):
-        class _(EnvWizard.Meta):
-            env_prefix = 'APP_'
 
-        name: str = env_field('A_NAME')
+        class _(EnvWizard.Meta):
+            env_prefix = 'APP_'  # Default prefix for env vars
+
+        name: str = env_field('A_NAME')  # Looks for `APP_A_NAME` by default
         debug: bool
 
     # Set environment variables
@@ -1206,7 +1208,7 @@ Advanced Example: Dynamic Prefix Handling
     os.environ['CUSTOM_DEBUG'] = 'yes'
 
     # Apply a dynamic prefix at runtime
-    config = AppConfig(_env_prefix='CUSTOM_')
+    config = AppConfig(_env_prefix='CUSTOM_')  # Looks for `CUSTOM_A_NAME` and `CUSTOM_DEBUG`
 
     print(config)
     # > AppConfig(name='Test!', debug=True)
@@ -1236,27 +1238,41 @@ What's New in v1.0
 
 .. warning::
 
-   **Default Key Transformation Update**
+   - **Default Key Transformation Update**
 
-   Starting with ``v1.0.0``, the default key transformation for JSON serialization
-   will change to keep keys *as-is* instead of converting them to `camelCase`.
+     Starting with ``v1.0.0``, the default key transformation for JSON serialization
+     will change to keep keys *as-is* instead of converting them to `camelCase`.
 
-   - **New Default Behavior**: ``key_transform='NONE'`` will be the standard setting.
+     *New Default Behavior*: ``key_transform='NONE'`` will be the standard setting.
 
-   **How to Prepare**:
-   You can enforce this future behavior right now by using the ``JSONPyWizard`` helper:
+     *How to Prepare*: You can enforce this future behavior right now by using the ``JSONPyWizard`` helper:
 
-   .. code-block:: python3
+     .. code-block:: python3
 
-      from dataclasses import dataclass
-      from dataclass_wizard import JSONPyWizard
+        from dataclasses import dataclass
+        from dataclass_wizard import JSONPyWizard
 
-      @dataclass
-      class MyModel(JSONPyWizard):
-          my_field: str
+        @dataclass
+        class MyModel(JSONPyWizard):
+            my_field: str
 
-      print(MyModel(my_field="value").to_dict())
-      # Output: {'my_field': 'value'}
+        print(MyModel(my_field="value").to_dict())
+        # Output: {'my_field': 'value'}
+
+
+   - **Float to Int Conversion Change**
+
+     Starting in ``v1.0``, floats or float strings with fractional
+     parts (e.g., ``123.4`` or ``"123.4"``) will no longer be silently
+     converted to integers. Instead, they will raise an error.
+     However, floats with no fractional parts (e.g., ``3.0``
+     or ``"3.0"``) will still convert to integers as before.
+
+     *How to Prepare*: To ensure compatibility with the new behavior:
+
+     - Use ``float`` annotations for fields that may include fractional values.
+     - Review your data and avoid passing fractional values (e.g., ``123.4``) to fields annotated as ``int``.
+     - Update tests or logic that rely on the current rounding behavior.
 
 Contributing
 ------------
@@ -1312,3 +1328,5 @@ This package was created with Cookiecutter_ and the `rnag/cookiecutter-pypackage
 .. _Handling Unknown JSON Keys: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/handling_unknown_json_keys.html
 .. _custom paths to access nested keys: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/nested_key_paths.html
 .. _annotations: https://docs.python.org/3/library/typing.html#typing.Annotated
+.. _typing: https://docs.python.org/3/library/typing.html
+.. _dataclasses: https://docs.python.org/3/library/dataclasses.html

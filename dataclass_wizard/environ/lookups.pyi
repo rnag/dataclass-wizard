@@ -1,5 +1,4 @@
 from dataclasses import MISSING
-from os import environ
 from typing import ClassVar
 
 from ..decorators import cached_class_property
@@ -17,6 +16,9 @@ Environ = dict[str, STR_OR_NONE]
 EnvVars = set[str]
 
 
+environ: Environ
+
+
 # noinspection PyMethodParameters
 class Env:
 
@@ -30,7 +32,7 @@ class Env:
     def load_environ(cls, force_reload=False) -> None: ...
 
     @classmethod
-    def reload(cls, env: dict = environ): ...
+    def reload(cls, env: dict | None = None): ...
 
     @classmethod
     def secret_values(cls, dirs: EnvFileType) -> Environ: ...

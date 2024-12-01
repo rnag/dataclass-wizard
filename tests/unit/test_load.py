@@ -10,7 +10,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, date, time, timedelta
 from typing import (
     List, Optional, Union, Tuple, Dict, NamedTuple, Type, DefaultDict,
-    Set, FrozenSet, Generic, Annotated, Literal
+    Set, FrozenSet, Generic, Annotated, Literal, Sequence, MutableSequence, Collection
 )
 
 import pytest
@@ -2476,3 +2476,85 @@ def test_dataclass_in_union_when_tag_key_is_field():
 
     t1 = Result.from_dict({"data": {"id": 1, "type": "xml", "field_type_1": "value"}})
     assert t1 == Result(data=XML(id=1, type='xml', field_type_1='value'))
+
+
+def test_sequence_and_mutable_sequence_are_supported():
+    """
+    Confirm  `Collection`, `Sequence`, and `MutableSequence` -- imported
+    from either `typing` or `collections.abc` -- are supported.
+    """
+    @dataclass
+    class IssueFields:
+        name: str
+
+    @dataclass
+    class Options(JSONWizard):
+        email: str = ""
+        token: str = ""
+        fields: Sequence[IssueFields] = (
+            IssueFields('A'),
+            IssueFields('B'),
+            IssueFields('C'),
+        )
+        fields_tup: tuple[IssueFields] = IssueFields('A'),
+        fields_var_tup: tuple[IssueFields, ...] = IssueFields('A'),
+        list_of_int: MutableSequence[int] = field(default_factory=list)
+        list_of_bool: Collection[bool] = field(default_factory=list)
+
+    # initialize with defaults
+    opt = Options.from_dict({
+        'email': 'a@b.org',
+        'token': '<PASSWORD>',
+    })
+    assert opt == Options(
+        email='a@b.org', token='<PASSWORD>',
+        fields=(IssueFields(name='A'), IssueFields(name='B'), IssueFields(name='C')),
+    )
+
+    # check annotated `Sequence` maps to `tuple`
+    opt = Options.from_dict({
+        'email': 'a@b.org',
+        'token': '<PASSWORD>',
+        'fields': [{'Name': 'X'}, {'Name': 'Y'}, {'Name': 'Z'}]
+    })
+    assert opt.fields == (IssueFields('X'), IssueFields('Y'), IssueFields('Z'))
+
+    # does not raise error
+    opt = Options.from_dict({
+        'email': 'a@b.org',
+        'token': '<PASSWORD>',
+        'fields_tup': [{'Name': 'X'}]
+    })
+    assert opt.fields_tup == (IssueFields('X'), )
+
+    # raises error: 2 elements instead of 1
+    with pytest.raises(ParseError, match="desired_count: '1'"):
+        _ = Options.from_dict({
+            'email': 'a@b.org',
+            'token': '<PASSWORD>',
+            'fields_tup': [{'Name': 'X'}, {'Name': 'Y'}]
+        })
+
+    # does not raise error
+    opt = Options.from_dict({
+        'email': 'a@b.org',
+        'token': '<PASSWORD>',
+        'fields_var_tup': [{'Name': 'X'}, {'Name': 'Y'}]
+    })
+    assert opt.fields_var_tup == (IssueFields('X'), IssueFields('Y'))
+
+    # check annotated `MutableSequence` maps to `list`
+    opt = Options.from_dict({
+        'email': 'a@b.org',
+        'token': '<PASSWORD>',
+        'ListOfInt': (1, '2', 3.0)
+    })
+    assert opt.list_of_int == [1, 2, 3]
+
+    # check annotated `Collection` maps to `list`
+    opt = Options.from_dict({
+        'email': 'a@b.org',
+        'token': '<PASSWORD>',
+        'ListOfBool': (1, '0', '1')
+    })
+    assert opt.list_of_bool == [True, False, True]

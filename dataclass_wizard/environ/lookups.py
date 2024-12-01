@@ -11,7 +11,7 @@ from ..utils.string_conv import to_snake_case
 Environ = dict[str, 'str | None']
 
 # noinspection PyTypeChecker
-environ: Environ = None
+environ = None
 
 
 # noinspection PyMethodParameters
