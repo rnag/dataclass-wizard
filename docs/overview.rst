@@ -93,6 +93,11 @@ Supported Types
     - ``Union`` - Also supports `using dataclasses`_.
     - ``Optional``
 
+- `ABC Containers`_ in ``typing`` and ``collections.abc``
+    - ``Collection`` -- instantiated as ``list``
+    - ``MutableSequence`` -- mapped to ``list``
+    - ``Sequence`` -- mapped to ``tuple``
+
 * Recently introduced Generic types
     - ``Annotated``
     - ``Literal``
@@ -178,3 +183,4 @@ Special Cases
 
 .. _using dataclasses: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/dataclasses_in_union_types.html
 .. _pytimeparse: https://pypi.org/project/pytimeparse/
+.. _ABC Containers: https://docs.python.org/3/library/typing.html#aliases-to-container-abcs-in-collections-abc

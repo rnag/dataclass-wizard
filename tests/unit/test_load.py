@@ -10,7 +10,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, date, time, timedelta
 from typing import (
     List, Optional, Union, Tuple, Dict, NamedTuple, Type, DefaultDict,
-    Set, FrozenSet, Generic, Annotated, Literal, Sequence, MutableSequence
+    Set, FrozenSet, Generic, Annotated, Literal, Sequence, MutableSequence, Collection
 )
 
 import pytest
@@ -2480,8 +2480,8 @@ def test_dataclass_in_union_when_tag_key_is_field():
 
 def test_sequence_and_mutable_sequence_are_supported():
     """
-    Confirm `Sequence` and `MutableSequence` -- imported from
-    either `typing` or `collections.abc` -- are supported.
+    Confirm  `Collection`, `Sequence`, and `MutableSequence` -- imported
+    from either `typing` or `collections.abc` -- are supported.
     """
     @dataclass
     class IssueFields:
@@ -2499,6 +2499,7 @@ def test_sequence_and_mutable_sequence_are_supported():
         fields_tup: tuple[IssueFields] = IssueFields('A'),
         fields_var_tup: tuple[IssueFields, ...] = IssueFields('A'),
         list_of_int: MutableSequence[int] = field(default_factory=list)
+        list_of_bool: Collection[bool] = field(default_factory=list)
 
     # initialize with defaults
     opt = Options.from_dict({
@@ -2549,3 +2550,11 @@ def test_sequence_and_mutable_sequence_are_supported():
         'ListOfInt': (1, '2', 3.0)
     })
     assert opt.list_of_int == [1, 2, 3]
+
+    # check annotated `Collection` maps to `list`
+    opt = Options.from_dict({
+        'email': 'a@b.org',
+        'token': '<PASSWORD>',
+        'ListOfBool': (1, '0', '1')
+    })
+    assert opt.list_of_bool == [True, False, True]

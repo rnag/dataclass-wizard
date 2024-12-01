@@ -1,4 +1,6 @@
 from collections import defaultdict, deque, namedtuple
+import collections.abc as abc
+
 from dataclasses import is_dataclass
 from datetime import datetime, time, date, timedelta
 from decimal import Decimal
@@ -10,7 +12,6 @@ from typing import (
     NamedTupleMeta,
     SupportsFloat, AnyStr, Text, Callable, Optional
 )
-from collections.abc import Sequence as ABCSequence, MutableSequence as ABCMutableSequence
 
 from uuid import UUID
 
@@ -440,11 +441,11 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
                         cls.get_parser_for_annotation
                     )
 
-                elif base_type in (ABCSequence, ABCMutableSequence):
+                elif base_type in (abc.Sequence, abc.MutableSequence, abc.Collection):
                     load_hook = cls.load_to_iterable
                     # desired (non-generic) origin type
-                    desired_type = list if base_type is ABCMutableSequence else tuple
-                    # Re-map to desired type, e.g. `Sequence[int]` -> `list[int]`
+                    desired_type = tuple if base_type is abc.Sequence else list
+                    # Re-map to desired type, e.g. `Sequence[int]` -> `tuple[int]`
                     ann_type = desired_type[ann_type] if (
                         ann_type := get_args(ann_type)[0]) else desired_type
 

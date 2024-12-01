@@ -7,16 +7,18 @@ History
 
 **Features and Improvements**
 
-- Add support for ``Sequence`` and ``MutableSequence``
+- Add support for `ABC Containers`_ in ``typing`` and ``collections.abc``:
+    * ``Collection``
+    * ``Sequence``
+    * ``MutableSequence``
 
 **Bugfixes**
 
-* Fix a bug in ``ParseError``
-* Fix issue when field in ``EnvWizard`` is a dataclass, and
-  instance of that type is passed to constructor
-* Fix some logic in ``parsers.py`` that was relying on all parsers
-  being subclass of :class:`AbstractParser`, as they can now be a function
-  instead.
+- Fixed a bug in :class:`ParseError` handling.
+- Resolved an issue in :class:`EnvWizard` where passing an instance of a dataclass field type to the constructor caused problems.
+- Corrected logic in :mod:`parsers.py` that assumed all parsers were subclasses of :class:`AbstractParser`; parsers can now be functions as well.
+
+.. _ABC Containers: https://docs.python.org/3/library/typing.html#aliases-to-container-abcs-in-collections-abc
 
 0.31.0 (2024-11-30)
 -------------------
