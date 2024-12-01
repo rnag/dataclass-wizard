@@ -624,7 +624,6 @@ def load_func_for_dataclass(
     # Tuple describing the fields of this dataclass.
     cls_fields = dataclass_fields(cls)
 
-
     # Get the loader for the class, or create a new one as needed.
     cls_loader = get_loader(cls, base_cls=loader_cls)
 

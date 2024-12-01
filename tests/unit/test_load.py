@@ -2558,3 +2558,23 @@ def test_sequence_and_mutable_sequence_are_supported():
         'ListOfBool': (1, '0', '1')
     })
     assert opt.list_of_bool == [True, False, True]
+
+
+def test_dataclass_decorator_is_automatically_applied():
+    """
+    Confirm the `@dataclass` decorator is automatically
+    applied, if not decorated by the user.
+    """
+    class Test(JSONWizard):
+        my_field: str
+        my_bool: bool = False
+
+    t = Test.from_dict({'myField': 'value'})
+    assert t.my_field == 'value'
+
+    t = Test('test', True)
+    assert t.my_field == 'test'
+    assert t.my_bool
+
+    with pytest.raises(TypeError, match=".*Test\.__init__\(\) missing 1 required positional argument: 'my_field'"):
+        Test()

@@ -1,5 +1,6 @@
 import json
 import logging
+from dataclasses import is_dataclass, dataclass
 
 from .abstractions import AbstractJSONWizard
 from .bases_meta import BaseJSONWizardMeta, LoadMeta, DumpMeta
@@ -8,8 +9,10 @@ from .dumpers import asdict
 from .loaders import fromdict, fromlist
 # noinspection PyProtectedMember
 from .utils.dataclass_compat import _create_fn, _set_new_attribute
+from .type_def import dataclass_transform
 
 
+@dataclass_transform()
 class JSONSerializable(AbstractJSONWizard):
 
     __slots__ = ()
@@ -58,6 +61,11 @@ class JSONSerializable(AbstractJSONWizard):
     def __init_subclass__(cls, str=True, debug=False):
 
         super().__init_subclass__()
+
+        if not is_dataclass(cls):
+            # Apply the `@dataclass` decorator to the class
+            # noinspection PyMethodFirstArgAssignment
+            cls = dataclass(cls)
 
         if debug:
             default_lvl = logging.DEBUG
