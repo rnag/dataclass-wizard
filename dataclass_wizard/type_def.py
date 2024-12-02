@@ -44,6 +44,7 @@ from collections import deque
 from datetime import date, time, datetime
 from enum import Enum
 from os import PathLike
+from types import NoneType
 from typing import (
     Any, Type, TypeVar, Sequence, Mapping, List, Dict, DefaultDict, FrozenSet,
     Union, NamedTuple, Callable, AnyStr, TextIO, BinaryIO,
@@ -101,9 +102,6 @@ FrozenKeys = FrozenSet[str]
 
 # Default factory type, assuming a no-args constructor
 DefFactory = Callable[[], T]
-
-# The class of the `None` singleton, cached for re-usability
-NoneType = type(None)
 
 # For Python 3.8+, we need to use both `TypedDict` implementations (from both
 # the `typing` and `typing_extensions` modules). Because it's not clear which

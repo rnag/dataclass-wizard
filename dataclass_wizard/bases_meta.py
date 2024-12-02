@@ -23,6 +23,7 @@ from .enums import DateTimeTo, LetterCase, LetterCasePriority
 from .environ.loaders import EnvLoader
 from .errors import ParseError
 from .loaders import get_loader
+from .loaders_v2 import LoadMixin
 from .log import LOG
 from .models import Condition
 from .type_def import E, EnvFileType
@@ -121,9 +122,10 @@ class BaseJSONWizardMeta(AbstractMeta):
             cls.bind_to(new_cls, create=False)
 
     @classmethod
-    def bind_to(cls, dataclass: Type, create=True, is_default=True):
+    def bind_to(cls, dataclass: Type, create=True, is_default=True,
+                base_loader=LoadMixin):
 
-        cls_loader = get_loader(dataclass, create=create)
+        cls_loader = get_loader(dataclass, create=create, base_cls=base_loader)
         cls_dumper = get_dumper(dataclass, create=create)
 
         if cls.debug_enabled:

@@ -1,7 +1,7 @@
 import json
 from dataclasses import MISSING, Field
 from datetime import date, datetime, time
-from typing import Generic, Mapping, NewType
+from typing import Generic, Mapping, NewType, Any, TypedDict, NotRequired
 
 from .constants import PY310_OR_ABOVE
 from .decorators import cached_property
@@ -26,10 +26,46 @@ CatchAll = NewType('CatchAll', Mapping)
 # DT_OR_NONE = Optional[DT]
 
 
-class Extras(PyTypedDict):
-    # noinspection PyUnresolvedReferences,PyTypedDict
-    config: 'META'
-    pattern: 'PatternedDT'
+class TypeInfo:
+    __slots__ = ('origin', 'args', 'name', 'i', 'prefix', 'index')
+
+    def __init__(self, origin,
+                 args=None,
+                 name=None,
+                 i=1,
+                 prefix='v',
+                 index=None):
+        self.name = name
+        self.origin = origin
+        self.args = args
+        self.i = i
+        self.prefix = prefix
+        self.index = index
+
+    def v(self):
+        return (f'{self.prefix}{self.i}' if (idx := self.index) is None
+                else f'{self.prefix}{self.i}[{idx}]')
+
+    def v_and_next(self):
+        next_i = self.i + 1
+        return self.v(), f'v{next_i}', next_i
+
+    def v_and_next_k_v(self):
+        next_i = self.i + 1
+        return self.v(), f'k{next_i}', f'v{next_i}', next_i
+
+    def __repr__(self):
+        items = ', '.join([f'{v}={getattr(self, v)!r}' for v in self.__slots__])
+        return f'{self.__class__.__name__}({items})'
+
+class Extras(TypedDict):
+    """
+    "Extra" config that can be used in the load / dump process.
+    """
+    config: NotRequired['META']
+    pattern: NotRequired['PatternedDT']
+    # i: int
+    locals: NotRequired[dict[str, Any]]
 
 
 # noinspection PyShadowingBuiltins

@@ -5,6 +5,7 @@ Utility module for checking generic types provided by the `typing` library.
 __all__ = [
     'is_literal',
     'get_origin',
+    'get_origin_v2',
     'get_args',
     'get_keys_for_typed_dict',
     'is_typed_dict',
@@ -16,10 +17,9 @@ __all__ = [
 
 import functools
 import sys
-import types
 import typing
 # noinspection PyUnresolvedReferences,PyProtectedMember
-from typing import _AnnotatedAlias
+from typing import Union, _AnnotatedAlias
 
 from .string_conv import repl_or_with_union
 from ..constants import PY310_OR_ABOVE, PY313_OR_ABOVE
@@ -60,23 +60,38 @@ def is_literal(cls) -> bool:
 # Ref:
 #   https://github.com/python/typing/blob/master/typing_extensions/src_py3/typing_extensions.py#L2111
 if PY310_OR_ABOVE:  # pragma: no cover
+    from types import GenericAlias, UnionType
     _get_args = typing.get_args
 
     _BASE_GENERIC_TYPES = (
         typing._GenericAlias,
         typing._SpecialForm,
-        types.GenericAlias,
-        types.UnionType,
+        GenericAlias,
+        UnionType,
     )
+
+    _UNION_TYPES = frozenset({
+        UnionType,
+        Union,
+    })
 
     _TYPING_LOCALS = None
 
     def _process_forward_annotation(base_type):
         return PyForwardRef(base_type, is_argument=False)
 
+    def is_union(cls) -> bool:
+        return cls in _UNION_TYPES
+
+    def get_origin_v2(cls):
+        if type(cls) is UnionType:
+            return UnionType
+
+        return getattr(cls, '__origin__', cls)
+
     def _get_origin(cls, raise_=False):
-        if isinstance(cls, types.UnionType):
-            return typing.Union
+        if isinstance(cls, UnionType):
+            return Union
 
         try:
             return cls.__origin__
@@ -96,11 +111,17 @@ else:  # pragma: no cover
     # PEP 585 is introduced in Python 3.9
     # PEP 604 (Allows writing union types as `X | Y`) is introduced
     #   in Python 3.10
-    _TYPING_LOCALS = {'Union': typing.Union}
+    _TYPING_LOCALS = {'Union': Union}
 
     def _process_forward_annotation(base_type):
         return PyForwardRef(
             repl_or_with_union(base_type), is_argument=False)
+
+    def is_union(cls) -> bool:
+        return cls is Union
+
+    def get_origin_v2(cls):
+        return getattr(cls, '__origin__', cls)
 
     def _get_origin(cls, raise_=False):
         try:
@@ -111,7 +132,7 @@ else:  # pragma: no cover
             return cls
 
 
-def is_typed_dict(cls: typing.Type) -> bool:
+def is_typed_dict(cls: type) -> bool:
     """
     Checks if `cls` is a sub-class of ``TypedDict``
     """
@@ -186,7 +207,7 @@ else:
 
 
 def eval_forward_ref(base_type: FREF,
-                     cls: typing.Type):
+                     cls: type):
     """
     Evaluate a forward reference using the class globals, and return the
     underlying type reference.
@@ -201,8 +222,8 @@ def eval_forward_ref(base_type: FREF,
     return _eval_type(base_type, base_globals, _TYPING_LOCALS)
 
 
-def eval_forward_ref_if_needed(base_type: typing.Union[typing.Type, FREF],
-                               base_cls: typing.Type):
+def eval_forward_ref_if_needed(base_type: Union[type, FREF],
+                               base_cls: type):
     """
     If needed, evaluate a forward reference using the class globals, and
     return the underlying type reference.

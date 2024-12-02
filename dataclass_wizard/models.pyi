@@ -1,6 +1,6 @@
-from typing import TypedDict, overload, Any
+from typing import TypedDict, overload, Any, NotRequired
 import json
-from dataclasses import MISSING, Field
+from dataclasses import MISSING, Field, dataclass
 from datetime import date, datetime, time
 from typing import (Collection, Callable,
                     Generic, Mapping)
@@ -18,12 +18,31 @@ CatchAll = Mapping | None
 _STR_COLLECTION = str | Collection[str]
 
 
+@dataclass(order=True)
+class TypeInfo:
+    # Origin type, ex. `Union[str, None]` -> Union
+    origin: type
+    # Type arguments, ex. `Union[str, None]` -> (str, None)
+    args: tuple[type, ...] | None = None
+    # Type name, ex. `str -> 'str'`
+    name: str | None = None
+    i: int = 1
+    prefix: str = 'v'
+    index: int | None = None
+
+    def v(self) -> str: ...
+    def v_and_next(self) -> tuple[str, str, int]: ...
+    def v_and_next_k_v(self) -> tuple[str, str, str, int]: ...
+
+
 class Extras(TypedDict):
     """
     "Extra" config that can be used in the load / dump process.
     """
-    config: META
-    pattern: PatternedDT
+    config: NotRequired[META]
+    pattern: NotRequired[PatternedDT]
+    # i: int
+    locals: NotRequired[dict[str, Any]]
 
 
 def json_key(*keys: str, all=False, dump=True):
