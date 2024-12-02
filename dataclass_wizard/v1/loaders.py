@@ -17,36 +17,36 @@ from typing import (
 
 from uuid import UUID
 
-from .abstractions import AbstractParser, AbstractLoaderGenerator
-from .bases import BaseLoadHook, AbstractMeta, META
-from .class_helper import (
+from ..abstractions import AbstractParser, AbstractLoaderGenerator
+from ..bases import BaseLoadHook, AbstractMeta, META
+from ..class_helper import (
     create_new_class,
     dataclass_to_loader, set_class_loader,
     dataclass_field_to_load_parser, json_field_to_dataclass_field,
     CLASS_TO_LOAD_FUNC, dataclass_fields, get_meta, is_subclass_safe, dataclass_field_to_json_path,
     dataclass_init_fields, dataclass_field_to_default, is_builtin,
 )
-from .constants import _LOAD_HOOKS, SINGLE_ARG_ALIAS, IDENTITY, CATCH_ALL
-from .decorators import _alias, _single_arg_alias, resolve_alias_func, _identity
-from .errors import (ParseError, MissingFields, UnknownJSONKey,
-                     MissingData, RecursiveClassError)
-from .log import LOG
-from .models import Extras, PatternedDT, TypeInfo
-from .parsers import *
-from .type_def import (
+from ..constants import _LOAD_HOOKS, SINGLE_ARG_ALIAS, IDENTITY, CATCH_ALL
+from ..decorators import _alias, _single_arg_alias, resolve_alias_func, _identity
+from ..errors import (ParseError, MissingFields, UnknownJSONKey,
+                                     MissingData, RecursiveClassError)
+from ..log import LOG
+from ..models import Extras, PatternedDT, TypeInfo
+from ..parsers import *
+from ..type_def import (
     ExplicitNull, FrozenKeys, DefFactory, NoneType, JSONObject,
     PyRequired, PyNotRequired,
     M, N, T, E, U, DD, LSQ, NT
 )
-from .utils.function_builder import FunctionBuilder
+from ..utils.function_builder import FunctionBuilder
 # noinspection PyProtectedMember
-from .utils.dataclass_compat import _set_new_attribute
-from .utils.object_path import safe_get
-from .utils.string_conv import to_snake_case
-from .utils.type_conv import (
+from ..utils.dataclass_compat import _set_new_attribute
+from ..utils.object_path import safe_get
+from ..utils.string_conv import to_snake_case
+from ..utils.type_conv import (
     as_bool, as_str, as_datetime, as_date, as_time, as_int, as_timedelta, _TRUTHY_VALUES
 )
-from .utils.typing_compat import (
+from ..utils.typing_compat import (
     is_literal, is_typed_dict, get_origin, get_args, is_annotated,
     eval_forward_ref_if_needed, get_origin_v2, is_union
 )

@@ -23,7 +23,7 @@ from .enums import DateTimeTo, LetterCase, LetterCasePriority
 from .environ.loaders import EnvLoader
 from .errors import ParseError
 from .loaders import get_loader
-from .loaders_v2 import LoadMixin
+from .v1 import LoadMixin
 from .log import LOG
 from .models import Condition
 from .type_def import E, EnvFileType
