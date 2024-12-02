@@ -297,16 +297,7 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         return base_type(*list_parser(o))
 
     @classmethod
-    def load_to_dict(cls, tp: TypeInfo, extras: Extras) -> str:
-        v, k_next, v_next, i_next = tp.v_and_next_k_v()
-
-        try:
-            kt, vt = tp.args
-        except ValueError:
-            # TODO
-            kt = vt = Any
-
-        # gorg = tp.origin
+    def _build_dict_comp(cls, tp, v, i_next, k_next, v_next, kt, vt, extras):
         idx = tp.index
 
         tp_k_next = TypeInfo(kt, None, None, i_next, 'k', idx)
@@ -315,24 +306,26 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         tp_v_next = TypeInfo(vt, None, None, i_next, 'v', idx)
         string_v = cls.get_string_for_annotation(tp_v_next, None, extras)
 
-        result = f'{{{string_k}: {string_v} for {k_next}, {v_next} in {v}.items()}}'
+        return f'{{{string_k}: {string_v} for {k_next}, {v_next} in {v}.items()}}'
+
+    @classmethod
+    def load_to_dict(cls, tp: TypeInfo, extras: Extras):
+        v, k_next, v_next, i_next = tp.v_and_next_k_v()
+
+        try:
+            kt, vt = tp.args
+        except ValueError:
+            # TODO
+            kt = vt = Any
+
+        result = cls._build_dict_comp(
+            tp, v, i_next, k_next, v_next, kt, vt, extras)
 
         # TODO
         return tp.wrap(result, extras)
-        # should_wrap = gorg not in {list, set, dict, tuple}
-        # if gorg.__module__ not in {'builtins', 'collections'}:
 
-        #         return base_type(
-        #             (key_parser(k), val_parser(v))
-        #             for k, v in o.items()
-        #         )
-        # return f'{tp.name}({result})' if should_wrap else result
-
-    # FIXME
     @classmethod
     def load_to_defaultdict(cls, tp: TypeInfo, extras: Extras)  -> 'str | TypeInfo':
-
-        extras['locals'].setdefault('defaultdict', defaultdict)
 
         v, k_next, v_next, i_next = tp.v_and_next_k_v()
         default_factory: DefFactory
@@ -344,16 +337,8 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
             # TODO
             kt = vt = default_factory = Any
 
-        # gorg = tp.origin
-        idx = tp.index
-
-        tp_k_next = TypeInfo(kt, None, None, i_next, 'k', idx)
-        string_k = cls.get_string_for_annotation(tp_k_next, None, extras)
-
-        tp_v_next = TypeInfo(vt, None, None, i_next, 'v', idx)
-        string_v = cls.get_string_for_annotation(tp_v_next, None, extras)
-
-        result = f'{{{string_k}: {string_v} for {k_next}, {v_next} in {v}.items()}}'
+        result = cls._build_dict_comp(
+            tp, v, i_next, k_next, v_next, kt, vt, extras)
 
         return tp.wrap_dd(default_factory, result, extras)
 

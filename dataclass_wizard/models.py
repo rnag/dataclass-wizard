@@ -5,6 +5,7 @@ from typing import Generic, Mapping, NewType, Any, TypedDict, NotRequired, Self
 
 from .constants import PY310_OR_ABOVE
 from .decorators import cached_property
+from .log import LOG
 # noinspection PyProtectedMember
 from .utils.dataclass_compat import _create_fn
 from .utils.object_path import split_object_path
@@ -66,7 +67,6 @@ class TypeInfo:
     def wrap_dd(self, default_factory: DefFactory, result: str, extras: 'Extras') -> Self:
         tn = self._wrap_inner(extras)
         tn_df = self._wrap_inner(extras, default_factory, 'df_')
-        print(tn, tn_df)
         result = f'{tn}({tn_df}, {result})'
         setattr(self, '_wrapped', result)
         return self
@@ -98,14 +98,12 @@ class TypeInfo:
             # TODO?
             if is_builtin:
                 tn = name
-                # TODO remove
-                print(f'Ensuring {tn}={name}')
+                LOG.debug(f'Ensuring %s=%s', tn, name)
                 extras['locals'].setdefault(tn, tp)
-            elif tp.__module__ not in {'builtins', 'collections', 'decimal', 'pathlib'}:
+            elif tp.__module__ not in {'builtins', 'collections'}:
                 # TODO figure out a better/safer way
                 tn = f'{prefix}{name}_{self.i}'
-                # TODO remove
-                print(f'Adding {tn}={name}')
+                LOG.debug(f'Adding %s=%s', tn, name)
                 extras['locals'][tn] = tp
             else:
                 tn = name
