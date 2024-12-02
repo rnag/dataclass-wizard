@@ -52,6 +52,12 @@ class TypeInfo:
         self.prefix = prefix
         self.index = index
 
+    @staticmethod
+    def ensure_in_locals(extras, *types):
+        locals = extras['locals']
+        for tp in types:
+            locals.setdefault(tp.__name__, tp)
+
     def v(self):
         return (f'{self.prefix}{self.i}' if (idx := self.index) is None
                 else f'{self.prefix}{self.i}[{idx}]')
@@ -64,28 +70,33 @@ class TypeInfo:
         next_i = self.i + 1
         return self.v(), f'k{next_i}', f'v{next_i}', next_i
 
-    def wrap_dd(self, default_factory: DefFactory, result: str, extras: 'Extras') -> Self:
-        tn = self._wrap_inner(extras)
+    def wrap_dd(self, default_factory: DefFactory, result: str, extras) -> Self:
+        tn = self._wrap_inner(extras, is_builtin=True)
         tn_df = self._wrap_inner(extras, default_factory, 'df_')
         result = f'{tn}({tn_df}, {result})'
         setattr(self, '_wrapped', result)
         return self
 
-    def wrap(self, result: str, extras: 'Extras') -> Self:
-        if (tn := self._wrap_inner(extras)) is not None:
+    def wrap(self, result: str, extras, force=False) -> Self:
+        if (tn := self._wrap_inner(extras, force=force)) is not None:
             result = f'{tn}({result})'
 
         setattr(self, '_wrapped', result)
         return self
 
-    def wrap_builtin(self, result: str, extras: 'Extras') -> Self:
+    def wrap_builtin(self, result: str, extras) -> Self:
         tn = self._wrap_inner(extras, is_builtin=True)
         result = f'{tn}({result})'
 
         setattr(self, '_wrapped', result)
         return self
 
-    def _wrap_inner(self, extras: 'Extras', tp=None, prefix='', is_builtin=False) -> 'str | None':
+    def _wrap_inner(self, extras,
+                    tp=None,
+                    prefix='',
+                    is_builtin=False,
+                    force=False) -> 'str | None':
+
         if tp is None:
             tp = self.origin
             name = self.name
@@ -94,20 +105,25 @@ class TypeInfo:
             name = tp.__name__
             return_name = True
 
+        if force:
+            return_name = True
+
         if tp not in _BUILTIN_COLLECTION_TYPES:
             # TODO?
-            if is_builtin:
+            if is_builtin or (mod := tp.__module__) == 'collections':
                 tn = name
                 LOG.debug(f'Ensuring %s=%s', tn, name)
                 extras['locals'].setdefault(tn, tp)
-            elif tp.__module__ not in {'builtins', 'collections'}:
+            elif mod == 'builtins':
+                tn = name
+            else:
                 # TODO figure out a better/safer way
                 tn = f'{prefix}{name}_{self.i}'
                 LOG.debug(f'Adding %s=%s', tn, name)
                 extras['locals'][tn] = tp
-            else:
-                tn = name
+
             return tn
+
         return name if return_name else None
 
     def __str__(self):
@@ -128,7 +144,7 @@ class Extras(TypedDict):
     config: NotRequired['META']
     pattern: NotRequired['PatternedDT']
     # i: int
-    locals: NotRequired[dict[str, Any]]
+    locals: dict[str, Any]
 
 
 # noinspection PyShadowingBuiltins

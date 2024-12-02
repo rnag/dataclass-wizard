@@ -204,7 +204,7 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         # return f'{tp.name}({result})' if should_wrap else result
 
     @classmethod
-    def load_to_tuple(cls, tp: TypeInfo, extras: Extras) -> str:
+    def load_to_tuple(cls, tp: TypeInfo, extras: Extras):
         args = tp.args
 
         # Determine the code string for the annotation
@@ -239,7 +239,7 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
 
             result = f'[{string} for {v_next} in {v}]'
             # Wrap because we need to create a tuple from list comprehension
-            should_wrap = True
+            force_wrap = True
 
         else:
             string = ', '.join([
@@ -249,23 +249,9 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
                 for k, arg in enumerate(args)])
 
             result = f'({string}, )'
-            should_wrap = False
+            force_wrap = False
 
-        # print('INNER:', extras, tp.origin)
-
-        # TODO
-        return tp.wrap(result, extras)
-        # if should_wrap or tp.origin not in {list, set, dict, tuple}:
-        #     tn = tp.name
-        #     if tp.origin.__module__ not in {'builtins', 'collections'}:
-        #         tn = f'tp{tp.i}'
-        #         # TODO remove
-        #         print(f'Adding {tn}={tp.name}')
-        #         locals = extras['locals']
-        #         locals[tn] = tp.origin
-        #
-        #     return f'{tn}({result})'
-        # return result
+        return tp.wrap(result, extras, force=force_wrap)
 
     # FIXME
     @staticmethod
@@ -325,7 +311,7 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         return tp.wrap(result, extras)
 
     @classmethod
-    def load_to_defaultdict(cls, tp: TypeInfo, extras: Extras)  -> 'str | TypeInfo':
+    def load_to_defaultdict(cls, tp: TypeInfo, extras: Extras):
 
         v, k_next, v_next, i_next = tp.v_and_next_k_v()
         default_factory: DefFactory
@@ -364,7 +350,7 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         return base_type(**kwargs)
 
     @staticmethod
-    def load_to_decimal(tp: TypeInfo, extras: Extras)  -> 'str | TypeInfo':
+    def load_to_decimal(tp: TypeInfo, extras: Extras):
         s = f'str({tp.v()}) if isinstance({tp.v()}, float) else {tp.v()}'
         return tp.wrap_builtin(s, extras)
 
@@ -372,30 +358,28 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
     load_to_path = load_to_uuid
 
     @staticmethod
-    @_alias(as_datetime)
-    def load_to_datetime(
-            o: Union[str, N], base_type: Type[datetime]) -> datetime:
+    def load_to_datetime(tp: TypeInfo, extras: Extras):
         # alias: as_datetime
-        ...
+        tp.ensure_in_locals(extras, as_datetime, datetime)
+        return f'as_datetime({tp.v()}, {tp.name})'
 
     @staticmethod
-    @_alias(as_time)
-    def load_to_time(o: str, base_type: Type[time]) -> time:
+    def load_to_time(tp: TypeInfo, extras: Extras):
         # alias: as_time
-        ...
+        tp.ensure_in_locals(extras, as_time, time)
+        return f'as_time({tp.v()}, {tp.name})'
 
     @staticmethod
-    @_alias(as_date)
-    def load_to_date(o: Union[str, N], base_type: Type[date]) -> date:
+    def load_to_date(tp: TypeInfo, extras: Extras):
         # alias: as_date
-        ...
+        tp.ensure_in_locals(extras, as_date, date)
+        return f'as_date({tp.v()}, {tp.name})'
 
     @staticmethod
-    @_alias(as_timedelta)
-    def load_to_timedelta(
-            o: Union[str, N], base_type: Type[timedelta]) -> timedelta:
+    def load_to_timedelta(tp: TypeInfo, extras: Extras):
         # alias: as_timedelta
-        ...
+        tp.ensure_in_locals(extras, as_timedelta, timedelta)
+        return f'as_timedelta({tp.v()}, {tp.name})'
 
     @staticmethod
     def load_func_for_dataclass(
@@ -940,7 +924,6 @@ def load_func_for_dataclass(
         'MissingData': MissingData,
         'MissingFields': MissingFields,
         # TODO Common types
-        'deque': deque,
         'namedtuple': namedtuple,
     }
 
@@ -986,7 +969,9 @@ def load_func_for_dataclass(
             # TODO raise some useful message like (ex. on IndexError):
             #       Field "my_str" of type tuple[float, str] in A2 has invalid value ['123']
 
-            with fn_gen.except_(ParseError, 'e'):
+            with fn_gen.except_(Exception, 'e', ParseError):
+                with fn_gen.if_('type(e) is not ParseError:'):
+                    fn_gen.add_line('e = ParseError(e)')
                 # We run into a parsing error while loading the field value;
                 # Add additional info on the Exception object before re-raising it.
                 fn_gen.add_line("e.class_name, e.field_name, e.json_object, e.fields = cls, field, o, cls_fields")
@@ -1084,7 +1069,12 @@ def load_func_for_dataclass(
                     with fn_gen.else_():
                         fn_gen.add_line(line)
 
-        with fn_gen.except_(ParseError, 'e'):
+        # create a broad `except Exception` block, as we will be
+        # re-raising all exception(s) as a custom `ParseError`.
+        with fn_gen.except_(Exception, 'e', ParseError):
+            with fn_gen.if_('type(e) is not ParseError'):
+                fn_gen.add_line('e = ParseError(e, v1, {})')
+
             # We run into a parsing error while loading the field value;
             # Add additional info on the Exception object before re-raising it.
             #
@@ -1093,7 +1083,7 @@ def load_func_for_dataclass(
             # debug the cause. Note that this should already be
             # handled by the `setter` methods.
             fn_gen.add_line("e.class_name, e.field_name, e.json_object = cls, field, o")
-            fn_gen.add_line("raise")
+            fn_gen.add_line("raise e from None")
 
         # with fn_gen.except_(TypeError):
             # If the object `o` is None, then raise an error with

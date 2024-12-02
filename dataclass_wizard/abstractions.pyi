@@ -533,7 +533,7 @@ class AbstractLoaderGenerator(ABC):
 
     @staticmethod
     @abstractmethod
-    def load_to_tuple(tp: TypeInfo, extras: Extras) -> str:
+    def load_to_tuple(tp: TypeInfo, extras: Extras) -> str | TypeInfo:
         """
         Generate code to load a value into a tuple field.
         """
@@ -575,14 +575,14 @@ class AbstractLoaderGenerator(ABC):
 
     @staticmethod
     @abstractmethod
-    def load_to_decimal(tp: TypeInfo, extras: Extras) -> str:
+    def load_to_decimal(tp: TypeInfo, extras: Extras) -> str | TypeInfo:
         """
         Generate code to load a value into a Decimal field.
         """
 
     @staticmethod
     @abstractmethod
-    def load_to_datetime(tp: TypeInfo, extras: Extras) -> str:
+    def load_to_datetime(tp: TypeInfo, extras: Extras) -> str | TypeInfo:
         """
         Generate code to load a value into a datetime field.
         """
@@ -596,7 +596,7 @@ class AbstractLoaderGenerator(ABC):
 
     @staticmethod
     @abstractmethod
-    def load_to_date(tp: TypeInfo, extras: Extras) -> str:
+    def load_to_date(tp: TypeInfo, extras: Extras) -> str | TypeInfo:
         """
         Generate code to load a value into a date field.
         """
