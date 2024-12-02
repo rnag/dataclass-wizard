@@ -297,8 +297,6 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
     @classmethod
     def load_to_dict(cls, tp: TypeInfo, extras: Extras) -> str:
         v, k_next, v_next, i_next = tp.v_and_next_k_v()
-        print('HEY')
-        print(tp)
 
         try:
             kt, vt = tp.args
@@ -418,6 +416,20 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
 
         # print('GET_STRING:', ann_type, origin)
 
+        # -> Union[x]
+        if is_union(origin):
+            args = get_args(type_ann)
+
+            # Special case for Optional[x], which is actually Union[x, None]
+            if NoneType in args and len(args) == 2:
+                tp = TypeInfo(args[0], None, None, tp.i, tp.prefix, tp.index)
+                string = cls.get_string_for_annotation(tp, base_cls, extras)
+                return f'None if {tp.v()} is None else {string}'
+
+            raise NotImplementedError('`Union` support is not yet fully implemented!')
+
+        # -> Atomic, immutable types which don't require
+        #    any iterative / recursive handling.
         if origin in _SIMPLE_TYPES or issubclass(origin, _SIMPLE_TYPES):
             load_hook = hooks.get(origin)
             args = None
@@ -438,13 +450,9 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
             except ValueError:
                 args = Any,
 
-            # Special case for Optional[x], which is actually Union[x, None]
-            if is_union(origin):
-                if NoneType in args and len(args) == 2:
-                    tp = TypeInfo(args[0], None, None, tp.i, tp.prefix, tp.index)
-                    string = cls.get_string_for_annotation(tp, base_cls, extras)
-                    return f'None if {tp.v()} is None else {string}'
-
+            # TODO
+            if False:
+                pass
             else:
                 # TODO END
                 for t in hooks:
