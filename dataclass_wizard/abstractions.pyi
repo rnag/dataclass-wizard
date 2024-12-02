@@ -519,14 +519,14 @@ class AbstractLoaderGenerator(ABC):
 
     @staticmethod
     @abstractmethod
-    def load_to_uuid(tp: TypeInfo, extras: Extras) -> str:
+    def load_to_uuid(tp: TypeInfo, extras: Extras) -> str | TypeInfo:
         """
         Generate code to load a value into a UUID field.
         """
 
     @staticmethod
     @abstractmethod
-    def load_to_iterable(tp: TypeInfo, extras: Extras) -> str:
+    def load_to_iterable(tp: TypeInfo, extras: Extras) -> str | TypeInfo:
         """
         Generate code to load a value into an iterable field (list, set, etc.).
         """
@@ -561,7 +561,7 @@ class AbstractLoaderGenerator(ABC):
 
     @staticmethod
     @abstractmethod
-    def load_to_defaultdict(tp: TypeInfo, extras: Extras) -> str:
+    def load_to_defaultdict(tp: TypeInfo, extras: Extras) -> str | TypeInfo:
         """
         Generate code to load a value into a defaultdict field.
         """
@@ -610,7 +610,10 @@ class AbstractLoaderGenerator(ABC):
 
     @classmethod
     @abstractmethod
-    def get_parser_for_annotation(cls, ann_type: str, base_cls: type = None, extras: Extras = None) -> str:
+    def get_string_for_annotation(cls,
+                                  tp: TypeInfo,
+                                  base_cls: type | None,
+                                  extras: Extras) -> str | TypeInfo:
         """
         Generate code to get the parser (dispatcher) for a given annotation type.
 

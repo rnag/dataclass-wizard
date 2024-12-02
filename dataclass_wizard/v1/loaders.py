@@ -64,6 +64,16 @@ _SIMPLE_TYPES = (
     # Other common types
     complex,
     bytes,
+    # TODO support
+    # Other types that are also unaffected by deepcopy
+    # types.EllipsisType,
+    # types.NotImplementedType,
+    # types.CodeType,
+    # types.BuiltinFunctionType,
+    # types.FunctionType,
+    # type,
+    # range,
+    # property,
 )
 
 
@@ -93,18 +103,20 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
 
     @staticmethod
     @_identity
-    def default_load_to(o: T, _: Any) -> T:
+    def default_load_to(tp: TypeInfo, extras: Extras) -> str:
         # identity: o
-        ...
+        return tp.v()
 
     @staticmethod
-    def load_after_type_check(o: Any, base_type: Type[T]) -> T:
+    def load_after_type_check(tp: TypeInfo, extras: Extras) -> str:
+        ...
+        # return f'{tp.v()} if instance({tp.v()}, {tp.t()}'
 
-        if isinstance(o, base_type):
-            return o
-
-        e = ValueError(f'data type is not a {base_type!s}')
-        raise ParseError(e, o, base_type)
+        # if isinstance(o, base_type):
+        #     return o
+        #
+        # e = ValueError(f'data type is not a {base_type!s}')
+        # raise ParseError(e, o, base_type)
 
     @staticmethod
     def load_to_str(tp: TypeInfo, extras: Extras) -> str:
@@ -147,26 +159,25 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         return 'None'
 
     @staticmethod
-    @_single_arg_alias('base_type')
-    def load_to_enum(o: Union[AnyStr, N], base_type: Type[E]) -> E:
+    def load_to_enum(tp: TypeInfo, extras: Extras) -> str:
         # alias: base_type(o)
-        ...
+        return tp.v()
 
+    # load_to_uuid = load_to_enum
     @staticmethod
-    @_single_arg_alias('base_type')
-    def load_to_uuid(o: Union[AnyStr, U], base_type: Type[U]) -> U:
+    def load_to_uuid(tp: TypeInfo, extras: Extras):
         # alias: base_type(o)
-        ...
+        return tp.wrap_builtin(tp.v(), extras)
 
     @classmethod
-    def load_to_iterable(cls, tp: TypeInfo, extras: Extras) -> str:
+    def load_to_iterable(cls, tp: TypeInfo, extras: Extras):
         v, v_next, i_next = tp.v_and_next()
         gorg = tp.origin
 
         try:
             elem_type = tp.args[0]
         except:
-            elem_type = tp.args
+            elem_type = Any
 
         # print('INNER:', extras, gorg)
 
@@ -189,7 +200,8 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         should_wrap = gorg not in {list, set, dict, tuple}
         # if gorg.__module__ not in {'builtins', 'collections'}:
 
-        return f'{tp.name}({result})' if should_wrap else result
+        return tp.wrap(result, extras)
+        # return f'{tp.name}({result})' if should_wrap else result
 
     @classmethod
     def load_to_tuple(cls, tp: TypeInfo, extras: Extras) -> str:
@@ -242,31 +254,20 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         # print('INNER:', extras, tp.origin)
 
         # TODO
-        if should_wrap or tp.origin not in {list, set, dict, tuple}:
-            tn = tp.name
-            if tp.origin.__module__ not in {'builtins', 'collections'}:
-                tn = f'tp{tp.i}'
-                # TODO remove
-                print(f'Adding {tn}={tp.name}')
-                locals = extras['locals']
-                locals[tn] = tp.origin
+        return tp.wrap(result, extras)
+        # if should_wrap or tp.origin not in {list, set, dict, tuple}:
+        #     tn = tp.name
+        #     if tp.origin.__module__ not in {'builtins', 'collections'}:
+        #         tn = f'tp{tp.i}'
+        #         # TODO remove
+        #         print(f'Adding {tn}={tp.name}')
+        #         locals = extras['locals']
+        #         locals[tn] = tp.origin
+        #
+        #     return f'{tn}({result})'
+        # return result
 
-            return f'{tn}({result})'
-
-        return result
-
-    @staticmethod
-    def _old_load_to_tuple(
-            o: Union[List, Tuple], base_type: Type[Tuple],
-            elem_parsers: Sequence[AbstractParser]) -> Tuple:
-
-        try:
-            zipped = zip(elem_parsers, o)
-        except TypeError:
-            return base_type([e for e in o])
-        else:
-            return base_type([parser(e) for parser, e in zipped])
-
+    # FIXME
     @staticmethod
     def load_to_named_tuple(
             o: Union[Dict, List, Tuple], base_type: Type[NT],
@@ -284,6 +285,7 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         return base_type(
             *[parser(elem) for parser, elem in zip(field_parsers, o)])
 
+    # FIXME
     @staticmethod
     def load_to_named_tuple_untyped(
             o: Union[Dict, List, Tuple], base_type: Type[NT],
@@ -304,7 +306,7 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
             # TODO
             kt = vt = Any
 
-        gorg = tp.origin
+        # gorg = tp.origin
         idx = tp.index
 
         tp_k_next = TypeInfo(kt, None, None, i_next, 'k', idx)
@@ -316,28 +318,46 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         result = f'{{{string_k}: {string_v} for {k_next}, {v_next} in {v}.items()}}'
 
         # TODO
-        should_wrap = gorg not in {list, set, dict, tuple}
+        return tp.wrap(result, extras)
+        # should_wrap = gorg not in {list, set, dict, tuple}
         # if gorg.__module__ not in {'builtins', 'collections'}:
 
         #         return base_type(
         #             (key_parser(k), val_parser(v))
         #             for k, v in o.items()
         #         )
-        return f'{tp.name}({result})' if should_wrap else result
+        # return f'{tp.name}({result})' if should_wrap else result
 
-    @staticmethod
-    def load_to_defaultdict(
-            o: Dict, base_type: Type[DD],
-            default_factory: DefFactory,
-            key_parser: AbstractParser,
-            val_parser: AbstractParser) -> DD:
+    # FIXME
+    @classmethod
+    def load_to_defaultdict(cls, tp: TypeInfo, extras: Extras)  -> 'str | TypeInfo':
 
-        return base_type(
-            default_factory,
-            {key_parser(k): val_parser(v)
-             for k, v in o.items()}
-        )
+        extras['locals'].setdefault('defaultdict', defaultdict)
 
+        v, k_next, v_next, i_next = tp.v_and_next_k_v()
+        default_factory: DefFactory
+
+        try:
+            kt, vt = tp.args
+            default_factory = vt
+        except ValueError:
+            # TODO
+            kt = vt = default_factory = Any
+
+        # gorg = tp.origin
+        idx = tp.index
+
+        tp_k_next = TypeInfo(kt, None, None, i_next, 'k', idx)
+        string_k = cls.get_string_for_annotation(tp_k_next, None, extras)
+
+        tp_v_next = TypeInfo(vt, None, None, i_next, 'v', idx)
+        string_v = cls.get_string_for_annotation(tp_v_next, None, extras)
+
+        result = f'{{{string_k}: {string_v} for {k_next}, {v_next} in {v}.items()}}'
+
+        return tp.wrap_dd(default_factory, result, extras)
+
+    # FIXME
     @staticmethod
     def load_to_typed_dict(
             o: Dict, base_type: Type[M],
@@ -359,14 +379,12 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         return base_type(**kwargs)
 
     @staticmethod
-    def load_to_decimal(o: N, base_type: Type[Decimal]) -> Decimal:
+    def load_to_decimal(tp: TypeInfo, extras: Extras)  -> 'str | TypeInfo':
+        s = f'str({tp.v()}) if isinstance({tp.v()}, float) else {tp.v()}'
+        return tp.wrap_builtin(s, extras)
 
-        return base_type(str(o))
-
-    @staticmethod
-    def load_to_path(o: N, base_type: Type[Path]) -> Path:
-
-        return base_type(str(o))
+    # alias: base_type(o)
+    load_to_path = load_to_uuid
 
     @staticmethod
     @_alias(as_datetime)
@@ -405,14 +423,18 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
 
     @classmethod
     def get_string_for_annotation(cls,
-                                  tp: TypeInfo,
-                                  base_cls: 'type | None',
-                                  extras: Extras) -> str:
+                                  tp,
+                                  base_cls,
+                                  extras):
+
         type_ann = tp.origin
 
         hooks = cls.__LOAD_HOOKS__
         origin = get_origin_v2(type_ann)
         name = getattr(origin, '__name__', origin)
+
+        args = None
+        wrap = False
 
         # print('GET_STRING:', ann_type, origin)
 
@@ -432,7 +454,6 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         #    any iterative / recursive handling.
         if origin in _SIMPLE_TYPES or issubclass(origin, _SIMPLE_TYPES):
             load_hook = hooks.get(origin)
-            args = None
 
         elif (load_hook := hooks.get(origin)) is not None:
             # TODO
@@ -440,6 +461,9 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
                 args = get_args(type_ann)
             except ValueError:
                 args = Any,
+
+        elif origin is Any:
+            load_hook = cls.default_load_to
 
         else:
 
@@ -452,22 +476,38 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
 
             # TODO
             if False:
-                pass
-            else:
-                # TODO END
-                for t in hooks:
-                    # print(t)
-                    if issubclass(origin, (t, )):
-                        load_hook = hooks[t]
+                wrap = False
 
-        # print('TEST', gorg, elem_type)
+        if load_hook is None:
+            # TODO END
+            for t in hooks:
+                # print(t)
+                if issubclass(origin, (t,)):
+                    load_hook = hooks[t]
+                    wrap = True
+                    break
+            else:
+                wrap = False
 
         tp = TypeInfo(origin, args, name, tp.i, tp.prefix, tp.index)
         if load_hook is not None:
-            return load_hook(tp, extras)
+            result = load_hook(tp, extras)
+            # Only wrap result if not already wrapped
+            if wrap:
+                if (wrapped := getattr(result, '_wrapped', None)) is not None:
+                    return wrapped
+                return tp.wrap(result, extras)
+            return result
 
-        # base_type = type_ann
-
+        # No matching hook is found for the type.
+        # TODO do we want to add a `Meta` field to not raise
+        #  an error but perform a default action?
+        err = TypeError('Provided type is not currently supported.')
+        pe = ParseError(
+            err, origin, type_ann,
+            unsupported_type=origin
+        )
+        raise pe from None
 
     @classmethod
     def get_parser_for_annotation(cls, ann_type: Type[T],
@@ -723,25 +763,33 @@ def setup_default_loader(cls=LoadMixin):
 
     Note: `cls` must be :class:`LoadMixIn` or a sub-class of it.
     """
+    # TODO maybe `dict.update` might be better?
+
+    # Technically a complex type, however check this
+    # first, since `StrEnum` and `IntEnum` are subclasses
+    # of `str` and `int`
+    cls.register_load_hook(Enum, cls.load_to_enum)
     # Simple types
     cls.register_load_hook(str, cls.load_to_str)
-    cls.register_load_hook(int, cls.load_to_int)
     cls.register_load_hook(float, cls.load_to_float)
     cls.register_load_hook(bool, cls.load_to_bool)
+    cls.register_load_hook(int, cls.load_to_int)
     cls.register_load_hook(bytes, cls.load_to_bytes)
     cls.register_load_hook(bytearray, cls.load_to_bytearray)
     cls.register_load_hook(NoneType, cls.load_to_none)
     # Complex types
-    cls.register_load_hook(Enum, cls.load_to_enum)
     cls.register_load_hook(UUID, cls.load_to_uuid)
     cls.register_load_hook(set, cls.load_to_iterable)
     cls.register_load_hook(frozenset, cls.load_to_iterable)
     cls.register_load_hook(deque, cls.load_to_iterable)
     cls.register_load_hook(list, cls.load_to_iterable)
     cls.register_load_hook(tuple, cls.load_to_tuple)
+
     # noinspection PyTypeChecker
+    # FIXME
     # cls.register_load_hook(namedtuple, cls.load_to_named_tuple_untyped)
     cls.register_load_hook(NamedTupleMeta, cls.load_to_named_tuple)
+
     cls.register_load_hook(defaultdict, cls.load_to_defaultdict)
     cls.register_load_hook(dict, cls.load_to_dict)
     cls.register_load_hook(Decimal, cls.load_to_decimal)
@@ -860,14 +908,14 @@ def load_func_for_dataclass(
 
     # This contains a mapping of the original field name to the parser for its
     # annotated type; the item lookup *can* be case-insensitive.
-    try:
-        field_to_parser = dataclass_field_to_load_parser(cls_loader, cls, config)
-    except RecursionError:
-        if meta.recursive_classes:
-            # recursion-safe loader is already in use; something else must have gone wrong
-            raise
-        else:
-            raise RecursiveClassError(cls) from None
+    # try:
+    #     field_to_parser = dataclass_field_to_load_parser(cls_loader, cls, config)
+    # except RecursionError:
+    #     if meta.recursive_classes:
+    #         # recursion-safe loader is already in use; something else must have gone wrong
+    #         raise
+    #     else:
+    #         raise RecursiveClassError(cls) from None
 
     # A cached mapping of each key in a JSON or dictionary object to the
     # resolved dataclass field name; useful so we don't need to do a case
@@ -884,6 +932,7 @@ def load_func_for_dataclass(
     # Fix for using `auto_assign_tags` and `raise_on_unknown_json_key` together
     # See https://github.com/rnag/dataclass-wizard/issues/137
     has_tag_assigned = meta.tag is not None
+    # TODO
     if (has_tag_assigned and
             # Ensure `tag_key` isn't a dataclass field before assigning an
             # `ExplicitNull`, as assigning it directly can cause issues.
@@ -906,7 +955,6 @@ def load_func_for_dataclass(
         'MissingData': MissingData,
         'MissingFields': MissingFields,
         # TODO Common types
-        'defaultdict': defaultdict,
         'deque': deque,
         'namedtuple': namedtuple,
     }
@@ -973,14 +1021,16 @@ def load_func_for_dataclass(
                 # parser = f'_parser{i}'
                 # _locals[parser] = field_to_parser[name]
 
-                string = blah(cls_loader, cls, extras, f)
+                string = generate_field_code(cls_loader, cls, extras, f)
 
                 if name in field_to_default:
                     default = default_val = field_to_default[name]
+                    # FIXME might need to update default value logic
                     if not is_builtin(default):
                         default = f'_dflt{i}'
                         _locals[default] = default_val
-                    fn_gen.add_line(f"field={name!r}; {val}=o.get(field, {default}); init_kwargs[field] = {string}")
+                    fn_gen.add_line(f'field={name!r}; {val}=o.get(field, {default})')
+                    fn_gen.add_line(f'init_kwargs[field] = {string}')
 
                 else:
                     req_field_and_var.append(f'{name}={var}')
@@ -988,7 +1038,7 @@ def load_func_for_dataclass(
                     fn_gen.add_line(f"field={name!r}; {val}=o.get(field, MISSING)")
                     with fn_gen.if_(f'{val} is MISSING'):
                         # TODO
-                        fn_gen.add_line('pass')
+                        fn_gen.add_line("raise MissingFields(None, o, cls, {field: None}, cls_fields) from None")
                     with fn_gen.else_():
                         fn_gen.add_line(f'{var} = {string}')
                 # Note: pass the original cased field to the class constructor;
@@ -1114,19 +1164,18 @@ def load_func_for_dataclass(
     return cls_fromdict
 
 
-def blah(cls_loader,
-        cls,
-        config: Extras, f):
+def generate_field_code(cls_loader,
+                        cls,
+                        config: Extras, f):
 
     field_type = f.type = eval_forward_ref_if_needed(f.type, cls)
 
-    # i = 1
+    try:
+        return cls_loader.get_string_for_annotation(
+            TypeInfo(field_type), cls, config
+        )
 
-    # return blah_inner(
-    #     field_type, cls, config
-    # )
-
-    return cls_loader.get_string_for_annotation(
-        TypeInfo(field_type), cls, config
-    )
-
+    except ParseError as pe:
+        pe.class_name = cls
+        pe.field_name = f.name
+        raise pe from None

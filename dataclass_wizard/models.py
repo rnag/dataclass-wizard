@@ -1,14 +1,14 @@
 import json
 from dataclasses import MISSING, Field
 from datetime import date, datetime, time
-from typing import Generic, Mapping, NewType, Any, TypedDict, NotRequired
+from typing import Generic, Mapping, NewType, Any, TypedDict, NotRequired, Self
 
 from .constants import PY310_OR_ABOVE
 from .decorators import cached_property
 # noinspection PyProtectedMember
 from .utils.dataclass_compat import _create_fn
 from .utils.object_path import split_object_path
-from .type_def import T, DT, PyTypedDict
+from .type_def import T, DT, PyTypedDict, DefFactory
 from .utils.type_conv import as_datetime, as_time, as_date
 
 
@@ -25,9 +25,18 @@ CatchAll = NewType('CatchAll', Mapping)
 # A date, time, datetime sub type, or None.
 # DT_OR_NONE = Optional[DT]
 
+_BUILTIN_COLLECTION_TYPES = frozenset({
+    list,
+    set,
+    dict,
+    tuple
+})
+
 
 class TypeInfo:
-    __slots__ = ('origin', 'args', 'name', 'i', 'prefix', 'index')
+    __slots__ = ('origin', 'args', 'name',
+                 'i', 'prefix', 'index',
+                 '_wrapped')
 
     def __init__(self, origin,
                  args=None,
@@ -54,9 +63,65 @@ class TypeInfo:
         next_i = self.i + 1
         return self.v(), f'k{next_i}', f'v{next_i}', next_i
 
+    def wrap_dd(self, default_factory: DefFactory, result: str, extras: 'Extras') -> Self:
+        tn = self._wrap_inner(extras)
+        tn_df = self._wrap_inner(extras, default_factory, 'df_')
+        print(tn, tn_df)
+        result = f'{tn}({tn_df}, {result})'
+        setattr(self, '_wrapped', result)
+        return self
+
+    def wrap(self, result: str, extras: 'Extras') -> Self:
+        if (tn := self._wrap_inner(extras)) is not None:
+            result = f'{tn}({result})'
+
+        setattr(self, '_wrapped', result)
+        return self
+
+    def wrap_builtin(self, result: str, extras: 'Extras') -> Self:
+        tn = self._wrap_inner(extras, is_builtin=True)
+        result = f'{tn}({result})'
+
+        setattr(self, '_wrapped', result)
+        return self
+
+    def _wrap_inner(self, extras: 'Extras', tp=None, prefix='', is_builtin=False) -> 'str | None':
+        if tp is None:
+            tp = self.origin
+            name = self.name
+            return_name = False
+        else:
+            name = tp.__name__
+            return_name = True
+
+        if tp not in _BUILTIN_COLLECTION_TYPES:
+            # TODO?
+            if is_builtin:
+                tn = name
+                # TODO remove
+                print(f'Ensuring {tn}={name}')
+                extras['locals'].setdefault(tn, tp)
+            elif tp.__module__ not in {'builtins', 'collections', 'decimal', 'pathlib'}:
+                # TODO figure out a better/safer way
+                tn = f'{prefix}{name}_{self.i}'
+                # TODO remove
+                print(f'Adding {tn}={name}')
+                extras['locals'][tn] = tp
+            else:
+                tn = name
+            return tn
+        return name if return_name else None
+
+    def __str__(self):
+        return getattr(self, '_wrapped', '')
+
     def __repr__(self):
-        items = ', '.join([f'{v}={getattr(self, v)!r}' for v in self.__slots__])
+        items = ', '.join([f'{v}={getattr(self, v)!r}'
+                           for v in self.__slots__
+                           if not v.startswith('_')])
+
         return f'{self.__class__.__name__}({items})'
+
 
 class Extras(TypedDict):
     """

@@ -1,4 +1,4 @@
-from typing import TypedDict, overload, Any, NotRequired
+from typing import TypedDict, overload, Any, NotRequired, Self
 import json
 from dataclasses import MISSING, Field, dataclass
 from datetime import date, datetime, time
@@ -7,7 +7,7 @@ from typing import (Collection, Callable,
 
 from .bases import META
 from .decorators import cached_property
-from .type_def import T, DT, Encoder, FileEncoder
+from .type_def import T, DT, Encoder, FileEncoder, DefFactory
 from .utils.object_path import PathPart, PathType
 
 
@@ -33,7 +33,13 @@ class TypeInfo:
     def v(self) -> str: ...
     def v_and_next(self) -> tuple[str, str, int]: ...
     def v_and_next_k_v(self) -> tuple[str, str, str, int]: ...
-
+    def wrap(self, result: str, extras: Extras) -> Self: ...
+    def wrap_builtin(self, result: str, extras: Extras) -> Self: ...
+    def wrap_dd(self, default_factory: DefFactory, result: str, extras: Extras) -> Self: ...
+    def _wrap_inner(self, extras: Extras,
+                    tp: type | DefFactory | None = None,
+                    prefix: str = '',
+                    is_builtin: bool = False) -> str | None: ...
 
 class Extras(TypedDict):
     """
