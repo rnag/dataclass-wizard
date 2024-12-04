@@ -10,6 +10,7 @@ History
 - Corrected logic in :class:`MappingParser` that assumed all parsers were
   subclasses of :class:`AbstractParser` (:issue:`159`).
     - Add test case to confirm intended functionality.
+    - Bump *dev* dependencies to latest version.
 
 0.32.0 (2024-11-30)
 -------------------
