@@ -355,7 +355,8 @@ def dump_func_for_dataclass(cls: Type[T],
                           'dict_factory=dict',
                           "exclude:'list[str]|None'=None",
                           f'skip_defaults:bool={skip_defaults}'],
-                         return_type='JSONObject'):
+                         'JSONObject',
+                         _locals):
 
         if (
             _pre_dict := getattr(cls, '_pre_dict', None)
@@ -485,7 +486,7 @@ def dump_func_for_dataclass(cls: Type[T],
             fn_gen.add_line("return dict_factory(result)")
 
     # Compile the code into a dynamic string
-    functions = fn_gen.create_functions(locals=_locals, globals=_globals)
+    functions = fn_gen.create_functions(globals=_globals)
 
     cls_asdict = functions['cls_asdict']
 

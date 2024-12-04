@@ -8,6 +8,7 @@ from typing import (Collection, Callable,
 from .bases import META
 from .decorators import cached_property
 from .type_def import T, DT, Encoder, FileEncoder, DefFactory
+from .utils.function_builder import FunctionBuilder
 from .utils.object_path import PathPart, PathType
 
 
@@ -20,6 +21,7 @@ _STR_COLLECTION = str | Collection[str]
 
 @dataclass(order=True)
 class TypeInfo:
+    __slots__ = ...
     # Origin type, ex. `Union[str, None]` -> Union
     origin: type
     # Type arguments, ex. `Union[str, None]` -> (str, None)
@@ -30,12 +32,14 @@ class TypeInfo:
     prefix: str = 'v'
     index: int | None = None
 
+    def replace(self, **changes) -> TypeInfo: ...
     @staticmethod
     def ensure_in_locals(extras: dict[str, Any], *types: Callable) -> None: ...
     def v(self) -> str: ...
     def v_and_next(self) -> tuple[str, str, int]: ...
     def v_and_next_k_v(self) -> tuple[str, str, str, int]: ...
-    def wrap(self, result: str, extras: Extras, force=False) -> Self: ...
+    def multi_wrap(self, extras, prefix='', *result, force=False) -> list[str]: ...
+    def wrap(self, result: str, extras: Extras, force=False,  prefix='') -> Self: ...
     def wrap_builtin(self, result: str, extras: Extras) -> Self: ...
     def wrap_dd(self, default_factory: DefFactory, result: str, extras: Extras) -> Self: ...
     def _wrap_inner(self, extras: Extras,
@@ -49,9 +53,11 @@ class Extras(TypedDict):
     "Extra" config that can be used in the load / dump process.
     """
     config: NotRequired[META]
+    cls: type
+    cls_name: str
+    fn_gen: FunctionBuilder
+    locals: dict[str, Any]
     pattern: NotRequired[PatternedDT]
-    # i: int
-    locals: NotRequired[dict[str, Any]]
 
 
 def json_key(*keys: str, all=False, dump=True):

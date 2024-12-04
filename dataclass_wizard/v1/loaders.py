@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import (
     Any, Type, Dict, List, Tuple, Iterable, Sequence, Union,
     NamedTupleMeta,
-    SupportsFloat, AnyStr, Text, Callable, Optional
+    SupportsFloat, AnyStr, Text, Callable, Optional, cast
 )
 
 from uuid import UUID
@@ -181,8 +181,8 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
 
         # print('INNER:', extras, gorg)
 
-        tp_next = TypeInfo(elem_type, i=i_next, index=tp.index)
-        string = cls.get_string_for_annotation(tp_next, None, extras)
+        string = cls.get_string_for_annotation(
+            tp.replace(origin=elem_type, i=i_next), extras)
 
         # string = cls.get_string_for_annotation(elem_type, nxt, None, extras)
 
@@ -225,8 +225,8 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
             #     .. _See here: https://github.com/python/typing/issues/180
             v, v_next, i_next = tp.v_and_next()
 
-            tp_next = TypeInfo(args[0], i=i_next, index=tp.index)
-            string = cls.get_string_for_annotation(tp_next, None, extras)
+            string = cls.get_string_for_annotation(
+                tp.replace(origin=args[0], i=i_next), extras)
 
             # A one-element tuple containing the parser for the first type
             # argument.
@@ -244,8 +244,8 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         else:
             string = ', '.join([
                 cls.get_string_for_annotation(
-                    TypeInfo(arg, i=tp.i, index=k),
-                    None, extras)
+                    tp.replace(origin=arg, index=k),
+                    extras)
                 for k, arg in enumerate(args)])
 
             result = f'({string}, )'
@@ -253,44 +253,59 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
 
         return tp.wrap(result, extras, force=force_wrap)
 
-    # FIXME
-    @staticmethod
-    def load_to_named_tuple(
-            o: Union[Dict, List, Tuple], base_type: Type[NT],
-            field_to_parser: 'FieldToParser',
-            field_parsers: List[AbstractParser]) -> NT:
+    @classmethod
+    def load_to_named_tuple(cls, tp: TypeInfo, extras: Extras):
+        fn_gen = extras['fn_gen']
+        extras_cp: Extras = extras.copy()
+        extras_cp['locals'] = _locals = {
+            'msg': "`dict` input is not supported for NamedTuple, use a dataclass instead."
+        }
 
-        if isinstance(o, dict):
-            # Convert the values of all fields in the NamedTuple, using
-            # their type annotations. The keys in a dictionary object
-            # (assuming it was loaded from JSON) are required to be
-            # strings, so we don't need to convert them.
-            return base_type(
-                **{k: field_to_parser[k](o[k]) for k in o})
-        # We're passed in a list or a tuple.
-        return base_type(
-            *[parser(elem) for parser, elem in zip(field_parsers, o)])
+        fn_name = f'_load_{extras["cls_name"]}_nt_typed_{tp.name}'
 
-    # FIXME
-    @staticmethod
-    def load_to_named_tuple_untyped(
-            o: Union[Dict, List, Tuple], base_type: Type[NT],
-            dict_parser: AbstractParser, list_parser: AbstractParser) -> NT:
+        field_names = []
+        result_list = []
+        num_fields = 0
+        # TODO set __annotations__?
+        for x, y in tp.origin.__annotations__.items():
+            result_list.append(cls.get_string_for_annotation(
+                tp.replace(origin=y, index=num_fields), extras_cp))
+            field_names.append(x)
+            num_fields += 1
 
-        if isinstance(o, dict):
-            return base_type(**dict_parser(o))
-        # We're passed in a list or a tuple.
-        return base_type(*list_parser(o))
+        with fn_gen.function(fn_name, ['v1'], None, _locals):
+            fn_gen.add_line('fields = []')
+            with fn_gen.try_():
+                for i, string in enumerate(result_list):
+                    fn_gen.add_line(f'fields.append({string})')
+            with fn_gen.except_(IndexError):
+                fn_gen.add_line('pass')
+            with fn_gen.except_(KeyError):
+                # Input object is a `dict`
+                # TODO should we support dict for namedtuple?
+                fn_gen.add_line('raise TypeError(msg) from None')
+            fn_gen.add_line(f'return {tp.wrap("*fields", extras_cp, prefix="nt_")}')
+
+        return f'{fn_name}({tp.v()})'
+
+    @classmethod
+    def load_to_named_tuple_untyped(cls, tp: TypeInfo, extras: Extras):
+        # Check if input object is `dict` or `list`.
+        #
+        # Assuming `Point` is a `namedtuple`, this performs
+        # the equivalent logic as:
+        #   Point(**x) if isinstance(x, dict) else Point(*x)
+        v = tp.v()
+        star, dbl_star = tp.multi_wrap(extras, 'nt_', f'*{v}', f'**{v}')
+        return f'{dbl_star} if isinstance({v}, dict) else {star}'
 
     @classmethod
     def _build_dict_comp(cls, tp, v, i_next, k_next, v_next, kt, vt, extras):
-        idx = tp.index
+        tp_k_next = tp.replace(origin=kt, i=i_next, prefix='k')
+        string_k = cls.get_string_for_annotation(tp_k_next, extras)
 
-        tp_k_next = TypeInfo(kt, None, None, i_next, 'k', idx)
-        string_k = cls.get_string_for_annotation(tp_k_next, None, extras)
-
-        tp_v_next = TypeInfo(vt, None, None, i_next, 'v', idx)
-        string_v = cls.get_string_for_annotation(tp_v_next, None, extras)
+        tp_v_next = tp.replace(origin=vt, i=i_next, prefix='v')
+        string_v = cls.get_string_for_annotation(tp_v_next, extras)
 
         return f'{{{string_k}: {string_v} for {k_next}, {v_next} in {v}.items()}}'
 
@@ -393,7 +408,6 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
     @classmethod
     def get_string_for_annotation(cls,
                                   tp,
-                                  base_cls,
                                   extras):
 
         type_ann = tp.origin
@@ -413,8 +427,8 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
 
             # Special case for Optional[x], which is actually Union[x, None]
             if NoneType in args and len(args) == 2:
-                tp = TypeInfo(args[0], None, None, tp.i, tp.prefix, tp.index)
-                string = cls.get_string_for_annotation(tp, base_cls, extras)
+                string = cls.get_string_for_annotation(
+                    tp.replace(origin=args[0], args=None, name=None), extras)
                 return f'None if {tp.v()} is None else {string}'
 
             raise NotImplementedError('`Union` support is not yet fully implemented!')
@@ -431,8 +445,24 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
             except ValueError:
                 args = Any,
 
+        # https://stackoverflow.com/questions/76520264/dataclasswizard-after-upgrading-to-python3-11-is-not-working-as-expected
         elif origin is Any:
             load_hook = cls.default_load_to
+
+        elif issubclass(origin, tuple) and hasattr(origin, '_fields'):
+
+            if getattr(origin, '__annotations__', None):
+                # Annotated as a `typing.NamedTuple` subtype
+                load_hook = cls.load_to_named_tuple
+
+                # load_hook = hooks.get(NamedTupleMeta)
+                # return NamedTupleParser(
+                #     base_cls, extras, base_type, load_hook,
+                #     cls.get_parser_for_annotation
+                # )
+            else:
+                # Annotated as a `collections.namedtuple` subtype
+                load_hook = cls.load_to_named_tuple_untyped
 
         else:
 
@@ -450,7 +480,6 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         if load_hook is None:
             # TODO END
             for t in hooks:
-                # print(t)
                 if issubclass(origin, (t,)):
                     load_hook = hooks[t]
                     wrap = True
@@ -458,7 +487,10 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
             else:
                 wrap = False
 
-        tp = TypeInfo(origin, args, name, tp.i, tp.prefix, tp.index)
+        tp.origin = origin
+        tp.args = args
+        tp.name = name
+
         if load_hook is not None:
             result = load_hook(tp, extras)
             # Only wrap result if not already wrapped
@@ -753,12 +785,8 @@ def setup_default_loader(cls=LoadMixin):
     cls.register_load_hook(deque, cls.load_to_iterable)
     cls.register_load_hook(list, cls.load_to_iterable)
     cls.register_load_hook(tuple, cls.load_to_tuple)
-
+    # TODO namedtuple and `NamedTuple`
     # noinspection PyTypeChecker
-    # FIXME
-    # cls.register_load_hook(namedtuple, cls.load_to_named_tuple_untyped)
-    cls.register_load_hook(NamedTupleMeta, cls.load_to_named_tuple)
-
     cls.register_load_hook(defaultdict, cls.load_to_defaultdict)
     cls.register_load_hook(dict, cls.load_to_dict)
     cls.register_load_hook(Decimal, cls.load_to_decimal)
@@ -914,7 +942,7 @@ def load_func_for_dataclass(
         # 'py_case': cls_loader.transform_json_field,
         # 'field_to_parser': field_to_parser,
         # 'json_to_field': json_to_field,
-        'ExplicitNull': ExplicitNull,
+        # 'ExplicitNull': ExplicitNull,
         'MISSING': MISSING,
     }
 
@@ -936,10 +964,15 @@ def load_func_for_dataclass(
     # else:
         # loop_over_o = True
 
-    extras: Extras = {'config': config, 'locals': _locals}
+    cls_name = cls.__name__
+    extras: Extras = {'config': config,
+                      'locals': _locals,
+                      'cls': cls,
+                      'cls_name': cls_name,
+                      'fn_gen': fn_gen}
 
-    fn_name = f'__dataclass_wizard_from_dict_{cls.__name__}__'
-    with fn_gen.function(fn_name, ['o']):
+    fn_name = f'__dataclass_wizard_from_dict_{cls_name}__'
+    with fn_gen.function(fn_name, ['o'], MISSING, _locals):
 
         _pre_from_dict_method = getattr(cls, '_pre_from_dict', None)
         if _pre_from_dict_method is not None:
@@ -991,7 +1024,7 @@ def load_func_for_dataclass(
                 # parser = f'_parser{i}'
                 # _locals[parser] = field_to_parser[name]
 
-                string = generate_field_code(cls_loader, cls, extras, f)
+                string = generate_field_code(cls_loader, extras, f)
 
                 if name in field_to_default:
                     default = default_val = field_to_default[name]
@@ -1120,9 +1153,7 @@ def load_func_for_dataclass(
         # with fn_gen.except_(TypeError, 'e'):
             # fn_gen.add_line("raise MissingFields(e, o, cls, init_kwargs, cls_fields) from None")
 
-    functions = fn_gen.create_functions(
-        locals=_locals, globals=_globals
-    )
+    functions = fn_gen.create_functions(globals=_globals)
 
     cls_fromdict = functions[fn_name]
 
@@ -1139,15 +1170,15 @@ def load_func_for_dataclass(
     return cls_fromdict
 
 
-def generate_field_code(cls_loader,
-                        cls,
+def generate_field_code(cls_loader: LoadMixin,
                         config: Extras, f):
 
+    cls = config['cls']
     field_type = f.type = eval_forward_ref_if_needed(f.type, cls)
 
     try:
         return cls_loader.get_string_for_annotation(
-            TypeInfo(field_type), cls, config
+            TypeInfo(field_type), config
         )
 
     except ParseError as pe:

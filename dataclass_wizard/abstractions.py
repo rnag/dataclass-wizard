@@ -371,16 +371,16 @@ class AbstractLoaderGenerator(ABC):
 
     @staticmethod
     @abstractmethod
-    def load_to_named_tuple(tp: TypeInfo, extras: Extras) -> str:
+    def load_to_named_tuple(tp: TypeInfo, extras: Extras) -> 'str | TypeInfo':
         """
         Generate code to load a value into a named tuple field.
         """
 
-    @staticmethod
+    @classmethod
     @abstractmethod
-    def load_to_named_tuple_untyped(tp: TypeInfo, extras: Extras) -> str:
+    def load_to_named_tuple_untyped(cls, tp: TypeInfo, extras: Extras) -> 'str | TypeInfo':
         """
-        Generate code to load a value into a (generally) untyped named tuple.
+        Generate code to load a value into an untyped named tuple.
         """
 
     @staticmethod
@@ -443,7 +443,6 @@ class AbstractLoaderGenerator(ABC):
     @abstractmethod
     def get_string_for_annotation(cls,
                                   tp: TypeInfo,
-                                  base_cls: 'type | None',
                                   extras: Extras) -> 'str | TypeInfo':
         """
         Generate code to get the parser (dispatcher) for a given annotation type.

@@ -52,6 +52,22 @@ class TypeInfo:
         self.prefix = prefix
         self.index = index
 
+    def replace(self, **changes):
+        # Validate that `instance` is an instance of the class
+        # if not isinstance(instance, TypeInfo):
+        #     raise TypeError(f"Expected an instance of {TypeInfo.__name__}, got {type(instance).__name__}")
+
+        # Extract current values from __slots__
+        current_values = {slot: getattr(self, slot)
+                          for slot in TypeInfo.__slots__
+                          if not slot.startswith('_')}
+
+        # Apply the changes
+        current_values.update(changes)
+
+        # Create and return a new instance with updated attributes
+        return TypeInfo(**current_values)
+
     @staticmethod
     def ensure_in_locals(extras, *types):
         locals = extras['locals']
@@ -77,8 +93,15 @@ class TypeInfo:
         setattr(self, '_wrapped', result)
         return self
 
-    def wrap(self, result: str, extras, force=False) -> Self:
-        if (tn := self._wrap_inner(extras, force=force)) is not None:
+    def multi_wrap(self, extras, prefix='', *result, force=False):
+        tn = self._wrap_inner(extras, prefix=prefix, force=force)
+        if tn is not None:
+            result = [f'{tn}({r})' for r in result]
+
+        return result
+
+    def wrap(self, result: str, extras, force=False, prefix='') -> Self:
+        if (tn := self._wrap_inner(extras, prefix=prefix, force=force)) is not None:
             result = f'{tn}({result})'
 
         setattr(self, '_wrapped', result)
@@ -142,9 +165,11 @@ class Extras(TypedDict):
     "Extra" config that can be used in the load / dump process.
     """
     config: NotRequired['META']
-    pattern: NotRequired['PatternedDT']
-    # i: int
+    cls: type
+    cls_name: str
+    fn_gen: 'FunctionBuilder'
     locals: dict[str, Any]
+    pattern: NotRequired['PatternedDT']
 
 
 # noinspection PyShadowingBuiltins
