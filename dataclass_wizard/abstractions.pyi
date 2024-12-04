@@ -568,7 +568,7 @@ class AbstractLoaderGenerator(ABC):
 
     @staticmethod
     @abstractmethod
-    def load_to_typed_dict(tp: TypeInfo, extras: Extras) -> str:
+    def load_to_typed_dict(tp: TypeInfo, extras: Extras) -> str | TypeInfo:
         """
         Generate code to load a value into a typed dictionary field.
         """

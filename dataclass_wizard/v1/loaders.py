@@ -48,7 +48,7 @@ from ..utils.type_conv import (
 )
 from ..utils.typing_compat import (
     is_literal, is_typed_dict, get_origin, get_args, is_annotated,
-    eval_forward_ref_if_needed, get_origin_v2, is_union
+    eval_forward_ref_if_needed, get_origin_v2, is_union, get_keys_for_typed_dict
 )
 
 
@@ -121,6 +121,7 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
     @staticmethod
     def load_to_str(tp: TypeInfo, extras: Extras) -> str:
         # TODO skip None check if in Optional
+        # return f'{tp.name}({tp.v()})'
         return f"'' if {(v := tp.v())} is None else {tp.name}({v})"
 
     @staticmethod
@@ -343,26 +344,55 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
 
         return tp.wrap_dd(default_factory, result, extras)
 
-    # FIXME
-    @staticmethod
-    def load_to_typed_dict(
-            o: Dict, base_type: Type[M],
-            key_to_parser: 'FieldToParser',
-            required_keys: FrozenKeys,
-            optional_keys: FrozenKeys) -> M:
+    @classmethod
+    def load_to_typed_dict(cls, tp: TypeInfo, extras: Extras):
+        req_keys, opt_keys = get_keys_for_typed_dict(tp.origin)
+        fn_gen = extras['fn_gen']
+        extras_cp: Extras = extras.copy()
+        extras_cp['locals'] = _locals = {
+            'MISSING': MISSING,
+        }
 
-        kwargs = {}
+        fn_name = f'_load_{extras["cls_name"]}_typeddict_{tp.name}'
+
+        result_list = []
+        # TODO set __annotations__?
+        annotations = tp.origin.__annotations__
 
         # Set required keys for the `TypedDict`
-        for k in required_keys:
-            kwargs[k] = key_to_parser[k](o[k])
+        for k in req_keys:
+            field_tp = annotations[k]
+            field_name = repr(k)
+            string = cls.get_string_for_annotation(
+                tp.replace(origin=field_tp,
+                           index=field_name), extras_cp)
 
-        # Set optional keys for the `TypedDict` (if they exist)
-        for k in optional_keys:
-            if k in o:
-                kwargs[k] = key_to_parser[k](o[k])
+            result_list.append(f'{field_name}: {string}')
 
-        return base_type(**kwargs)
+        with fn_gen.function(fn_name, ['v1'], None, _locals):
+            with fn_gen.try_():
+                fn_gen.add_lines('result = {',
+                                 *(f'  {r},' for r in result_list),
+                                 '}')
+
+                # Set optional keys for the `TypedDict` (if they exist)
+                for k in opt_keys:
+                    field_tp = annotations[k]
+                    field_name = repr(k)
+                    string = cls.get_string_for_annotation(
+                        tp.replace(origin=field_tp,
+                                   i=2), extras_cp)
+                    with fn_gen.if_(f'(v2 := v1.get({field_name}, MISSING)) is not MISSING'):
+                        fn_gen.add_line(f'result[{field_name}] = {string}')
+                fn_gen.add_line('return result')
+            with fn_gen.except_(Exception, 'e'):
+                with fn_gen.if_('type(e) is KeyError'):
+                    fn_gen.add_line('name = e.args[0]; e = KeyError(f"Missing required key: {name!r}")')
+                with fn_gen.elif_('not isinstance(v1, dict)'):
+                    fn_gen.add_line('e = TypeError("Incorrect type for object")')
+                fn_gen.add_line('raise ParseError(e, v1, {}) from None')
+
+        return f'{fn_name}({tp.v()})'
 
     @staticmethod
     def load_to_decimal(tp: TypeInfo, extras: Extras):
@@ -433,6 +463,11 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
 
             raise NotImplementedError('`Union` support is not yet fully implemented!')
 
+        if origin is PyRequired or origin is PyNotRequired:
+            # Given `Required[T]` or `NotRequired[T]`, we only need `T`
+            origin = get_args(type_ann)[0]
+            name = getattr(origin, '__name__', origin)
+
         # -> Atomic, immutable types which don't require
         #    any iterative / recursive handling.
         if origin in _SIMPLE_TYPES or issubclass(origin, _SIMPLE_TYPES):
@@ -463,6 +498,10 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
             else:
                 # Annotated as a `collections.namedtuple` subtype
                 load_hook = cls.load_to_named_tuple_untyped
+
+        # TODO type(cls)
+        elif is_typed_dict(origin):
+            load_hook = cls.load_to_typed_dict
 
         else:
 
@@ -584,23 +623,23 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
                     elif issubclass(base_type, UUID):
                         load_hook = hooks.get(UUID)
 
-                    elif issubclass(base_type, tuple) \
-                            and hasattr(base_type, '_fields'):
-
-                        if getattr(base_type, '__annotations__', None):
-                            # Annotated as a `typing.NamedTuple` subtype
-                            load_hook = hooks.get(NamedTupleMeta)
-                            return NamedTupleParser(
-                                base_cls, extras, base_type, load_hook,
-                                cls.get_parser_for_annotation
-                            )
-                        else:
-                            # Annotated as a `collections.namedtuple` subtype
-                            load_hook = hooks.get(namedtuple)
-                            return NamedTupleUntypedParser(
-                                base_cls, extras, base_type, load_hook,
-                                cls.get_parser_for_annotation
-                            )
+                    # elif issubclass(base_type, tuple) \
+                    #         and hasattr(base_type, '_fields'):
+                    #
+                    #     if getattr(base_type, '__annotations__', None):
+                    #         # Annotated as a `typing.NamedTuple` subtype
+                    #         load_hook = hooks.get(NamedTupleMeta)
+                    #         return NamedTupleParser(
+                    #             base_cls, extras, base_type, load_hook,
+                    #             cls.get_parser_for_annotation
+                    #         )
+                    #     else:
+                    #         # Annotated as a `collections.namedtuple` subtype
+                    #         load_hook = hooks.get(namedtuple)
+                    #         return NamedTupleUntypedParser(
+                    #             base_cls, extras, base_type, load_hook,
+                    #             cls.get_parser_for_annotation
+                    #         )
 
                     elif is_typed_dict(base_type):
                         load_hook = cls.load_to_typed_dict
@@ -939,11 +978,11 @@ def load_func_for_dataclass(
 
     _locals = {
         'cls': cls,
+        'MISSING': MISSING,
         # 'py_case': cls_loader.transform_json_field,
         # 'field_to_parser': field_to_parser,
         # 'json_to_field': json_to_field,
         # 'ExplicitNull': ExplicitNull,
-        'MISSING': MISSING,
     }
 
     _globals = {
@@ -951,8 +990,6 @@ def load_func_for_dataclass(
         'LOG': LOG,
         'MissingData': MissingData,
         'MissingFields': MissingFields,
-        # TODO Common types
-        'namedtuple': namedtuple,
     }
 
     # Initialize the FuncBuilder
