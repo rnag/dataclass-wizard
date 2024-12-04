@@ -534,7 +534,7 @@ class MappingParser(AbstractParser[Type[M], M]):
     __slots__ = ('hook',
                  'key_parser',
                  'val_parser',
-                 'val_base_type')
+                 'val_type')
 
     base_type: Type[M]
     hook: Callable[[Any, Type[M], AbstractParser, AbstractParser], M]
@@ -551,12 +551,12 @@ class MappingParser(AbstractParser[Type[M], M]):
         # Base type of the object which is instantiable
         #   ex. `Dict[str, Any]` -> `dict`
         self.base_type: Type[M] = get_origin(self.base_type)
+        self.val_type = val_type
 
         val_parser = get_parser(val_type, cls, extras)
 
         self.key_parser = getattr(p := get_parser(key_type, cls, extras), '__call__', p)
         self.val_parser = getattr(val_parser, '__call__', val_parser)
-        self.val_base_type = val_parser.base_type
 
     def __call__(self, o: M) -> M:
         return self.hook(o, self.base_type, self.key_parser, self.val_parser)
@@ -577,7 +577,9 @@ class DefaultDictParser(MappingParser[DD]):
         super().__post_init__(cls, extras, get_parser)
 
         # The default factory argument to pass to the `defaultdict` subclass
-        self.default_factory: DefFactory = self.val_base_type
+        val_type = self.val_type
+        val_base_type = getattr(val_type, '__origin__', val_type)
+        self.default_factory: DefFactory = val_base_type
 
     def __call__(self, o: DD) -> DD:
         return self.hook(o, self.base_type, self.default_factory,
