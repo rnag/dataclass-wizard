@@ -343,6 +343,14 @@ class AbstractLoaderGenerator(ABC):
 
     @staticmethod
     @abstractmethod
+    def load_to_literal(tp: TypeInfo, extras: Extras) -> 'str | TypeInfo':
+        """
+        Generate code to confirm a value is equivalent to one
+        of the provided literals.
+        """
+
+    @staticmethod
+    @abstractmethod
     def load_to_enum(tp: TypeInfo, extras: Extras) -> str:
         """
         Generate code to load a value into an Enum field.

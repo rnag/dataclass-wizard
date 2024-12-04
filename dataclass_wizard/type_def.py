@@ -1,12 +1,13 @@
 __all__ = [
     'PyForwardRef',
-    'PyLiteral',
     'PyProtocol',
     'PyDeque',
     'PyTypedDict',
     'PyTypedDicts',
     'PyRequired',
     'PyNotRequired',
+    'PyReadOnly',
+    'PyLiteralString',
     'FrozenKeys',
     'DefFactory',
     'NoneType',
@@ -50,14 +51,12 @@ from typing import (
     Union, NamedTuple, Callable, AnyStr, TextIO, BinaryIO,
     Deque as PyDeque,
     ForwardRef as PyForwardRef,
-    Literal as PyLiteral,
     Protocol as PyProtocol,
     TypedDict as PyTypedDict, Iterable, Collection,
 )
 from uuid import UUID
 
-from .constants import PY311_OR_ABOVE
-
+from .constants import PY311_OR_ABOVE, PY313_OR_ABOVE
 
 # Type check for numeric types - needed because `bool` is technically
 # a Number.
@@ -145,15 +144,26 @@ except ImportError:
 # Python 3.11 introduced `Required` and `NotRequired` wrappers for
 # `TypedDict` fields (PEP 655). Python 3.9+ users can import the
 # wrappers from `typing_extensions`.
-if PY311_OR_ABOVE:  # pragma: no cover
-    from typing import Required as PyRequired
-    from typing import NotRequired as PyNotRequired
-    from typing import dataclass_transform
-else:
-    from typing_extensions import Required as PyRequired
-    from typing_extensions import NotRequired as PyNotRequired
-    from typing_extensions import dataclass_transform
 
+if PY313_OR_ABOVE:  # pragma: no cover
+    from typing import (Required as PyRequired,
+                        NotRequired as PyNotRequired,
+                        ReadOnly as PyReadOnly,
+                        LiteralString as PyLiteralString,
+                        dataclass_transform)
+
+elif PY311_OR_ABOVE:  # pragma: no cover
+    from typing import (Required as PyRequired,
+                        NotRequired as PyNotRequired,
+                        LiteralString as PyLiteralString,
+                        dataclass_transform)
+    from typing_extensions import ReadOnly as PyReadOnly
+else:
+    from typing_extensions import (Required as PyRequired,
+                                   NotRequired as PyNotRequired,
+                                    ReadOnly as PyReadOnly,
+                                   LiteralString as PyLiteralString,
+                                   dataclass_transform)
 
 # Forward references can be either strings or explicit `ForwardRef` objects.
 # noinspection SpellCheckingInspection

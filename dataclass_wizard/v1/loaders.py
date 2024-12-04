@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import (
     Any, Type, Dict, List, Tuple, Iterable, Sequence, Union,
     NamedTupleMeta,
-    SupportsFloat, AnyStr, Text, Callable, Optional, cast
+    SupportsFloat, AnyStr, Text, Callable, Optional, cast, Literal, Annotated
 )
 
 from uuid import UUID
@@ -35,7 +35,7 @@ from ..models import Extras, PatternedDT, TypeInfo
 from ..parsers import *
 from ..type_def import (
     ExplicitNull, FrozenKeys, DefFactory, NoneType, JSONObject,
-    PyRequired, PyNotRequired,
+    PyRequired, PyNotRequired, PyLiteralString,
     M, N, T, E, U, DD, LSQ, NT
 )
 from ..utils.function_builder import FunctionBuilder
@@ -48,7 +48,8 @@ from ..utils.type_conv import (
 )
 from ..utils.typing_compat import (
     is_literal, is_typed_dict, get_origin, get_args, is_annotated,
-    eval_forward_ref_if_needed, get_origin_v2, is_union, get_keys_for_typed_dict
+    eval_forward_ref_if_needed, get_origin_v2, is_union,
+    get_keys_for_typed_dict, is_typed_dict_type_qualifier,
 )
 
 
@@ -328,13 +329,12 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
 
     @classmethod
     def load_to_defaultdict(cls, tp: TypeInfo, extras: Extras):
-
         v, k_next, v_next, i_next = tp.v_and_next_k_v()
         default_factory: DefFactory
 
         try:
             kt, vt = tp.args
-            default_factory = vt
+            default_factory = getattr(vt, '__origin__', vt)
         except ValueError:
             # TODO
             kt = vt = default_factory = Any
@@ -395,6 +395,70 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         return f'{fn_name}({tp.v()})'
 
     @staticmethod
+    def load_to_literal(tp: TypeInfo, extras: Extras):
+        fn_gen = extras['fn_gen']
+        extras_cp: Extras = extras.copy()
+        extras_cp['locals'] = _locals = {
+            'MISSING': MISSING,
+        }
+
+        # TODO this is not unique
+        fn_name = f'_load_{extras["cls_name"]}_literal_{tp.name}'
+
+        # TODO this is not unique
+        fields = 'fields'
+
+        # TODO get full
+        extras_cp['locals']['tp'] = tp.args
+        extras_cp['locals'][fields] = frozenset(tp.args)
+
+        with fn_gen.function(fn_name, ['v1'], None, _locals):
+
+            with fn_gen.try_():
+                with fn_gen.if_(f'{tp.v()} in {fields}'):
+                    fn_gen.add_line('return v1')
+
+            with fn_gen.except_(KeyError):
+                # No such Literal with the value of `o`
+                fn_gen.add_line("e = ValueError('Value not in expected Literal values')")
+                fn_gen.add_line('raise ParseError('
+                                f'e, v1, tp, allowed_values={fields}'
+                                f')')
+
+        # TODO Checks for Literal equivalence, as mentioned here:
+        #   https://www.python.org/dev/peps/pep-0586/#equivalence-of-two-literals
+
+        # extras_cp['locals'][fields] = {
+        #     a: type(a) for a in tp.args
+        # }
+        #
+        # with fn_gen.function(fn_name, ['v1'], None, _locals):
+        #
+        #     with fn_gen.try_():
+        #         with fn_gen.if_(f'type({tp.v()}) is {fields}[{tp.v()}]'):
+        #             fn_gen.add_line('return v1')
+        #
+        #         # The value of `o` is in the ones defined for the Literal, but
+        #         # also confirm the type matches the one defined for the Literal.
+        #         fn_gen.add_line("e = TypeError('Value did not match expected type for the Literal')")
+        #
+        #         fn_gen.add_line('raise ParseError('
+        #                         'e, v1, tp, '
+        #                         'have_type=type(v1), '
+        #                         f'desired_type={fields}[v1], '
+        #                         f'desired_value=next(v for v in {fields} if v == v1), '
+        #                         f'allowed_values=list({fields})'
+        #                         ')')
+        #     with fn_gen.except_(KeyError):
+        #         # No such Literal with the value of `o`
+        #         fn_gen.add_line("e = ValueError('Value not in expected Literal values')")
+        #         fn_gen.add_line('raise ParseError('
+        #                         f'e, v1, tp, allowed_values=list({fields})'
+        #                         f')')
+
+        return f'{fn_name}({tp.v()})'
+
+    @staticmethod
     def load_to_decimal(tp: TypeInfo, extras: Extras):
         s = f'str({tp.v()}) if isinstance({tp.v()}, float) else {tp.v()}'
         return tp.wrap_builtin(s, extras)
@@ -440,16 +504,14 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
                                   tp,
                                   extras):
 
-        type_ann = tp.origin
-
         hooks = cls.__LOAD_HOOKS__
+
+        type_ann = tp.origin
         origin = get_origin_v2(type_ann)
         name = getattr(origin, '__name__', origin)
 
         args = None
         wrap = False
-
-        # print('GET_STRING:', ann_type, origin)
 
         # -> Union[x]
         if is_union(origin):
@@ -463,14 +525,27 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
 
             raise NotImplementedError('`Union` support is not yet fully implemented!')
 
-        if origin is PyRequired or origin is PyNotRequired:
+        if is_annotated(type_ann) or is_typed_dict_type_qualifier(origin):
             # Given `Required[T]` or `NotRequired[T]`, we only need `T`
-            origin = get_args(type_ann)[0]
+            # noinspection PyUnresolvedReferences
+            type_ann = get_args(type_ann)[0]
+            origin = get_origin_v2(type_ann)
             name = getattr(origin, '__name__', origin)
+            # origin = type_ann.__args__[0]
+
+        if origin is Literal:
+            load_hook = cls.load_to_literal
+            args = get_args(type_ann)
+
+        elif origin is PyLiteralString:
+            load_hook = cls.load_to_str
+            origin = str
+            name = 'str'
 
         # -> Atomic, immutable types which don't require
         #    any iterative / recursive handling.
-        if origin in _SIMPLE_TYPES or issubclass(origin, _SIMPLE_TYPES):
+        # TODO use subclass safe
+        elif origin in _SIMPLE_TYPES or issubclass(origin, _SIMPLE_TYPES):
             load_hook = hooks.get(origin)
 
         elif (load_hook := hooks.get(origin)) is not None:
@@ -824,7 +899,8 @@ def setup_default_loader(cls=LoadMixin):
     cls.register_load_hook(deque, cls.load_to_iterable)
     cls.register_load_hook(list, cls.load_to_iterable)
     cls.register_load_hook(tuple, cls.load_to_tuple)
-    # TODO namedtuple and `NamedTuple`
+    # `typing` Generics
+    # cls.register_load_hook(Literal, cls.load_to_literal)
     # noinspection PyTypeChecker
     cls.register_load_hook(defaultdict, cls.load_to_defaultdict)
     cls.register_load_hook(dict, cls.load_to_dict)
