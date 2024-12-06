@@ -231,6 +231,9 @@ def eval_forward_ref(base_type: FREF,
     return _eval_type(base_type, base_globals, _TYPING_LOCALS)
 
 
+_ForwardRefTypes = frozenset(FREF.__constraints__)
+
+
 def eval_forward_ref_if_needed(base_type: Union[type, FREF],
                                base_cls: type):
     """
@@ -238,7 +241,7 @@ def eval_forward_ref_if_needed(base_type: Union[type, FREF],
     return the underlying type reference.
     """
 
-    if isinstance(base_type, FREF.__constraints__):
+    if type(base_type) in _ForwardRefTypes:
         # Evaluate the forward reference here.
         base_type = eval_forward_ref(base_type, base_cls)
 

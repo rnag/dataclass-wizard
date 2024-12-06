@@ -20,6 +20,16 @@ class FunctionBuilder:
         self.globals = {}
         self.namespace = {}
 
+    def __ior__(self, other):
+        """
+        Allows `|=` operation for :class:`FunctionBuilder` objects,
+        e.g. ::
+            my_fn_builder |= other_fn_builder
+
+        """
+        self.functions |= other.functions
+        return self
+
     def __enter__(self):
         self.indent_level += 1
 
@@ -265,6 +275,8 @@ class FunctionBuilder:
         # TODO
         _globals = self.globals if globals is None else globals | self.globals
 
+        LOG.debug(f"Globals before function compilation: {_globals}")
+
         exec(txt, _globals, ns)
 
         # TODO do we need self.namespace?
@@ -280,8 +292,7 @@ class FunctionBuilder:
         #     for name, locals, _ in fn_name_locals_and_code
         # }
 
-
         # Print namespace for debugging
-        LOG.debug(f"Namespace after function compilation: {self.namespace}")
+        LOG.debug(f"Namespace after function compilation: {final_ns}")
 
         return final_ns

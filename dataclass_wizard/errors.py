@@ -210,18 +210,27 @@ class MissingFields(JSONWizardError):
     def __init__(self, base_err: Exception,
                  obj: JSONObject,
                  cls: Type,
-                 cls_kwargs: JSONObject,
-                 cls_fields: Tuple[Field, ...], **kwargs):
+                 cls_fields: Tuple[Field, ...],
+                 cls_kwargs: 'JSONObject | None' = None,
+                 missing_fields: 'Collection[str] | None' = None,
+                 **kwargs):
 
         super().__init__()
 
         self.obj = obj
-        self.fields = list(cls_kwargs.keys())
 
-        self.missing_fields = [f.name for f in cls_fields
-                               if f.name not in self.fields
-                               and f.default is MISSING
-                               and f.default_factory is MISSING]
+        if missing_fields:
+            self.fields = [f.name for f in cls_fields
+                           if f.name not in missing_fields
+                           and f.default is MISSING
+                           and f.default_factory is MISSING]
+            self.missing_fields = missing_fields
+        else:
+            self.fields = list(cls_kwargs.keys())
+            self.missing_fields = [f.name for f in cls_fields
+                                   if f.name not in self.fields
+                                   and f.default is MISSING
+                                   and f.default_factory is MISSING]
 
         # check if any field names match, and where the key transform could be the cause
         # see https://github.com/rnag/dataclass-wizard/issues/54 for more info

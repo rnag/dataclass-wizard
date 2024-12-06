@@ -141,6 +141,8 @@ WizType = TypeVar('WizType', Data1, JSONWizard)
 JsonsType = TypeVar('JsonsType', Data1, JsonSerializable)
 # Model for `dataclasses-json`
 DJType = TypeVar('DJType', Data1, DataClassJsonMixin)
+# Model for `mashumaro`
+MashumaroType = TypeVar('MashumaroType', Data1, mashumaro.DataClassDictMixin)
 # Factory for `dataclass-factory`
 factory = dataclass_factory.Factory()
 
@@ -150,12 +152,15 @@ MyClassWizard: WizType = create_new_class(
 MyClassJsons: JsonsType = create_new_class(
     Data1, (Data1, JsonSerializable), 'Jsons',
     attr_dict=vars(Data1).copy())
+MyClassMashumaroModel: MashumaroType = create_new_class(
+    Data1, (Data1, mashumaro.DataClassDictMixin), 'Mashumaro',
+    attr_dict=vars(Data1).copy())
 
 # Pydantic Model for Benchmarking
 MyClassPydanticModel = MyClassPydantic
 
 # Mashumaro Model for Benchmarking
-MyClassMashumaroModel = MyClassMashumaro
+# MyClassMashumaroModel = MyClassMashumaro
 
 
 @pytest.fixture(scope='session')
@@ -205,17 +210,19 @@ def test_load(request, data, n):
     """
     [ RESULTS ON MAC OS X ]
 
-    benchmarks.nested.nested - [INFO] dataclass-wizard     0.397123
-    benchmarks.nested.nested - [INFO] dataclass-factory    0.418530
-    benchmarks.nested.nested - [INFO] dataclasses-json     11.443072
-    benchmarks.nested.nested - [INFO] mashumaro            0.158189
-    benchmarks.nested.nested - [INFO] pydantic             0.346031
-    benchmarks.nested.nested - [INFO] jsons                28.124958
-    benchmarks.nested.nested - [INFO] jsons (strict)       28.816675
+    benchmarks.nested.nested - [INFO] dataclass-wizard     0.135700
+    benchmarks.nested.nested - [INFO] dataclass-factory    0.412265
+    benchmarks.nested.nested - [INFO] dataclasses-json     11.448704
+    benchmarks.nested.nested - [INFO] mashumaro            0.150680
+    benchmarks.nested.nested - [INFO] pydantic             0.328947
+    benchmarks.nested.nested - [INFO] jsons                25.052287
+    benchmarks.nested.nested - [INFO] jsons (strict)       43.233567
 
     """
     g = globals().copy()
     g.update(locals())
+
+    MyClassWizard.from_dict(data)
 
     log.info('dataclass-wizard     %f',
              timeit('MyClassWizard.from_dict(data)', globals=g, number=n))

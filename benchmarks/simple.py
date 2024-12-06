@@ -77,7 +77,7 @@ def test_load(data, n):
     """
     [ RESULTS ON MAC OS X ]
 
-    benchmarks.simple.simple - [INFO] dataclass-wizard     0.076336
+    benchmarks.simple.simple - [INFO] dataclass-wizard     0.033917
     benchmarks.simple.simple - [INFO] dataclass-factory    0.103837
     benchmarks.simple.simple - [INFO] dataclasses-json     3.941902
     benchmarks.simple.simple - [INFO] jsons                5.636863

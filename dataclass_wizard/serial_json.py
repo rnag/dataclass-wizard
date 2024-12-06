@@ -97,7 +97,7 @@ def _str_fn():
 def _str_pprint_fn():
     from pprint import pformat
     def __str__(self):
-        return pformat(self, width=40)
+        return pformat(self, width=70)
     return __str__
 
 

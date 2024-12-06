@@ -611,9 +611,15 @@ class AbstractLoaderGenerator(ABC):
 
     @staticmethod
     @abstractmethod
-    def load_to_timedelta(tp: TypeInfo, extras: Extras) -> str:
+    def load_to_timedelta(tp: TypeInfo, extras: Extras) -> str | TypeInfo:
         """
         Generate code to load a value into a timedelta field.
+        """
+
+    @staticmethod
+    def load_to_dataclass(tp: TypeInfo, extras: Extras) -> str | TypeInfo:
+        """
+        Generate code to load a value into a `dataclass` type field.
         """
 
     @classmethod

@@ -257,7 +257,9 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
 
     @classmethod
     def load_to_named_tuple(cls, tp: TypeInfo, extras: Extras):
-        fn_gen = extras['fn_gen']
+
+        fn_gen = FunctionBuilder()
+
         extras_cp: Extras = extras.copy()
         extras_cp['locals'] = _locals = {
             'msg': "`dict` input is not supported for NamedTuple, use a dataclass instead."
@@ -287,6 +289,8 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
                 # TODO should we support dict for namedtuple?
                 fn_gen.add_line('raise TypeError(msg) from None')
             fn_gen.add_line(f'return {tp.wrap("*fields", extras_cp, prefix="nt_")}')
+
+        extras['fn_gen'] |= fn_gen
 
         return f'{fn_name}({tp.v()})'
 
@@ -346,8 +350,10 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
 
     @classmethod
     def load_to_typed_dict(cls, tp: TypeInfo, extras: Extras):
+        fn_gen = FunctionBuilder()
+
         req_keys, opt_keys = get_keys_for_typed_dict(tp.origin)
-        fn_gen = extras['fn_gen']
+
         extras_cp: Extras = extras.copy()
         extras_cp['locals'] = _locals = {
             'MISSING': MISSING,
@@ -392,11 +398,14 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
                     fn_gen.add_line('e = TypeError("Incorrect type for object")')
                 fn_gen.add_line('raise ParseError(e, v1, {}) from None')
 
+        extras['fn_gen'] |= fn_gen
+
         return f'{fn_name}({tp.v()})'
 
     @staticmethod
     def load_to_literal(tp: TypeInfo, extras: Extras):
-        fn_gen = extras['fn_gen']
+        fn_gen = FunctionBuilder()
+
         extras_cp: Extras = extras.copy()
         extras_cp['locals'] = _locals = {
             'MISSING': MISSING,
@@ -456,6 +465,8 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         #                         f'e, v1, tp, allowed_values=list({fields})'
         #                         f')')
 
+        extras['fn_gen'] |= fn_gen
+
         return f'{fn_name}({tp.v()})'
 
     @staticmethod
@@ -491,13 +502,11 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         return f'as_timedelta({tp.v()}, {tp.name})'
 
     @staticmethod
-    def load_func_for_dataclass(
-        cls: Type[T],
-        config: Optional[META],
-    ) -> Callable[[JSONObject], T]:
+    def load_to_dataclass(tp: TypeInfo, extras: Extras):
+        fn_name = load_func_for_dataclass(
+            tp.origin, extras, False)
 
-        return load_func_for_dataclass(
-            cls, is_main_class=False, config=config)
+        return f'{fn_name}({tp.v()})'
 
     @classmethod
     def get_string_for_annotation(cls,
@@ -506,7 +515,9 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
 
         hooks = cls.__LOAD_HOOKS__
 
-        type_ann = tp.origin
+        # type_ann = tp.origin
+        type_ann = eval_forward_ref_if_needed(tp.origin, extras['cls'])
+
         origin = get_origin_v2(type_ann)
         name = getattr(origin, '__name__', origin)
 
@@ -577,6 +588,11 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         # TODO type(cls)
         elif is_typed_dict(origin):
             load_hook = cls.load_to_typed_dict
+
+        elif is_dataclass(origin):
+            # return a dynamically generated `fromdict`
+            # for the `cls` (base_type)
+            load_hook = cls.load_to_dataclass
 
         else:
 
@@ -960,7 +976,7 @@ def fromdict(cls: Type[T], d: JSONObject) -> T:
     try:
         load = CLASS_TO_LOAD_FUNC[cls]
     except KeyError:
-        load = load_func_for_dataclass(cls)
+        load = load_func_for_dataclass(cls, {})
 
     return load(d)
 
@@ -976,17 +992,25 @@ def fromlist(cls: Type[T], list_of_dict: List[JSONObject]) -> List[T]:
     try:
         load = CLASS_TO_LOAD_FUNC[cls]
     except KeyError:
-        load = load_func_for_dataclass(cls)
+        load = load_func_for_dataclass(cls, {})
 
     return [load(d) for d in list_of_dict]
 
 
+def add_to_missing_fields(missing_fields: 'list[str] | None', field: str):
+    if missing_fields is None:
+        missing_fields = [field]
+    else:
+        missing_fields.append(field)
+    return missing_fields
+
+
 def load_func_for_dataclass(
-        cls: Type[T],
+        cls: type,
+        extras: Extras,
         is_main_class: bool = True,
-        config: Optional[META] = None,
         loader_cls=LoadMixin,
-) -> Callable[[JSONObject], T]:
+) -> Union[Callable[[JSONObject], T], str]:
 
     # TODO dynamically generate for multiple nested classes at once
 
@@ -1005,18 +1029,33 @@ def load_func_for_dataclass(
     # Get the meta config for the class, or the default config otherwise.
     meta = get_meta(cls)
 
+    # config for nested dataclasses
+    config = extras.get('config')
+
     if is_main_class:  # we are being run for the main dataclass
         # If the `recursive` flag is enabled and a Meta config is provided,
         # apply the Meta recursively to any nested classes.
         if meta.recursive and meta is not AbstractMeta:
-            config = meta
+            extras['config'] = meta
+
+        _globals = {
+            # 'add': add_to_missing_fields,
+            'ParseError': ParseError,
+            # 'LOG': LOG,
+            'MissingData': MissingData,
+            'MissingFields': MissingFields,
+            # TODO
+            'MISSING': MISSING,
+        }
 
     # we are being run for a nested dataclass
-    elif config:
+    elif config is not None:
         # we want to apply the meta config from the main dataclass
         # recursively.
         meta = meta | config
         meta.bind_to(cls, is_default=False)
+
+        _globals = None
 
     # This contains a mapping of the original field name to the parser for its
     # annotated type; the item lookup *can* be case-insensitive.
@@ -1054,22 +1093,14 @@ def load_func_for_dataclass(
 
     _locals = {
         'cls': cls,
-        'MISSING': MISSING,
+        'cls_fields': cls_fields,
+
+        # 'MISSING': MISSING,
         # 'py_case': cls_loader.transform_json_field,
         # 'field_to_parser': field_to_parser,
         # 'json_to_field': json_to_field,
         # 'ExplicitNull': ExplicitNull,
     }
-
-    _globals = {
-        'cls_fields': cls_fields,
-        'LOG': LOG,
-        'MissingData': MissingData,
-        'MissingFields': MissingFields,
-    }
-
-    # Initialize the FuncBuilder
-    fn_gen = FunctionBuilder()
 
     if has_json_paths:
         # loop_over_o = num_paths != len(cls_init_fields)
@@ -1077,12 +1108,17 @@ def load_func_for_dataclass(
     # else:
         # loop_over_o = True
 
+    # Initialize the FuncBuilder
+    fn_gen = FunctionBuilder()
+
     cls_name = cls.__name__
-    extras: Extras = {'config': config,
-                      'locals': _locals,
-                      'cls': cls,
-                      'cls_name': cls_name,
-                      'fn_gen': fn_gen}
+    new_extras: Extras = {'config': config,
+                          'locals': _locals,
+                          'cls': cls,
+                          'cls_name': cls_name,
+                          'fn_gen': fn_gen
+                          # 'fn_gen': fn_gen if is_main_class else extras['fn_gen']
+                          }
 
     fn_name = f'__dataclass_wizard_from_dict_{cls_name}__'
     with fn_gen.function(fn_name, ['o'], MISSING, _locals):
@@ -1137,24 +1173,29 @@ def load_func_for_dataclass(
                 # parser = f'_parser{i}'
                 # _locals[parser] = field_to_parser[name]
 
-                string = generate_field_code(cls_loader, extras, f)
+                string = generate_field_code(cls_loader, new_extras, f)
 
                 if name in field_to_default:
-                    default = default_val = field_to_default[name]
+                    # default = default_val = field_to_default[name]
                     # FIXME might need to update default value logic
-                    if not is_builtin(default):
-                        default = f'_dflt{i}'
-                        _locals[default] = default_val
-                    fn_gen.add_line(f'field={name!r}; {val}=o.get(field, {default})')
-                    fn_gen.add_line(f'init_kwargs[field] = {string}')
+                    # if not is_builtin(default):
+                    #     default = f'_dflt{i}'
+                    #     _locals[default] = default_val
+                    fn_gen.add_line(f'field={name!r}; {val}=o.get(field, MISSING)')
+
+                    with fn_gen.if_(f'{val} is not MISSING'):
+                        fn_gen.add_line(f'init_kwargs[field] = {string}')
 
                 else:
-                    req_field_and_var.append(f'{name}={var}')
+                    # TODO confirm this is ok
+                    # req_field_and_var.append(f'{name}={var}')
+                    req_field_and_var.append(f'{var}')
+
                     # fn_gen.add_line(f"field={name!r}; {val}=o[field]")
                     fn_gen.add_line(f"field={name!r}; {val}=o.get(field, MISSING)")
                     with fn_gen.if_(f'{val} is MISSING'):
                         # TODO
-                        fn_gen.add_line("raise MissingFields(None, o, cls, {field: None}, cls_fields) from None")
+                        fn_gen.add_line('_missing = add(_missing, field)')
                     with fn_gen.else_():
                         fn_gen.add_line(f'{var} = {string}')
                 # Note: pass the original cased field to the class constructor;
@@ -1215,9 +1256,23 @@ def load_func_for_dataclass(
                     with fn_gen.else_():
                         fn_gen.add_line(line)
 
+            # with fn_gen.if_('_missing is not None'):
+            #     fn_gen.add_line("raise MissingFields(None, o, cls, cls_fields, None, _missing) from None")
+
         # create a broad `except Exception` block, as we will be
         # re-raising all exception(s) as a custom `ParseError`.
         with fn_gen.except_(Exception, 'e', ParseError):
+            # If the object `o` is None, then raise an error with
+            # the relevant info included.
+            with fn_gen.if_('o is None'):
+                fn_gen.add_line("raise MissingData(cls) from None")
+
+            # Check if the object `o` is some other type than what we expect -
+            # for example, we could be passed in a `list` type instead.
+            with fn_gen.if_('not isinstance(o, dict)'):
+                fn_gen.add_line("e = TypeError('Incorrect type for field')")
+                fn_gen.add_line("raise ParseError(e, o, dict, cls, desired_type=dict) from None")
+
             with fn_gen.if_('type(e) is not ParseError'):
                 fn_gen.add_line('e = ParseError(e, v1, {})')
 
@@ -1232,16 +1287,6 @@ def load_func_for_dataclass(
             fn_gen.add_line("raise e from None")
 
         # with fn_gen.except_(TypeError):
-            # If the object `o` is None, then raise an error with
-            # the relevant info included.
-            # with fn_gen.if_('o is None'):
-            #     fn_gen.add_line("raise MissingData(cls) from None")
-            #
-            # # Check if the object `o` is some other type than what we expect -
-            # # for example, we could be passed in a `list` type instead.
-            # with fn_gen.if_('not isinstance(o, dict)'):
-            #     fn_gen.add_line("e = TypeError('Incorrect type for field')")
-            #     fn_gen.add_line("raise ParseError(e, o, dict, cls, desired_type=dict) from None")
 
             # Else, just re-raise the error.
             # fn_gen.add_line("raise")
@@ -1266,22 +1311,28 @@ def load_func_for_dataclass(
         # with fn_gen.except_(TypeError, 'e'):
             # fn_gen.add_line("raise MissingFields(e, o, cls, init_kwargs, cls_fields) from None")
 
-    functions = fn_gen.create_functions(globals=_globals)
-
-    cls_fromdict = functions[fn_name]
-
     # Save the load function for the main dataclass, so we don't need to run
     # this logic each time.
     if is_main_class:
+        functions = fn_gen.create_functions(globals=_globals)
+
+        cls_fromdict = functions[fn_name]
+
         # Check if the class has a `from_dict`, and it's
         # a class method bound to `fromdict`.
         if ((from_dict := getattr(cls, 'from_dict', None)) is not None
                 and getattr(from_dict, '__func__', None) is fromdict):
             _set_new_attribute(cls, 'from_dict', cls_fromdict)
+
+        # TODO maybe set class attribute?
         CLASS_TO_LOAD_FUNC[cls] = cls_fromdict
 
-    return cls_fromdict
+        return cls_fromdict
 
+    # Update the FunctionBuilder
+    extras['fn_gen'] |= fn_gen
+
+    return fn_name
 
 def generate_field_code(cls_loader: LoadMixin,
                         config: Extras, f):
