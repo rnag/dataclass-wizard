@@ -336,9 +336,7 @@ def dump_func_for_dataclass(cls: Type[T],
         'cls_to_asdict': nested_cls_to_dump_func,
     }
 
-    _globals = {
-        'T': T,
-    }
+    _globals = {}
 
     skip_if_condition = get_skip_if_condition(
         meta.skip_if, _locals, '_skip_value')
@@ -351,7 +349,7 @@ def dump_func_for_dataclass(cls: Type[T],
 
     # Code for `cls_asdict`
     with fn_gen.function('cls_asdict',
-                         ['o:T',
+                         ['o',
                           'dict_factory=dict',
                           "exclude:'list[str]|None'=None",
                           f'skip_defaults:bool={skip_defaults}'],
@@ -486,7 +484,7 @@ def dump_func_for_dataclass(cls: Type[T],
             fn_gen.add_line("return dict_factory(result)")
 
     # Compile the code into a dynamic string
-    functions = fn_gen.create_functions(globals=_globals)
+    functions = fn_gen.create_functions(_globals)
 
     cls_asdict = functions['cls_asdict']
 

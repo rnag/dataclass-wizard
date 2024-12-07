@@ -9,7 +9,7 @@ from .log import LOG
 # noinspection PyProtectedMember
 from .utils.dataclass_compat import _create_fn
 from .utils.object_path import split_object_path
-from .type_def import T, DT, PyTypedDict, DefFactory
+from .type_def import T, DT, DefFactory
 from .utils.type_conv import as_datetime, as_time, as_date
 
 
@@ -35,20 +35,41 @@ _BUILTIN_COLLECTION_TYPES = frozenset({
 
 
 class TypeInfo:
-    __slots__ = ('origin', 'args', 'name',
-                 'i', 'prefix', 'index',
-                 '_wrapped')
+
+    __slots__ = (
+        # type origin (ex. `List[str]` -> `List`)
+        'origin',
+        # type arguments (ex. `Dict[str, int]` -> `(str, int)`)
+        'args',
+        # name of type origin (ex. `List[str]` -> 'list')
+        'name',
+        # index of iteration, *only* unique within the scope of a field assignment!
+        'i',
+        # index of field within the dataclass, *guaranteed* to be unique.
+        'field_i',
+        # prefix of value in assignment (prepended to `i`),
+        # defaults to 'v' if not specified.
+        'prefix',
+        # index of assignment (ex. `2 -> v1[2]`, *or* a string `"key" -> v4["key"]`)
+        'index',
+        # optional attribute, that indicates if we should wrap the
+        # assignment with `name` -- ex. `(1, 2)` -> `deque((1, 2))`
+        '_wrapped',
+    )
 
     def __init__(self, origin,
                  args=None,
                  name=None,
                  i=1,
+                 field_i=1,
                  prefix='v',
                  index=None):
+
         self.name = name
         self.origin = origin
         self.args = args
         self.i = i
+        self.field_i = field_i
         self.prefix = prefix
         self.index = index
 
@@ -66,6 +87,7 @@ class TypeInfo:
         current_values.update(changes)
 
         # Create and return a new instance with updated attributes
+        # noinspection PyArgumentList
         return TypeInfo(**current_values)
 
     @staticmethod
@@ -140,8 +162,7 @@ class TypeInfo:
             elif mod == 'builtins':
                 tn = name
             else:
-                # TODO figure out a better/safer way
-                tn = f'{prefix}{name}_{self.i}'
+                tn = f'{prefix}{name}_{self.field_i}'
                 LOG.debug(f'Adding %s=%s', tn, name)
                 extras['locals'][tn] = tp
 

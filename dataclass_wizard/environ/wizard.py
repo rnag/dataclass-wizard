@@ -333,11 +333,11 @@ class EnvWizard(AbstractEnvWizard):
                 #             with fn_gen.for_('attr in extra_kwargs'):
                 #                 fn_gen.add_line('setattr(self, attr, init_kwargs[attr])')
 
-        with fn_gen.function('dict', ['self'], JSONObject):
+        with fn_gen.function('dict', ['self'], JSONObject, _locals):
             parts = ','.join([f'{name!r}:self.{name}' for name, f in cls.__fields__.items()])
             fn_gen.add_line(f'return {{{parts}}}')
 
-        functions = fn_gen.create_functions(globals=_globals, locals=_locals)
+        functions = fn_gen.create_functions(_globals)
 
         # set the `__init__()` method.
         cls.__init__ = functions['__init__']

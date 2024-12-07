@@ -204,8 +204,8 @@ class MissingFields(JSONWizardError):
                  'Missing values for required dataclass fields.\n'
                  '  have fields: {fields!r}\n'
                  '  missing fields: {missing_fields!r}\n'
-                 '  input JSON object: {json_string}\n'
-                 '  error: {e!s}')
+                 '  input JSON object: {json_string}'
+                 '{e}')
 
     def __init__(self, base_err: Exception,
                  obj: JSONObject,
@@ -255,10 +255,15 @@ class MissingFields(JSONWizardError):
     def message(self) -> str:
         from .utils.json_util import safe_dumps
 
+        if self.base_error is not None:
+            e = f'\n  error: {self.base_error!s}'
+        else:
+            e = ''
+
         msg = self._TEMPLATE.format(
             cls=self.class_name,
             json_string=safe_dumps(self.obj),
-            e=self.base_error,
+            e=e,
             fields=self.fields,
             missing_fields=self.missing_fields)
 

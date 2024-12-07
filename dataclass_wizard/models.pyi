@@ -22,14 +22,20 @@ _STR_COLLECTION = str | Collection[str]
 @dataclass(order=True)
 class TypeInfo:
     __slots__ = ...
-    # Origin type, ex. `Union[str, None]` -> Union
+    # type origin (ex. `List[str]` -> `List`)
     origin: type
-    # Type arguments, ex. `Union[str, None]` -> (str, None)
+    # type arguments (ex. `Dict[str, int]` -> `(str, int)`)
     args: tuple[type, ...] | None = None
-    # Type name, ex. `str -> 'str'`
+    # name of type origin (ex. `List[str]` -> 'list')
     name: str | None = None
+    # index of iteration, *only* unique within the scope of a field assignment!
     i: int = 1
+    # index of field within the dataclass, *guaranteed* to be unique.
+    field_i: int = 1
+    # prefix of value in assignment (prepended to `i`),
+    # defaults to 'v' if not specified.
     prefix: str = 'v'
+    # index of assignment (ex. `2 -> v1[2]`, *or* a string `"key" -> v4["key"]`)
     index: int | None = None
 
     def replace(self, **changes) -> TypeInfo: ...

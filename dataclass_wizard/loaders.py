@@ -1,7 +1,7 @@
 from collections import defaultdict, deque, namedtuple
 import collections.abc as abc
 
-from dataclasses import is_dataclass
+from dataclasses import is_dataclass, MISSING
 from datetime import datetime, time, date, timedelta
 from decimal import Decimal
 from enum import Enum
@@ -700,7 +700,7 @@ def load_func_for_dataclass(
     else:
         loop_over_o = True
 
-    with fn_gen.function('cls_fromdict', ['o']):
+    with fn_gen.function('cls_fromdict', ['o'], MISSING, _locals):
 
         _pre_from_dict_method = getattr(cls, '_pre_from_dict', None)
         if _pre_from_dict_method is not None:
@@ -839,9 +839,7 @@ def load_func_for_dataclass(
         with fn_gen.except_(TypeError, 'e'):
             fn_gen.add_line("raise MissingFields(e, o, cls, init_kwargs, cls_fields) from None")
 
-    functions = fn_gen.create_functions(
-        locals=_locals, globals=_globals
-    )
+    functions = fn_gen.create_functions(_globals)
 
     cls_fromdict = functions['cls_fromdict']
 

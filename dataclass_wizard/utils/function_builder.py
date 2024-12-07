@@ -225,7 +225,7 @@ class FunctionBuilder:
         else:
             self.current_function  # Reset current function
 
-    def create_functions(self, *, globals=None):
+    def create_functions(self, _globals=None):
         """Create functions by compiling the code."""
         # Note that we may mutate locals. Callers beware!
         # The only callers are internal to this module, so no
@@ -268,14 +268,14 @@ class FunctionBuilder:
 
         # Print the generated code for debugging
         # logging.debug(f"Generated function code:\n{all_func_code}")
-        LOG.debug(f"Generated function code:\n{txt}")
+        LOG.debug("Generated function code:\n%s", txt)
 
         ns = {}
 
         # TODO
-        _globals = self.globals if globals is None else globals | self.globals
+        _globals = self.globals if _globals is None else _globals | self.globals
 
-        LOG.debug(f"Globals before function compilation: {_globals}")
+        LOG.debug("Globals before function compilation: %s", _globals)
 
         exec(txt, _globals, ns)
 
@@ -293,6 +293,6 @@ class FunctionBuilder:
         # }
 
         # Print namespace for debugging
-        LOG.debug(f"Namespace after function compilation: {final_ns}")
+        LOG.debug("Namespace after function compilation: %s", final_ns)
 
         return final_ns
