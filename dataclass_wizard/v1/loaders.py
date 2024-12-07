@@ -181,12 +181,8 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         except:
             elem_type = Any
 
-        # print('INNER:', extras, gorg)
-
         string = cls.get_string_for_annotation(
             tp.replace(origin=elem_type, i=i_next), extras)
-
-        # string = cls.get_string_for_annotation(elem_type, nxt, None, extras)
 
         # TODO
         if issubclass(gorg, (set, frozenset)):
@@ -198,12 +194,7 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
 
         result = f'{start_char}{string} for {v_next} in {v}{end_char}'
 
-        # TODO
-        should_wrap = gorg not in {list, set, dict, tuple}
-        # if gorg.__module__ not in {'builtins', 'collections'}:
-
         return tp.wrap(result, extras)
-        # return f'{tp.name}({result})' if should_wrap else result
 
     @classmethod
     def load_to_tuple(cls, tp: TypeInfo, extras: Extras):
@@ -400,6 +391,85 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
 
         return f'{fn_name}({tp.v()})'
 
+    @classmethod
+    def load_to_union(cls, tp: TypeInfo, extras: Extras):
+        fn_gen = FunctionBuilder()
+        config = extras['config']
+
+        fields = f'fields_{tp.field_i}'
+
+        extras_cp: Extras = extras.copy()
+        extras_cp['locals'] = _locals = {
+            fields: tp.args,
+            'tag_key': config.tag_key,
+        }
+
+        actual_cls = extras['cls']
+
+        fn_name = f'load_to_{extras["cls_name"]}_union_{tp.field_i}'
+
+        # TODO handle dataclasses in union (tag)
+
+        with fn_gen.function(fn_name, ['v1'], None, _locals):
+
+            type_checks = []
+            try_parse_at_end = []
+
+            for possible_tp in tp.args:
+
+                possible_tp = eval_forward_ref_if_needed(possible_tp, actual_cls)
+
+                if possible_tp is NoneType:
+                    with fn_gen.if_('v1 is None'):
+                        fn_gen.add_line('return None')
+                    continue
+
+                tp_new = tp.replace(origin=possible_tp, args=None, name=None)
+                string = cls.get_string_for_annotation(tp_new, extras_cp)
+
+                try_parse_lines = [
+                    'try:',
+                   f'  return {string}',
+                    'except Exception:',
+                    '  pass',
+                ]
+
+                # TODO disable for dataclasses
+
+                if possible_tp in _SIMPLE_TYPES or issubclass(get_origin_v2(possible_tp), _SIMPLE_TYPES):
+                    tn = tp_new.type_name(extras_cp)
+                    type_checks.extend([
+                        f'if tp is {tn}:',
+                        '  return v1'
+                    ])
+                    list_to_add = try_parse_at_end
+                else:
+                    list_to_add = type_checks
+
+                list_to_add.extend(try_parse_lines)
+
+            # TODO try_returns: add Meta flag
+            #  This can be a `strict` option, also enables strict Literal
+
+            fn_gen.add_line('tp = type(v1)')
+
+            if type_checks:
+                fn_gen.add_lines(*type_checks)
+
+            if try_parse_at_end:
+                fn_gen.add_lines(*try_parse_at_end)
+
+            # Invalid type for Union
+            fn_gen.add_line("raise ParseError("
+                            "TypeError('Object was not in any of Union types'),"
+                            f"v1,{fields},"
+                            "tag_key=tag_key"
+                            ")")
+
+        extras['fn_gen'] |= fn_gen
+
+        return f'{fn_name}({tp.v()})'
+
     @staticmethod
     def load_to_literal(tp: TypeInfo, extras: Extras):
         fn_gen = FunctionBuilder()
@@ -513,6 +583,14 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         args = None
         wrap = False
 
+        if is_annotated(type_ann) or is_typed_dict_type_qualifier(origin):
+            # Given `Required[T]` or `NotRequired[T]`, we only need `T`
+            # noinspection PyUnresolvedReferences
+            type_ann = get_args(type_ann)[0]
+            origin = get_origin_v2(type_ann)
+            name = getattr(origin, '__name__', origin)
+            # origin = type_ann.__args__[0]
+
         # -> Union[x]
         if is_union(origin):
             args = get_args(type_ann)
@@ -523,17 +601,11 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
                     tp.replace(origin=args[0], args=None, name=None), extras)
                 return f'None if {tp.v()} is None else {string}'
 
-            raise NotImplementedError('`Union` support is not yet fully implemented!')
+            load_hook = cls.load_to_union
 
-        if is_annotated(type_ann) or is_typed_dict_type_qualifier(origin):
-            # Given `Required[T]` or `NotRequired[T]`, we only need `T`
-            # noinspection PyUnresolvedReferences
-            type_ann = get_args(type_ann)[0]
-            origin = get_origin_v2(type_ann)
-            name = getattr(origin, '__name__', origin)
-            # origin = type_ann.__args__[0]
+            # raise NotImplementedError('`Union` support is not yet fully implemented!')
 
-        if origin is Literal:
+        elif origin is Literal:
             load_hook = cls.load_to_literal
             args = get_args(type_ann)
 
@@ -1013,17 +1085,14 @@ def load_func_for_dataclass(
     cls_loader = get_loader(cls, base_cls=loader_cls)
 
     # Get the meta config for the class, or the default config otherwise.
-    meta = get_meta(cls)
-
-    # config for nested dataclasses
-    config = extras.get('config')
+    meta = get_meta(cls, base_meta_cls)
 
     if is_main_class:  # we are being run for the main dataclass
         # If the `recursive` flag is enabled and a Meta config is provided,
         # apply the Meta recursively to any nested classes.
         #
         # Else, just use the base `AbstractMeta`.
-        extras['config'] = meta if meta.recursive else base_meta_cls
+        config = meta if meta.recursive else base_meta_cls
 
         _globals = {
             'add': add_to_missing_fields,
@@ -1035,8 +1104,11 @@ def load_func_for_dataclass(
         }
 
     # we are being run for a nested dataclass
-    elif (config is not None
-          and config is not base_meta_cls):
+    else:
+        # config for nested dataclasses
+        config = extras['config']
+
+        if config is not base_meta_cls:
             # we want to apply the meta config from the main dataclass
             # recursively.
             meta = meta | config
@@ -1289,6 +1361,8 @@ def load_func_for_dataclass(
         # a class method bound to `fromdict`.
         if ((from_dict := getattr(cls, 'from_dict', None)) is not None
                 and getattr(from_dict, '__func__', None) is fromdict):
+
+            LOG.debug("setattr(cls, 'from_dict', %s)", fn_name)
             _set_new_attribute(cls, 'from_dict', cls_fromdict)
 
         # TODO maybe set class attribute?
@@ -1302,16 +1376,16 @@ def load_func_for_dataclass(
     return fn_name
 
 def generate_field_code(cls_loader: LoadMixin,
-                        config: Extras,
+                        extras: Extras,
                         field: Field,
                         field_i: int) -> 'str | TypeInfo':
 
-    cls = config['cls']
+    cls = extras['cls']
     field_type = field.type = eval_forward_ref_if_needed(field.type, cls)
 
     try:
         return cls_loader.get_string_for_annotation(
-            TypeInfo(field_type, field_i=field_i), config
+            TypeInfo(field_type, field_i=field_i), extras
         )
 
     except ParseError as pe:

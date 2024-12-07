@@ -518,6 +518,13 @@ class AbstractLoaderGenerator(ABC):
         of the provided literals.
         """
 
+    @classmethod
+    @abstractmethod
+    def load_to_union(cls, tp: TypeInfo, extras: Extras) -> str | TypeInfo:
+        """
+        Generate code to load a value into a `Union[X, Y, ...]` (one of [X, Y, ...] possible types)
+        """
+
     @staticmethod
     @abstractmethod
     def load_to_enum(tp: TypeInfo, extras: Extras) -> str:

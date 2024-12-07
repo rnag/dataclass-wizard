@@ -11,7 +11,7 @@ from .utils.dataclass_compat import _create_fn
 from .utils.object_path import split_object_path
 from .type_def import T, DT, DefFactory
 from .utils.type_conv import as_datetime, as_time, as_date
-
+from .utils.typing_compat import get_origin_v2
 
 # Define a simple type (alias) for the `CatchAll` field
 #
@@ -95,6 +95,13 @@ class TypeInfo:
         locals = extras['locals']
         for tp in types:
             locals.setdefault(tp.__name__, tp)
+
+    def type_name(self, extras):
+        """Return type name as string (useful for `Union` type checks)"""
+        if self.name is None:
+            self.name = get_origin_v2(self.origin).__name__
+
+        return self._wrap_inner(extras, force=True)
 
     def v(self):
         return (f'{self.prefix}{self.i}' if (idx := self.index) is None
