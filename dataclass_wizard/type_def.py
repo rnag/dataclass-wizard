@@ -45,7 +45,6 @@ from collections import deque
 from datetime import date, time, datetime
 from enum import Enum
 from os import PathLike
-from types import NoneType
 from typing import (
     Any, Type, TypeVar, Sequence, Mapping, List, Dict, DefaultDict, FrozenSet,
     Union, NamedTuple, Callable, AnyStr, TextIO, BinaryIO,
@@ -56,7 +55,15 @@ from typing import (
 )
 from uuid import UUID
 
-from .constants import PY311_OR_ABOVE, PY313_OR_ABOVE
+from .constants import PY310_OR_ABOVE, PY311_OR_ABOVE, PY313_OR_ABOVE
+
+
+# The class of the `None` singleton, cached for re-usability
+if PY310_OR_ABOVE:
+    # https://docs.python.org/3/library/types.html#types.NoneType
+    from types import NoneType
+else:
+    NoneType = type(None)
 
 # Type check for numeric types - needed because `bool` is technically
 # a Number.

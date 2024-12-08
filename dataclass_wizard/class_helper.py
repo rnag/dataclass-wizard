@@ -303,10 +303,24 @@ def call_meta_initializer_if_needed(cls):
     """
     Calls the Meta initializer when the inner :class:`Meta` is sub-classed.
     """
+    # TODO add tests
+
+    cls_module = cls.__module__
+
+    # skip classes provided by this library
+    if cls_module.startswith('dataclass_wizard.'):
+        return
+
     cls_name = get_class_name(cls)
 
     if cls_name in META_INITIALIZER:
         META_INITIALIZER[cls_name](cls)
+    else:
+        for base in cls.__bases__:
+            base_cls_name = get_class_name(base)
+
+            if base_cls_name in META_INITIALIZER:
+                META_INITIALIZER[base_cls_name](cls)
 
 
 def get_meta(cls, base_cls=AbstractMeta):

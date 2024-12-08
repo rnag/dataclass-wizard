@@ -1,6 +1,5 @@
 # TODO cleanup imports
 
-import types
 from base64 import decodebytes
 from collections import defaultdict, deque, namedtuple
 import collections.abc as abc
@@ -37,6 +36,7 @@ from ..log import LOG
 from ..models import Extras, PatternedDT, TypeInfo
 from ..parsers import *
 from ..type_def import (
+    NoneType,
     ExplicitNull, FrozenKeys, DefFactory, NoneType, JSONObject,
     PyRequired, PyNotRequired, PyLiteralString,
     M, N, T, E, U, DD, LSQ, NT
@@ -60,7 +60,7 @@ from ..utils.typing_compat import (
 # returns the same object. We can provide a fast-path for these types in asdict and astuple.
 _SIMPLE_TYPES = (
     # Common JSON Serializable types
-    types.NoneType,
+    NoneType,
     bool,
     int,
     float,
@@ -717,6 +717,16 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
             # return a dynamically generated `fromdict`
             # for the `cls` (base_type)
             load_hook = cls.load_to_dataclass
+
+        elif origin in (abc.Sequence, abc.MutableSequence, abc.Collection):
+            load_hook = cls.load_to_iterable
+            # desired (non-generic) origin type
+            origin = tuple if origin is abc.Sequence else list
+            # Get type arguments, e.g. `Sequence[int]` -> `int`
+            try:
+                args = get_args(type_ann)
+            except ValueError:
+                args = Any,
 
         else:
 
