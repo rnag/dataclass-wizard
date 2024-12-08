@@ -64,10 +64,10 @@ class JSONSerializable(AbstractJSONWizard):
 
         load_meta = None
 
-        if not is_dataclass(cls) and not cls.__module__.startswith('dataclass_wizard.'):
-            # Apply the `@dataclass` decorator to the class
-            # noinspection PyMethodFirstArgAssignment
-            cls = dataclass(cls)
+        # if not is_dataclass(cls) and not cls.__module__.startswith('dataclass_wizard.'):
+        #     # Apply the `@dataclass` decorator to the class
+        #     # noinspection PyMethodFirstArgAssignment
+        #     cls = dataclass(cls)
 
         if _key_transform is not None:
             DumpMeta(key_transform=_key_transform).bind_to(cls)

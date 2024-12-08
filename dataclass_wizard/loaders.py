@@ -770,7 +770,7 @@ def load_func_for_dataclass(
             fn_gen.add_line("return cls(**init_kwargs)")
 
         with fn_gen.except_(TypeError, 'e'):
-            fn_gen.add_line("raise MissingFields(e, o, cls, init_kwargs, cls_fields) from None")
+            fn_gen.add_line("raise MissingFields(e, o, cls, cls_fields, init_kwargs) from None")
 
     functions = fn_gen.create_functions(_globals)
 

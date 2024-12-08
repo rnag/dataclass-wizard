@@ -213,7 +213,6 @@ class EnvWizard(AbstractEnvWizard):
         _meta_env_file = meta.env_file
 
         _locals = {'Env': Env,
-                   'MISSING': MISSING,
                    'ParseError': ParseError,
                    'field_names': field_names,
                    'get_env': get_env,
@@ -224,6 +223,7 @@ class EnvWizard(AbstractEnvWizard):
                     'cls': cls,
                     'fields_ordered': cls_fields.keys(),
                     'handle_err': _handle_parse_error,
+                    'MISSING': MISSING,
                     }
 
         if meta.secrets_dir is None:
@@ -242,7 +242,7 @@ class EnvWizard(AbstractEnvWizard):
 
         fn_gen = FunctionBuilder()
 
-        with fn_gen.function('__init__', init_params, None):
+        with fn_gen.function('__init__', init_params, None, _locals):
 
             # reload cached var names from `os.environ` as needed.
             with fn_gen.if_('_reload'):
