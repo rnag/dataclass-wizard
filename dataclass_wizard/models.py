@@ -1,7 +1,7 @@
 import json
 from dataclasses import MISSING, Field
 from datetime import date, datetime, time
-from typing import Generic, Mapping, NewType, Any, TypedDict, NotRequired, Self
+from typing import Generic, Mapping, NewType, Any, TypedDict, Self
 
 from .constants import PY310_OR_ABOVE
 from .decorators import cached_property
@@ -11,7 +11,7 @@ from .utils.dataclass_compat import _create_fn
 from .utils.object_path import split_object_path
 from .type_def import T, DT, DefFactory
 from .utils.type_conv import as_datetime, as_time, as_date
-from .utils.typing_compat import get_origin_v2
+from .utils.typing_compat import get_origin_v2, PyRequired, PyNotRequired
 
 # Define a simple type (alias) for the `CatchAll` field
 #
@@ -192,12 +192,12 @@ class Extras(TypedDict):
     """
     "Extra" config that can be used in the load / dump process.
     """
-    config: NotRequired['META']
+    config: PyNotRequired['META']
     cls: type
     cls_name: str
     fn_gen: 'FunctionBuilder'
     locals: dict[str, Any]
-    pattern: NotRequired['PatternedDT']
+    pattern: PyNotRequired['PatternedDT']
 
 
 # noinspection PyShadowingBuiltins

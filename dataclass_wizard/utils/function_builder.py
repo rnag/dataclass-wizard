@@ -173,15 +173,18 @@ class FunctionBuilder:
         statement = f'{cls_name} as {var_name}' if var_name else cls_name
 
         if not is_builtin_class(cls):
-            LOG.debug('Ensuring class in globals, cls=%s', cls_name)
-            self.globals.setdefault(cls_name, cls)
+            if cls_name not in self.globals:
+                # TODO
+                # LOG.debug('Ensuring class in globals, cls=%s', cls_name)
+                self.globals[cls_name] = cls
 
         if custom_classes:
             for cls in custom_classes:
                 if not is_builtin_class(cls):
                     cls_name = cls.__name__
-                    LOG.debug('Ensuring class in globals, cls=%s', cls_name)
-                    self.globals.setdefault(cls_name, cls)
+                    if cls_name not in self.globals:
+                        # LOG.debug('Ensuring class in globals, cls=%s', cls_name)
+                        self.globals[cls_name] = cls
 
         return self._with_new_block('except', statement)
 
