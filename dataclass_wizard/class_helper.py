@@ -208,9 +208,10 @@ def _setup_load_config_for_cls(cls_loader,
         #
         # Changed in v0.31.0: Get the __call__() method as defined
         # on `AbstractParser`, if it exists
-        name_to_parser[f.name] = getattr(p := cls_loader.get_parser_for_annotation(
-            field_type, cls, field_extras
-        ), '__call__', p)
+        if config is None or not config.v1:
+            name_to_parser[f.name] = getattr(p := cls_loader.get_parser_for_annotation(
+                field_type, cls, field_extras
+            ), '__call__', p)
 
     parser_dict = DictWithLowerStore(name_to_parser)
     # only cache the load parser for the class if `save` is enabled
@@ -298,24 +299,60 @@ def setup_dump_config_for_cls_if_needed(cls):
     IS_DUMP_CONFIG_SETUP[cls] = True
 
 
-def call_meta_initializer_if_needed(cls):
+def call_meta_initializer_if_needed(cls, package_name='dataclass_wizard'):
     """
     Calls the Meta initializer when the inner :class:`Meta` is sub-classed.
     """
+    # TODO add tests
+
+    # skip classes provided by this library
+    if cls.__module__.startswith(f'{package_name}.'):
+        return
+
     cls_name = get_class_name(cls)
 
     if cls_name in META_INITIALIZER:
         META_INITIALIZER[cls_name](cls)
+
+    # Get the last immediate superclass
+    base = cls.__base__
+
+    # skip base `object` and classes provided by this library
+    if (base is not object
+            and not base.__module__.startswith(f'{package_name}.')):
+
+        base_cls_name = get_class_name(base)
+
+        if base_cls_name in META_INITIALIZER:
+            META_INITIALIZER[base_cls_name](cls)
 
 
 def get_meta(cls, base_cls=AbstractMeta):
     """
     Retrieves the Meta config for the :class:`AbstractJSONWizard` subclass.
 
-    return _META.get(cls, AbstractMeta)
     This config is set when the inner :class:`Meta` is sub-classed.
     """
     return _META.get(cls, base_cls)
+
+
+def create_meta(cls, cls_name=None, **kwargs):
+    """
+    Sets the Meta config for the :class:`AbstractJSONWizard` subclass.
+
+    WARNING: Only use if the Meta config is undefined,
+      e.g. `get_meta` for the `cls` returns `base_cls`.
+
+    """
+    from .bases_meta import BaseJSONWizardMeta
+
+    cls_dict = {'__slots__': (), **kwargs}
+
+    meta = type((cls_name or cls.__name__) + 'Meta',
+                (BaseJSONWizardMeta, ),
+                cls_dict)
+
+    _META[cls] = meta
 
 
 def dataclass_fields(cls):
@@ -427,4 +464,4 @@ def is_subclass_safe(cls, class_or_tuple):
     try:
         return issubclass(cls, class_or_tuple)
     except TypeError:
-        return cls is class_or_tuple
+        return False

@@ -1,5 +1,5 @@
 import json
-from typing import AnyStr, Collection, Callable, Protocol
+from typing import AnyStr, Collection, Callable, Protocol, dataclass_transform
 
 from .abstractions import AbstractJSONWizard, W
 from .bases_meta import BaseJSONWizardMeta
@@ -75,6 +75,7 @@ class JSONPyWizard(JSONSerializable, SerializerHookMixin):
         """Bind child class to DumpMeta with no key transformation."""
 
 
+@dataclass_transform()
 class JSONSerializable(AbstractJSONWizard, SerializerHookMixin):
     """
     Mixin class to allow a `dataclass` sub-class to be easily converted

@@ -219,6 +219,16 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
     # the :func:`dataclasses.field`) in the serialization process.
     skip_defaults_if: ClassVar[Condition] = None
 
+    # Enable opt-in to the "experimental" major release `v1` feature.
+    # This feature offers optimized performance for de/serialization.
+    # Defaults to False.
+    v1: ClassVar[bool] = False
+
+    # Unsafe: Enables parsing of dataclasses in unions without requiring
+    # the presence of a `tag_key`, i.e., a dictionary key identifying the
+    # tag field in the input. Defaults to False.
+    v1_unsafe_parse_dataclass_in_union: ClassVar[bool] = False
+
     # noinspection PyMethodParameters
     @cached_class_property
     def all_fields(cls) -> FrozenKeys:

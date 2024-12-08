@@ -204,24 +204,33 @@ class MissingFields(JSONWizardError):
                  'Missing values for required dataclass fields.\n'
                  '  have fields: {fields!r}\n'
                  '  missing fields: {missing_fields!r}\n'
-                 '  input JSON object: {json_string}\n'
-                 '  error: {e!s}')
+                 '  input JSON object: {json_string}'
+                 '{e}')
 
     def __init__(self, base_err: Exception,
                  obj: JSONObject,
                  cls: Type,
-                 cls_kwargs: JSONObject,
-                 cls_fields: Tuple[Field, ...], **kwargs):
+                 cls_fields: Tuple[Field, ...],
+                 cls_kwargs: 'JSONObject | None' = None,
+                 missing_fields: 'Collection[str] | None' = None,
+                 **kwargs):
 
         super().__init__()
 
         self.obj = obj
-        self.fields = list(cls_kwargs.keys())
 
-        self.missing_fields = [f.name for f in cls_fields
-                               if f.name not in self.fields
-                               and f.default is MISSING
-                               and f.default_factory is MISSING]
+        if missing_fields:
+            self.fields = [f.name for f in cls_fields
+                           if f.name not in missing_fields
+                           and f.default is MISSING
+                           and f.default_factory is MISSING]
+            self.missing_fields = missing_fields
+        else:
+            self.fields = list(cls_kwargs.keys())
+            self.missing_fields = [f.name for f in cls_fields
+                                   if f.name not in self.fields
+                                   and f.default is MISSING
+                                   and f.default_factory is MISSING]
 
         # check if any field names match, and where the key transform could be the cause
         # see https://github.com/rnag/dataclass-wizard/issues/54 for more info
@@ -229,7 +238,7 @@ class MissingFields(JSONWizardError):
         normalized_json_keys = [normalize(key) for key in obj]
         if next((f for f in self.missing_fields if normalize(f) in normalized_json_keys), None):
             from .enums import LetterCase
-            from .loaders import get_loader
+            from .loader_selection import get_loader
 
             key_transform = get_loader(cls).transform_json_field
             if isinstance(key_transform, LetterCase):
@@ -246,10 +255,15 @@ class MissingFields(JSONWizardError):
     def message(self) -> str:
         from .utils.json_util import safe_dumps
 
+        if self.base_error is not None:
+            e = f'\n  error: {self.base_error!s}'
+        else:
+            e = ''
+
         msg = self._TEMPLATE.format(
             cls=self.class_name,
             json_string=safe_dumps(self.obj),
-            e=self.base_error,
+            e=e,
             fields=self.fields,
             missing_fields=self.missing_fields)
 
