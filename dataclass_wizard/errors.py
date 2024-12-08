@@ -238,7 +238,7 @@ class MissingFields(JSONWizardError):
         normalized_json_keys = [normalize(key) for key in obj]
         if next((f for f in self.missing_fields if normalize(f) in normalized_json_keys), None):
             from .enums import LetterCase
-            from .loaders import get_loader
+            from .loader_selection import get_loader
 
             key_transform = get_loader(cls).transform_json_field
             if isinstance(key_transform, LetterCase):

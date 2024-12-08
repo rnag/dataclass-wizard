@@ -28,6 +28,7 @@ from .constants import _LOAD_HOOKS, SINGLE_ARG_ALIAS, IDENTITY, CATCH_ALL
 from .decorators import _alias, _single_arg_alias, resolve_alias_func, _identity
 from .errors import (ParseError, MissingFields, UnknownJSONKey,
                      MissingData, RecursiveClassError)
+from .loader_selection import fromdict, get_loader
 from .log import LOG
 from .models import Extras, PatternedDT
 from .parsers import *
@@ -542,74 +543,6 @@ def setup_default_loader(cls=LoadMixin):
     cls.register_load_hook(time, cls.load_to_time)
     cls.register_load_hook(date, cls.load_to_date)
     cls.register_load_hook(timedelta, cls.load_to_timedelta)
-
-
-def get_loader(class_or_instance=None, create=True,
-               base_cls: T = LoadMixin) -> Type[T]:
-    """
-    Get the loader for the class, using the following logic:
-
-        * Return the class if it's already a sub-class of :class:`LoadMixin`
-        * If `create` is enabled (which is the default), a new sub-class of
-          :class:`LoadMixin` for the class will be generated and cached on the
-          initial run.
-        * Otherwise, we will return the base loader, :class:`LoadMixin`, which
-          can potentially be shared by more than one dataclass.
-
-    """
-    try:
-        return dataclass_to_loader(class_or_instance)
-
-    except KeyError:
-
-        if hasattr(class_or_instance, _LOAD_HOOKS):
-            return set_class_loader(class_or_instance, class_or_instance)
-
-        elif create:
-            cls_loader = create_new_class(class_or_instance, (base_cls, ))
-            return set_class_loader(class_or_instance, cls_loader)
-
-        return set_class_loader(class_or_instance, base_cls)
-
-
-def fromdict(cls: Type[T], d: JSONObject) -> T:
-    """
-    Converts a Python dictionary object to a dataclass instance.
-
-    Iterates over each dataclass field recursively; lists, dicts, and nested
-    dataclasses will likewise be initialized as expected.
-
-    When directly invoking this function, an optional Meta configuration for
-    the dataclass can be specified via ``LoadMeta``; by default, this will
-    apply recursively to any nested dataclasses. Here's a sample usage of this
-    below::
-
-        >>> LoadMeta(key_transform='CAMEL').bind_to(MyClass)
-        >>> fromdict(MyClass, {"myStr": "value"})
-
-    """
-    try:
-        load = CLASS_TO_LOAD_FUNC[cls]
-    except KeyError:
-        load = load_func_for_dataclass(cls)
-
-    return load(d)
-
-
-def fromlist(cls: Type[T], list_of_dict: List[JSONObject]) -> List[T]:
-    """
-    Converts a Python list object to a list of dataclass instances.
-
-    Iterates over each dataclass field recursively; lists, dicts, and nested
-    dataclasses will likewise be initialized as expected.
-
-    """
-    try:
-        load = CLASS_TO_LOAD_FUNC[cls]
-    except KeyError:
-        load = load_func_for_dataclass(cls)
-
-    return [load(d) for d in list_of_dict]
 
 
 def load_func_for_dataclass(

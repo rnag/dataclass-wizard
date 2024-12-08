@@ -6,7 +6,6 @@ both import directly from `bases`.
 """
 import logging
 from datetime import datetime, date
-from typing import Type, Optional, Dict, Union, Sequence
 
 from .abstractions import AbstractJSONWizard
 from .bases import AbstractMeta, META, AbstractEnvMeta
@@ -16,17 +15,14 @@ from .class_helper import (
     json_field_to_dataclass_field, dataclass_field_to_json_field,
     field_to_env_var,
 )
-from .constants import TAG
 from .decorators import try_with_load
 from .dumpers import get_dumper
 from .enums import DateTimeTo, LetterCase, LetterCasePriority
 from .environ.loaders import EnvLoader
 from .errors import ParseError
-from .loaders import get_loader
-from .v1 import LoadMixin
+from .loader_selection import get_loader
 from .log import LOG
-from .models import Condition
-from .type_def import E, EnvFileType
+from .type_def import E
 from .utils.type_conv import date_to_timestamp, as_enum
 
 
@@ -54,7 +50,7 @@ def _enable_debug_mode_if_needed(cls_loader, possible_lvl):
         load_hooks[typ] = try_with_load(load_hooks[typ])
 
 
-def _as_enum_safe(cls: type, name: str, base_type: Type[E]) -> Optional[E]:
+def _as_enum_safe(cls: type, name: str, base_type: type[E]) -> 'E | None':
     """
     Attempt to return the value for class attribute :attr:`attr_name` as
     a :type:`base_type`.
@@ -122,10 +118,11 @@ class BaseJSONWizardMeta(AbstractMeta):
             cls.bind_to(new_cls, create=False)
 
     @classmethod
-    def bind_to(cls, dataclass: Type, create=True, is_default=True,
-                base_loader=LoadMixin):
+    def bind_to(cls, dataclass: type, create=True, is_default=True,
+                base_loader=None):
 
-        cls_loader = get_loader(dataclass, create=create, base_cls=base_loader)
+        cls_loader = get_loader(dataclass, create=create,
+                                base_cls=base_loader, v1=cls.v1)
         cls_dumper = get_dumper(dataclass, create=create)
 
         if cls.debug_enabled:
@@ -228,7 +225,7 @@ class BaseEnvWizardMeta(AbstractEnvMeta):
             cls.bind_to(new_cls, create=False)
 
     @classmethod
-    def bind_to(cls, env_class: Type, create=True, is_default=True):
+    def bind_to(cls, env_class: type, create=True, is_default=True):
 
         cls_loader = get_loader(env_class, create=create, base_cls=EnvLoader)
         cls_dumper = get_dumper(env_class, create=create)
@@ -260,15 +257,7 @@ class BaseEnvWizardMeta(AbstractEnvMeta):
 
 
 # noinspection PyPep8Naming
-def LoadMeta(*, debug_enabled: 'bool | int | str' = False,
-             recursive: bool = True,
-             recursive_classes: bool = False,
-             raise_on_unknown_json_key: bool = False,
-             json_key_to_field: Dict[str, str] = None,
-             key_transform: Union[LetterCase, str] = None,
-             tag: str = None,
-             tag_key: str = TAG,
-             auto_assign_tags: bool = False) -> META:
+def LoadMeta(**kwargs) -> META:
     """
     Helper function to setup the ``Meta`` Config for the JSON load
     (de-serialization) process, which is intended for use alongside the
@@ -285,20 +274,10 @@ def LoadMeta(*, debug_enabled: 'bool | int | str' = False,
 
     .. _Docs: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/meta.html
     """
+    base_dict = kwargs | {'__slots__': ()}
 
-    # Set meta attributes here.
-    base_dict = {
-        '__slots__': (),
-        'raise_on_unknown_json_key': raise_on_unknown_json_key,
-        'recursive_classes': recursive_classes,
-        'key_transform_with_load': key_transform,
-        'json_key_to_field': json_key_to_field,
-        'debug_enabled': debug_enabled,
-        'recursive': recursive,
-        'tag': tag,
-        'tag_key': tag_key,
-        'auto_assign_tags': auto_assign_tags,
-    }
+    if 'key_transform' in kwargs:
+        base_dict['key_transform_with_load'] = base_dict.pop('key_transform')
 
     # Create a new subclass of :class:`AbstractMeta`
     # noinspection PyTypeChecker
@@ -306,15 +285,7 @@ def LoadMeta(*, debug_enabled: 'bool | int | str' = False,
 
 
 # noinspection PyPep8Naming
-def DumpMeta(*, debug_enabled: 'bool | int | str' = False,
-             recursive: bool = True,
-             marshal_date_time_as: Union[DateTimeTo, str] = None,
-             key_transform: Union[LetterCase, str] = None,
-             tag: str = None,
-             skip_defaults: bool = False,
-             skip_if: Condition = None,
-             skip_defaults_if: Condition = None,
-             ) -> META:
+def DumpMeta(**kwargs) -> META:
     """
     Helper function to setup the ``Meta`` Config for the JSON dump
     (serialization) process, which is intended for use alongside the
@@ -333,17 +304,10 @@ def DumpMeta(*, debug_enabled: 'bool | int | str' = False,
     """
 
     # Set meta attributes here.
-    base_dict = {
-        '__slots__': (),
-        'marshal_date_time_as': marshal_date_time_as,
-        'key_transform_with_dump': key_transform,
-        'skip_defaults': skip_defaults,
-        'skip_if': skip_if,
-        'skip_defaults_if': skip_defaults_if,
-        'debug_enabled': debug_enabled,
-        'recursive': recursive,
-        'tag': tag,
-    }
+    base_dict = kwargs | {'__slots__': ()}
+
+    if 'key_transform' in kwargs:
+        base_dict['key_transform_with_dump'] = base_dict.pop('key_transform')
 
     # Create a new subclass of :class:`AbstractMeta`
     # noinspection PyTypeChecker
@@ -351,18 +315,7 @@ def DumpMeta(*, debug_enabled: 'bool | int | str' = False,
 
 
 # noinspection PyPep8Naming
-def EnvMeta(*, debug_enabled: 'bool | int | str' = False,
-             env_file: EnvFileType = None,
-             env_prefix: str = '',
-             secrets_dir: 'EnvFileType | Sequence[EnvFileType]' = None,
-             field_to_env_var: dict[str, str] = None,
-             key_lookup_with_load: Union[LetterCasePriority, str] = LetterCasePriority.SCREAMING_SNAKE,
-             key_transform_with_dump: Union[LetterCase, str] = LetterCase.SNAKE,
-             # marshal_date_time_as: Union[DateTimeTo, str] = None,
-             skip_defaults: bool = False,
-             skip_if: Condition = None,
-             skip_defaults_if: Condition = None,
-             ) -> META:
+def EnvMeta(**kwargs) -> META:
     """
     Helper function to setup the ``Meta`` Config for the EnvWizard.
 
@@ -378,19 +331,7 @@ def EnvMeta(*, debug_enabled: 'bool | int | str' = False,
     """
 
     # Set meta attributes here.
-    base_dict = {
-        '__slots__': (),
-        'debug_enabled': debug_enabled,
-        'env_file': env_file,
-        'env_prefix': env_prefix,
-        'secrets_dir': secrets_dir,
-        'field_to_env_var': field_to_env_var,
-        'key_lookup_with_load': key_lookup_with_load,
-        'key_transform_with_dump': key_transform_with_dump,
-        'skip_defaults': skip_defaults,
-        'skip_if': skip_if,
-        'skip_defaults_if': skip_defaults_if,
-    }
+    base_dict = kwargs | {'__slots__': ()}
 
     # Create a new subclass of :class:`AbstractMeta`
     # noinspection PyTypeChecker

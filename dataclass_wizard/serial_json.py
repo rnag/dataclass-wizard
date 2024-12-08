@@ -6,7 +6,7 @@ from .abstractions import AbstractJSONWizard
 from .bases_meta import BaseJSONWizardMeta, LoadMeta, DumpMeta
 from .class_helper import call_meta_initializer_if_needed
 from .dumpers import asdict
-from .v1 import fromdict, fromlist
+from .loader_selection import fromdict, fromlist
 # noinspection PyProtectedMember
 from .utils.dataclass_compat import _create_fn, _set_new_attribute
 from .type_def import dataclass_transform
@@ -62,6 +62,8 @@ class JSONSerializable(AbstractJSONWizard):
 
         super().__init_subclass__()
 
+        load_meta = None
+
         if not is_dataclass(cls) and not cls.__module__.startswith('dataclass_wizard.'):
             # Apply the `@dataclass` decorator to the class
             # noinspection PyMethodFirstArgAssignment
@@ -76,10 +78,13 @@ class JSONSerializable(AbstractJSONWizard):
             # minimum logging level for logs by this library
             min_level = default_lvl if isinstance(debug, bool) else debug
             # set `debug_enabled` flag for the class's Meta
-            LoadMeta(debug_enabled=min_level).bind_to(cls)
+            load_meta = LoadMeta(debug_enabled=min_level)
 
         # Calls the Meta initializer when inner :class:`Meta` is sub-classed.
         call_meta_initializer_if_needed(cls)
+
+        if load_meta is not None:
+            load_meta.bind_to(cls)
 
         # Add a `__str__` method to the subclass, if needed
         if str:

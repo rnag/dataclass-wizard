@@ -311,8 +311,8 @@ def dump_func_for_dataclass(cls: Type[T],
         # we don't process the class annotations here. So instead, generate
         # the load parser for each field  (if needed), but don't cache the
         # result, as it's conceivable we might yet call `LoadMeta` later.
-        from .loaders import get_loader
-        cls_loader = get_loader(cls)
+        from .loader_selection import get_loader
+        cls_loader = get_loader(cls, v1=meta.v1)
         # Use the cached result if it exists, but don't cache it ourselves.
         _ = dataclass_field_to_load_parser(
             cls_loader, cls, config, save=False)

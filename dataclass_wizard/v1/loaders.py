@@ -1,3 +1,5 @@
+# TODO cleanup imports
+
 import types
 from base64 import decodebytes
 from collections import defaultdict, deque, namedtuple
@@ -24,12 +26,13 @@ from ..class_helper import (
     dataclass_to_loader, set_class_loader,
     dataclass_field_to_load_parser, json_field_to_dataclass_field,
     CLASS_TO_LOAD_FUNC, dataclass_fields, get_meta, is_subclass_safe, dataclass_field_to_json_path,
-    dataclass_init_fields, dataclass_field_to_default, is_builtin,
+    dataclass_init_fields, dataclass_field_to_default, is_builtin, create_meta,
 )
-from ..constants import _LOAD_HOOKS, SINGLE_ARG_ALIAS, IDENTITY, CATCH_ALL
+from ..constants import _LOAD_HOOKS, SINGLE_ARG_ALIAS, IDENTITY, CATCH_ALL, TAG
 from ..decorators import _alias, _single_arg_alias, resolve_alias_func, _identity
 from ..errors import (ParseError, MissingFields, UnknownJSONKey,
                       MissingData, RecursiveClassError, JSONWizardError)
+from ..loader_selection import get_loader, fromdict
 from ..log import LOG
 from ..models import Extras, PatternedDT, TypeInfo
 from ..parsers import *
@@ -396,12 +399,15 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         fn_gen = FunctionBuilder()
         config = extras['config']
 
+        tag_key = config.tag_key or TAG
+        auto_assign_tags = config.auto_assign_tags
+
         fields = f'fields_{tp.field_i}'
 
         extras_cp: Extras = extras.copy()
         extras_cp['locals'] = _locals = {
             fields: tp.args,
-            'tag_key': config.tag_key,
+            'tag_key': tag_key,
         }
 
         actual_cls = extras['cls']
@@ -412,6 +418,8 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
 
         with fn_gen.function(fn_name, ['v1'], None, _locals):
 
+            dataclass_tag_to_lines: dict[str, list] = {}
+
             type_checks = []
             try_parse_at_end = []
 
@@ -419,13 +427,48 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
 
                 possible_tp = eval_forward_ref_if_needed(possible_tp, actual_cls)
 
+                tp_new = TypeInfo(possible_tp, field_i=tp.field_i)
+                string = cls.get_string_for_annotation(tp_new, extras_cp)
+
                 if possible_tp is NoneType:
                     with fn_gen.if_('v1 is None'):
                         fn_gen.add_line('return None')
                     continue
 
-                tp_new = tp.replace(origin=possible_tp, args=None, name=None)
-                string = cls.get_string_for_annotation(tp_new, extras_cp)
+                if is_dataclass(possible_tp):
+                    # we see a dataclass in `Union` declaration
+                    meta = get_meta(possible_tp)
+                    tag = meta.tag
+                    assign_tags_to_cls = auto_assign_tags or meta.auto_assign_tags
+                    cls_name = possible_tp.__name__
+
+                    if assign_tags_to_cls and not tag:
+                        tag = cls_name
+                        # We don't want to mutate the base Meta class here
+                        if meta is AbstractMeta:
+                            create_meta(possible_tp, cls_name, tag=tag)
+                        else:
+                            meta.tag = cls_name
+
+                    if tag:
+
+                        dataclass_tag_to_lines[tag] = [
+                            f'if tag == {tag!r}:',
+                            f'  return {string}'
+                        ]
+                        continue
+
+                    elif not config.v1_unsafe_parse_dataclass_in_union:
+                        e = ValueError(f'Cannot parse dataclass types in a Union without one of the following `Meta` settings:\n\n'
+                                       '  * `auto_assign_tags = True`\n'
+                                      f'    - Set on class `{extras["cls_name"]}`.\n\n'
+                                      f'  * `tag = "{cls_name}"`\n'
+                                      f'    - Set on class `{possible_tp.__qualname__}`.\n\n'
+                                       '  * `v1_unsafe_parse_dataclass_in_union = True`\n'
+                                      f'    - Set on class `{extras["cls_name"]}`\n\n'
+                                       'For more information, refer to:\n'
+                                       '  https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/dataclasses_in_union_types.html')
+                        raise e from None
 
                 try_parse_lines = [
                     'try:',
@@ -436,7 +479,7 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
 
                 # TODO disable for dataclasses
 
-                if possible_tp in _SIMPLE_TYPES or issubclass(get_origin_v2(possible_tp), _SIMPLE_TYPES):
+                if possible_tp in _SIMPLE_TYPES or is_subclass_safe(get_origin_v2(possible_tp), _SIMPLE_TYPES):
                     tn = tp_new.type_name(extras_cp)
                     type_checks.extend([
                         f'if tp is {tn}:',
@@ -448,8 +491,27 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
 
                 list_to_add.extend(try_parse_lines)
 
-            # TODO try_returns: add Meta flag
-            #  This can be a `strict` option, also enables strict Literal
+            if dataclass_tag_to_lines:
+
+                with fn_gen.try_():
+                    fn_gen.add_line(f'tag = v1[tag_key]')
+
+                with fn_gen.except_(Exception):
+                    fn_gen.add_line('pass')
+
+                with fn_gen.else_():
+
+                    for lines in dataclass_tag_to_lines.values():
+                        fn_gen.add_lines(*lines)
+
+                    fn_gen.add_line(
+                        "raise ParseError("
+                        "TypeError('Object with tag was not in any of Union types'),"
+                       f"v1,{fields},"
+                        "input_tag=tag,"
+                        "tag_key=tag_key,"
+                       f"valid_tags={list(dataclass_tag_to_lines)})"
+                    )
 
             fn_gen.add_line('tp = type(v1)')
 
@@ -697,252 +759,6 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         )
         raise pe from None
 
-    @classmethod
-    def get_parser_for_annotation(cls, ann_type: Type[T],
-                                  base_cls: Type = None,
-                                  extras: Extras = None) -> 'AbstractParser | Callable[[dict[str, Any]], T]':
-        """Returns the Parser (dispatcher) for a given annotation type."""
-        hooks = cls.__LOAD_HOOKS__
-        ann_type = eval_forward_ref_if_needed(ann_type, base_cls)
-        load_hook = hooks.get(ann_type)
-        base_type = ann_type
-
-        # TODO: I'll need to refactor the code below to remove the nested `if`
-        #   statements, when time allows. Right now the branching logic is
-        #   unseemly and there's really no need for that, as any such
-        #   performance gains (if they do exist) are minimal at best.
-
-        if 'pattern' in extras and is_subclass_safe(
-                ann_type, (date, time, datetime)):
-            # Check for a field that was initially annotated like:
-            #   Annotated[List[time], Pattern('%H:%M:%S')]
-            return PatternedDTParser(base_cls, extras, base_type)
-
-        if load_hook is None:
-            # Need to check this first, because the `Literal` type in Python
-            # 3.6 behaves a bit differently (doesn't have an `__origin__`
-            # attribute for example)
-            if is_literal(ann_type):
-                return LiteralParser(base_cls, extras, ann_type)
-
-            if is_annotated(ann_type):
-                # Given `Annotated[T, MaxValue(10), ...]`, we only need `T`
-                ann_type = get_args(ann_type)[0]
-                return cls.get_parser_for_annotation(
-                    ann_type, base_cls, extras)
-
-            # This property will be available for most generic types in the
-            # `typing` library.
-            try:
-                base_type = get_origin(ann_type, raise_=True)
-
-            # If we can't access this property, it's likely a non-generic
-            # class or a non-generic sub-type.
-            except AttributeError:
-
-                # https://stackoverflow.com/questions/76520264/dataclasswizard-after-upgrading-to-python3-11-is-not-working-as-expected
-                if base_type is Any:
-                    load_hook = cls.default_load_to
-
-                elif isinstance(base_type, type):
-
-                    if is_dataclass(base_type):
-                        config: META = extras.get('config')
-
-                        # enable support for cyclic / self-referential dataclasses
-                        # see https://github.com/rnag/dataclass-wizard/issues/62
-                        if AbstractMeta.recursive_classes or (config and config.recursive_classes):
-                            # noinspection PyTypeChecker
-                            return RecursionSafeParser(
-                                base_cls, extras, base_type, hook=None
-                            )
-                        else:  # else, logic is same as normal
-                            base_type: 'type[T]'
-                            # return a dynamically generated `fromdict`
-                            # for the `cls` (base_type)
-                            return cls.load_func_for_dataclass(
-                                base_type,
-                                config=extras['config']
-                            )
-
-                    elif issubclass(base_type, Enum):
-                        load_hook = hooks.get(Enum)
-
-                    elif issubclass(base_type, UUID):
-                        load_hook = hooks.get(UUID)
-
-                    # elif issubclass(base_type, tuple) \
-                    #         and hasattr(base_type, '_fields'):
-                    #
-                    #     if getattr(base_type, '__annotations__', None):
-                    #         # Annotated as a `typing.NamedTuple` subtype
-                    #         load_hook = hooks.get(NamedTupleMeta)
-                    #         return NamedTupleParser(
-                    #             base_cls, extras, base_type, load_hook,
-                    #             cls.get_parser_for_annotation
-                    #         )
-                    #     else:
-                    #         # Annotated as a `collections.namedtuple` subtype
-                    #         load_hook = hooks.get(namedtuple)
-                    #         return NamedTupleUntypedParser(
-                    #             base_cls, extras, base_type, load_hook,
-                    #             cls.get_parser_for_annotation
-                    #         )
-
-                    elif is_typed_dict(base_type):
-                        load_hook = cls.load_to_typed_dict
-                        return TypedDictParser(
-                            base_cls, extras, base_type, load_hook,
-                            cls.get_parser_for_annotation
-                        )
-
-                elif isinstance(base_type, PatternedDT):
-                    # Check for a field that was initially annotated like:
-                    #   DateTimePattern('%m/%d/%y %H:%M:%S')]
-                    return PatternedDTParser(base_cls, extras, base_type)
-
-                elif base_type is Ellipsis:
-                    load_hook = cls.default_load_to
-
-                # If we can't find the underlying type of the object, we
-                # should emit a warning for awareness.
-                else:
-                    load_hook = cls.default_load_to
-                    LOG.warning('Using default loader, type=%r', ann_type)
-
-            # Else, it's annotated with a generic type like Union or List -
-            # basically anything that's subscriptable.
-            else:
-                if base_type is Union:
-                    # Get the subscripted values
-                    #   ex. `Union[int, str]` -> (int, str)
-                    base_types = get_args(ann_type)
-
-                    if not base_types:
-                        # Annotated as just `Union` (no subscripted types)
-                        load_hook = cls.default_load_to
-
-                    elif NoneType in base_types and len(base_types) == 2:
-                        # Special case for Optional[x], which is actually Union[x, None]
-                        return OptionalParser(
-                            base_cls, extras, base_types[0],
-                            cls.get_parser_for_annotation
-                        )
-
-                    else:
-                        return UnionParser(
-                            base_cls, extras, base_types,
-                            cls.get_parser_for_annotation
-                        )
-
-                elif base_type in (PyRequired, PyNotRequired):
-                    # Given `Required[T]` or `NotRequired[T]`, we only need `T`
-                    ann_type = get_args(ann_type)[0]
-                    return cls.get_parser_for_annotation(
-                        ann_type, base_cls, extras)
-
-                elif issubclass(base_type, defaultdict):
-                    load_hook = hooks[defaultdict]
-                    return DefaultDictParser(
-                        base_cls, extras, ann_type, load_hook,
-                        cls.get_parser_for_annotation
-                    )
-
-                elif issubclass(base_type, dict):
-                    load_hook = hooks[dict]
-                    return MappingParser(
-                        base_cls, extras, ann_type, load_hook,
-                        cls.get_parser_for_annotation
-                    )
-
-                elif issubclass(base_type, LSQ.__constraints__):
-                    load_hook = cls.load_to_iterable
-                    return IterableParser(
-                        base_cls, extras, ann_type, load_hook,
-                        cls.get_parser_for_annotation
-                    )
-
-                elif issubclass(base_type, tuple):
-                    load_hook = hooks[tuple]
-                    # Check if the `Tuple` appears in the variadic form
-                    #   i.e. Tuple[str, ...]
-                    args = get_args(ann_type)
-                    is_variadic = args and args[-1] is ...
-                    # Determine the parser for the annotation
-                    parser: Type[AbstractParser] = TupleParser
-                    if is_variadic:
-                        parser = VariadicTupleParser
-
-                    return parser(
-                        base_cls, extras, ann_type, load_hook,
-                        cls.get_parser_for_annotation
-                    )
-
-                elif base_type in (abc.Sequence, abc.MutableSequence, abc.Collection):
-                    load_hook = cls.load_to_iterable
-                    # desired (non-generic) origin type
-                    desired_type = tuple if base_type is abc.Sequence else list
-                    # Re-map to desired type, e.g. `Sequence[int]` -> `tuple[int]`
-                    ann_type = desired_type[ann_type] if (
-                        ann_type := get_args(ann_type)[0]) else desired_type
-
-                    return IterableParser(
-                        base_cls, extras, ann_type, load_hook,
-                        cls.get_parser_for_annotation
-                    )
-
-                else:
-                    load_hook = hooks.get(base_type)
-
-        # TODO i'll need to refactor this to remove duplicate lines above -
-        # maybe merge them together.
-        elif issubclass(base_type, dict):
-            load_hook = hooks[dict]
-            return MappingParser(
-                base_cls, extras, ann_type, load_hook,
-                cls.get_parser_for_annotation)
-
-        elif issubclass(base_type, LSQ.__constraints__):
-            load_hook = cls.load_to_iterable
-            return IterableParser(
-                base_cls, extras, ann_type, load_hook,
-                cls.get_parser_for_annotation)
-
-        elif issubclass(base_type, tuple):
-            load_hook = hooks[tuple]
-            return TupleParser(
-                base_cls, extras, ann_type, load_hook,
-                cls.get_parser_for_annotation)
-
-        if load_hook is None:
-            # If load hook is still not resolved at this point, it's possible
-            # the type is a subclass of a known type.
-            for typ in hooks:
-                # TODO use a `is_subclass_safe` helper function instead
-                try:
-                    if issubclass(base_type, typ):
-                        load_hook = hooks[typ]
-                        break
-                except TypeError:
-                    continue
-
-            else:
-                # No matching hook is found for the type.
-                err = TypeError('Provided type is not currently supported.')
-                raise ParseError(
-                    err, None, base_type,
-                    unsupported_type=base_type
-                )
-
-        if hasattr(load_hook, SINGLE_ARG_ALIAS):
-            load_hook = resolve_alias_func(load_hook, locals())
-            return SingleArgParser(base_cls, extras, base_type, load_hook)
-
-        if hasattr(load_hook, IDENTITY):
-            return IdentityParser(base_type, extras, base_type)
-
-        return Parser(base_cls, extras, base_type, load_hook)
-
 
 def setup_default_loader(cls=LoadMixin):
     """
@@ -984,74 +800,6 @@ def setup_default_loader(cls=LoadMixin):
     cls.register_load_hook(time, cls.load_to_time)
     cls.register_load_hook(date, cls.load_to_date)
     cls.register_load_hook(timedelta, cls.load_to_timedelta)
-
-
-def get_loader(class_or_instance=None, create=True,
-               base_cls: T = LoadMixin) -> Type[T]:
-    """
-    Get the loader for the class, using the following logic:
-
-        * Return the class if it's already a sub-class of :class:`LoadMixin`
-        * If `create` is enabled (which is the default), a new sub-class of
-          :class:`LoadMixin` for the class will be generated and cached on the
-          initial run.
-        * Otherwise, we will return the base loader, :class:`LoadMixin`, which
-          can potentially be shared by more than one dataclass.
-
-    """
-    try:
-        return dataclass_to_loader(class_or_instance)
-
-    except KeyError:
-
-        if hasattr(class_or_instance, _LOAD_HOOKS):
-            return set_class_loader(class_or_instance, class_or_instance)
-
-        elif create:
-            cls_loader = create_new_class(class_or_instance, (base_cls, ))
-            return set_class_loader(class_or_instance, cls_loader)
-
-        return set_class_loader(class_or_instance, base_cls)
-
-
-def fromdict(cls: Type[T], d: JSONObject) -> T:
-    """
-    Converts a Python dictionary object to a dataclass instance.
-
-    Iterates over each dataclass field recursively; lists, dicts, and nested
-    dataclasses will likewise be initialized as expected.
-
-    When directly invoking this function, an optional Meta configuration for
-    the dataclass can be specified via ``LoadMeta``; by default, this will
-    apply recursively to any nested dataclasses. Here's a sample usage of this
-    below::
-
-        >>> LoadMeta(key_transform='CAMEL').bind_to(MyClass)
-        >>> fromdict(MyClass, {"myStr": "value"})
-
-    """
-    try:
-        load = CLASS_TO_LOAD_FUNC[cls]
-    except KeyError:
-        load = load_func_for_dataclass(cls, {})
-
-    return load(d)
-
-
-def fromlist(cls: Type[T], list_of_dict: List[JSONObject]) -> List[T]:
-    """
-    Converts a Python list object to a list of dataclass instances.
-
-    Iterates over each dataclass field recursively; lists, dicts, and nested
-    dataclasses will likewise be initialized as expected.
-
-    """
-    try:
-        load = CLASS_TO_LOAD_FUNC[cls]
-    except KeyError:
-        load = load_func_for_dataclass(cls, {})
-
-    return [load(d) for d in list_of_dict]
 
 
 def add_to_missing_fields(missing_fields: 'list[str] | None', field: str):
@@ -1139,14 +887,14 @@ def load_func_for_dataclass(
 
     # Fix for using `auto_assign_tags` and `raise_on_unknown_json_key` together
     # See https://github.com/rnag/dataclass-wizard/issues/137
-    has_tag_assigned = meta.tag is not None
+    # has_tag_assigned = meta.tag is not None
     # TODO
-    if (has_tag_assigned and
-            # Ensure `tag_key` isn't a dataclass field before assigning an
-            # `ExplicitNull`, as assigning it directly can cause issues.
-            # See https://github.com/rnag/dataclass-wizard/issues/148
-            meta.tag_key not in field_to_parser):
-        json_to_field[meta.tag_key] = ExplicitNull
+    # if (has_tag_assigned and
+    #         # Ensure `tag_key` isn't a dataclass field before assigning an
+    #         # `ExplicitNull`, as assigning it directly can cause issues.
+    #         # See https://github.com/rnag/dataclass-wizard/issues/148
+    #         meta.tag_key not in field_to_parser):
+    #     json_to_field[meta.tag_key] = ExplicitNull
 
     _locals = {
         'cls': cls,
@@ -1407,17 +1155,16 @@ def re_raise(e, cls, o, fields, field, value):
       e = TypeError('Incorrect type for field')
       raise ParseError(e, o, dict, cls, desired_type=dict) from None
 
-    if type(e) is ParseError:
-        # We run into a parsing error while loading the field value;
-        # Add additional info on the Exception object before re-raising it.
-        #
-        # First confirm these values are not already set by an
-        # inner dataclass. If so, it likely makes it easier to
-        # debug the cause. Note that this should already be
-        # handled by the `setter` methods.
-        e.class_name, e.fields, e.field_name, e.json_object = cls, fields, field, o
-
-    elif not isinstance(e, JSONWizardError):
+    if type(e) is not ParseError and not isinstance(e, JSONWizardError):
       e = ParseError(e, value, {})
+
+    # We run into a parsing error while loading the field value;
+    # Add additional info on the Exception object before re-raising it.
+    #
+    # First confirm these values are not already set by an
+    # inner dataclass. If so, it likely makes it easier to
+    # debug the cause. Note that this should already be
+    # handled by the `setter` methods.
+    e.class_name, e.fields, e.field_name, e.json_object = cls, fields, field, o
 
     raise e from None

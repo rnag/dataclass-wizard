@@ -14,7 +14,7 @@ from ..decorators import cached_class_property
 from ..enums import LetterCase
 from ..environ.loaders import EnvLoader
 from ..errors import ExtraData, MissingVars, ParseError, type_name
-from ..loaders import get_loader
+from ..loader_selection import get_loader
 from ..models import Extras, JSONField
 from ..type_def import ExplicitNull, JSONObject, dataclass_transform
 from ..utils.function_builder import FunctionBuilder
