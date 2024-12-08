@@ -208,7 +208,7 @@ def _setup_load_config_for_cls(cls_loader,
         #
         # Changed in v0.31.0: Get the __call__() method as defined
         # on `AbstractParser`, if it exists
-        if not config.v1:
+        if config is None or not config.v1:
             name_to_parser[f.name] = getattr(p := cls_loader.get_parser_for_annotation(
                 field_type, cls, field_extras
             ), '__call__', p)

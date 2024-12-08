@@ -16,7 +16,7 @@ from pydantic import BaseModel
 import attr
 import mashumaro
 
-from dataclass_wizard import JSONWizard
+from dataclass_wizard import JSONWizard, LoadMeta
 from dataclass_wizard.class_helper import create_new_class
 from dataclass_wizard.utils.string_conv import to_snake_case
 from dataclass_wizard.utils.type_conv import as_datetime
@@ -133,6 +133,10 @@ MyClassJsons: JsonsType = create_new_class(
 MyClassMashumaro: MashumaroType = create_new_class(
     MyClass, (MyClass, mashumaro.DataClassDictMixin), 'Mashumaro',
     attr_dict=vars(MyClass).copy())
+
+
+# Enable experimental `v1` mode for optimized de/serialization
+LoadMeta(v1=True).bind_to(MyClassWizard)
 
 
 @pytest.fixture(scope='session')

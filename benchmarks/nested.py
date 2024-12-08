@@ -13,7 +13,7 @@ from dacite import from_dict as dacite_from_dict
 from pydantic import BaseModel
 import mashumaro
 
-from dataclass_wizard import JSONWizard
+from dataclass_wizard import JSONWizard, LoadMeta
 from dataclass_wizard.class_helper import create_new_class
 from dataclass_wizard.utils.string_conv import to_snake_case
 from dataclass_wizard.utils.type_conv import as_datetime, as_date
@@ -161,6 +161,10 @@ MyClassPydanticModel = MyClassPydantic
 
 # Mashumaro Model for Benchmarking
 # MyClassMashumaroModel = MyClassMashumaro
+
+
+# Enable experimental `v1` mode for optimized de/serialization
+LoadMeta(v1=True).bind_to(MyClassWizard)
 
 
 @pytest.fixture(scope='session')

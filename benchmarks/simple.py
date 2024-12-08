@@ -13,7 +13,7 @@ import marshmallow
 import attr
 import mashumaro
 
-from dataclass_wizard import JSONWizard
+from dataclass_wizard import JSONWizard, LoadMeta
 from dataclass_wizard.class_helper import create_new_class
 from dataclass_wizard.utils.string_conv import to_snake_case
 
@@ -64,6 +64,10 @@ factory = dataclass_factory.Factory()
 MyClassWizard: WizType = create_new_class(MyClass, (MyClass, JSONWizard), "Wizard")
 MyClassDJ: DJType = create_new_class(MyClass, (MyClass, DataClassJsonMixin), "DJ")
 MyClassJsons: JsonsType = create_new_class(MyClass, (MyClass, JsonSerializable), "Jsons")
+
+# Enable experimental `v1` mode for optimized de/serialization
+LoadMeta(v1=True).bind_to(MyClassWizard)
+
 
 @pytest.fixture(scope="session")
 def data():
