@@ -299,28 +299,32 @@ def setup_dump_config_for_cls_if_needed(cls):
     IS_DUMP_CONFIG_SETUP[cls] = True
 
 
-def call_meta_initializer_if_needed(cls):
+def call_meta_initializer_if_needed(cls, package_name='dataclass_wizard'):
     """
     Calls the Meta initializer when the inner :class:`Meta` is sub-classed.
     """
     # TODO add tests
 
-    cls_module = cls.__module__
-
     # skip classes provided by this library
-    if cls_module.startswith('dataclass_wizard.'):
+    if cls.__module__.startswith(f'{package_name}.'):
         return
 
     cls_name = get_class_name(cls)
 
     if cls_name in META_INITIALIZER:
         META_INITIALIZER[cls_name](cls)
-    else:
-        for base in cls.__bases__:
-            base_cls_name = get_class_name(base)
 
-            if base_cls_name in META_INITIALIZER:
-                META_INITIALIZER[base_cls_name](cls)
+    # Get the last immediate superclass
+    base = cls.__base__
+
+    # skip base `object` and classes provided by this library
+    if (base is not object
+            and not base.__module__.startswith(f'{package_name}.')):
+
+        base_cls_name = get_class_name(base)
+
+        if base_cls_name in META_INITIALIZER:
+            META_INITIALIZER[base_cls_name](cls)
 
 
 def get_meta(cls, base_cls=AbstractMeta):

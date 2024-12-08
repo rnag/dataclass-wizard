@@ -177,7 +177,8 @@ def setup_dump_config_for_cls_if_needed(cls: type) -> None:
     """
 
 
-def call_meta_initializer_if_needed(cls: type[W | E]) -> None:
+def call_meta_initializer_if_needed(cls: type[W | E],
+                                    package_name='dataclass_wizard') -> None:
     """
     Calls the Meta initializer when the inner :class:`Meta` is sub-classed.
     """
