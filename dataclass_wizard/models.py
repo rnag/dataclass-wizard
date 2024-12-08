@@ -1,7 +1,7 @@
 import json
 from dataclasses import MISSING, Field
 from datetime import date, datetime, time
-from typing import Generic, Mapping, NewType, Any, TypedDict, Self
+from typing import Generic, Mapping, NewType, Any, TypedDict
 
 from .constants import PY310_OR_ABOVE
 from .decorators import cached_property
@@ -115,7 +115,7 @@ class TypeInfo:
         next_i = self.i + 1
         return self.v(), f'k{next_i}', f'v{next_i}', next_i
 
-    def wrap_dd(self, default_factory: DefFactory, result: str, extras) -> Self:
+    def wrap_dd(self, default_factory: DefFactory, result: str, extras):
         tn = self._wrap_inner(extras, is_builtin=True)
         tn_df = self._wrap_inner(extras, default_factory, 'df_')
         result = f'{tn}({tn_df}, {result})'
@@ -129,14 +129,14 @@ class TypeInfo:
 
         return result
 
-    def wrap(self, result: str, extras, force=False, prefix='') -> Self:
+    def wrap(self, result: str, extras, force=False, prefix=''):
         if (tn := self._wrap_inner(extras, prefix=prefix, force=force)) is not None:
             result = f'{tn}({result})'
 
         setattr(self, '_wrapped', result)
         return self
 
-    def wrap_builtin(self, result: str, extras) -> Self:
+    def wrap_builtin(self, result: str, extras):
         tn = self._wrap_inner(extras, is_builtin=True)
         result = f'{tn}({result})'
 
