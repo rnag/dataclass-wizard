@@ -820,6 +820,20 @@ def add_to_missing_fields(missing_fields: 'list[str] | None', field: str):
     return missing_fields
 
 
+def check_and_raise_missing_fields(
+    _locals, o, cls, fields: tuple[Field, ...]):
+
+    __missing = [
+        f.name for f in fields
+        if f.init
+           and f'__{f.name}' not in _locals
+           and (f.default is MISSING
+                and f.default_factory is MISSING)
+    ]
+
+    raise MissingFields(
+        None, o, cls, fields, None, __missing) from None
+
 def load_func_for_dataclass(
         cls: type,
         extras: Extras,
@@ -857,7 +871,7 @@ def load_func_for_dataclass(
             're_raise': re_raise,
             'ParseError': ParseError,
             # 'LOG': LOG,
-            'MissingFields': MissingFields,
+            'raise_missing_fields': check_and_raise_missing_fields,
             'MISSING': MISSING,
         }
 
@@ -949,10 +963,6 @@ def load_func_for_dataclass(
         if has_catch_all:
             fn_gen.add_line('catch_all = {}')
 
-        # `_missing` is an optional list containing required
-        # dataclass fields not present in the input object `o`.
-        fn_gen.add_line('__missing = None')
-
         if has_json_paths:
 
             with fn_gen.try_():
@@ -1009,9 +1019,7 @@ def load_func_for_dataclass(
 
                         # fn_gen.add_line(f"field={name!r}; {val}=o[field]")
                         fn_gen.add_line(f"field={name!r}; {val}=o.get(field, MISSING)")
-                        with fn_gen.if_(f'{val} is MISSING'):
-                            fn_gen.add_line('__missing = add(__missing, field)')
-                        with fn_gen.else_():
+                        with fn_gen.if_(f'{val} is not MISSING'):
                             fn_gen.add_line(f'{var} = {string}')
                     # Note: pass the original cased field to the class constructor;
                     # don't use the lowercase result from `py_case`
@@ -1071,9 +1079,6 @@ def load_func_for_dataclass(
                         with fn_gen.else_():
                             fn_gen.add_line(line)
 
-                # with fn_gen.if_('__missing is not None'):
-                #     fn_gen.add_line("raise MissingFields(None, o, cls, fields, None, __missing) from None")
-
             # create a broad `except Exception` block, as we will be
             # re-raising all exception(s) as a custom `ParseError`.
             with fn_gen.except_(Exception, 'e', ParseError):
@@ -1102,8 +1107,9 @@ def load_func_for_dataclass(
         with fn_gen.try_():
             fn_gen.add_line(f"return cls({init_parts})")
         with fn_gen.except_(UnboundLocalError):
-            fn_gen.add_line("raise MissingFields(None, o, cls, fields, None, __missing) from None")
-
+            # raise `MissingFields`, as required dataclass fields
+            # are not present in the input object `o`.
+            fn_gen.add_line("raise_missing_fields(locals(), o, cls, fields)")
 
         # with fn_gen.except_(TypeError, 'e'):
             # fn_gen.add_line("raise MissingFields(e, o, cls, init_kwargs, fields) from None")

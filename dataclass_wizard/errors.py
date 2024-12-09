@@ -200,11 +200,10 @@ class MissingFields(JSONWizardError):
     missing arguments)
     """
 
-    _TEMPLATE = ('Failure calling constructor method of class `{cls}`. '
-                 'Missing values for required dataclass fields.\n'
-                 '  have fields: {fields!r}\n'
-                 '  missing fields: {missing_fields!r}\n'
-                 '  input JSON object: {json_string}'
+    _TEMPLATE = ('`{cls}.__init__()` missing required fields.\n'
+                 '  Provided: {fields!r}\n'
+                 '  Missing: {missing_fields!r}\n'
+                 '  Input JSON: {json_string}'
                  '{e}')
 
     def __init__(self, base_err: Exception,
