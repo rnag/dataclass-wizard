@@ -311,8 +311,8 @@ def dump_func_for_dataclass(cls: Type[T],
         # we don't process the class annotations here. So instead, generate
         # the load parser for each field  (if needed), but don't cache the
         # result, as it's conceivable we might yet call `LoadMeta` later.
-        from .loaders import get_loader
-        cls_loader = get_loader(cls)
+        from .loader_selection import get_loader
+        cls_loader = get_loader(cls, v1=meta.v1)
         # Use the cached result if it exists, but don't cache it ourselves.
         _ = dataclass_field_to_load_parser(
             cls_loader, cls, config, save=False)
@@ -336,9 +336,7 @@ def dump_func_for_dataclass(cls: Type[T],
         'cls_to_asdict': nested_cls_to_dump_func,
     }
 
-    _globals = {
-        'T': T,
-    }
+    _globals = {}
 
     skip_if_condition = get_skip_if_condition(
         meta.skip_if, _locals, '_skip_value')
@@ -351,11 +349,12 @@ def dump_func_for_dataclass(cls: Type[T],
 
     # Code for `cls_asdict`
     with fn_gen.function('cls_asdict',
-                         ['o:T',
+                         ['o',
                           'dict_factory=dict',
                           "exclude:'list[str]|None'=None",
                           f'skip_defaults:bool={skip_defaults}'],
-                         return_type='JSONObject'):
+                         'JSONObject',
+                         _locals):
 
         if (
             _pre_dict := getattr(cls, '_pre_dict', None)
@@ -485,7 +484,7 @@ def dump_func_for_dataclass(cls: Type[T],
             fn_gen.add_line("return dict_factory(result)")
 
     # Compile the code into a dynamic string
-    functions = fn_gen.create_functions(locals=_locals, globals=_globals)
+    functions = fn_gen.create_functions(_globals)
 
     cls_asdict = functions['cls_asdict']
 

@@ -200,43 +200,61 @@ class MissingFields(JSONWizardError):
     missing arguments)
     """
 
-    _TEMPLATE = ('Failure calling constructor method of class `{cls}`. '
-                 'Missing values for required dataclass fields.\n'
-                 '  have fields: {fields!r}\n'
-                 '  missing fields: {missing_fields!r}\n'
-                 '  input JSON object: {json_string}\n'
-                 '  error: {e!s}')
+    _TEMPLATE = ('`{cls}.__init__()` missing required fields.\n'
+                 '  Provided: {fields!r}\n'
+                 '  Missing: {missing_fields!r}\n'
+                 '  Input JSON: {json_string}'
+                 '{e}')
 
     def __init__(self, base_err: Exception,
                  obj: JSONObject,
                  cls: Type,
-                 cls_kwargs: JSONObject,
-                 cls_fields: Tuple[Field, ...], **kwargs):
+                 cls_fields: Tuple[Field, ...],
+                 cls_kwargs: 'JSONObject | None' = None,
+                 missing_fields: 'Collection[str] | None' = None,
+                 **kwargs):
+
+        from .class_helper import get_meta
+        # need to determine this, as we can't
+        # directly import `class_helper.py`
+        meta = get_meta(cls)
+        v1 = meta.v1
 
         super().__init__()
 
         self.obj = obj
-        self.fields = list(cls_kwargs.keys())
 
-        self.missing_fields = [f.name for f in cls_fields
-                               if f.name not in self.fields
-                               and f.default is MISSING
-                               and f.default_factory is MISSING]
+        if missing_fields:
+            self.fields = [f.name for f in cls_fields
+                           if f.name not in missing_fields
+                           and f.default is MISSING
+                           and f.default_factory is MISSING]
+            self.missing_fields = missing_fields
+        else:
+            self.fields = list(cls_kwargs.keys())
+            self.missing_fields = [f.name for f in cls_fields
+                                   if f.name not in self.fields
+                                   and f.default is MISSING
+                                   and f.default_factory is MISSING]
 
         # check if any field names match, and where the key transform could be the cause
         # see https://github.com/rnag/dataclass-wizard/issues/54 for more info
 
         normalized_json_keys = [normalize(key) for key in obj]
         if next((f for f in self.missing_fields if normalize(f) in normalized_json_keys), None):
-            from .enums import LetterCase
-            from .loaders import get_loader
+            from .enums import LetterCase, V1LetterCase
+            from .loader_selection import get_loader
 
             key_transform = get_loader(cls).transform_json_field
-            if isinstance(key_transform, LetterCase):
+            if isinstance(key_transform, (LetterCase, V1LetterCase)):
                 key_transform = key_transform.value.f
 
-            kwargs['key transform'] = f'{key_transform.__name__}()'
+            kwargs['key transform'] = (None if key_transform is None
+                                       else f'{key_transform.__name__}()')
             kwargs['resolution'] = 'For more details, please see https://github.com/rnag/dataclass-wizard/issues/54'
+
+        if v1 and meta.v1_key_case is None:
+            kwargs['resolution'] = 'Please see https://github.com/rnag/dataclass-wizard/discussions/167'
 
         self.base_error = base_err
         self.kwargs = kwargs
@@ -246,10 +264,15 @@ class MissingFields(JSONWizardError):
     def message(self) -> str:
         from .utils.json_util import safe_dumps
 
+        if self.base_error is not None:
+            e = f'\n  error: {self.base_error!s}'
+        else:
+            e = ''
+
         msg = self._TEMPLATE.format(
             cls=self.class_name,
             json_string=safe_dumps(self.obj),
-            e=self.base_error,
+            e=e,
             fields=self.fields,
             missing_fields=self.missing_fields)
 

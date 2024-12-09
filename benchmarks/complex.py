@@ -16,7 +16,7 @@ from pydantic import BaseModel
 import attr
 import mashumaro
 
-from dataclass_wizard import JSONWizard
+from dataclass_wizard import JSONWizard, LoadMeta
 from dataclass_wizard.class_helper import create_new_class
 from dataclass_wizard.utils.string_conv import to_snake_case
 from dataclass_wizard.utils.type_conv import as_datetime
@@ -135,6 +135,10 @@ MyClassMashumaro: MashumaroType = create_new_class(
     attr_dict=vars(MyClass).copy())
 
 
+# Enable experimental `v1` mode for optimized de/serialization
+LoadMeta(v1=True).bind_to(MyClassWizard)
+
+
 @pytest.fixture(scope='session')
 def data():
     return {
@@ -214,14 +218,14 @@ def test_load(request, data, data_2, data_dacite, n):
     """
     [ RESULTS ON MAC OS X ]
 
-    benchmarks.complex.complex - [INFO] dataclass-wizard     0.800521
-    benchmarks.complex.complex - [INFO] dataclass-factory    0.827150
-    benchmarks.complex.complex - [INFO] dataclasses-json     37.087781
-    benchmarks.complex.complex - [INFO] dacite               9.421210
-    benchmarks.complex.complex - [INFO] mashumaro            0.608496
-    benchmarks.complex.complex - [INFO] pydantic             1.039472
-    benchmarks.complex.complex - [INFO] jsons                39.677698
-    benchmarks.complex.complex - [INFO] jsons (strict)       41.592585
+    benchmarks.complex.complex - [INFO] dataclass-wizard     0.373847
+    benchmarks.complex.complex - [INFO] dataclass-factory    0.777164
+    benchmarks.complex.complex - [INFO] dataclasses-json     28.177022
+    benchmarks.complex.complex - [INFO] dacite               6.619898
+    benchmarks.complex.complex - [INFO] mashumaro            0.351623
+    benchmarks.complex.complex - [INFO] pydantic             0.563395
+    benchmarks.complex.complex - [INFO] jsons                30.564242
+    benchmarks.complex.complex - [INFO] jsons (strict)       35.122489
     """
     g = globals().copy()
     g.update(locals())
