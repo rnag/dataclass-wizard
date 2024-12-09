@@ -9,7 +9,7 @@ from typing import Dict, Union
 
 from .bases import AbstractMeta, META, AbstractEnvMeta
 from .constants import TAG
-from .enums import DateTimeTo, LetterCase, LetterCasePriority
+from .enums import DateTimeTo, LetterCase, LetterCasePriority, V1LetterCase
 from .models import Condition
 from .type_def import E, EnvFileType
 
@@ -64,6 +64,7 @@ def LoadMeta(*, debug_enabled: 'bool | int | str' = MISSING,
              tag_key: str = TAG,
              auto_assign_tags: bool = MISSING,
              v1: bool = MISSING,
+             v1_key_case: V1LetterCase | str | None = None,
              v1_unsafe_parse_dataclass_in_union: bool = MISSING) -> META:
     ...
 

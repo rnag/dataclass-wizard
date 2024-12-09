@@ -36,6 +36,37 @@ class LetterCase(Enum):
         return self.value.f(*args)
 
 
+
+class V1LetterCase(Enum):
+    """
+    By default, performs no conversion on strings.
+        ex: `MY_FIELD_NAME` -> `MY_FIELD_NAME`
+
+    """
+    # Converts strings (generally in snake case) to camel case.
+    #   ex: `my_field_name` -> `myFieldName`
+    CAMEL = C = FuncWrapper(to_camel_case)
+
+    # Converts strings to "upper" camel case.
+    #   ex: `my_field_name` -> `MyFieldName`
+    PASCAL = P = FuncWrapper(to_pascal_case)
+    # Converts strings (generally in camel or snake case) to lisp case.
+    #   ex: `myFieldName` -> `my-field-name`
+    KEBAB = K = FuncWrapper(to_lisp_case)
+    # Converts strings (generally in camel case) to snake case.
+    #   ex: `myFieldName` -> `my_field_name`
+    SNAKE = S = FuncWrapper(to_snake_case)
+    # Auto-maps JSON keys to dataclass fields.
+    #
+    # All valid key casing transforms are attempted at runtime,
+    # and the result is cached for subsequent lookups.
+    #   ex: `My-Field-Name` -> `my_field_name`
+    AUTO = A = None
+
+    def __call__(self, *args):
+        return self.value.f(*args)
+
+
 class LetterCasePriority(Enum):
     """
     Helper Enum which determines which letter casing we want to

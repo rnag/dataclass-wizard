@@ -143,6 +143,7 @@ def _setup_load_config_for_cls(cls_loader,
 
     dataclass_field_to_path = DATACLASS_FIELD_TO_JSON_PATH[cls]
     set_paths = False if dataclass_field_to_path else True
+    v1_disabled = config is None or not config.v1
 
     name_to_parser = {}
 
@@ -208,17 +209,20 @@ def _setup_load_config_for_cls(cls_loader,
         #
         # Changed in v0.31.0: Get the __call__() method as defined
         # on `AbstractParser`, if it exists
-        if config is None or not config.v1:
+        if v1_disabled:
             name_to_parser[f.name] = getattr(p := cls_loader.get_parser_for_annotation(
                 field_type, cls, field_extras
             ), '__call__', p)
 
-    parser_dict = DictWithLowerStore(name_to_parser)
-    # only cache the load parser for the class if `save` is enabled
-    if save:
-        FIELD_NAME_TO_LOAD_PARSER[cls] = parser_dict
+    if v1_disabled:
+        parser_dict = DictWithLowerStore(name_to_parser)
+        # only cache the load parser for the class if `save` is enabled
+        if save:
+            FIELD_NAME_TO_LOAD_PARSER[cls] = parser_dict
 
-    return parser_dict
+        return parser_dict
+
+    return None
 
 
 def setup_dump_config_for_cls_if_needed(cls):

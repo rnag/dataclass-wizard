@@ -214,6 +214,12 @@ class MissingFields(JSONWizardError):
                  missing_fields: 'Collection[str] | None' = None,
                  **kwargs):
 
+        from .class_helper import get_meta
+        # need to determine this, as we can't
+        # directly import `class_helper.py`
+        meta = get_meta(cls)
+        v1 = meta.v1
+
         super().__init__()
 
         self.obj = obj
@@ -236,15 +242,19 @@ class MissingFields(JSONWizardError):
 
         normalized_json_keys = [normalize(key) for key in obj]
         if next((f for f in self.missing_fields if normalize(f) in normalized_json_keys), None):
-            from .enums import LetterCase
+            from .enums import LetterCase, V1LetterCase
             from .loader_selection import get_loader
 
             key_transform = get_loader(cls).transform_json_field
-            if isinstance(key_transform, LetterCase):
+            if isinstance(key_transform, (LetterCase, V1LetterCase)):
                 key_transform = key_transform.value.f
 
-            kwargs['key transform'] = f'{key_transform.__name__}()'
+            kwargs['key transform'] = (None if key_transform is None
+                                       else f'{key_transform.__name__}()')
             kwargs['resolution'] = 'For more details, please see https://github.com/rnag/dataclass-wizard/issues/54'
+
+        if v1 and meta.v1_key_case is None:
+            kwargs['resolution'] = 'Please see https://github.com/rnag/dataclass-wizard/discussions/167'
 
         self.base_error = base_err
         self.kwargs = kwargs

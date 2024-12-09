@@ -17,7 +17,7 @@ from .class_helper import (
 )
 from .decorators import try_with_load
 from .dumpers import get_dumper
-from .enums import DateTimeTo, LetterCase, LetterCasePriority
+from .enums import DateTimeTo, LetterCase, LetterCasePriority, V1LetterCase
 from .environ.loaders import EnvLoader
 from .errors import ParseError
 from .loader_selection import get_loader
@@ -167,6 +167,10 @@ class BaseJSONWizardMeta(AbstractMeta):
         if cls.key_transform_with_load is not None:
             cls_loader.transform_json_field = _as_enum_safe(
                 cls, 'key_transform_with_load', LetterCase)
+
+        if cls.v1_key_case is not None:
+            cls_loader.transform_json_field = _as_enum_safe(
+                cls, 'v1_key_case', V1LetterCase)
 
         if cls.key_transform_with_dump is not None:
             cls_dumper.transform_dataclass_field = _as_enum_safe(

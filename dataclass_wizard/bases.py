@@ -5,7 +5,7 @@ from typing import Callable, Type, Dict, Optional, ClassVar, Union, TypeVar, Seq
 from .constants import TAG
 from .decorators import cached_class_property
 from .models import Condition
-from .enums import DateTimeTo, LetterCase, LetterCasePriority
+from .enums import DateTimeTo, LetterCase, LetterCasePriority, V1LetterCase
 from .type_def import FrozenKeys, EnvFileType
 
 
@@ -223,6 +223,23 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
     # This feature offers optimized performance for de/serialization.
     # Defaults to False.
     v1: ClassVar[bool] = False
+
+    # Specifies the letter case used to match JSON keys when mapping them
+    # to dataclass fields.
+    #
+    # This setting determines how dataclass fields are transformed to match
+    # the expected case of JSON keys during lookup. It does not affect keys
+    # in `TypedDict` or `NamedTuple` subclasses.
+    #
+    # By default, JSON keys are assumed to be in `snake_case`, and fields
+    # are matched directly without transformation.
+    #
+    # The setting is case-insensitive and supports shorthand assignment,
+    # such as using the string 'C' instead of 'CAMEL'.
+    #
+    # If set to `A` or `AUTO`, all valid key casing transforms are attempted
+    # at runtime, and the result is cached for subsequent lookups.
+    v1_key_case: ClassVar[Union[V1LetterCase, str]] = None
 
     # Unsafe: Enables parsing of dataclasses in unions without requiring
     # the presence of a `tag_key`, i.e., a dictionary key identifying the

@@ -58,16 +58,22 @@ class JSONSerializable(AbstractJSONWizard):
         return encoder(list_of_dict, **encoder_kwargs)
 
     # noinspection PyShadowingBuiltins
-    def __init_subclass__(cls, str=True, debug=False, _key_transform=None):
+    def __init_subclass__(cls, str=True, debug=False,
+                          key_case=None,
+                          _key_transform=None):
 
         super().__init_subclass__()
 
-        load_meta = None
+        load_meta_kwargs = {}
 
         # if not is_dataclass(cls) and not cls.__module__.startswith('dataclass_wizard.'):
         #     # Apply the `@dataclass` decorator to the class
         #     # noinspection PyMethodFirstArgAssignment
         #     cls = dataclass(cls)
+
+        if key_case is not None:
+            load_meta_kwargs['v1'] = True
+            load_meta_kwargs['v1_key_case'] = key_case
 
         if _key_transform is not None:
             DumpMeta(key_transform=_key_transform).bind_to(cls)
@@ -78,13 +84,13 @@ class JSONSerializable(AbstractJSONWizard):
             # minimum logging level for logs by this library
             min_level = default_lvl if isinstance(debug, bool) else debug
             # set `debug_enabled` flag for the class's Meta
-            load_meta = LoadMeta(debug_enabled=min_level)
+            load_meta_kwargs['debug_enabled'] = min_level
 
         # Calls the Meta initializer when inner :class:`Meta` is sub-classed.
         call_meta_initializer_if_needed(cls)
 
-        if load_meta is not None:
-            load_meta.bind_to(cls)
+        if load_meta_kwargs:
+            LoadMeta(**load_meta_kwargs).bind_to(cls)
 
         # Add a `__str__` method to the subclass, if needed
         if str:
@@ -113,12 +119,14 @@ JSONWizard = JSONSerializable
 class JSONPyWizard(JSONWizard):
     """Helper for JSONWizard that ensures dumping to JSON keeps keys as-is."""
 
-    def __init_subclass__(cls, str=True, debug=False):
+    def __init_subclass__(cls, str=True, debug=False,
+                          key_case=None,
+                          _key_transform=None):
         """Bind child class to DumpMeta with no key transformation."""
 
         # Call JSONSerializable.__init_subclass__()
         # set `key_transform_with_dump` for the class's Meta
-        cls = super().__init_subclass__(False, debug, _key_transform='NONE')
+        cls = super().__init_subclass__(False, debug, key_case, 'NONE')
         # Add a `__str__` method to the subclass, if needed
         if str:
             _set_new_attribute(cls, '__str__', _str_pprint_fn())

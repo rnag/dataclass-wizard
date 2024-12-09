@@ -29,6 +29,7 @@ from ..class_helper import (
 )
 from ..constants import _LOAD_HOOKS, SINGLE_ARG_ALIAS, IDENTITY, CATCH_ALL, TAG
 from ..decorators import _alias, _single_arg_alias, resolve_alias_func, _identity
+from ..enums import V1LetterCase
 from ..errors import (ParseError, MissingFields, UnknownJSONKey,
                       MissingData, RecursiveClassError, JSONWizardError)
 from ..loader_selection import get_loader, fromdict
@@ -45,7 +46,7 @@ from ..utils.function_builder import FunctionBuilder
 # noinspection PyProtectedMember
 from ..utils.dataclass_compat import _set_new_attribute
 from ..utils.object_path import safe_get
-from ..utils.string_conv import to_snake_case
+from ..utils.string_conv import to_snake_case, to_json_key
 from ..utils.type_conv import (
     as_bool, as_str, as_datetime, as_date, as_time, as_int, as_timedelta, _TRUTHY_VALUES
 )
@@ -99,11 +100,7 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         super().__init_subclass__()
         setup_default_loader(cls)
 
-    @staticmethod
-    @_alias(to_snake_case)
-    def transform_json_field(string: str) -> str:
-        # alias: to_snake_case
-        ...
+    transform_json_field = None
 
     @staticmethod
     @_identity
@@ -886,6 +883,8 @@ def load_func_for_dataclass(
             meta = meta | config
             meta.bind_to(cls, is_default=False)
 
+    key_case: 'V1LetterCase | None' = cls_loader.transform_json_field
+
     # This contains a mapping of the original field name to the parser for its
     # annotated type; the item lookup *can* be case-insensitive.
     # try:
@@ -928,6 +927,10 @@ def load_func_for_dataclass(
         # 'json_to_field': json_to_field,
         # 'ExplicitNull': ExplicitNull,
     }
+
+    if key_case is V1LetterCase.AUTO:
+        _locals['f2k'] = {}
+        _locals['get_key'] = to_json_key
 
     if has_json_paths:
         # loop_over_o = num_paths != len(cls_init_fields)
@@ -999,6 +1002,14 @@ def load_func_for_dataclass(
                     name = f.name
                     var = f'__{name}'
 
+                    if key_case is None:
+                        f_assign = f'field={name!r}; {val}=o.get(field, MISSING)'
+                    elif key_case is V1LetterCase.AUTO:
+                        f_assign = f'field={name!r}; key=f2k.get(field) or get_key(o,field,f2k); {val}=o.get(key, MISSING)'
+                    else:
+                        key = key_case(name)
+                        f_assign = f'field={name!r}; key={key!r}; {val}=o.get(key, MISSING)'
+
                     string = generate_field_code(cls_loader, new_extras, f, i)
 
                     if name in field_to_default:
@@ -1007,7 +1018,7 @@ def load_func_for_dataclass(
                         # if not is_builtin(default):
                         #     default = f'_dflt{i}'
                         #     _locals[default] = default_val
-                        fn_gen.add_line(f'field={name!r}; {val}=o.get(field, MISSING)')
+                        fn_gen.add_line(f_assign)
 
                         with fn_gen.if_(f'{val} is not MISSING'):
                             fn_gen.add_line(f'init_kwargs[field] = {string}')
@@ -1017,8 +1028,7 @@ def load_func_for_dataclass(
                         # req_field_and_var.append(f'{name}={var}')
                         req_field_and_var.append(f'{var}')
 
-                        # fn_gen.add_line(f"field={name!r}; {val}=o[field]")
-                        fn_gen.add_line(f"field={name!r}; {val}=o.get(field, MISSING)")
+                        fn_gen.add_line(f_assign)
                         with fn_gen.if_(f'{val} is not MISSING'):
                             fn_gen.add_line(f'{var} = {string}')
                     # Note: pass the original cased field to the class constructor;

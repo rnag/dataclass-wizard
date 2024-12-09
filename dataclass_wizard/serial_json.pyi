@@ -3,6 +3,7 @@ from typing import AnyStr, Collection, Callable, Protocol, dataclass_transform
 
 from .abstractions import AbstractJSONWizard, W
 from .bases_meta import BaseJSONWizardMeta
+from .enums import V1LetterCase, LetterCase
 from .type_def import Decoder, Encoder, JSONObject, ListOfJSONObject
 
 
@@ -71,7 +72,9 @@ class JSONPyWizard(JSONSerializable, SerializerHookMixin):
 
     def __init_subclass__(cls,
                           str: bool = True,
-                          debug: bool | str | int = False):
+                          debug: bool | str | int = False,
+                          key_case: V1LetterCase | str | None = None,
+                          _key_transform: LetterCase | str | None = None):
         """Bind child class to DumpMeta with no key transformation."""
 
 
@@ -172,7 +175,9 @@ class JSONSerializable(AbstractJSONWizard, SerializerHookMixin):
     # noinspection PyShadowingBuiltins
     def __init_subclass__(cls,
                           str: bool = True,
-                          debug: bool | str | int = False):
+                          debug: bool | str | int = False,
+                          key_case: V1LetterCase | str | None = None,
+                          _key_transform: LetterCase | str | None = None):
         """
         Checks for optional settings and flags that may be passed in by the
         sub-class, and calls the Meta initializer when :class:`Meta` is sub-classed.
