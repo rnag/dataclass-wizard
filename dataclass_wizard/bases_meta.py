@@ -13,7 +13,7 @@ from .class_helper import (
     META_INITIALIZER, _META,
     get_outer_class_name, get_class_name, create_new_class,
     json_field_to_dataclass_field, dataclass_field_to_json_field,
-    field_to_env_var,
+    field_to_env_var, DATACLASS_FIELD_TO_ALIAS_FOR_LOAD,
 )
 from .decorators import try_with_load
 from .dumpers import get_dumper
@@ -111,6 +111,8 @@ class BaseJSONWizardMeta(AbstractMeta):
                 setattr(AbstractMeta, attr, getattr(cls, attr, None))
             if cls.json_key_to_field:
                 AbstractMeta.json_key_to_field = cls.json_key_to_field
+            if cls.v1_field_to_alias:
+                AbstractMeta.v1_field_to_alias = cls.v1_field_to_alias
 
             # Create a new class of `Type[W]`, and then pass `create=False` so
             # that we don't create new loader / dumper for the class.
@@ -171,6 +173,19 @@ class BaseJSONWizardMeta(AbstractMeta):
         if cls.v1_key_case is not None:
             cls_loader.transform_json_field = _as_enum_safe(
                 cls, 'v1_key_case', V1LetterCase)
+
+        if (field_to_alias := cls.v1_field_to_alias) is not None:
+
+            add_for_load = field_to_alias.pop('__load__', True)
+            add_for_dump = field_to_alias.pop('__dump__', True)
+
+            if add_for_load:
+                DATACLASS_FIELD_TO_ALIAS_FOR_LOAD[dataclass].update(
+                    field_to_alias)
+
+            if add_for_dump:
+                dataclass_field_to_json_field(dataclass).update(
+                    field_to_alias)
 
         if cls.key_transform_with_dump is not None:
             cls_dumper.transform_dataclass_field = _as_enum_safe(

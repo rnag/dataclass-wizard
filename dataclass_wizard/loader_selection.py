@@ -80,7 +80,7 @@ def get_loader(class_or_instance=None, create=True,
             v1 = get_meta(class_or_instance).v1
 
         if v1:
-            from .v1 import LoadMixin as V1_LoadMixin
+            from .v1.loaders import LoadMixin as V1_LoadMixin
             base_cls = V1_LoadMixin
         else:
             from .loaders import LoadMixin

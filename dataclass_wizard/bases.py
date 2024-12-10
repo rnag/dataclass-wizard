@@ -107,6 +107,7 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
     __special_attrs__ = frozenset({
         'recursive',
         'json_key_to_field',
+        'v1_field_to_alias',
         'tag',
     })
 
@@ -240,6 +241,17 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
     # If set to `A` or `AUTO`, all valid key casing transforms are attempted
     # at runtime, and the result is cached for subsequent lookups.
     v1_key_case: ClassVar[Union[V1LetterCase, str]] = None
+
+    # A custom mapping of dataclass fields to their JSON aliases (keys) used
+    # during deserialization (`from_dict` or `from_json`) and serialization
+    # (`to_dict` or `to_json`).
+    #
+    # This mapping overrides default behavior, including implicit field-to-key
+    # transformations (e.g., "my_field" -> "myField").
+    #
+    # By default, the reverse mapping (JSON alias to field) is applied during
+    # serialization, unless explicitly overridden.
+    v1_field_to_alias: ClassVar[Dict[str, str]] = None
 
     # Unsafe: Enables parsing of dataclasses in unions without requiring
     # the presence of a `tag_key`, i.e., a dictionary key identifying the

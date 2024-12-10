@@ -34,6 +34,11 @@ CLASS_TO_DUMPER: dict[type, type[AbstractDumper]] = {}
 # and load hook.
 FIELD_NAME_TO_LOAD_PARSER: dict[type, DictWithLowerStore[str, AbstractParser]] = {}
 
+# Since the load process in V1 doesn't use Parsers currently, we use a sentinel
+# mapping to confirm if we need to setup the load config for a dataclass
+# on an initial run.
+IS_V1_LOAD_CONFIG_SETUP: set[type] = set()
+
 # Since the dump process doesn't use Parsers currently, we use a sentinel
 # mapping to confirm if we need to setup the dump config for a dataclass
 # on an initial run.
@@ -46,7 +51,10 @@ JSON_FIELD_TO_DATACLASS_FIELD: dict[type, dict[str, str | ExplicitNullType]] = d
 DATACLASS_FIELD_TO_JSON_PATH: dict[type, dict[str, PathType]] = defaultdict(dict)
 
 # A cached mapping, per dataclass, of instance field name to JSON field
-DATACLASS_FIELD_TO_JSON_FIELD: dict[type, dict[str, str]] = defaultdict(dict)
+DATACLASS_FIELD_TO_ALIAS_FOR_LOAD: dict[type, dict[str, str]] = defaultdict(dict)
+
+# A cached mapping, per dataclass, of instance field name to JSON field
+DATACLASS_FIELD_TO_ALIAS: dict[type, dict[str, str]] = defaultdict(dict)
 
 # A cached mapping, per dataclass, of instance field name to `SkipIf` condition
 DATACLASS_FIELD_TO_SKIP_IF: dict[type, dict[str, Condition]] = defaultdict(dict)
@@ -103,6 +111,12 @@ def dataclass_field_to_json_path(cls: type) -> dict[str, PathType]:
 def dataclass_field_to_json_field(cls: type) -> dict[str, str]:
     """
     Returns a mapping of dataclass field to JSON field.
+    """
+
+
+def dataclass_field_to_alias_for_load(cls: type) -> dict[str, str]:
+    """
+    V1: Returns a mapping of dataclass field to alias or JSON key.
     """
 
 
@@ -174,6 +188,29 @@ def setup_dump_config_for_cls_if_needed(cls: type) -> None:
           the case, the class-specific mapping of dataclass field name to JSON
           key is then updated with the input passed in to the :class:`JSON`
           attribute.
+    """
+
+
+def v1_dataclass_field_to_alias(cls: type) -> dict[str, str]: ...
+
+def _setup_v1_load_config_for_cls(cls: type):
+    """
+    This function processes a class `cls` on an initial run, and sets up the
+    load process for `cls` by iterating over each dataclass field. For each
+    field, it performs the following tasks:
+
+        * Check if the field's annotation is of type ``Annotated``. If so,
+          we iterate over each ``Annotated`` argument and find any special
+          :class:`JSON` objects (this can also be set via the helper function
+          ``json_key``). Assuming we find it, the class-specific mapping of
+          dataclass field name to JSON key is then updated with the input
+          passed in to this object.
+
+        * Check if the field type is a :class:`JSONField` object (this can
+          also be set by the helper function ``json_field``). Assuming this is
+          the case, the class-specific mapping of dataclass field name to
+          JSON key is then updated with the input passed in to
+          the :class:`JSON` attribute.
     """
 
 

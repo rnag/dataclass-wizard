@@ -5,7 +5,6 @@ both import directly from `bases`.
 
 """
 from dataclasses import MISSING
-from typing import Dict, Union
 
 from .bases import AbstractMeta, META, AbstractEnvMeta
 from .constants import TAG
@@ -58,13 +57,14 @@ def LoadMeta(*, debug_enabled: 'bool | int | str' = MISSING,
              recursive: bool = True,
              recursive_classes: bool = MISSING,
              raise_on_unknown_json_key: bool = MISSING,
-             json_key_to_field: Dict[str, str] = MISSING,
-             key_transform: Union[LetterCase, str] = MISSING,
+             json_key_to_field: dict[str, str] = MISSING,
+             key_transform: LetterCase | str = MISSING,
              tag: str = MISSING,
              tag_key: str = TAG,
              auto_assign_tags: bool = MISSING,
              v1: bool = MISSING,
-             v1_key_case: V1LetterCase | str | None = None,
+             v1_key_case: V1LetterCase | str | None = MISSING,
+             v1_field_to_alias: dict[str, str] = MISSING,
              v1_unsafe_parse_dataclass_in_union: bool = MISSING) -> META:
     ...
 
@@ -72,8 +72,8 @@ def LoadMeta(*, debug_enabled: 'bool | int | str' = MISSING,
 # noinspection PyPep8Naming
 def DumpMeta(*, debug_enabled: 'bool | int | str' = MISSING,
              recursive: bool = True,
-             marshal_date_time_as: Union[DateTimeTo, str] = MISSING,
-             key_transform: Union[LetterCase, str] = MISSING,
+             marshal_date_time_as: DateTimeTo | str = MISSING,
+             key_transform: LetterCase | str = MISSING,
              tag: str = MISSING,
              skip_defaults: bool = MISSING,
              skip_if: Condition = MISSING,
@@ -88,9 +88,9 @@ def EnvMeta(*, debug_enabled: 'bool | int | str' = MISSING,
              env_prefix: str = MISSING,
              secrets_dir: 'EnvFileType | Sequence[EnvFileType]' = MISSING,
              field_to_env_var: dict[str, str] = MISSING,
-             key_lookup_with_load: Union[LetterCasePriority, str] = LetterCasePriority.SCREAMING_SNAKE,
-             key_transform_with_dump: Union[LetterCase, str] = LetterCase.SNAKE,
-             # marshal_date_time_as: Union[DateTimeTo, str] = MISSING,
+             key_lookup_with_load: LetterCasePriority | str = LetterCasePriority.SCREAMING_SNAKE,
+             key_transform_with_dump: LetterCase | str = LetterCase.SNAKE,
+             # marshal_date_time_as: DateTimeTo | str = MISSING,
              skip_defaults: bool = MISSING,
              skip_if: Condition = MISSING,
              skip_defaults_if: Condition = MISSING,

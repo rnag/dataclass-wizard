@@ -8,7 +8,8 @@ from dataclasses import dataclass, InitVar, Field
 from typing import Type, TypeVar, Dict, Generic
 
 from .bases import META
-from .models import Extras, TypeInfo
+from .models import Extras
+from .v1.models import TypeInfo
 from .type_def import T, TT
 
 

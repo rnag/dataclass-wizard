@@ -23,7 +23,7 @@ from ..bases import BaseLoadHook, AbstractMeta, META
 from ..class_helper import (
     create_new_class,
     dataclass_to_loader, set_class_loader,
-    dataclass_field_to_load_parser, json_field_to_dataclass_field,
+    v1_dataclass_field_to_alias, json_field_to_dataclass_field,
     CLASS_TO_LOAD_FUNC, dataclass_fields, get_meta, is_subclass_safe, dataclass_field_to_json_path,
     dataclass_init_fields, dataclass_field_to_default, is_builtin, create_meta,
 )
@@ -34,8 +34,8 @@ from ..errors import (ParseError, MissingFields, UnknownJSONKey,
                       MissingData, RecursiveClassError, JSONWizardError)
 from ..loader_selection import get_loader, fromdict
 from ..log import LOG
-from ..models import Extras, PatternedDT, TypeInfo
-from ..parsers import *
+from .models import TypeInfo
+from ..models import Extras, PatternedDT
 from ..type_def import (
     NoneType,
     ExplicitNull, FrozenKeys, DefFactory, NoneType, JSONObject,
@@ -48,7 +48,7 @@ from ..utils.dataclass_compat import _set_new_attribute
 from ..utils.object_path import safe_get
 from ..utils.string_conv import to_snake_case, to_json_key
 from ..utils.type_conv import (
-    as_bool, as_str, as_datetime, as_date, as_time, as_int, as_timedelta, _TRUTHY_VALUES
+    as_bool, as_datetime, as_date, as_time, as_int, as_timedelta,
 )
 from ..utils.typing_compat import (
     is_literal, is_typed_dict, get_origin, get_args, is_annotated,
@@ -885,6 +885,9 @@ def load_func_for_dataclass(
 
     key_case: 'V1LetterCase | None' = cls_loader.transform_json_field
 
+    field_to_alias = v1_dataclass_field_to_alias(cls)
+    check_aliases = True if field_to_alias else False
+
     # This contains a mapping of the original field name to the parser for its
     # annotated type; the item lookup *can* be case-insensitive.
     # try:
@@ -929,8 +932,8 @@ def load_func_for_dataclass(
     }
 
     if key_case is V1LetterCase.AUTO:
-        _locals['f2k'] = {}
-        _locals['get_key'] = to_json_key
+        _locals['f2k'] = field_to_alias
+        _locals['to_key'] = to_json_key
 
     if has_json_paths:
         # loop_over_o = num_paths != len(cls_init_fields)
@@ -1002,10 +1005,13 @@ def load_func_for_dataclass(
                     name = f.name
                     var = f'__{name}'
 
-                    if key_case is None:
+                    if (check_aliases
+                            and (key := field_to_alias.get(name)) is not None):
+                        f_assign = f'field={name!r}; key={key!r}; {val}=o.get(key, MISSING)'
+                    elif key_case is None:
                         f_assign = f'field={name!r}; {val}=o.get(field, MISSING)'
                     elif key_case is V1LetterCase.AUTO:
-                        f_assign = f'field={name!r}; key=f2k.get(field) or get_key(o,field,f2k); {val}=o.get(key, MISSING)'
+                        f_assign = f'field={name!r}; key=f2k.get(field) or to_key(o,field,f2k); {val}=o.get(key, MISSING)'
                     else:
                         key = key_case(name)
                         f_assign = f'field={name!r}; key={key!r}; {val}=o.get(key, MISSING)'
