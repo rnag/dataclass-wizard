@@ -51,6 +51,27 @@ class JSONWizardError(ABC, Exception):
 
     _TEMPLATE: ClassVar[str]
 
+    @property
+    def class_name(self) -> Optional[str]:
+        return self._class_name or self._default_class_name
+
+    @class_name.setter
+    def class_name(self, cls: Optional[Type]):
+        # Set parent class for errors
+        self.parent_cls = cls
+        # Set class name
+        if getattr(self, '_class_name', None) is None:
+            # noinspection PyAttributeOutsideInit
+            self._class_name = self.name(cls)
+
+    @property
+    def parent_cls(self) -> Optional[type]:
+        return self._parent_cls
+
+    @parent_cls.setter
+    def parent_cls(self, cls: Optional[type]):
+        self._parent_cls = cls
+
     @staticmethod
     def name(obj) -> str:
         """Return the type or class name of an object"""
@@ -102,15 +123,6 @@ class ParseError(JSONWizardError):
         self._field_name = _field_name
         self._json_object = _json_object
         self.fields = None
-
-    @property
-    def class_name(self) -> Optional[str]:
-        return self._class_name or self._default_class_name
-
-    @class_name.setter
-    def class_name(self, cls: Optional[Type]):
-        if self._class_name is None:
-            self._class_name = self.name(cls)
 
     @property
     def field_name(self) -> Optional[str]:
@@ -203,6 +215,7 @@ class MissingFields(JSONWizardError):
     _TEMPLATE = ('`{cls}.__init__()` missing required fields.\n'
                  '  Provided: {fields!r}\n'
                  '  Missing: {missing_fields!r}\n'
+                 '{expected_keys}'
                  '  Input JSON: {json_string}'
                  '{e}')
 
@@ -212,13 +225,8 @@ class MissingFields(JSONWizardError):
                  cls_fields: Tuple[Field, ...],
                  cls_kwargs: 'JSONObject | None' = None,
                  missing_fields: 'Collection[str] | None' = None,
+                 missing_keys: 'Collection[str] | None' = None,
                  **kwargs):
-
-        from .class_helper import get_meta
-        # need to determine this, as we can't
-        # directly import `class_helper.py`
-        meta = get_meta(cls)
-        v1 = meta.v1
 
         super().__init__()
 
@@ -237,43 +245,64 @@ class MissingFields(JSONWizardError):
                                    and f.default is MISSING
                                    and f.default_factory is MISSING]
 
-        # check if any field names match, and where the key transform could be the cause
-        # see https://github.com/rnag/dataclass-wizard/issues/54 for more info
-
-        normalized_json_keys = [normalize(key) for key in obj]
-        if next((f for f in self.missing_fields if normalize(f) in normalized_json_keys), None):
-            from .enums import LetterCase, V1LetterCase
-            from .loader_selection import get_loader
-
-            key_transform = get_loader(cls).transform_json_field
-            if isinstance(key_transform, (LetterCase, V1LetterCase)):
-                key_transform = key_transform.value.f
-
-            kwargs['key transform'] = (None if key_transform is None
-                                       else f'{key_transform.__name__}()')
-            kwargs['resolution'] = 'For more details, please see https://github.com/rnag/dataclass-wizard/issues/54'
-
-        if v1 and meta.v1_key_case is None:
-            kwargs['resolution'] = 'Please see https://github.com/rnag/dataclass-wizard/discussions/167'
-
         self.base_error = base_err
+        self.missing_keys = missing_keys
         self.kwargs = kwargs
         self.class_name: str = self.name(cls)
+        self.parent_cls = cls
 
     @property
     def message(self) -> str:
+        from .class_helper import get_meta
         from .utils.json_util import safe_dumps
+
+        # need to determine this, as we can't
+        # directly import `class_helper.py`
+        meta = get_meta(self.parent_cls)
+        v1 = meta.v1
+
+        # check if any field names match, and where the key transform could be the cause
+        # see https://github.com/rnag/dataclass-wizard/issues/54 for more info
+
+        normalized_json_keys = [normalize(key) for key in self.obj]
+        if next((f for f in self.missing_fields if normalize(f) in normalized_json_keys), None):
+            from .enums import LetterCase
+            from .v1.enums import KeyCase
+            from .loader_selection import get_loader
+
+            key_transform = get_loader(self.parent_cls).transform_json_field
+            if isinstance(key_transform, (LetterCase, KeyCase)):
+                if key_transform.value is None:
+                    key_transform = f'{key_transform.name}'
+                else:
+                    key_transform = f'{key_transform.value.f.__name__}()'
+            elif key_transform is not None:
+                key_transform = f'{getattr(key_transform, "__name__", key_transform)}()'
+
+            self.kwargs['Key Transform'] = key_transform
+            self.kwargs['Resolution'] = 'For more details, please see https://github.com/rnag/dataclass-wizard/issues/54'
+
+        if v1:
+            self.kwargs['Resolution'] = ('Ensure that all required fields are provided in the input. '
+                                         'For more details, see:\n'
+                                         '    https://github.com/rnag/dataclass-wizard/discussions/167')
 
         if self.base_error is not None:
             e = f'\n  error: {self.base_error!s}'
         else:
             e = ''
 
+        if self.missing_keys is not None:
+            expected_keys = f'  Expected Keys: {self.missing_keys!r}\n'
+        else:
+            expected_keys = ''
+
         msg = self._TEMPLATE.format(
             cls=self.class_name,
             json_string=safe_dumps(self.obj),
             e=e,
             fields=self.fields,
+            expected_keys=expected_keys,
             missing_fields=self.missing_fields)
 
         if self.kwargs:

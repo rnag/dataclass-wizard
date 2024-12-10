@@ -1,6 +1,8 @@
 from typing import Callable, Optional
 
-from .class_helper import CLASS_TO_LOAD_FUNC, get_meta, dataclass_to_loader, set_class_loader, create_new_class
+from .class_helper import (get_meta, CLASS_TO_LOAD_FUNC,
+                           CLASS_TO_LOADER, CLASS_TO_V1_LOADER,
+                           set_class_loader, create_new_class)
 from .constants import _LOAD_HOOKS
 from .type_def import T, JSONObject
 
@@ -74,28 +76,33 @@ def get_loader(class_or_instance=None, create=True,
           can potentially be shared by more than one dataclass.
 
     """
-    if base_cls is None:
+    if v1 is None:
+        v1 = getattr(get_meta(class_or_instance), 'v1', False)
 
-        if v1 is None:
-            v1 = get_meta(class_or_instance).v1
-
-        if v1:
+    if v1:
+        cls_to_loader = CLASS_TO_V1_LOADER
+        if base_cls is None:
             from .v1.loaders import LoadMixin as V1_LoadMixin
             base_cls = V1_LoadMixin
-        else:
+    else:
+        cls_to_loader = CLASS_TO_LOADER
+        if base_cls is None:
             from .loaders import LoadMixin
             base_cls = LoadMixin
 
     try:
-        return dataclass_to_loader(class_or_instance)
+        return cls_to_loader[class_or_instance]
 
     except KeyError:
 
         if hasattr(class_or_instance, _LOAD_HOOKS):
-            return set_class_loader(class_or_instance, class_or_instance)
+            return set_class_loader(
+                cls_to_loader, class_or_instance, class_or_instance)
 
         elif create:
             cls_loader = create_new_class(class_or_instance, (base_cls, ))
-            return set_class_loader(class_or_instance, cls_loader)
+            return set_class_loader(
+                cls_to_loader, class_or_instance, cls_loader)
 
-        return set_class_loader(class_or_instance, base_cls)
+        return set_class_loader(
+            cls_to_loader, class_or_instance, base_cls)

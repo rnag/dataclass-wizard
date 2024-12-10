@@ -1,11 +1,12 @@
 from abc import ABCMeta, abstractmethod
 from collections.abc import Sequence
-from typing import Callable, Type, Dict, Optional, ClassVar, Union, TypeVar, Sequence
+from typing import Callable, Type, Dict, Optional, ClassVar, Union, TypeVar, Sequence, Literal
 
 from .constants import TAG
 from .decorators import cached_class_property
 from .models import Condition
-from .enums import DateTimeTo, LetterCase, LetterCasePriority, V1LetterCase
+from .enums import DateTimeTo, LetterCase, LetterCasePriority
+from .v1.enums import KeyAction, KeyCase
 from .type_def import FrozenKeys, EnvFileType
 
 
@@ -240,7 +241,7 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
     #
     # If set to `A` or `AUTO`, all valid key casing transforms are attempted
     # at runtime, and the result is cached for subsequent lookups.
-    v1_key_case: ClassVar[Union[V1LetterCase, str]] = None
+    v1_key_case: ClassVar[Union[KeyCase, str]] = None
 
     # A custom mapping of dataclass fields to their JSON aliases (keys) used
     # during deserialization (`from_dict` or `from_json`) and serialization
@@ -252,6 +253,17 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
     # By default, the reverse mapping (JSON alias to field) is applied during
     # serialization, unless explicitly overridden.
     v1_field_to_alias: ClassVar[Dict[str, str]] = None
+
+    # Defines the action to take when an unknown JSON key is encountered during
+    # `from_dict` or `from_json` calls. An unknown key is one that does not map
+    # to any dataclass field.
+    #
+    # Valid options are:
+    # - `"ignore"` (default): Silently ignore unknown keys.
+    # - `"warn"`: Log a warning for each unknown key. Requires `debug_enabled`
+    #   to be `True` and properly configured logging.
+    # - `"raise"`: Raise an `UnknownKeyError` for the first unknown key encountered.
+    v1_on_unknown_key: ClassVar[KeyAction] = None
 
     # Unsafe: Enables parsing of dataclasses in unions without requiring
     # the presence of a `tag_key`, i.e., a dictionary key identifying the

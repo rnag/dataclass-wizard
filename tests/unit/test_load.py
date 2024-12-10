@@ -524,9 +524,10 @@ def test_from_dict_with_missing_fields_with_resolution():
 
     assert e.value.fields == ['my_str']
     assert e.value.missing_fields == ['MyBool', 'my_int']
+    _ = e.value.message
     # optional: these are populated in this case since this can be a somewhat common issue
-    assert e.value.kwargs['key transform'] == 'to_snake_case()'
-    assert 'resolution' in e.value.kwargs
+    assert e.value.kwargs['Key Transform'] == 'to_snake_case()'
+    assert 'Resolution' in e.value.kwargs
 
 
 def test_from_dict_key_transform_with_json_field():

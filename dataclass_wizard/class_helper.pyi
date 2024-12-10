@@ -2,7 +2,7 @@ from collections import defaultdict
 from dataclasses import Field
 from typing import Any, Callable
 
-from .abstractions import W, AbstractLoader, AbstractDumper, AbstractParser, E
+from .abstractions import W, AbstractLoader, AbstractDumper, AbstractParser, E, AbstractLoaderGenerator
 from .bases import META, AbstractMeta
 from .models import Condition
 from .type_def import ExplicitNullType, T
@@ -26,6 +26,9 @@ CLASS_TO_DUMP_FUNC: dict[type, Any] = {}
 
 # A mapping of dataclass to its loader.
 CLASS_TO_LOADER: dict[type, type[AbstractLoader]] = {}
+
+# V1: A mapping of dataclass to its loader.
+CLASS_TO_V1_LOADER: dict[type, type[AbstractLoaderGenerator]] = {}
 
 # A mapping of dataclass to its dumper.
 CLASS_TO_DUMPER: dict[type, type[AbstractDumper]] = {}
@@ -72,19 +75,13 @@ META_INITIALIZER: dict[str, Callable[[type[W]], None]] = {}
 _META: dict[type, META] = {}
 
 
-def dataclass_to_loader(cls: type) -> type[AbstractLoader]:
-    """
-    Returns the loader for a dataclass.
-    """
-
-
 def dataclass_to_dumper(cls: type) -> type[AbstractDumper]:
     """
     Returns the dumper for a dataclass.
     """
 
 
-def set_class_loader(class_or_instance, loader: type[AbstractLoader]):
+def set_class_loader(cls_to_loader, class_or_instance, loader: type[AbstractLoader]):
     """
     Set (and return) the loader for a dataclass.
     """

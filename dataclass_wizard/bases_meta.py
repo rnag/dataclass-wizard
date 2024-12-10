@@ -17,7 +17,8 @@ from .class_helper import (
 )
 from .decorators import try_with_load
 from .dumpers import get_dumper
-from .enums import DateTimeTo, LetterCase, LetterCasePriority, V1LetterCase
+from .enums import DateTimeTo, LetterCase, LetterCasePriority
+from .v1.enums import KeyAction, KeyCase
 from .environ.loaders import EnvLoader
 from .errors import ParseError
 from .loader_selection import get_loader
@@ -172,7 +173,7 @@ class BaseJSONWizardMeta(AbstractMeta):
 
         if cls.v1_key_case is not None:
             cls_loader.transform_json_field = _as_enum_safe(
-                cls, 'v1_key_case', V1LetterCase)
+                cls, 'v1_key_case', KeyCase)
 
         if (field_to_alias := cls.v1_field_to_alias) is not None:
 
@@ -190,6 +191,9 @@ class BaseJSONWizardMeta(AbstractMeta):
         if cls.key_transform_with_dump is not None:
             cls_dumper.transform_dataclass_field = _as_enum_safe(
                 cls, 'key_transform_with_dump', LetterCase)
+
+        if cls.v1_on_unknown_key is not None:
+            cls.v1_on_unknown_key = _as_enum_safe(cls, 'v1_on_unknown_key', KeyAction)
 
         # Finally, if needed, save the meta config for the outer class. This
         # will allow us to access this config as part of the JSON load/dump

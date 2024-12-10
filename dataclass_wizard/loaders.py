@@ -1,6 +1,5 @@
-from collections import defaultdict, deque, namedtuple
 import collections.abc as abc
-
+from collections import defaultdict, deque, namedtuple
 from dataclasses import is_dataclass, MISSING
 from datetime import datetime, time, date, timedelta
 from decimal import Decimal
@@ -12,19 +11,16 @@ from typing import (
     NamedTupleMeta,
     SupportsFloat, AnyStr, Text, Callable, Optional
 )
-
 from uuid import UUID
 
 from .abstractions import AbstractLoader, AbstractParser
 from .bases import BaseLoadHook, AbstractMeta, META
 from .class_helper import (
-    create_new_class,
-    dataclass_to_loader, set_class_loader,
     dataclass_field_to_load_parser, json_field_to_dataclass_field,
     CLASS_TO_LOAD_FUNC, dataclass_fields, get_meta, is_subclass_safe, dataclass_field_to_json_path,
     dataclass_init_fields, dataclass_field_to_default,
 )
-from .constants import _LOAD_HOOKS, SINGLE_ARG_ALIAS, IDENTITY, CATCH_ALL
+from .constants import SINGLE_ARG_ALIAS, IDENTITY, CATCH_ALL
 from .decorators import _alias, _single_arg_alias, resolve_alias_func, _identity
 from .errors import (ParseError, MissingFields, UnknownJSONKey,
                      MissingData, RecursiveClassError)
@@ -37,9 +33,9 @@ from .type_def import (
     PyRequired, PyNotRequired,
     M, N, T, E, U, DD, LSQ, NT
 )
-from .utils.function_builder import FunctionBuilder
 # noinspection PyProtectedMember
 from .utils.dataclass_compat import _set_new_attribute
+from .utils.function_builder import FunctionBuilder
 from .utils.object_path import safe_get
 from .utils.string_conv import to_snake_case
 from .utils.type_conv import (
@@ -558,7 +554,7 @@ def load_func_for_dataclass(
     cls_fields = dataclass_fields(cls)
 
     # Get the loader for the class, or create a new one as needed.
-    cls_loader = get_loader(cls, base_cls=loader_cls)
+    cls_loader = get_loader(cls, base_cls=loader_cls, v1=False)
 
     # Get the meta config for the class, or the default config otherwise.
     meta = get_meta(cls)

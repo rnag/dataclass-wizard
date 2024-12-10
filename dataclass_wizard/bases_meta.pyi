@@ -8,7 +8,8 @@ from dataclasses import MISSING
 
 from .bases import AbstractMeta, META, AbstractEnvMeta
 from .constants import TAG
-from .enums import DateTimeTo, LetterCase, LetterCasePriority, V1LetterCase
+from .enums import DateTimeTo, LetterCase, LetterCasePriority
+from .v1.enums import KeyAction, KeyCase
 from .models import Condition
 from .type_def import E, EnvFileType
 
@@ -63,8 +64,9 @@ def LoadMeta(*, debug_enabled: 'bool | int | str' = MISSING,
              tag_key: str = TAG,
              auto_assign_tags: bool = MISSING,
              v1: bool = MISSING,
-             v1_key_case: V1LetterCase | str | None = MISSING,
+             v1_key_case: KeyCase | str | None = MISSING,
              v1_field_to_alias: dict[str, str] = MISSING,
+             v1_on_unknown_key: KeyAction | str | None = KeyAction.IGNORE,
              v1_unsafe_parse_dataclass_in_union: bool = MISSING) -> META:
     ...
 

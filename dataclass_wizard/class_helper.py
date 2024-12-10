@@ -29,6 +29,9 @@ CLASS_TO_DUMP_FUNC = {}
 # A mapping of dataclass to its loader.
 CLASS_TO_LOADER = {}
 
+# V1: A mapping of dataclass to its loader.
+CLASS_TO_V1_LOADER = {}
+
 # A mapping of dataclass to its dumper.
 CLASS_TO_DUMPER = {}
 
@@ -75,24 +78,19 @@ META_INITIALIZER = {}
 _META = {}
 
 
-def dataclass_to_loader(cls):
-
-    return CLASS_TO_LOADER[cls]
-
-
 def dataclass_to_dumper(cls):
 
     return CLASS_TO_DUMPER[cls]
 
 
-def set_class_loader(class_or_instance, loader):
+def set_class_loader(cls_to_loader, class_or_instance, loader):
 
     cls = get_class(class_or_instance)
     loader_cls = get_class(loader)
 
-    CLASS_TO_LOADER[cls] = get_class(loader_cls)
+    cls_to_loader[cls] = loader_cls
 
-    return CLASS_TO_LOADER[cls]
+    return loader_cls
 
 
 def set_class_dumper(cls, dumper):
