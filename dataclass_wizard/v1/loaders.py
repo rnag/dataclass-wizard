@@ -1016,7 +1016,7 @@ def load_func_for_dataclass(
                 fn_gen.add_line('re_raise(e, cls, o, fields, field, v1)')
 
 
-        req_field_and_var = []
+        vars_for_fields = []
 
         if cls_init_fields:
 
@@ -1058,8 +1058,8 @@ def load_func_for_dataclass(
 
                     else:
                         # TODO confirm this is ok
-                        # req_field_and_var.append(f'{name}={var}')
-                        req_field_and_var.append(var)
+                        # vars_for_fields.append(f'{name}={var}')
+                        vars_for_fields.append(var)
 
                         fn_gen.add_line(f_assign)
                         with fn_gen.if_(f'{val} is not MISSING'):
@@ -1075,10 +1075,16 @@ def load_func_for_dataclass(
                 # add an alias for the tag key, so we don't capture it
                 field_to_alias['...'] = meta.tag_key
 
-            # TODO for Auto
-            _locals['aliases'] = set(field_to_alias.values())
+            if 'f2k' in _locals:
+                # If this is the case, then `AUTO` key transform mode is enabled
+                # line = 'extra_keys = o.keys() - f2k.values()'
+                aliases_var = 'f2k.values()'
 
-            catch_all_def = '{k: o[k] for k in o if k not in aliases}'
+            else:
+                aliases_var = 'aliases'
+                _locals['aliases'] = set(field_to_alias.values())
+
+            catch_all_def = f'{{k: o[k] for k in o if k not in {aliases_var}}}'
 
             if catch_all_field.endswith('?'):  # Default value
                 with fn_gen.if_('len(o) != i'):
@@ -1086,7 +1092,7 @@ def load_func_for_dataclass(
             else:
                 var = f'__{catch_all_field_stripped}'
                 fn_gen.add_line(f'{var} = {{}} if len(o) == i else {catch_all_def}')
-                req_field_and_var.insert(catch_all_idx, var)
+                vars_for_fields.insert(catch_all_idx, var)
 
         elif should_warn or should_raise:
             if expect_tag_as_unknown_key:
@@ -1117,8 +1123,8 @@ def load_func_for_dataclass(
         # we raise them here.
 
         if has_defaults:
-            req_field_and_var.append('**init_kwargs')
-        init_parts = ', '.join(req_field_and_var)
+            vars_for_fields.append('**init_kwargs')
+        init_parts = ', '.join(vars_for_fields)
         with fn_gen.try_():
             fn_gen.add_line(f"return cls({init_parts})")
         with fn_gen.except_(UnboundLocalError):

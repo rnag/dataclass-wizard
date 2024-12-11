@@ -2252,6 +2252,31 @@ def test_catch_all_with_skip_defaults():
     assert new_data.extra_data is False
 
 
+def test_catch_all_with_auto_key_case():
+    """'Catch All' with `auto` key case."""
+
+    @dataclass
+    class Options(JSONWizard):
+        class _(JSONWizard.Meta):
+            v1 = True
+            debug_enabled = True
+            v1_key_case = 'Auto'
+
+        my_extras: CatchAll
+        email: str
+
+    opt = Options.from_dict({
+        'Email': 'a@b.org',
+        'token': '<PASSWORD>',
+    })
+    assert opt == Options(my_extras={'token': '<PASSWORD>'}, email='a@b.org')
+
+    opt = Options.from_dict({
+        'Email': 'x@y.org',
+    })
+    assert opt == Options(my_extras={}, email='x@y.org')
+
+
 @pytest.mark.xfail(reason='TODO add support in v1')
 def test_from_dict_with_nested_object_key_path():
     """
