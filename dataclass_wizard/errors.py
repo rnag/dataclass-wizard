@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from dataclasses import Field, MISSING
 from typing import (Any, Type, Dict, Tuple, ClassVar,
                     Optional, Union, Iterable, Callable, Collection, Sequence)
+from warnings import deprecated
 
 from .utils.string_conv import normalize
 
@@ -315,37 +316,41 @@ class MissingFields(JSONWizardError):
 
 class UnknownKeysError(JSONWizardError):
     """
-    Error raised when an unknown JSON key is encountered in the JSON load
-    process.
+    Error raised when unknown JSON key(s) are
+    encountered in the JSON load process.
 
     Note that this error class is only raised when the
-    `raise_on_unknown_json_key` flag is enabled in the :class:`Meta` class.
+    `raise_on_unknown_json_key` flag is enabled in
+    the :class:`Meta` class.
     """
 
     _TEMPLATE = ('One or more JSON keys are not mapped to the dataclass schema for class `{cls}`.\n'
-                 '  Unknown key{s}: {json_key!r}\n'
+                 '  Unknown key{s}: {unknown_keys!r}\n'
                  '  Dataclass fields: {fields!r}\n'
                  '  Input JSON object: {json_string}')
 
     def __init__(self,
-                 json_key: str,
+                 unknown_keys: 'list[str] | str',
                  obj: JSONObject,
                  cls: Type,
                  cls_fields: Tuple[Field, ...], **kwargs):
         super().__init__()
 
-        self.json_key = json_key
+        self.unknown_keys = unknown_keys
         self.obj = obj
         self.fields = [f.name for f in cls_fields]
         self.kwargs = kwargs
         self.class_name: str = self.name(cls)
 
-        # self.class_name: str = type_name(cls)
+    @property
+    @deprecated('use `unknown_keys` instead')
+    def json_key(self):
+        return self.unknown_keys
 
     @property
     def message(self) -> str:
         from .utils.json_util import safe_dumps
-        if not isinstance(self.json_key, str) and len(self.json_key) > 1:
+        if not isinstance(self.unknown_keys, str) and len(self.unknown_keys) > 1:
             s = 's'
         else:
             s = ''
@@ -355,7 +360,7 @@ class UnknownKeysError(JSONWizardError):
             s=s,
             json_string=safe_dumps(self.obj),
             fields=self.fields,
-            json_key=self.json_key)
+            unknown_keys=self.unknown_keys)
 
         if self.kwargs:
             sep = '\n  '

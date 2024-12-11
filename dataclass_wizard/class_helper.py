@@ -465,14 +465,19 @@ def dataclass_fields(cls):
     return FIELDS[cls]
 
 
-def dataclass_init_fields(cls):
-
-    return tuple(f for f in dataclass_fields(cls) if f.init)
+def dataclass_init_fields(cls, as_list=False):
+    init_fields = [f for f in dataclass_fields(cls) if f.init]
+    return init_fields if as_list else tuple(init_fields)
 
 
 def dataclass_field_names(cls):
 
     return tuple(f.name for f in dataclass_fields(cls))
+
+
+def dataclass_init_field_names(cls):
+
+    return tuple(f.name for f in dataclass_init_fields(cls))
 
 
 def dataclass_field_to_default(cls):

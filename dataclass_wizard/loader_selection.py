@@ -47,10 +47,11 @@ def fromlist(cls: type[T], list_of_dict: list[JSONObject]) -> list[T]:
     return [load(d) for d in list_of_dict]
 
 
-def _get_load_fn_for_dataclass(cls: type[T]) -> Callable[[JSONObject], T]:
-    meta = get_meta(cls)
+def _get_load_fn_for_dataclass(cls: type[T], v1=None) -> Callable[[JSONObject], T]:
+    if v1 is None:
+        v1 = getattr(get_meta(cls), 'v1', False)
 
-    if meta.v1:
+    if v1:
         from .v1.loaders import load_func_for_dataclass as V1_load_func_for_dataclass
         # noinspection PyTypeChecker
         load = V1_load_func_for_dataclass(cls, {})

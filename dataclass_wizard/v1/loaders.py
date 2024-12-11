@@ -22,7 +22,7 @@ from ..bases import BaseLoadHook, AbstractMeta
 from ..class_helper import (
     v1_dataclass_field_to_alias, json_field_to_dataclass_field,
     CLASS_TO_LOAD_FUNC, dataclass_fields, get_meta, is_subclass_safe, dataclass_field_to_json_path,
-    dataclass_init_fields, dataclass_field_to_default, create_meta,
+    dataclass_init_fields, dataclass_field_to_default, create_meta, dataclass_init_field_names,
 )
 from ..constants import CATCH_ALL, TAG
 from ..decorators import _identity
@@ -420,7 +420,6 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
                 possible_tp = eval_forward_ref_if_needed(possible_tp, actual_cls)
 
                 tp_new = TypeInfo(possible_tp, field_i=tp.field_i)
-                string = cls.get_string_for_annotation(tp_new, extras_cp)
 
                 if possible_tp is NoneType:
                     with fn_gen.if_('v1 is None'):
@@ -443,6 +442,7 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
                             meta.tag = cls_name
 
                     if tag:
+                        string = cls.get_string_for_annotation(tp_new, extras_cp)
 
                         dataclass_tag_to_lines[tag] = [
                             f'if tag == {tag!r}:',
@@ -461,6 +461,8 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
                                        'For more information, refer to:\n'
                                        '  https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/dataclasses_in_union_types.html')
                         raise e from None
+
+                string = cls.get_string_for_annotation(tp_new, extras_cp)
 
                 try_parse_lines = [
                     'try:',
@@ -711,14 +713,27 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
             load_hook = cls.load_to_dataclass
 
         elif origin in (abc.Sequence, abc.MutableSequence, abc.Collection):
-            load_hook = cls.load_to_iterable
-            # desired (non-generic) origin type
-            origin = tuple if origin is abc.Sequence else list
-            # Get type arguments, e.g. `Sequence[int]` -> `int`
-            try:
-                args = get_args(type_ann)
-            except ValueError:
-                args = Any,
+            if origin is abc.Sequence:
+                load_hook = cls.load_to_tuple
+                # desired (non-generic) origin type
+                name = 'tuple'
+                origin = tuple
+                # Re-map type arguments to variadic tuple format,
+                # e.g. `Sequence[int]` -> `tuple[int, ...]`
+                try:
+                    args = (get_args(type_ann)[0], ...)
+                except (IndexError, ValueError):
+                    args = Any,
+            else:
+                load_hook = cls.load_to_iterable
+                # desired (non-generic) origin type
+                name = 'list'
+                origin = list
+                # Get type arguments, e.g. `Sequence[int]` -> `int`
+                try:
+                    args = get_args(type_ann)
+                except ValueError:
+                    args = Any,
 
         else:
 
@@ -843,7 +858,8 @@ def load_func_for_dataclass(
     # Tuple describing the fields of this dataclass.
     fields = dataclass_fields(cls)
 
-    cls_init_fields = dataclass_init_fields(cls)
+    cls_init_fields = dataclass_init_fields(cls, True)
+    cls_init_field_names = dataclass_init_field_names(cls)
 
     field_to_default = dataclass_field_to_default(cls)
 
@@ -898,44 +914,46 @@ def load_func_for_dataclass(
     #     else:
     #         raise RecursiveClassError(cls) from None
 
-    # A cached mapping of each key in a JSON or dictionary object to the
-    # resolved dataclass field name; useful so we don't need to do a case
-    # transformation (via regex) each time.
-    json_to_field = json_field_to_dataclass_field(cls)
-
     field_to_path = dataclass_field_to_json_path(cls)
     num_paths = len(field_to_path)
     has_json_paths = True if num_paths else False
 
-    catch_all_field = json_to_field.get(CATCH_ALL)
-    has_catch_all = catch_all_field is not None
-
     # Fix for using `auto_assign_tags` and `raise_on_unknown_json_key` together
     # See https://github.com/rnag/dataclass-wizard/issues/137
-    # has_tag_assigned = meta.tag is not None
-    # TODO
-    # if (has_tag_assigned and
-    #         # Ensure `tag_key` isn't a dataclass field before assigning an
-    #         # `ExplicitNull`, as assigning it directly can cause issues.
-    #         # See https://github.com/rnag/dataclass-wizard/issues/148
-    #         meta.tag_key not in field_to_parser):
-    #     json_to_field[meta.tag_key] = ExplicitNull
+    has_tag_assigned = meta.tag is not None
+    if (has_tag_assigned and
+        # Ensure `tag_key` isn't a dataclass field,
+        # to avoid issues with our logic.
+        # See https://github.com/rnag/dataclass-wizard/issues/148
+        meta.tag_key not in cls_init_field_names):
+            expect_tag_as_unknown_key = True
+    else:
+        expect_tag_as_unknown_key = False
 
     _locals = {
         'cls': cls,
         'fields': fields,
-        # 'py_case': cls_loader.transform_json_field,
-        # 'field_to_parser': field_to_parser,
-        # 'json_to_field': json_to_field,
-        # 'ExplicitNull': ExplicitNull,
     }
 
     if key_case is KeyCase.AUTO:
         _locals['f2k'] = field_to_alias
         _locals['to_key'] = to_json_key
 
-    pre_assign = ''
     on_unknown_key = meta.v1_on_unknown_key
+
+    catch_all_field = field_to_alias.pop(CATCH_ALL, None)
+    has_catch_all = catch_all_field is not None
+
+    if has_catch_all:
+        pre_assign = 'i+=1; '
+        catch_all_field_stripped = catch_all_field.rstrip('?')
+        catch_all_idx = cls_init_field_names.index(catch_all_field_stripped)
+        # remove catch all field from list, so we don't iterate over it
+        del cls_init_fields[catch_all_idx]
+    else:
+        pre_assign = ''
+        catch_all_field_stripped = catch_all_idx = None
+
     if on_unknown_key is not None:
         should_raise = on_unknown_key is KeyAction.RAISE
         should_warn = on_unknown_key is KeyAction.WARN
@@ -975,8 +993,6 @@ def load_func_for_dataclass(
         # args, as we don't want to mutate the original dictionary object.
         if has_defaults:
             fn_gen.add_line('init_kwargs = {}')
-        if has_catch_all:
-            fn_gen.add_line('catch_all = {}')
         if pre_assign:
             fn_gen.add_line('i = 0')
 
@@ -998,12 +1014,7 @@ def load_func_for_dataclass(
 
             with fn_gen.except_(Exception, 'e', ParseError):
                 fn_gen.add_line('re_raise(e, cls, o, fields, field, v1)')
-                # with fn_gen.if_('type(e) is not ParseError:'):
-                #     fn_gen.add_line('e = ParseError(e)')
-                # # We run into a parsing error while loading the field value;
-                # # Add additional info on the Exception object before re-raising it.
-                # fn_gen.add_line("e.class_name, e.field_name, e.json_object, e.fields = cls, field, o, fields")
-                # fn_gen.add_line("raise")
+
 
         req_field_and_var = []
 
@@ -1011,8 +1022,12 @@ def load_func_for_dataclass(
 
             with fn_gen.try_():
 
+                if expect_tag_as_unknown_key and pre_assign:
+                    with fn_gen.if_(f'{meta.tag_key!r} in o'):
+                        fn_gen.add_line('i+=1')
+
                 for i, f in enumerate(cls_init_fields):
-                    val = f'v1'
+                    val = 'v1'
                     name = f.name
                     var = f'__{name}'
 
@@ -1044,43 +1059,40 @@ def load_func_for_dataclass(
                     else:
                         # TODO confirm this is ok
                         # req_field_and_var.append(f'{name}={var}')
-                        req_field_and_var.append(f'{var}')
+                        req_field_and_var.append(var)
 
                         fn_gen.add_line(f_assign)
                         with fn_gen.if_(f'{val} is not MISSING'):
                             fn_gen.add_line(f'{pre_assign}{var} = {string}')
-
-
-                # TODO
-                if has_catch_all:
-                    line = 'catch_all[json_key] = o[json_key]'
-                    if has_tag_assigned:
-                        with fn_gen.elif_(f'json_key != {meta.tag_key!r}'):
-                            fn_gen.add_line(line)
-                    else:
-                        with fn_gen.else_():
-                            fn_gen.add_line(line)
 
             # create a broad `except Exception` block, as we will be
             # re-raising all exception(s) as a custom `ParseError`.
             with fn_gen.except_(Exception, 'e', ParseError):
                 fn_gen.add_line("re_raise(e, cls, o, fields, field, locals().get('v1'))")
 
-            # with fn_gen.except_(TypeError):
-
-                # Else, just re-raise the error.
-                # fn_gen.add_line("raise")
-
         if has_catch_all:
+            if expect_tag_as_unknown_key:
+                # add an alias for the tag key, so we don't capture it
+                field_to_alias['...'] = meta.tag_key
+
+            # TODO for Auto
+            _locals['aliases'] = set(field_to_alias.values())
+
+            catch_all_def = '{k: o[k] for k in o if k not in aliases}'
+
             if catch_all_field.endswith('?'):  # Default value
-                with fn_gen.if_('catch_all'):
-                    fn_gen.add_line(f'init_kwargs[{catch_all_field.rstrip("?")!r}] = catch_all')
+                with fn_gen.if_('len(o) != i'):
+                    fn_gen.add_line(f'init_kwargs[{catch_all_field_stripped!r}] = {catch_all_def}')
             else:
-                fn_gen.add_line(f'init_kwargs[{catch_all_field!r}] = catch_all')
+                var = f'__{catch_all_field_stripped}'
+                fn_gen.add_line(f'{var} = {{}} if len(o) == i else {catch_all_def}')
+                req_field_and_var.insert(catch_all_idx, var)
 
-        # TODO
+        elif should_warn or should_raise:
+            if expect_tag_as_unknown_key:
+                # add an alias for the tag key, so we don't raise an error when we see it
+                field_to_alias['...'] = meta.tag_key
 
-        if should_warn or should_raise:
             if 'f2k' in _locals:
                 # If this is the case, then `AUTO` key transform mode is enabled
                 line = 'extra_keys = o.keys() - f2k.values()'
@@ -1090,7 +1102,6 @@ def load_func_for_dataclass(
 
             with fn_gen.if_('len(o) != i'):
                 fn_gen.add_line(line)
-
                 if should_raise:
                     # Raise an error here (if needed)
                     _locals['UnknownKeysError'] = UnknownKeysError
@@ -1099,13 +1110,12 @@ def load_func_for_dataclass(
                     # Show a warning here
                     _locals['LOG'] = LOG
                     fn_gen.add_line(r"LOG.warning('Found %d unknown keys %r not mapped to the dataclass schema.\n"
-                                    r"  Class: %r\n  Dataclass fields: %r', len(extra_keys), extra_keys, cls.__qualname__, [f.name for f in fields])")
+                                        r"  Class: %r\n  Dataclass fields: %r', len(extra_keys), extra_keys, cls.__qualname__, [f.name for f in fields])")
 
         # Now pass the arguments to the constructor method, and return
         # the new dataclass instance. If there are any missing fields,
         # we raise them here.
 
-        # with fn_gen.try_():
         if has_defaults:
             req_field_and_var.append('**init_kwargs')
         init_parts = ', '.join(req_field_and_var)
@@ -1115,9 +1125,6 @@ def load_func_for_dataclass(
             # raise `MissingFields`, as required dataclass fields
             # are not present in the input object `o`.
             fn_gen.add_line("raise_missing_fields(locals(), o, cls, fields)")
-
-        # with fn_gen.except_(TypeError, 'e'):
-            # fn_gen.add_line("raise MissingFields(e, o, cls, init_kwargs, fields) from None")
 
     # Save the load function for the main dataclass, so we don't need to run
     # this logic each time.

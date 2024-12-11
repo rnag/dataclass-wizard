@@ -1,6 +1,6 @@
 from collections import defaultdict
 from dataclasses import Field
-from typing import Any, Callable
+from typing import Any, Callable, Literal, overload
 
 from .abstractions import W, AbstractLoader, AbstractDumper, AbstractParser, E, AbstractLoaderGenerator
 from .bases import META, AbstractMeta
@@ -226,6 +226,16 @@ def get_meta(cls: type, base_cls: T = AbstractMeta) -> T | META:
     """
 
 
+def create_meta(cls: type, cls_name: str | None = None, **kwargs) -> None:
+    """
+    Sets the Meta config for the :class:`AbstractJSONWizard` subclass.
+
+    WARNING: Only use if the Meta config is undefined,
+      e.g. `get_meta` for the `cls` returns `base_cls`.
+
+    """
+
+
 def dataclass_fields(cls: type) -> tuple[Field, ...]:
     """
     Cache the `dataclasses.fields()` call for each class, as overall that
@@ -233,13 +243,22 @@ def dataclass_fields(cls: type) -> tuple[Field, ...]:
 
     """
 
+@overload
+def dataclass_init_fields(cls: type, as_list: Literal[True] = False) -> list[Field]:
+    """Get only the dataclass fields that would be passed into the constructor."""
 
-def dataclass_init_fields(cls: type) -> tuple[Field, ...]:
+
+@overload
+def dataclass_init_fields(cls: type, as_list: Literal[False] = False) -> tuple[Field]:
     """Get only the dataclass fields that would be passed into the constructor."""
 
 
 def dataclass_field_names(cls: type) -> tuple[str, ...]:
     """Get the names of all dataclass fields"""
+
+
+def dataclass_init_field_names(cls: type) -> tuple[str, ...]:
+    """Get the names of all __init__() dataclass fields"""
 
 
 def dataclass_field_to_default(cls: type) -> dict[str, Any]:
