@@ -27,7 +27,7 @@ from ..class_helper import (
 from ..constants import CATCH_ALL, TAG
 from ..decorators import _identity
 from .enums import KeyAction, KeyCase
-from ..errors import (ParseError, MissingFields, UnknownJSONKey,
+from ..errors import (ParseError, MissingFields, UnknownKeysError,
                       MissingData, JSONWizardError)
 from ..loader_selection import get_loader, fromdict
 from ..log import LOG
@@ -934,6 +934,16 @@ def load_func_for_dataclass(
         _locals['f2k'] = field_to_alias
         _locals['to_key'] = to_json_key
 
+    pre_assign = ''
+    on_unknown_key = meta.v1_on_unknown_key
+    if on_unknown_key is not None:
+        should_raise = on_unknown_key is KeyAction.RAISE
+        should_warn = on_unknown_key is KeyAction.WARN
+        if should_warn or should_raise:
+            pre_assign = 'i+=1; '
+    else:
+        should_raise = should_warn = None
+
     if has_json_paths:
         # loop_over_o = num_paths != len(cls_init_fields)
         _locals['safe_get'] = safe_get
@@ -967,6 +977,8 @@ def load_func_for_dataclass(
             fn_gen.add_line('init_kwargs = {}')
         if has_catch_all:
             fn_gen.add_line('catch_all = {}')
+        if pre_assign:
+            fn_gen.add_line('i = 0')
 
         if has_json_paths:
 
@@ -1027,7 +1039,7 @@ def load_func_for_dataclass(
                         fn_gen.add_line(f_assign)
 
                         with fn_gen.if_(f'{val} is not MISSING'):
-                            fn_gen.add_line(f'init_kwargs[field] = {string}')
+                            fn_gen.add_line(f'{pre_assign}init_kwargs[field] = {string}')
 
                     else:
                         # TODO confirm this is ok
@@ -1036,56 +1048,10 @@ def load_func_for_dataclass(
 
                         fn_gen.add_line(f_assign)
                         with fn_gen.if_(f'{val} is not MISSING'):
-                            fn_gen.add_line(f'{var} = {string}')
-                    # Note: pass the original cased field to the class constructor;
-                    # don't use the lowercase result from `py_case`
-                    # fn_gen.add_line("init_kwargs[field] = field_to_parser[field](o[json_key])")
-
-                # with fn_gen.try_():
-                #     # Get the resolved dataclass field name
-                #     fn_gen.add_line("field = json_to_field[json_key]")
-                #
-                # with fn_gen.except_(KeyError):
-                #     fn_gen.add_line('# Lookup Field for JSON Key')
-                #     # Determines the dataclass field which a JSON key should map to.
-                #     # Note this logic only runs the initial time, i.e. the first time
-                #     # we encounter the key in a JSON object.
-                #     #
-                #     # :raises UnknownJSONKey: If there is no resolved field name for the
-                #     #   JSON key, and`raise_on_unknown_json_key` is enabled in the Meta
-                #     #   config for the class.
-                #
-                #     # Short path: an identical-cased field name exists for the JSON key
-                #     with fn_gen.if_('json_key in field_to_parser'):
-                #         fn_gen.add_line("field = json_to_field[json_key] = json_key")
-                #
-                #     with fn_gen.else_():
-                #         # Transform JSON field name (typically camel-cased) to the
-                #         # snake-cased variant which is convention in Python.
-                #         fn_gen.add_line("py_field = py_case(json_key)")
-                #
-                #         with fn_gen.try_():
-                #             # Do a case-insensitive lookup of the dataclass field, and
-                #             # cache the mapping, so we have it for next time
-                #             fn_gen.add_line("field "
-                #                             "= json_to_field[json_key] "
-                #                             "= field_to_parser.get_key(py_field)")
-                #
-                #         with fn_gen.except_(KeyError):
-                #             # Else, we see an unknown field in the dictionary object
-                #             fn_gen.add_line("field = json_to_field[json_key] = ExplicitNull")
-                #             fn_gen.add_line("LOG.warning('JSON field %r missing from dataclass schema, "
-                #                             "class=%r, parsed field=%r',json_key,cls,py_field)")
-                #
-                #             # Raise an error here (if needed)
-                #             if meta.raise_on_unknown_json_key:
-                #                 _globals['UnknownJSONKey'] = UnknownJSONKey
-                #                 fn_gen.add_line("raise UnknownJSONKey(json_key, o, cls, fields) from None")
-
-                # Exclude JSON keys that don't map to any fields.
-                # with fn_gen.if_('field is not ExplicitNull'):
+                            fn_gen.add_line(f'{pre_assign}{var} = {string}')
 
 
+                # TODO
                 if has_catch_all:
                     line = 'catch_all[json_key] = o[json_key]'
                     if has_tag_assigned:
@@ -1113,12 +1079,27 @@ def load_func_for_dataclass(
                 fn_gen.add_line(f'init_kwargs[{catch_all_field!r}] = catch_all')
 
         # TODO
-        if meta.v1_on_unknown_key is KeyAction.RAISE:
-            # Raise an error here (if needed)
-            _locals['UnknownJSONKey'] = UnknownJSONKey
-            _locals['f2k'] = field_to_alias
-            with fn_gen.if_('extras := set(o).difference(f2k.values())'):
-                fn_gen.add_line("raise UnknownJSONKey(extras, o, cls, fields) from None")
+
+        if should_warn or should_raise:
+            if 'f2k' in _locals:
+                # If this is the case, then `AUTO` key transform mode is enabled
+                line = 'extra_keys = o.keys() - f2k.values()'
+            else:
+                _locals['aliases'] = set(field_to_alias.values())
+                line = 'extra_keys = set(o) - aliases'
+
+            with fn_gen.if_('len(o) != i'):
+                fn_gen.add_line(line)
+
+                if should_raise:
+                    # Raise an error here (if needed)
+                    _locals['UnknownKeysError'] = UnknownKeysError
+                    fn_gen.add_line("raise UnknownKeysError(extra_keys, o, cls, fields) from None")
+                elif should_warn:
+                    # Show a warning here
+                    _locals['LOG'] = LOG
+                    fn_gen.add_line(r"LOG.warning('Found %d unknown keys %r not mapped to the dataclass schema.\n"
+                                    r"  Class: %r\n  Dataclass fields: %r', len(extra_keys), extra_keys, cls.__qualname__, [f.name for f in fields])")
 
         # Now pass the arguments to the constructor method, and return
         # the new dataclass instance. If there are any missing fields,

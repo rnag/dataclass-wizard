@@ -313,7 +313,7 @@ class MissingFields(JSONWizardError):
         return msg
 
 
-class UnknownJSONKey(JSONWizardError):
+class UnknownKeysError(JSONWizardError):
     """
     Error raised when an unknown JSON key is encountered in the JSON load
     process.
@@ -322,10 +322,10 @@ class UnknownJSONKey(JSONWizardError):
     `raise_on_unknown_json_key` flag is enabled in the :class:`Meta` class.
     """
 
-    _TEMPLATE = ('A JSON key is missing from the dataclass schema for class `{cls}`.\n'
-                 '  unknown key: {json_key!r}\n'
-                 '  dataclass fields: {fields!r}\n'
-                 '  input JSON object: {json_string}')
+    _TEMPLATE = ('One or more JSON keys are not mapped to the dataclass schema for class `{cls}`.\n'
+                 '  Unknown key{s}: {json_key!r}\n'
+                 '  Dataclass fields: {fields!r}\n'
+                 '  Input JSON object: {json_string}')
 
     def __init__(self,
                  json_key: str,
@@ -345,9 +345,14 @@ class UnknownJSONKey(JSONWizardError):
     @property
     def message(self) -> str:
         from .utils.json_util import safe_dumps
+        if not isinstance(self.json_key, str) and len(self.json_key) > 1:
+            s = 's'
+        else:
+            s = ''
 
         msg = self._TEMPLATE.format(
             cls=self.class_name,
+            s=s,
             json_string=safe_dumps(self.obj),
             fields=self.fields,
             json_key=self.json_key)
@@ -358,6 +363,10 @@ class UnknownJSONKey(JSONWizardError):
             msg = f'{msg}{sep}{parts}'
 
         return msg
+
+
+# Alias for backwards-compatibility.
+UnknownJSONKey = UnknownKeysError
 
 
 class MissingData(ParseError):

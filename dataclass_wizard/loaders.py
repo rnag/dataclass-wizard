@@ -22,7 +22,7 @@ from .class_helper import (
 )
 from .constants import SINGLE_ARG_ALIAS, IDENTITY, CATCH_ALL
 from .decorators import _alias, _single_arg_alias, resolve_alias_func, _identity
-from .errors import (ParseError, MissingFields, UnknownJSONKey,
+from .errors import (ParseError, MissingFields, UnknownKeysError,
                      MissingData, RecursiveClassError)
 from .loader_selection import fromdict, get_loader
 from .log import LOG
@@ -677,7 +677,7 @@ def load_func_for_dataclass(
                         # Note this logic only runs the initial time, i.e. the first time
                         # we encounter the key in a JSON object.
                         #
-                        # :raises UnknownJSONKey: If there is no resolved field name for the
+                        # :raises UnknownKeysError: If there is no resolved field name for the
                         #   JSON key, and`raise_on_unknown_json_key` is enabled in the Meta
                         #   config for the class.
 
@@ -705,8 +705,8 @@ def load_func_for_dataclass(
 
                                 # Raise an error here (if needed)
                                 if meta.raise_on_unknown_json_key:
-                                    _globals['UnknownJSONKey'] = UnknownJSONKey
-                                    fn_gen.add_line("raise UnknownJSONKey(json_key, o, cls, cls_fields) from None")
+                                    _globals['UnknownKeysError'] = UnknownKeysError
+                                    fn_gen.add_line("raise UnknownKeysError(json_key, o, cls, cls_fields) from None")
 
                     # Exclude JSON keys that don't map to any fields.
                     with fn_gen.if_('field is not ExplicitNull'):

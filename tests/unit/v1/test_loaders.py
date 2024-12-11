@@ -18,7 +18,7 @@ from typing import (
 from dataclass_wizard import *
 from dataclass_wizard.constants import TAG
 from dataclass_wizard.errors import (
-    ParseError, MissingFields, UnknownJSONKey, MissingData, InvalidConditionError
+    ParseError, MissingFields, UnknownKeysError, MissingData, InvalidConditionError
 )
 from dataclass_wizard.v1.models import Extras
 from dataclass_wizard.models import _PatternBase
@@ -176,7 +176,7 @@ def test_fromdict_raises_on_unknown_json_fields():
 
     # Technically we don't need to pass `load_cfg`, but we'll pass it in as
     # that's how we'd typically expect to do it.
-    with pytest.raises(UnknownJSONKey) as exc_info:
+    with pytest.raises(UnknownKeysError) as exc_info:
         _ = fromdict(MyClass, d)
 
     e = exc_info.value
@@ -219,7 +219,7 @@ def test_from_dict_raises_on_unknown_json_key_nested():
          'my_bool': 'F',
          'my_str': 'test2', 'myBoolTest': True, 'MyInt': 123}
 
-    with pytest.raises(UnknownJSONKey) as exc_info:
+    with pytest.raises(UnknownKeysError) as exc_info:
         _ = Test.from_dict(d)
 
     e = exc_info.value
@@ -238,7 +238,7 @@ def test_from_dict_raises_on_unknown_json_key_nested():
     #      'my_sub': {'MyStr': 'test', 'my_bool': False, 'myBoolTest': False},
     #      }
 
-    with pytest.raises(UnknownJSONKey) as exc_info:
+    with pytest.raises(UnknownKeysError) as exc_info:
         _ = Test.from_dict(d)
 
     e = exc_info.value
