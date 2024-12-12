@@ -1,4 +1,5 @@
 __all__ = [
+    'snake',
     'does_not_raise',
     'data_file_path',
     'PY310_OR_ABOVE',
@@ -13,6 +14,8 @@ import sys
 # Ref: https://docs.pytest.org/en/6.2.x/example/parametrize.html#parametrizing-conditional-raising
 from contextlib import nullcontext as does_not_raise
 from pathlib import Path
+
+from dataclass_wizard.utils.string_conv import to_snake_case
 
 
 # Directory for test files
@@ -46,3 +49,13 @@ else:
 def data_file_path(name: str) -> str:
     """Returns the full path to a test file."""
     return str((TEST_DATA_DIR / name).absolute())
+
+
+def snake(d):
+    """
+    Helper function to snake-case all keys in a dictionary `d`.
+
+    Useful for `v1`, which by default requires a 1:1 mapping of
+    JSON key to dataclass field.
+    """
+    return {to_snake_case(k): v for k, v in d.items()}

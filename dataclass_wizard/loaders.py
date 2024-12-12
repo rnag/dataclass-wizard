@@ -1,7 +1,6 @@
-from collections import defaultdict, deque, namedtuple
 import collections.abc as abc
-
-from dataclasses import is_dataclass
+from collections import defaultdict, deque, namedtuple
+from dataclasses import is_dataclass, MISSING
 from datetime import datetime, time, date, timedelta
 from decimal import Decimal
 from enum import Enum
@@ -12,22 +11,20 @@ from typing import (
     NamedTupleMeta,
     SupportsFloat, AnyStr, Text, Callable, Optional
 )
-
 from uuid import UUID
 
 from .abstractions import AbstractLoader, AbstractParser
 from .bases import BaseLoadHook, AbstractMeta, META
 from .class_helper import (
-    create_new_class,
-    dataclass_to_loader, set_class_loader,
     dataclass_field_to_load_parser, json_field_to_dataclass_field,
     CLASS_TO_LOAD_FUNC, dataclass_fields, get_meta, is_subclass_safe, dataclass_field_to_json_path,
     dataclass_init_fields, dataclass_field_to_default,
 )
-from .constants import _LOAD_HOOKS, SINGLE_ARG_ALIAS, IDENTITY, CATCH_ALL
+from .constants import SINGLE_ARG_ALIAS, IDENTITY, CATCH_ALL
 from .decorators import _alias, _single_arg_alias, resolve_alias_func, _identity
-from .errors import (ParseError, MissingFields, UnknownJSONKey,
+from .errors import (ParseError, MissingFields, UnknownKeysError,
                      MissingData, RecursiveClassError)
+from .loader_selection import fromdict, get_loader
 from .log import LOG
 from .models import Extras, PatternedDT
 from .parsers import *
@@ -36,9 +33,9 @@ from .type_def import (
     PyRequired, PyNotRequired,
     M, N, T, E, U, DD, LSQ, NT
 )
-from .utils.function_builder import FunctionBuilder
 # noinspection PyProtectedMember
 from .utils.dataclass_compat import _set_new_attribute
+from .utils.function_builder import FunctionBuilder
 from .utils.object_path import safe_get
 from .utils.string_conv import to_snake_case
 from .utils.type_conv import (
@@ -544,74 +541,6 @@ def setup_default_loader(cls=LoadMixin):
     cls.register_load_hook(timedelta, cls.load_to_timedelta)
 
 
-def get_loader(class_or_instance=None, create=True,
-               base_cls: T = LoadMixin) -> Type[T]:
-    """
-    Get the loader for the class, using the following logic:
-
-        * Return the class if it's already a sub-class of :class:`LoadMixin`
-        * If `create` is enabled (which is the default), a new sub-class of
-          :class:`LoadMixin` for the class will be generated and cached on the
-          initial run.
-        * Otherwise, we will return the base loader, :class:`LoadMixin`, which
-          can potentially be shared by more than one dataclass.
-
-    """
-    try:
-        return dataclass_to_loader(class_or_instance)
-
-    except KeyError:
-
-        if hasattr(class_or_instance, _LOAD_HOOKS):
-            return set_class_loader(class_or_instance, class_or_instance)
-
-        elif create:
-            cls_loader = create_new_class(class_or_instance, (base_cls, ))
-            return set_class_loader(class_or_instance, cls_loader)
-
-        return set_class_loader(class_or_instance, base_cls)
-
-
-def fromdict(cls: Type[T], d: JSONObject) -> T:
-    """
-    Converts a Python dictionary object to a dataclass instance.
-
-    Iterates over each dataclass field recursively; lists, dicts, and nested
-    dataclasses will likewise be initialized as expected.
-
-    When directly invoking this function, an optional Meta configuration for
-    the dataclass can be specified via ``LoadMeta``; by default, this will
-    apply recursively to any nested dataclasses. Here's a sample usage of this
-    below::
-
-        >>> LoadMeta(key_transform='CAMEL').bind_to(MyClass)
-        >>> fromdict(MyClass, {"myStr": "value"})
-
-    """
-    try:
-        load = CLASS_TO_LOAD_FUNC[cls]
-    except KeyError:
-        load = load_func_for_dataclass(cls)
-
-    return load(d)
-
-
-def fromlist(cls: Type[T], list_of_dict: List[JSONObject]) -> List[T]:
-    """
-    Converts a Python list object to a list of dataclass instances.
-
-    Iterates over each dataclass field recursively; lists, dicts, and nested
-    dataclasses will likewise be initialized as expected.
-
-    """
-    try:
-        load = CLASS_TO_LOAD_FUNC[cls]
-    except KeyError:
-        load = load_func_for_dataclass(cls)
-
-    return [load(d) for d in list_of_dict]
-
-
 def load_func_for_dataclass(
         cls: Type[T],
         is_main_class: bool = True,
@@ -624,9 +553,8 @@ def load_func_for_dataclass(
     # Tuple describing the fields of this dataclass.
     cls_fields = dataclass_fields(cls)
 
-
     # Get the loader for the class, or create a new one as needed.
-    cls_loader = get_loader(cls, base_cls=loader_cls)
+    cls_loader = get_loader(cls, base_cls=loader_cls, v1=False)
 
     # Get the meta config for the class, or the default config otherwise.
     meta = get_meta(cls)
@@ -701,7 +629,7 @@ def load_func_for_dataclass(
     else:
         loop_over_o = True
 
-    with fn_gen.function('cls_fromdict', ['o']):
+    with fn_gen.function('cls_fromdict', ['o'], MISSING, _locals):
 
         _pre_from_dict_method = getattr(cls, '_pre_from_dict', None)
         if _pre_from_dict_method is not None:
@@ -749,7 +677,7 @@ def load_func_for_dataclass(
                         # Note this logic only runs the initial time, i.e. the first time
                         # we encounter the key in a JSON object.
                         #
-                        # :raises UnknownJSONKey: If there is no resolved field name for the
+                        # :raises UnknownKeysError: If there is no resolved field name for the
                         #   JSON key, and`raise_on_unknown_json_key` is enabled in the Meta
                         #   config for the class.
 
@@ -777,8 +705,8 @@ def load_func_for_dataclass(
 
                                 # Raise an error here (if needed)
                                 if meta.raise_on_unknown_json_key:
-                                    _globals['UnknownJSONKey'] = UnknownJSONKey
-                                    fn_gen.add_line("raise UnknownJSONKey(json_key, o, cls, cls_fields) from None")
+                                    _globals['UnknownKeysError'] = UnknownKeysError
+                                    fn_gen.add_line("raise UnknownKeysError(json_key, o, cls, cls_fields) from None")
 
                     # Exclude JSON keys that don't map to any fields.
                     with fn_gen.if_('field is not ExplicitNull'):
@@ -838,11 +766,9 @@ def load_func_for_dataclass(
             fn_gen.add_line("return cls(**init_kwargs)")
 
         with fn_gen.except_(TypeError, 'e'):
-            fn_gen.add_line("raise MissingFields(e, o, cls, init_kwargs, cls_fields) from None")
+            fn_gen.add_line("raise MissingFields(e, o, cls, cls_fields, init_kwargs) from None")
 
-    functions = fn_gen.create_functions(
-        locals=_locals, globals=_globals
-    )
+    functions = fn_gen.create_functions(_globals)
 
     cls_fromdict = functions['cls_fromdict']
 

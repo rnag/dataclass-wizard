@@ -1,13 +1,14 @@
-from typing import TypedDict, overload, Any
+from typing import TypedDict, overload, Any, NotRequired, Self
 import json
-from dataclasses import MISSING, Field
+from dataclasses import MISSING, Field, dataclass
 from datetime import date, datetime, time
 from typing import (Collection, Callable,
                     Generic, Mapping)
 
 from .bases import META
 from .decorators import cached_property
-from .type_def import T, DT, Encoder, FileEncoder
+from .type_def import T, DT, Encoder, FileEncoder, DefFactory
+from .utils.function_builder import FunctionBuilder
 from .utils.object_path import PathPart, PathType
 
 
@@ -18,12 +19,52 @@ CatchAll = Mapping | None
 _STR_COLLECTION = str | Collection[str]
 
 
+# @dataclass(order=True)
+# class TypeInfo:
+#     __slots__ = ...
+#     # type origin (ex. `List[str]` -> `List`)
+#     origin: type
+#     # type arguments (ex. `Dict[str, int]` -> `(str, int)`)
+#     args: tuple[type, ...] | None = None
+#     # name of type origin (ex. `List[str]` -> 'list')
+#     name: str | None = None
+#     # index of iteration, *only* unique within the scope of a field assignment!
+#     i: int = 1
+#     # index of field within the dataclass, *guaranteed* to be unique.
+#     field_i: int = 1
+#     # prefix of value in assignment (prepended to `i`),
+#     # defaults to 'v' if not specified.
+#     prefix: str = 'v'
+#     # index of assignment (ex. `2 -> v1[2]`, *or* a string `"key" -> v4["key"]`)
+#     index: int | None = None
+#
+#     def replace(self, **changes) -> TypeInfo: ...
+#     @staticmethod
+#     def ensure_in_locals(extras: dict[str, Any], *types: Callable) -> None: ...
+#     def type_name(self, extras: dict[str, Any]) -> str: ...
+#     def v(self) -> str: ...
+#     def v_and_next(self) -> tuple[str, str, int]: ...
+#     def v_and_next_k_v(self) -> tuple[str, str, str, int]: ...
+#     def multi_wrap(self, extras, prefix='', *result, force=False) -> list[str]: ...
+#     def wrap(self, result: str, extras: Extras, force=False,  prefix='') -> Self: ...
+#     def wrap_builtin(self, result: str, extras: Extras) -> Self: ...
+#     def wrap_dd(self, default_factory: DefFactory, result: str, extras: Extras) -> Self: ...
+#     def _wrap_inner(self, extras: Extras,
+#                     tp: type | DefFactory | None = None,
+#                     prefix: str = '',
+#                     is_builtin: bool = False,
+#                     force=False) -> str | None: ...
+
 class Extras(TypedDict):
     """
     "Extra" config that can be used in the load / dump process.
     """
-    config: META
-    pattern: PatternedDT
+    config: NotRequired[META]
+    cls: type
+    cls_name: str
+    fn_gen: FunctionBuilder
+    locals: dict[str, Any]
+    pattern: NotRequired[PatternedDT]
 
 
 def json_key(*keys: str, all=False, dump=True):

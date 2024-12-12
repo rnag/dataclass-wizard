@@ -114,18 +114,23 @@ __all__ = [
     'IS_NOT',
     'IS_TRUTHY',
     'IS_FALSY',
+    # V1
+    'Alias',
+    'AliasPath',
 ]
 
 import logging
 
 from .bases_meta import LoadMeta, DumpMeta, EnvMeta
 from .dumpers import DumpMixin, setup_default_dumper, asdict
-from .loaders import LoadMixin, setup_default_loader, fromlist, fromdict
+from .loaders import LoadMixin, setup_default_loader
+from .loader_selection import fromlist, fromdict
 from .models import (env_field, json_field, json_key, path_field, skip_if_field,
                      KeyPath, Container,
                      Pattern, DatePattern, TimePattern, DateTimePattern,
                      CatchAll, SkipIf, SkipIfNone,
                      EQ, NE, LT, LE, GT, GE, IS, IS_NOT, IS_TRUTHY, IS_FALSY)
+from .v1.models import Alias, AliasPath
 from .environ.wizard import EnvWizard
 from .property_wizard import property_wizard
 from .serial_json import JSONWizard, JSONPyWizard, JSONSerializable

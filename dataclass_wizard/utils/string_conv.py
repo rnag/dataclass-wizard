@@ -1,4 +1,5 @@
 __all__ = ['normalize',
+           'to_json_key',
            'to_camel_case',
            'to_pascal_case',
            'to_lisp_case',
@@ -8,6 +9,8 @@ __all__ = ['normalize',
 import re
 from typing import Iterable, Dict, List
 
+from ..type_def import JSONObject
+
 
 def normalize(string: str) -> str:
     """
@@ -15,6 +18,54 @@ def normalize(string: str) -> str:
     purposes.
     """
     return string.replace('-', '').replace('_', '').upper()
+
+
+def to_json_key(o: JSONObject,
+                field: str,
+                f2k: 'dict[str, str]') -> 'str | None':
+    """
+    Maps a dataclass field name to its corresponding key in a JSON object.
+
+    This function checks multiple naming conventions (e.g., camelCase,
+    PascalCase, kebab-case, etc.) to find the matching key in the JSON
+    object `o`. It also caches the mapping for future use.
+
+    Args:
+        o (dict[str, Any]): The JSON object to search for the key.
+        field (str): The dataclass field name to map.
+        f2k (dict[str, str]): A dictionary to cache field-to-key mappings.
+
+    Returns:
+        str: The matching JSON key for the given field.
+        None: If no matching key is found in `o`.
+    """
+    # Short path: key matching field name exists in `o`
+    if field in o:
+        key = field
+    # `camelCase`
+    elif (key := to_camel_case(field)) in o:
+        ...
+    # `PascalCase`: same as `camelCase` but first letter is capitalized
+    elif (key := key[0].upper() + key[1:]) in o:
+        ...
+    # `kebab-case`
+    elif (key := to_lisp_case(field)) in o:
+        ...
+    # `Upper-Kebab`: same as `kebab-case`, each word is title-cased
+    elif (key := key.title()) in o:
+        ...
+    # `Upper_Snake`
+    elif (key := key.replace('-', '_')) in o:
+        ...
+    # `snake_case`
+    elif (key := key.lower()) in o:
+        ...
+    else:
+        key = None
+
+    # Cache the result
+    f2k[field] = key
+    return key
 
 
 def to_camel_case(string: str) -> str:

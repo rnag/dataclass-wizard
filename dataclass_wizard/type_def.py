@@ -1,12 +1,13 @@
 __all__ = [
     'PyForwardRef',
-    'PyLiteral',
     'PyProtocol',
     'PyDeque',
     'PyTypedDict',
     'PyTypedDicts',
     'PyRequired',
     'PyNotRequired',
+    'PyReadOnly',
+    'PyLiteralString',
     'FrozenKeys',
     'DefFactory',
     'NoneType',
@@ -49,14 +50,20 @@ from typing import (
     Union, NamedTuple, Callable, AnyStr, TextIO, BinaryIO,
     Deque as PyDeque,
     ForwardRef as PyForwardRef,
-    Literal as PyLiteral,
     Protocol as PyProtocol,
     TypedDict as PyTypedDict, Iterable, Collection,
 )
 from uuid import UUID
 
-from .constants import PY311_OR_ABOVE
+from .constants import PY310_OR_ABOVE, PY311_OR_ABOVE, PY313_OR_ABOVE
 
+
+# The class of the `None` singleton, cached for re-usability
+if PY310_OR_ABOVE:
+    # https://docs.python.org/3/library/types.html#types.NoneType
+    from types import NoneType
+else:
+    NoneType = type(None)
 
 # Type check for numeric types - needed because `bool` is technically
 # a Number.
@@ -102,9 +109,6 @@ FrozenKeys = FrozenSet[str]
 # Default factory type, assuming a no-args constructor
 DefFactory = Callable[[], T]
 
-# The class of the `None` singleton, cached for re-usability
-NoneType = type(None)
-
 # For Python 3.8+, we need to use both `TypedDict` implementations (from both
 # the `typing` and `typing_extensions` modules). Because it's not clear which
 # version users might choose to use. And they might choose to use either, due
@@ -147,15 +151,26 @@ except ImportError:
 # Python 3.11 introduced `Required` and `NotRequired` wrappers for
 # `TypedDict` fields (PEP 655). Python 3.9+ users can import the
 # wrappers from `typing_extensions`.
-if PY311_OR_ABOVE:  # pragma: no cover
-    from typing import Required as PyRequired
-    from typing import NotRequired as PyNotRequired
-    from typing import dataclass_transform
-else:
-    from typing_extensions import Required as PyRequired
-    from typing_extensions import NotRequired as PyNotRequired
-    from typing_extensions import dataclass_transform
 
+if PY313_OR_ABOVE:  # pragma: no cover
+    from typing import (Required as PyRequired,
+                        NotRequired as PyNotRequired,
+                        ReadOnly as PyReadOnly,
+                        LiteralString as PyLiteralString,
+                        dataclass_transform)
+
+elif PY311_OR_ABOVE:  # pragma: no cover
+    from typing import (Required as PyRequired,
+                        NotRequired as PyNotRequired,
+                        LiteralString as PyLiteralString,
+                        dataclass_transform)
+    from typing_extensions import ReadOnly as PyReadOnly
+else:
+    from typing_extensions import (Required as PyRequired,
+                                   NotRequired as PyNotRequired,
+                                    ReadOnly as PyReadOnly,
+                                   LiteralString as PyLiteralString,
+                                   dataclass_transform)
 
 # Forward references can be either strings or explicit `ForwardRef` objects.
 # noinspection SpellCheckingInspection
