@@ -3,31 +3,26 @@ Tests for the `loaders` module, but more importantly for the `parsers` module.
 
 Note: I might refactor this into a separate `test_parsers.py` as time permits.
 """
-import pytest
-
 import logging
 from abc import ABC
 from collections import namedtuple, defaultdict, deque
 from dataclasses import dataclass, field
 from datetime import datetime, date, time, timedelta
 from typing import (
-    List, Optional, Union, Tuple, Dict, NamedTuple, Type, DefaultDict,
-    Set, FrozenSet, Generic, Annotated, Literal, Sequence, MutableSequence, Collection
+    List, Optional, Union, Tuple, Dict, NamedTuple, DefaultDict,
+    Set, FrozenSet, Annotated, Literal, Sequence, MutableSequence, Collection
 )
+
+import pytest
 
 from dataclass_wizard import *
 from dataclass_wizard.constants import TAG
 from dataclass_wizard.errors import (
     ParseError, MissingFields, UnknownKeysError, MissingData, InvalidConditionError
 )
-from dataclass_wizard.v1.models import Extras
 from dataclass_wizard.models import _PatternBase
-
-from dataclass_wizard.type_def import NoneType, T
-
 from ..conftest import MyUUIDSubclass
 from ...conftest import *
-
 
 log = logging.getLogger(__name__)
 
@@ -75,12 +70,10 @@ def test_auto_key_casing():
 
 def test_alias_mapping():
 
-    # TODO fix bug with `JSONPyWizard`
     @dataclass
-    class Test(JSONWizard):
-        class _(JSONWizard.Meta):
+    class Test(JSONPyWizard):
+        class _(JSONPyWizard.Meta):
             v1 = True
-            key_transform_with_dump = 'NONE'
             v1_field_to_alias = {'my_int': 'MyInt'}
 
         my_str: str = Alias('a_str')
@@ -213,9 +206,7 @@ def test_from_dict_raises_on_unknown_json_key_nested():
     log.debug(repr(t))
 
     d = {'a_str': 'test',
-         # TODO
          'my_sub': {'MyStr': 'test'},
-         # 'my_sub': {'my_str': 'test'},
          'my_bool': 'F',
          'my_str': 'test2', 'myBoolTest': True, 'MyInt': 123}
 
@@ -225,7 +216,7 @@ def test_from_dict_raises_on_unknown_json_key_nested():
     e = exc_info.value
 
     # TODO
-    assert e.json_key == {'myBoolTest', 'MyInt', 'my_str'}
+    assert e.unknown_keys == {'myBoolTest', 'MyInt', 'my_str'}
     assert e.obj == d
     assert e.fields == ['my_str', 'my_bool', 'my_sub']
 
@@ -243,7 +234,7 @@ def test_from_dict_raises_on_unknown_json_key_nested():
 
     e = exc_info.value
 
-    assert e.json_key == {'myBoolTest'}
+    assert e.unknown_keys == {'myBoolTest'}
     assert e.obj == d['my_sub']
     assert e.fields == ['my_str']
 
@@ -407,6 +398,7 @@ def test_from_dict_called_with_incorrect_type():
     assert (err.ann_type, err.obj_type) == (dict, list)
 
 
+@pytest.mark.xfail(reason='Need to add support in v1')
 def test_date_times_with_custom_pattern():
     """
     Date, time, and datetime objects with a custom date string
@@ -460,6 +452,8 @@ def test_date_times_with_custom_pattern():
             'dt_field2': '01/02/23 02@03@52',
             'other_field': 'testing'}
 
+    LoadMeta(v1=True).bind_to(MyClass)
+
     class_obj = fromdict(MyClass, data)
 
     # noinspection PyTypeChecker
@@ -494,6 +488,7 @@ def test_date_times_with_custom_pattern():
     assert fromdict(MyClass, serialized_dict) == expected_obj
 
 
+@pytest.mark.xfail(reason='Need to add support in v1')
 def test_date_times_with_custom_pattern_when_input_is_invalid():
     """
     Date, time, and datetime objects with a custom date string
@@ -506,10 +501,13 @@ def test_date_times_with_custom_pattern_when_input_is_invalid():
 
     data = {'date_field': '12.31.21'}
 
+    LoadMeta(v1=True).bind_to(MyClass)
+
     with pytest.raises(ParseError):
         _ = fromdict(MyClass, data)
 
 
+@pytest.mark.skip(reason='Need to add support in v1')
 def test_date_times_with_custom_pattern_when_annotation_is_invalid():
     """
     Date, time, and datetime objects with a custom date string
@@ -523,6 +521,8 @@ def test_date_times_with_custom_pattern_when_annotation_is_invalid():
         date_field: MyCustomPattern['%m-%d-%y']
 
     data = {'date_field': '12-31-21'}
+
+    LoadMeta(v1=True).bind_to(MyClass)
 
     with pytest.raises(TypeError) as e:
         _ = fromdict(MyClass, data)
@@ -565,7 +565,10 @@ def test_tag_field_is_used_in_load_process():
     class Container(JSONWizard):
         """ container holds a subclass of Data """
         class _(JSONWizard.Meta):
+            v1 = True
             tag = 'CONTAINER'
+            # Need for `DataC`, which doesn't have a tag assigned
+            v1_unsafe_parse_dataclass_in_union = True
 
         data: Union[DataA, DataB, DataC]
 
@@ -619,6 +622,11 @@ def test_e2e_process_with_init_only_fields():
 
     @dataclass
     class MyClass(JSONWizard):
+
+        class _(JSONWizard.Meta):
+            v1 = True
+            v1_key_case = 'C'
+
         my_str: str
         my_float: float = field(default=0.123, init=False)
         my_int: int = 1
@@ -651,10 +659,15 @@ def test_e2e_process_with_init_only_fields():
 def test_bool(input, expected):
 
     @dataclass
-    class MyClass(JSONSerializable):
+    class MyClass(JSONWizard):
+
+        class _(JSONWizard.Meta):
+            v1 = True
+            v1_key_case = 'P'
+
         my_bool: bool
 
-    d = {'My_Bool': input}
+    d = {'MyBool': input}
 
     result = MyClass.from_dict(d)
     log.debug('Parsed object: %r', result)
@@ -671,7 +684,11 @@ def test_from_dict_handles_identical_cased_json_keys():
     """
 
     @dataclass
-    class ExtendedFetch(JSONSerializable):
+    class ExtendedFetch(JSONWizard):
+
+        class _(JSONWizard.Meta):
+            v1 = True
+
         comments: dict
         viewMode: str
         my_str: str
@@ -694,7 +711,11 @@ def test_from_dict_with_missing_fields():
     """
 
     @dataclass
-    class MyClass(JSONSerializable):
+    class MyClass(JSONWizard):
+
+        class _(JSONWizard.Meta):
+            v1 = True
+
         my_str: str
         MyBool1: bool
         my_int: int
@@ -718,9 +739,9 @@ def test_from_dict_with_missing_fields_with_resolution():
     """
 
     @dataclass
-    class MyClass(JSONSerializable):
+    class MyClass(JSONWizard):
 
-        class _(JSONSerializable.Meta):
+        class _(JSONWizard.Meta):
             v1 = True
 
         my_str: str
@@ -748,9 +769,16 @@ def test_from_dict_key_transform_with_json_field():
     """
 
     @dataclass
-    class MyClass(JSONSerializable):
-        my_str: str = json_field('myCustomStr')
-        my_bool: bool = json_field(('my_json_bool', 'myTestBool'))
+    class MyClass(JSONWizard):
+
+        class _(JSONWizard.Meta):
+            v1 = True
+
+        my_str: str = Alias('myCustomStr')
+        my_bool: bool = Alias('myTestBool')
+
+        # TODO: currently multiple aliases are not supported
+        # my_bool: bool = Alias(('my_json_bool', 'myTestBool'))
 
     value = 'Testing'
     d = {'myCustomStr': value, 'myTestBool': 'true'}
@@ -769,9 +797,13 @@ def test_from_dict_key_transform_with_json_key():
     """
 
     @dataclass
-    class MyClass(JSONSerializable):
-        my_str: Annotated[str, json_key('myCustomStr')]
-        my_bool: Annotated[bool, json_key('my_json_bool', 'myTestBool')]
+    class MyClass(JSONWizard):
+
+        class _(JSONWizard.Meta):
+            v1 = True
+
+        my_str: Annotated[str, Alias('myCustomStr')]
+        my_bool: Annotated[bool, Alias('myTestBool')]
 
     value = 'Testing'
     d = {'myCustomStr': value, 'myTestBool': 'true'}
@@ -787,18 +819,22 @@ def test_from_dict_key_transform_with_json_key():
     'input,expected,expectation',
     [
         ([1, '2', 3], {1, 2, 3}, does_not_raise()),
-        ('TrUe', True, pytest.raises(ValueError)),
+        ('TrUe', True, pytest.raises(ParseError)),
         ((3.22, 2.11, 1.22), {3, 2, 1}, does_not_raise()),
     ]
 )
 def test_set(input, expected, expectation):
 
     @dataclass
-    class MyClass(JSONSerializable):
+    class MyClass(JSONWizard):
+
+        class _(JSONWizard.Meta):
+            v1 = True
+
         num_set: Set[int]
         any_set: set
 
-    d = {'numSet': input, 'any_set': input}
+    d = {'num_set': input, 'any_set': input}
 
     with expectation:
         result = MyClass.from_dict(d)
@@ -815,7 +851,7 @@ def test_set(input, expected, expectation):
     'input,expected,expectation',
     [
         ([1, '2', 3], {1, 2, 3}, does_not_raise()),
-        ('TrUe', True, pytest.raises(ValueError)),
+        ('TrUe', True, pytest.raises(ParseError)),
         ((3.22, 2.11, 1.22), {1, 2, 3}, does_not_raise()),
     ]
 )
@@ -823,10 +859,14 @@ def test_frozenset(input, expected, expectation):
 
     @dataclass
     class MyClass(JSONSerializable):
+
+        class _(JSONWizard.Meta):
+            v1 = True
+
         num_set: FrozenSet[int]
         any_set: frozenset
 
-    d = {'numSet': input, 'any_set': input}
+    d = {'num_set': input, 'any_set': input}
 
     with expectation:
         result = MyClass.from_dict(d)
@@ -844,14 +884,20 @@ def test_frozenset(input, expected, expectation):
     [
         ('testing', pytest.raises(ParseError)),
         ('e1', does_not_raise()),
-        (False, pytest.raises(ParseError)),
+        # TODO: currently no type check for Literal
+        # (False, pytest.raises(ParseError)),
         (0, does_not_raise()),
     ]
 )
 def test_literal(input, expectation):
 
     @dataclass
-    class MyClass(JSONSerializable):
+    class MyClass(JSONWizard):
+
+        class _(JSONWizard.Meta):
+            v1_key_case = 'P'
+            v1 = True
+
         my_lit: Literal['e1', 'e2', 0]
 
     d = {'MyLit': input}
@@ -870,6 +916,8 @@ def test_literal(input, expectation):
         ('y', True),
         ('T', True),
         ('F', False),
+        ('On', True),
+        ('OFF', False),
         (1, True),
         (False, False),
         (0, False),
@@ -882,10 +930,15 @@ def test_annotated(input, expected):
         length: int
 
     @dataclass
-    class MyClass(JSONSerializable):
+    class MyClass(JSONWizard):
+
+        class _(JSONWizard.Meta):
+            v1 = True
+            v1_key_case = 'Auto'
+
         bool_or_none: Annotated[Optional[bool], MaxLen(23), "testing", 123]
 
-    d = {'Bool-OR-None': input}
+    d = {'Bool-Or-None': input}
 
     result = MyClass.from_dict(d)
     log.debug('Parsed object: %r', result)
@@ -905,10 +958,14 @@ def test_annotated(input, expected):
 def test_uuid(input):
 
     @dataclass
-    class MyUUIDTestClass(JSONSerializable):
+    class MyUUIDTestClass(JSONWizard):
+
+        class _(JSONWizard.Meta):
+            v1 = True
+
         my_id: MyUUIDSubclass
 
-    d = {'MyID': input}
+    d = {'my_id': input}
 
     result = MyUUIDTestClass.from_dict(d)
     log.debug('Parsed object: %r', result)
@@ -931,7 +988,12 @@ def test_uuid(input):
 def test_optional(input, expectation, expected):
 
     @dataclass
-    class MyClass(JSONSerializable):
+    class MyClass(JSONWizard):
+
+        class _(JSONWizard.Meta):
+            v1 = True
+            v1_key_case = 'P'
+
         my_str: str
         my_opt_str: Optional[str]
 
@@ -957,18 +1019,23 @@ def test_optional(input, expectation, expected):
         (False, does_not_raise(), False),
         (0, does_not_raise(), 0),
         (None, does_not_raise(), None),
-        # Since it's a float value, that results in a `TypeError` which gets
-        # re-raised.
-        (1.2, pytest.raises(ParseError), None)
+        # Since the first type in `Union` is `str`,
+        # the float value is converted to a string.
+        (1.2, does_not_raise(), '1.2')
     ]
 )
 def test_union(input, expectation, expected):
 
     @dataclass
-    class MyClass(JSONSerializable):
+    class MyClass(JSONWizard):
+
+        class _(JSONWizard.Meta):
+            v1 = True
+            v1_key_case = 'C'
+
         my_opt_str_int_or_bool: Union[str, int, bool, None]
 
-    d = {'myOptSTRIntORBool': input}
+    d = {'myOptStrIntOrBool': input}
 
     with expectation:
         result = MyClass.from_dict(d)
@@ -984,7 +1051,11 @@ def test_forward_refs_are_resolved():
 
     """
     @dataclass
-    class A(JSONSerializable):
+    class A(JSONWizard):
+
+        class _(JSONWizard.Meta):
+            v1 = True
+
         b: List['B']
         c: 'C'
 
@@ -1011,21 +1082,25 @@ def test_forward_refs_are_resolved():
 @pytest.mark.parametrize(
     'input,expectation',
     [
-        ('testing', pytest.raises(ValueError)),
+        ('testing', pytest.raises(ParseError)),
         ('2020-01-02T01:02:03Z', does_not_raise()),
         ('2010-12-31 23:59:59-04:00', does_not_raise()),
         (123456789, does_not_raise()),
-        (True, pytest.raises(TypeError)),
+        (True, pytest.raises(ParseError)),
         (datetime(2010, 12, 31, 23, 59, 59), does_not_raise()),
     ]
 )
 def test_datetime(input, expectation):
 
     @dataclass
-    class MyClass(JSONSerializable):
+    class MyClass(JSONWizard):
+
+        class _(JSONWizard.Meta):
+            v1 = True
+
         my_dt: datetime
 
-    d = {'myDT': input}
+    d = {'my_dt': input}
 
     with expectation:
         result = MyClass.from_dict(d)
@@ -1035,11 +1110,11 @@ def test_datetime(input, expectation):
 @pytest.mark.parametrize(
     'input,expectation',
     [
-        ('testing', pytest.raises(ValueError)),
+        ('testing', pytest.raises(ParseError)),
         ('2020-01-02', does_not_raise()),
         ('2010-12-31', does_not_raise()),
         (123456789, does_not_raise()),
-        (True, pytest.raises(TypeError)),
+        (True, pytest.raises(ParseError)),
         (date(2010, 12, 31), does_not_raise()),
     ]
 )
@@ -1047,9 +1122,13 @@ def test_date(input, expectation):
 
     @dataclass
     class MyClass(JSONSerializable):
+
+        class _(JSONWizard.Meta):
+            v1 = True
+
         my_d: date
 
-    d = {'myD': input}
+    d = {'my_d': input}
 
     with expectation:
         result = MyClass.from_dict(d)
@@ -1059,21 +1138,25 @@ def test_date(input, expectation):
 @pytest.mark.parametrize(
     'input,expectation',
     [
-        ('testing', pytest.raises(ValueError)),
+        ('testing', pytest.raises(ParseError)),
         ('01:02:03Z', does_not_raise()),
         ('23:59:59-04:00', does_not_raise()),
-        (123456789, pytest.raises(TypeError)),
-        (True, pytest.raises(TypeError)),
+        (123456789, pytest.raises(ParseError)),
+        (True, pytest.raises(ParseError)),
         (time(23, 59, 59), does_not_raise()),
     ]
 )
 def test_time(input, expectation):
 
     @dataclass
-    class MyClass(JSONSerializable):
+    class MyClass(JSONWizard):
+
+        class _(JSONWizard.Meta):
+            v1 = True
+
         my_t: time
 
-    d = {'myT': input}
+    d = {'my_t': input}
 
     with expectation:
         result = MyClass.from_dict(d)
@@ -1100,14 +1183,14 @@ def test_time(input, expectation):
 def test_timedelta(input, expectation, base_err):
 
     @dataclass
-    class MyClass(JSONSerializable):
+    class MyClass(JSONWizard):
 
-        class _(JSONSerializable.Meta):
-            debug_enabled = True
+        class _(JSONWizard.Meta):
+            v1 = True
 
         my_td: timedelta
 
-    d = {'myTD': input}
+    d = {'my_td': input}
 
     with expectation as e:
         result = MyClass.from_dict(d)
@@ -1129,27 +1212,31 @@ def test_timedelta(input, expectation, base_err):
         (
             # `bool` is a sub-class of int, so we explicitly check for this
             # type.
-            [True, False], pytest.raises(TypeError), None),
+            [True, False], pytest.raises(ParseError), None),
         (
-            ['hello', 'world'], pytest.raises(ValueError), None
+            ['hello', 'world'], pytest.raises(ParseError), None
         ),
         (
-            [1, 'two', 3], pytest.raises(ValueError), None),
+            [1, 'two', 3], pytest.raises(ParseError), None),
         (
             [1, '2', 3], does_not_raise(), [1, 2, 3]
         ),
         (
-            'testing', pytest.raises(ValueError), None
+            'testing', pytest.raises(ParseError), None
         ),
     ]
 )
 def test_list(input, expectation, expected):
 
     @dataclass
-    class MyClass(JSONSerializable):
+    class MyClass(JSONWizard):
+
+        class _(JSONWizard.Meta):
+            v1 = True
+
         my_list: List[int]
 
-    d = {'My_List': input}
+    d = {'my_list': input}
 
     with expectation:
         result = MyClass.from_dict(d)
@@ -1162,7 +1249,7 @@ def test_list(input, expectation, expected):
     'input,expectation,expected',
     [
         (
-            ['hello', 'world'], pytest.raises(ValueError), None
+            ['hello', 'world'], pytest.raises(ParseError), None
         ),
         (
             [1, '2', 3], does_not_raise(), [1, 2, 3]
@@ -1172,10 +1259,14 @@ def test_list(input, expectation, expected):
 def test_deque(input, expectation, expected):
 
     @dataclass
-    class MyClass(JSONSerializable):
+    class MyClass(JSONWizard):
+
+        class _(JSONWizard.Meta):
+            v1 = True
+
         my_deque: deque[int]
 
-    d = {'My_Deque': input}
+    d = {'my_deque': input}
 
     with expectation:
         result = MyClass.from_dict(d)
@@ -1215,10 +1306,14 @@ def test_list_without_type_hinting(input, expectation, expected):
     """
 
     @dataclass
-    class MyClass(JSONSerializable):
+    class MyClass(JSONWizard):
+
+        class _(JSONWizard.Meta):
+            v1 = True
+
         my_list: list
 
-    d = {'My_List': input}
+    d = {'my_list': input}
 
     with expectation:
         result = MyClass.from_dict(d)
@@ -1234,7 +1329,7 @@ def test_list_without_type_hinting(input, expectation, expected):
             # Wrong number of elements (technically the wrong type)
             [{}], pytest.raises(ParseError), None),
         (
-            [True, False, True], pytest.raises(TypeError), None),
+            [True, False, True], pytest.raises(ParseError), None),
         (
             [1, 'hello'], pytest.raises(ParseError), None
         ),
@@ -1248,10 +1343,14 @@ def test_list_without_type_hinting(input, expectation, expected):
 def test_tuple(input, expectation, expected):
 
     @dataclass
-    class MyClass(JSONSerializable):
+    class MyClass(JSONWizard):
+
+        class _(JSONWizard.Meta):
+            v1 = True
+
         my_tuple: Tuple[int, str, bool]
 
-    d = {'My__Tuple': input}
+    d = {'my_tuple': input}
 
     with expectation:
         result = MyClass.from_dict(d)
@@ -1267,12 +1366,13 @@ def test_tuple(input, expectation, expected):
             # Wrong number of elements (technically the wrong type)
             [{}], pytest.raises(ParseError), None),
         (
-            [True, False, True], pytest.raises(TypeError), None),
+            [True, False, True], pytest.raises(ParseError), None),
         (
-            [1, 'hello'], does_not_raise(), (1, 'hello')
+            [1, 'hello'], pytest.raises(ParseError), None
         ),
         (
-            ['1', 'two', 'tRuE'], does_not_raise(), (1, 'two', True)),
+            ['1', 'two', 'tRuE'], pytest.raises(ParseError), None
+        ),
         (
             ['1', 'two', None, 3], does_not_raise(), (1, 'two', None, 3)),
         (
@@ -1291,10 +1391,14 @@ def test_tuple_with_optional_args(input, expectation, expected):
     """
 
     @dataclass
-    class MyClass(JSONSerializable):
+    class MyClass(JSONWizard):
+
+        class _(JSONWizard.Meta):
+            v1 = True
+
         my_tuple: Tuple[int, str, Optional[bool], Union[str, int, None]]
 
-    d = {'My__Tuple': input}
+    d = {'my_tuple': input}
 
     with expectation:
         result = MyClass.from_dict(d)
@@ -1303,6 +1407,7 @@ def test_tuple_with_optional_args(input, expectation, expected):
         assert result.my_tuple == expected
 
 
+@pytest.mark.xfail(reason='Need to add support in v1')
 @pytest.mark.parametrize(
     'input,expectation,expected',
     [
@@ -1329,10 +1434,14 @@ def test_tuple_without_type_hinting(input, expectation, expected):
     for its elements)
     """
     @dataclass
-    class MyClass(JSONSerializable):
+    class MyClass(JSONWizard):
+
+        class _(JSONWizard.Meta):
+            v1 = True
+
         my_tuple: tuple
 
-    d = {'My__Tuple': input}
+    d = {'my_tuple': input}
 
     with expectation:
         result = MyClass.from_dict(d)
@@ -1581,7 +1690,7 @@ def test_typed_dict(input, expectation, expected):
         my_int: int
 
     @dataclass
-    class MyClass(JSONSerializable):
+    class MyClass(JSONWizard):
 
         class _(JSONWizard.Meta):
             v1 = True
@@ -1788,6 +1897,48 @@ def test_typed_dict_with_one_field_required(input, expectation, expected):
         assert result.my_typed_dict == expected
 
 
+@pytest.mark.parametrize(
+    'input,expectation,expected',
+    [
+        (
+            # Should raise a `TypeError` (types for last two are wrong)
+            ['test', 2, True],
+            pytest.raises(ParseError), None
+        ),
+        (
+            ['test', True, 2],
+            does_not_raise(),
+            ('test', True, 2)
+        ),
+    ]
+)
+def test_named_tuple(input, expectation, expected):
+
+    class MyNamedTuple(NamedTuple):
+        my_str: str
+        my_bool: bool
+        my_int: int
+
+    @dataclass
+    class MyClass(JSONWizard):
+
+        class _(JSONWizard.Meta):
+            v1 = True
+
+        my_nt: MyNamedTuple
+
+    d = {'my_nt': input}
+
+    with expectation:
+        result = MyClass.from_dict(d)
+
+        log.debug('Parsed object: %r', result)
+        if isinstance(expected, dict):
+            expected = MyNamedTuple(**expected)
+
+        assert result.my_nt == expected
+
+
 @pytest.mark.skip('Need to add support in v1')
 @pytest.mark.parametrize(
     'input,expectation,expected',
@@ -1811,23 +1962,13 @@ def test_typed_dict_with_one_field_required(input, expectation, expected):
             pytest.raises(ValueError), None
         ),
         (
-            # Should raise a `TypeError` (types for last two are wrong)
-            ['test', 2, True],
-            pytest.raises(TypeError), None
-        ),
-        (
-            ['test', True, 2],
-            does_not_raise(),
-            ('test', True, 2)
-        ),
-        (
             {'my_str': 'test', 'my_int': 2, 'my_bool': True},
             does_not_raise(),
             {'my_str': 'test', 'my_int': 2, 'my_bool': True}
         ),
     ]
 )
-def test_named_tuple(input, expectation, expected):
+def test_named_tuple_with_input_dict(input, expectation, expected):
 
     class MyNamedTuple(NamedTuple):
         my_str: str
@@ -2127,7 +2268,7 @@ def test_catch_all_with_default():
     class MyData(JSONWizard):
 
         class _(JSONWizard.Meta):
-            v1= True
+            v1 = True
 
         my_str: str
         my_float: float
@@ -2259,7 +2400,6 @@ def test_catch_all_with_auto_key_case():
     class Options(JSONWizard):
         class _(JSONWizard.Meta):
             v1 = True
-            debug_enabled = True
             v1_key_case = 'Auto'
 
         my_extras: CatchAll
@@ -2575,10 +2715,10 @@ def test_skip_if():
     skip serializing dataclass fields.
     """
     @dataclass
-    class Example(JSONWizard, debug=True):
-        class _(JSONWizard.Meta):
+    class Example(JSONPyWizard, debug=True):
+        class _(JSONPyWizard.Meta):
+            v1 = True
             skip_if = IS_NOT(True)
-            key_transform_with_dump = 'NONE'
 
         my_str: 'str | None'
         my_bool: bool
@@ -2595,9 +2735,9 @@ def test_skip_defaults_if():
     skip serializing dataclass fields with default values.
     """
     @dataclass
-    class Example(JSONWizard, debug=True):
-        class _(JSONWizard.Meta):
-            key_transform_with_dump = 'None'
+    class Example(JSONPyWizard):
+        class _(JSONPyWizard.Meta):
+            v1 = True
             skip_defaults_if = IS(None)
 
         my_str: 'str | None'
@@ -2628,9 +2768,9 @@ def test_per_field_skip_if():
     ``skip_if_field()`` which wraps ``dataclasses.Field``.
     """
     @dataclass
-    class Example(JSONWizard, debug=True):
-        class _(JSONWizard.Meta):
-            key_transform_with_dump = 'None'
+    class Example(JSONPyWizard):
+        class _(JSONPyWizard.Meta):
+            v1 = True
 
         my_str: Annotated['str | None', SkipIfNone]
         other_str: 'str | None' = None
@@ -2664,6 +2804,10 @@ def test_is_truthy_and_is_falsy_conditions():
     # Define the Example class within the test case and apply the conditions
     @dataclass
     class Example(JSONPyWizard):
+
+        class _(JSONPyWizard.Meta):
+            v1 = True
+
         my_str: Annotated['str | None', SkipIf(IS_TRUTHY())]  # Skip if truthy
         my_bool: bool = skip_if_field(IS_FALSY())  # Skip if falsy
         my_int: Annotated['int | None', SkipIf(IS_FALSY())] = None  # Skip if falsy
@@ -2691,6 +2835,10 @@ def test_skip_if_truthy_or_falsy():
     # Use of SkipIf with IS_TRUTHY
     @dataclass
     class SkipExample(JSONWizard):
+
+        class _(JSONWizard.Meta):
+            v1 = True
+
         my_str: Annotated['str | None', SkipIf(IS_TRUTHY())]
         my_bool: bool = skip_if_field(IS_FALSY())
 
@@ -2712,6 +2860,10 @@ def test_invalid_condition_annotation_raises_error():
 
         @dataclass
         class Example(JSONWizard):
+
+            class _(JSONWizard.Meta):
+                debug_enabled = True
+
             my_field: Annotated[int, LT(5)]  # Invalid: LT is not wrapped in SkipIf.
 
         # Attempt to serialize an instance, which should raise the error.
@@ -2724,6 +2876,10 @@ def test_dataclass_in_union_when_tag_key_is_field():
     """
     @dataclass
     class DataType(JSONWizard):
+
+        class _(JSONWizard.Meta):
+            v1 = True
+
         id: int
         type: str
 

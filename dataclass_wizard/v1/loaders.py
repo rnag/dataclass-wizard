@@ -1032,7 +1032,8 @@ def load_func_for_dataclass(
                     var = f'__{name}'
 
                     if (check_aliases
-                            and (key := field_to_alias.get(name)) is not None):
+                            and (key := field_to_alias.get(name)) is not None
+                            and name != key):
                         f_assign = f'field={name!r}; key={key!r}; {val}=o.get(key, MISSING)'
                     elif key_case is None:
                         field_to_alias[name] = name
@@ -1145,10 +1146,16 @@ def load_func_for_dataclass(
         if ((from_dict := getattr(cls, 'from_dict', None)) is not None
                 and getattr(from_dict, '__func__', None) is fromdict):
 
-            LOG.debug("setattr(cls, 'from_dict', %s)", fn_name)
+            LOG.debug("setattr(%s, 'from_dict', %s)", cls_name, fn_name)
             _set_new_attribute(cls, 'from_dict', cls_fromdict)
 
-        # TODO maybe set class attribute?
+        _set_new_attribute(
+            cls, '__dataclass_wizard_from_dict__', cls_fromdict)
+        LOG.debug(
+            "setattr(%s, '__dataclass_wizard_from_dict__', %s)",
+            cls_name, fn_name)
+
+        # TODO in `v1`, we will use class attribute (set above) instead.
         CLASS_TO_LOAD_FUNC[cls] = cls_fromdict
 
         return cls_fromdict
