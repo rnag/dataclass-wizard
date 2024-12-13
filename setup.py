@@ -34,6 +34,12 @@ if (requires_test_file := here / 'requirements-test.txt').exists():
 else:   # Running on CI
     test_requirements = []
 
+if (requires_bench_file := here / 'requirements-bench.txt').exists():
+    with requires_bench_file.open() as requires_bench_txt:
+        bench_requirements = [str(req) for req in parse_requirements(requires_bench_txt)]
+else:   # Running on CI
+    bench_requirements = []
+
 # extras_require = {
 #     'dotenv': ['python-dotenv>=0.19.0'],
 # }
@@ -107,7 +113,7 @@ setup(
             'tomli-w>=1,<2'
         ],
         'yaml': ['PyYAML>=6,<7'],
-        'dev': dev_requires + doc_requires + test_requirements,
+        'dev': dev_requires + doc_requires + test_requirements + bench_requirements,
     },
     zip_safe=False
 )

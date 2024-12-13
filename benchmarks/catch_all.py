@@ -1,16 +1,11 @@
 import logging
 from dataclasses import dataclass
-from timeit import timeit
 from typing import Any
 
 import pytest
 
-from dataclasses_json import (dataclass_json,
-                              Undefined,
-                              CatchAll as CatchAllDJ)
-
-from dataclass_wizard import (JSONWizard,
-                              CatchAll as CatchAllWizard)
+from dataclasses_json import (dataclass_json, Undefined, CatchAll as CatchAllDJ)
+from dataclass_wizard import (JSONWizard, CatchAll as CatchAllWizard)
 
 
 log = logging.getLogger(__name__)
@@ -37,6 +32,7 @@ class DontCareAPIDumpWizard(DontCareAPIDump, JSONWizard):
     unknown_things: CatchAllWizard
 
 
+# Fixtures for test data
 @pytest.fixture(scope='session')
 def data():
     return {"endpoint": "some_api_endpoint",
@@ -50,46 +46,42 @@ def data_no_extras():
             "data": {"foo": 1, "bar": "2"}}
 
 
-def test_load(data, n):
-    """
-    [ RESULTS ON MAC OS X ]
-
-    benchmarks.catch_all.catch_all - [INFO] dataclass-wizard     0.060889
-    benchmarks.catch_all.catch_all - [INFO] dataclasses-json     11.469157
-
-    """
-    g = globals().copy()
-    g.update(locals())
-
-    log.info('dataclass-wizard     %f',
-             timeit('DontCareAPIDumpWizard.from_dict(data)', globals=g, number=n))
-    log.info('dataclasses-json     %f',
-             timeit('DontCareAPIDumpDJ.from_dict(data)', globals=g, number=n))
-
-    dump1 = DontCareAPIDumpDJ.from_dict(data)  # DontCareAPIDump(endpoint='some_api_endpoint', data={'foo': 1, 'bar': '2'})
-    dump2 = DontCareAPIDumpWizard.from_dict(data)  # DontCareAPIDump(endpoint='some_api_endpoint', data={'foo': 1, 'bar': '2'})
-
-    assert dump1.endpoint == dump2.endpoint
-    assert dump1.data == dump2.data
-    assert dump1.unknown_things == dump2.unknown_things
+# Benchmark for deserialization (from_dict)
+@pytest.mark.benchmark(group="deserialization")
+def test_deserialize_wizard(benchmark, data):
+    benchmark(lambda: DontCareAPIDumpWizard.from_dict(data))
 
 
-def test_load_with_no_extra_data(data_no_extras, n):
-    """
-    [ RESULTS ON MAC OS X ]
+@pytest.mark.benchmark(group="deserialization")
+def test_deserialize_json(benchmark, data):
+    benchmark(lambda: DontCareAPIDumpDJ.from_dict(data))
 
-    benchmarks.catch_all.catch_all - [INFO] dataclass-wizard     0.045790
-    benchmarks.catch_all.catch_all - [INFO] dataclasses-json     11.031206
 
-    """
-    g = globals().copy()
-    g.update(locals())
+# Benchmark for deserialization with no extra data
+@pytest.mark.benchmark(group="deserialization_no_extra_data")
+def test_deserialize_wizard_no_extras(benchmark, data_no_extras):
+    benchmark(lambda: DontCareAPIDumpWizard.from_dict(data_no_extras))
 
-    log.info('dataclass-wizard     %f',
-             timeit('DontCareAPIDumpWizard.from_dict(data_no_extras)', globals=g, number=n))
-    log.info('dataclasses-json     %f',
-             timeit('DontCareAPIDumpDJ.from_dict(data_no_extras)', globals=g, number=n))
 
+@pytest.mark.benchmark(group="deserialization_no_extra_data")
+def test_deserialize_json_no_extras(benchmark, data_no_extras):
+    benchmark(lambda: DontCareAPIDumpDJ.from_dict(data_no_extras))
+
+
+# Benchmark for serialization (to_dict)
+@pytest.mark.benchmark(group="serialization")
+def test_serialize_wizard(benchmark, data):
+    dump1 = DontCareAPIDumpWizard.from_dict(data)
+    benchmark(lambda: dump1.to_dict())
+
+
+@pytest.mark.benchmark(group="serialization")
+def test_serialize_json(benchmark, data):
+    dump2 = DontCareAPIDumpDJ.from_dict(data)
+    benchmark(lambda: dump2.to_dict())
+
+
+def test_validate(data, data_no_extras):
     dump1 = DontCareAPIDumpDJ.from_dict(data_no_extras)  # DontCareAPIDump(endpoint='some_api_endpoint', data={'foo': 1, 'bar': '2'})
     dump2 = DontCareAPIDumpWizard.from_dict(data_no_extras)  # DontCareAPIDump(endpoint='some_api_endpoint', data={'foo': 1, 'bar': '2'})
 
@@ -97,25 +89,16 @@ def test_load_with_no_extra_data(data_no_extras, n):
     assert dump1.data == dump2.data
     assert dump1.unknown_things == dump2.unknown_things == {}
 
+    expected = {'endpoint': 'some_api_endpoint', 'data': {'foo': 1, 'bar': '2'}}
 
-def test_dump(data):
-    """
-    [ RESULTS ON MAC OS X ]
+    assert dump1.to_dict() == dump2.to_dict() == expected
 
-    benchmarks.catch_all.catch_all - [INFO] dataclass-wizard     0.317555
-    benchmarks.catch_all.catch_all - [INFO] dataclasses-json     3.970232
+    dump1 = DontCareAPIDumpDJ.from_dict(data)  # DontCareAPIDump(endpoint='some_api_endpoint', data={'foo': 1, 'bar': '2'})
+    dump2 = DontCareAPIDumpWizard.from_dict(data)  # DontCareAPIDump(endpoint='some_api_endpoint', data={'foo': 1, 'bar': '2'})
 
-    """
-    dump1 = DontCareAPIDumpWizard.from_dict(data)
-    dump2 = DontCareAPIDumpDJ.from_dict(data)
-
-    g = globals().copy()
-    g.update(locals())
-
-    log.info('dataclass-wizard     %f',
-             timeit('dump1.to_dict()', globals=g, number=n))
-    log.info('dataclasses-json     %f',
-             timeit('dump2.to_dict()', globals=g, number=n))
+    assert dump1.endpoint == dump2.endpoint
+    assert dump1.data == dump2.data
+    assert dump1.unknown_things == dump2.unknown_things
 
     expected = {'endpoint': 'some_api_endpoint', 'data': {'foo': 1, 'bar': '2'}, 'undefined_field_name': [1, 2, 3]}
 
