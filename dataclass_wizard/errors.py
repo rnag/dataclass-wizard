@@ -2,7 +2,6 @@ from abc import ABC, abstractmethod
 from dataclasses import Field, MISSING
 from typing import (Any, Type, Dict, Tuple, ClassVar,
                     Optional, Union, Iterable, Callable, Collection, Sequence)
-from warnings import deprecated
 
 from .utils.string_conv import normalize
 
@@ -71,6 +70,7 @@ class JSONWizardError(ABC, Exception):
 
     @parent_cls.setter
     def parent_cls(self, cls: Optional[type]):
+        # noinspection PyAttributeOutsideInit
         self._parent_cls = cls
 
     @staticmethod
@@ -343,8 +343,11 @@ class UnknownKeysError(JSONWizardError):
         self.class_name: str = self.name(cls)
 
     @property
-    @deprecated('use `unknown_keys` instead')
     def json_key(self):
+        show_deprecation_warning(
+            UnknownKeysError.json_key,
+            'use `unknown_keys` instead',
+        )
         return self.unknown_keys
 
     @property
