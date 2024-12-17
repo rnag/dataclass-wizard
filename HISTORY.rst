@@ -2,6 +2,15 @@
 History
 =======
 
+0.33.0 (2024-12-17)
+-------------------
+
+* Introduce ``v1`` opt-in, which is more user-friendly
+  and boasts performance improvements for de-serialization 🎉
+* Require ``typing-extensions`` library up till Python 3.11 now
+  (it's main use for Python 3.11 is ``ReadOnly`` for ``TypedDict``)
+* Add test cases
+
 0.32.0 (2024-11-30)
 -------------------
 

@@ -345,7 +345,7 @@ class UnknownKeysError(JSONWizardError):
     @property
     def json_key(self):
         show_deprecation_warning(
-            UnknownKeysError.json_key,
+            UnknownKeysError.json_key.fget,
             'use `unknown_keys` instead',
         )
         return self.unknown_keys
