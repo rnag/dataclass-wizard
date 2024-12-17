@@ -13,7 +13,7 @@ package_name = 'dataclass_wizard'
 packages = find_packages(include=[package_name, f'{package_name}.*'])
 
 requires = [
-    'typing-extensions>=4.9.0; python_version == "3.9" or python_version == "3.10"',
+    'typing-extensions>=4.9.0; python_version == "3.9" or python_version == "3.10" or python_version == "3.11"',
 ]
 
 if (requires_dev_file := here / 'requirements-dev.txt').exists():
