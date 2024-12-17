@@ -125,6 +125,11 @@ html_static_path = ['_static']
 
 html_css_files = [
     'custom.css',
+    'dark_mode.css',
+]
+
+html_js_files = [
+    'dark_mode_toggle.js',
 ]
 
 # Custom sidebar templates, maps document names to template names.

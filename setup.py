@@ -83,10 +83,11 @@ setup(
         'Bug Tracker': 'https://github.com/rnag/dataclass-wizard/issues',
     },
     license=about['__license__'],
-    keywords=['dataclasses', 'dataclass', 'wizard', 'json', 'marshal',
-              'json to dataclass', 'json2dataclass', 'dict to dataclass',
-              'property', 'field-property',
-              'serialization', 'deserialization'],
+    keywords=[
+        'dataclasses', 'wizard', 'json', 'serialization', 'deserialization',
+        'dataclass serialization', 'type hints', 'performance', 'alias',
+        'python', 'env', 'dotenv', 'lightweight'
+    ],
     classifiers=[
         # Ref: https://pypi.org/classifiers/
         'Development Status :: 5 - Production/Stable',
