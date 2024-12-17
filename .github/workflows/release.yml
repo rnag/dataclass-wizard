@@ -44,6 +44,12 @@ jobs:
           python -m pip install --upgrade pip
           pip install tox-gh-actions wheel
 
+      - name: Replace version in README
+        run: |
+          VERSION=$(grep -oP "__version__\s*=\s*'\K[^']+" dataclass_wizard/__version__.py)
+          echo "Extracted version: $VERSION"
+          sed -i "s/|version|/$VERSION/g" README.rst
+
       - name: Build wheels and source tarball
         run: >-
           make dist

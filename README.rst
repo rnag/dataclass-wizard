@@ -184,7 +184,7 @@ In addition to ``JSONWizard``, these `Mixin`_ classes simplify common tasks and 
 - 🧙‍♂️ `YAMLWizard`_ — Convert between YAML and dataclass instances using ``PyYAML``.
 
 Supported Types 🧑‍💻
---------------------
+---------------------
 
 *Dataclass Wizard* supports:
 
