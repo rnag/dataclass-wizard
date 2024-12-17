@@ -1,0 +1,44 @@
+/* General dark mode body */
+body.dark-mode {
+    background-color: #1e1e1e;
+    color: #cfcfcf;
+}
+
+/* Main page content */
+body.dark-mode .body {
+    background-color: #1e1e1e;
+    color: #cfcfcf;
+}
+
+/* Fix for the main content on index */
+body.dark-mode .content {
+    background-color: #1e1e1e;
+    color: #cfcfcf;
+}
+
+/* Sidebar elements */
+body.dark-mode .wy-nav-side,
+body.dark-mode .wy-side-nav-search {
+    background-color: #22272e;
+    color: #cfcfcf;
+}
+
+/* Headings */
+body.dark-mode h1,
+body.dark-mode h2,
+body.dark-mode h3,
+body.dark-mode h4 {
+    color: #ffffff;
+}
+
+/* Links */
+body.dark-mode a {
+    color: #79b8ff;
+}
+
+/* Code blocks */
+body.dark-mode pre,
+body.dark-mode code {
+    background-color: #2d333b;
+    color: #f0f0f0;
+}

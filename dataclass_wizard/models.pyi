@@ -1,13 +1,14 @@
-from typing import TypedDict, overload, Any
 import json
 from dataclasses import MISSING, Field
 from datetime import date, datetime, time
 from typing import (Collection, Callable,
                     Generic, Mapping)
+from typing import TypedDict, overload, Any, NotRequired
 
 from .bases import META
 from .decorators import cached_property
 from .type_def import T, DT, Encoder, FileEncoder
+from .utils.function_builder import FunctionBuilder
 from .utils.object_path import PathPart, PathType
 
 
@@ -22,8 +23,12 @@ class Extras(TypedDict):
     """
     "Extra" config that can be used in the load / dump process.
     """
-    config: META
-    pattern: PatternedDT
+    config: NotRequired[META]
+    cls: type
+    cls_name: str
+    fn_gen: FunctionBuilder
+    locals: dict[str, Any]
+    pattern: NotRequired[PatternedDT]
 
 
 def json_key(*keys: str, all=False, dump=True):

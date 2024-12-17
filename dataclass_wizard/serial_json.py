@@ -1,15 +1,18 @@
 import json
 import logging
+from dataclasses import is_dataclass, dataclass
 
 from .abstractions import AbstractJSONWizard
 from .bases_meta import BaseJSONWizardMeta, LoadMeta, DumpMeta
 from .class_helper import call_meta_initializer_if_needed
 from .dumpers import asdict
-from .loaders import fromdict, fromlist
+from .loader_selection import fromdict, fromlist
 # noinspection PyProtectedMember
 from .utils.dataclass_compat import _create_fn, _set_new_attribute
+from .type_def import dataclass_transform
 
 
+@dataclass_transform()
 class JSONSerializable(AbstractJSONWizard):
 
     __slots__ = ()
@@ -55,9 +58,25 @@ class JSONSerializable(AbstractJSONWizard):
         return encoder(list_of_dict, **encoder_kwargs)
 
     # noinspection PyShadowingBuiltins
-    def __init_subclass__(cls, str=True, debug=False):
+    def __init_subclass__(cls, str=True, debug=False,
+                          key_case=None,
+                          _key_transform=None):
 
         super().__init_subclass__()
+
+        load_meta_kwargs = {}
+
+        # if not is_dataclass(cls) and not cls.__module__.startswith('dataclass_wizard.'):
+        #     # Apply the `@dataclass` decorator to the class
+        #     # noinspection PyMethodFirstArgAssignment
+        #     cls = dataclass(cls)
+
+        if key_case is not None:
+            load_meta_kwargs['v1'] = True
+            load_meta_kwargs['v1_key_case'] = key_case
+
+        if _key_transform is not None:
+            DumpMeta(key_transform=_key_transform).bind_to(cls)
 
         if debug:
             default_lvl = logging.DEBUG
@@ -65,21 +84,32 @@ class JSONSerializable(AbstractJSONWizard):
             # minimum logging level for logs by this library
             min_level = default_lvl if isinstance(debug, bool) else debug
             # set `debug_enabled` flag for the class's Meta
-            LoadMeta(debug_enabled=min_level).bind_to(cls)
+            load_meta_kwargs['debug_enabled'] = min_level
 
         # Calls the Meta initializer when inner :class:`Meta` is sub-classed.
         call_meta_initializer_if_needed(cls)
+
+        if load_meta_kwargs:
+            LoadMeta(**load_meta_kwargs).bind_to(cls)
 
         # Add a `__str__` method to the subclass, if needed
         if str:
             _set_new_attribute(cls, '__str__', _str_fn())
 
+        return cls
 
 def _str_fn():
 
     return _create_fn('__str__',
                       ('self', ),
                       ['return self.to_json(indent=2)'])
+
+
+def _str_pprint_fn():
+    from pprint import pformat
+    def __str__(self):
+        return pformat(self, width=70)
+    return __str__
 
 
 # A handy alias in case it comes in useful to anyone :)
@@ -89,9 +119,15 @@ JSONWizard = JSONSerializable
 class JSONPyWizard(JSONWizard):
     """Helper for JSONWizard that ensures dumping to JSON keeps keys as-is."""
 
-    def __init_subclass__(cls, str=True, debug=False):
+    def __init_subclass__(cls, str=True, debug=False,
+                          key_case=None,
+                          _key_transform=None):
         """Bind child class to DumpMeta with no key transformation."""
-        # set `key_transform_with_dump` for the class's Meta
-        DumpMeta(key_transform='NONE').bind_to(cls)
+
         # Call JSONSerializable.__init_subclass__()
-        super().__init_subclass__(str, debug)
+        # set `key_transform_with_dump` for the class's Meta
+        cls = super().__init_subclass__(False, debug, key_case, 'NONE')
+        # Add a `__str__` method to the subclass, if needed
+        if str:
+            _set_new_attribute(cls, '__str__', _str_pprint_fn())
+        return cls

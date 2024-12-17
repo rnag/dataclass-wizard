@@ -2,37 +2,30 @@
 Dataclass Wizard
 ================
 
-Full documentation is available at `Read The Docs`_. (`Installation`_)
-
-.. image:: https://img.shields.io/pypi/v/dataclass-wizard.svg
-        :target: https://pypi.org/project/dataclass-wizard
-
-.. image:: https://img.shields.io/conda/vn/conda-forge/dataclass-wizard.svg
-        :target: https://anaconda.org/conda-forge/dataclass-wizard
-
-.. image:: https://img.shields.io/pypi/pyversions/dataclass-wizard.svg
-        :target: https://pypi.org/project/dataclass-wizard
+Release v\ |version| | 📚 Full docs on `Read the Docs`_ (`Installation`_).
 
 .. image:: https://github.com/rnag/dataclass-wizard/actions/workflows/dev.yml/badge.svg
-        :target: https://github.com/rnag/dataclass-wizard/actions/workflows/dev.yml
+    :target: https://github.com/rnag/dataclass-wizard/actions/workflows/dev.yml
+    :alt: CI Status
 
-.. image:: https://readthedocs.org/projects/dataclass-wizard/badge/?version=latest
-        :target: https://dataclass-wizard.readthedocs.io/en/latest/?version=latest
-        :alt: Documentation Status
+.. image:: https://img.shields.io/pypi/pyversions/dataclass-wizard.svg
+    :target: https://pypi.org/project/dataclass-wizard
+    :alt: Supported Python Versions
 
+.. image:: https://img.shields.io/pypi/l/dataclass-wizard.svg
+    :target: https://pypi.org/project/dataclass-wizard/
+    :alt: License
 
-.. image:: https://pyup.io/repos/github/rnag/dataclass-wizard/shield.svg
-     :target: https://pyup.io/repos/github/rnag/dataclass-wizard/
-     :alt: Updates
+.. image:: https://static.pepy.tech/badge/dataclass-wizard/month
+    :target: https://pepy.tech/project/dataclass-wizard
+    :alt: Monthly Downloads
 
+**Dataclass Wizard** 🪄
+Simple, elegant *wizarding* tools for Python’s ``dataclasses``.
 
-
-**Dataclass Wizard** offers simple, elegant, *wizarding* 🪄 tools for
-interacting with Python's ``dataclasses``.
-
-    It excels at ⚡️ lightning-fast de/serialization, effortlessly
-    converting dataclass instances to/from JSON -- perfect for
-    *nested dataclass* models!
+Lightning-fast ⚡, pure Python, and lightweight — effortlessly
+convert dataclass instances to/from JSON, perfect
+for complex and *nested dataclass* models!
 
 -------------------
 
@@ -71,63 +64,135 @@ interacting with Python's ``dataclasses``.
    :local:
    :backlinks: none
 
+``v1`` Opt-In 🚀
+----------------
+
+Early access to **V1** is available! To opt in, simply enable ``v1=True`` in the ``Meta`` settings:
+
+.. code-block:: python3
+
+    from dataclasses import dataclass
+    from dataclass_wizard import JSONPyWizard
+    from dataclass_wizard.v1 import Alias
+
+    @dataclass
+    class A(JSONPyWizard):
+        class _(JSONPyWizard.Meta):
+            v1 = True
+
+        my_str: str
+        version_info: float = Alias(load='v-info')
+
+    # Alternatively, for simple dataclasses that don't subclass `JSONPyWizard`:
+    # LoadMeta(v1=True).bind_to(A)
+
+    a = A.from_dict({'my_str': 'test', 'v-info': '1.0'})
+    assert a.version_info == 1.0
+    assert a.to_dict() == {'my_str': 'test', 'version_info': 1.0}
+
+For more information, see the `Field Guide to V1 Opt-in`_.
+
+.. _`Field Guide to V1 Opt-in`: https://github.com/rnag/dataclass-wizard/wiki/Field-Guide-to-V1-Opt%E2%80%90in
+
+Performance Improvements
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+The upcoming **V1** release brings significant performance improvements in de/serialization. Personal benchmarks show that **V1** can make Dataclass Wizard
+approximately **2x faster** than ``pydantic``!
+
+While some features are still being refined and fully supported, **v1** positions Dataclass Wizard alongside other high-performance serialization libraries in Python.
+
+Why Use Dataclass Wizard?
+-------------------------
+
+Effortlessly handle complex data with one of the *fastest* and *lightweight* libraries available! Perfect for APIs, JSON wrangling, and more.
+
+- 🚀 **Blazing Fast** — One of the fastest libraries out there!
+- 🪶 **Lightweight** — Pure Python, minimal dependencies
+- 👶 Easy Setup — Intuitive, hassle-free
+- ☝️ **Battle-Tested** — Proven reliability with solid test coverage
+- ⚙️ Highly Customizable — Endless de/serialization options to fit your needs
+- 🎉 Built-in Support — JSON, YAML, TOML, and environment/settings management
+- 📦 **Full Python Type Support** — Powered by type hints with full support for native types and ``typing-extensions``
+- 📝 Auto-Generate Schemas — JSON to Dataclass made easy
+
+Key Features
+------------
+
+- 🔄 Flexible (de)serialization — Marshal dataclasses to/from JSON, TOML, YAML, or ``dict`` with ease.
+- 🌿 Environment Magic — Map env vars and ``.env`` files to strongly-typed class fields effortlessly.
+- 🧑‍💻 Field Properties Made Simple — Add properties with default values to your dataclasses.
+- 🧙‍♂️ JSON-to-Dataclass Wizardry — Auto-generate a dataclass schema from any JSON file or string instantly.
 
 Installation
 ------------
 
-Dataclass Wizard is available on `PyPI`_. Install with ``pip``:
+*Dataclass Wizard* is available on `PyPI`_. You can install it with ``pip``:
 
 .. code-block:: console
 
     $ pip install dataclass-wizard
 
-Also available on `conda`_ via `conda-forge`_. Install with ``conda``:
+Also available on `conda`_ via `conda-forge`_. To install via ``conda``:
 
 .. code-block:: console
 
     $ conda install dataclass-wizard -c conda-forge
 
-This library supports **Python 3.9** or higher.
+This library supports **Python 3.9+**. Support for Python 3.6 – 3.8 was
+available in earlier releases but is no longer maintained, as those
+versions no longer receive security updates.
 
+For convenience, the table below outlines the last compatible version
+of *Dataclass Wizard* for unsupported Python versions (3.6 – 3.8):
+
+.. list-table::
+   :header-rows: 1
+   :widths: 15 35 15
+
+   * - Python Version
+     - Last Version of ``dataclass-wizard``
+     - Python EOL
+   * - 3.6
+     - 0.26.1_
+     - 2021-12-23
+   * - 3.7
+     - 0.26.1_
+     - 2023-06-27
+   * - 3.8
+     - 0.26.1_
+     - 2024-10-07
+
+.. _0.26.1: https://pypi.org/project/dataclass-wizard/0.26.1/
 .. _PyPI: https://pypi.org/project/dataclass-wizard/
 .. _conda: https://anaconda.org/conda-forge/dataclass-wizard
 .. _conda-forge: https://conda-forge.org/
+.. _Changelog: https://dataclass-wizard.readthedocs.io/en/latest/history.html
 
-Features
---------
+See the package on `PyPI`_ and the `Changelog`_ in the docs for the latest version details.
 
-Unlock the full potential of your `dataclasses`_ with these key features:
+Wizard Mixins ✨
+----------------
 
-- *Flexible (de)serialization*: Marshal dataclasses to/from JSON, TOML, YAML, or ``dict`` with ease.
-- *Environment magic*: Map env vars and ``dotenv`` files to strongly-typed class fields effortlessly.
-- *Field properties made simple*: Add properties with default values to your dataclasses.
-- *JSON-to-Dataclass wizardry*: Auto-generate a dataclass schema from any JSON file or string instantly.
+In addition to ``JSONWizard``, these `Mixin`_ classes simplify common tasks and make your data handling *spellbindingly* efficient:
 
-Wizard Mixins
--------------
+- 🪄 `EnvWizard`_ — Load environment variables and `.env` files into typed schemas, even supporting secret files (keys as file names).
+- 🎩 `JSONPyWizard`_ — A helper for ``JSONWizard`` that preserves your keys as-is (no camelCase changes).
+- 🔮 `JSONListWizard`_ — Extend ``JSONWizard`` to convert lists into `Container`_ objects.
+- 💼 `JSONFileWizard`_ — Convert dataclass instances to/from local JSON files with ease.
+- 🌳 `TOMLWizard`_ — Map your dataclasses to/from TOML format.
+- 🧙‍♂️ `YAMLWizard`_ — Convert between YAML and dataclass instances using ``PyYAML``.
 
-In addition to ``JSONWizard``, these handy Mixin_ classes simplify your workflow:
+Supported Types 🧑‍💻
+--------------------
 
-* `EnvWizard`_ — Seamlessly load env variables and ``.env`` files into typed schemas. Supports secret files (file names as keys).
-* `JSONPyWizard`_ — A ``JSONWizard`` helper to skip *camelCase* and preserve keys as-is.
-* `JSONListWizard`_ — Extends ``JSONWizard`` to return `Container`_ objects instead of *lists* when possible.
-* `JSONFileWizard`_ — Effortlessly convert dataclass instances from/to JSON files on your local drive.
-* `TOMLWizard`_ — Easily map dataclass instances to/from TOML format.
-* `YAMLWizard`_ — Instantly convert dataclass instances to/from YAML, using the default ``PyYAML`` parser.
+*Dataclass Wizard* supports:
 
-Supported Types
----------------
+- 📋 **Collections**: Handle ``list``, ``dict``, and ``set`` effortlessly.
+- 🔢 **Typing Generics**: Manage ``Union``, ``Any``, and other types from the `typing`_ module.
+- 🌟 **Advanced Types**: Work with ``Enum``, ``defaultdict``, and ``datetime`` with ease.
 
-The Dataclass Wizard library natively supports standard Python
-collections like ``list``, ``dict``, and ``set``, along with
-popular `typing`_ module Generics such as ``Union`` and ``Any``.
-Additionally, it handles commonly used types like ``Enum``,
-``defaultdict``, and date/time objects (e.g., ``datetime``)
-with ease.
-
-For a detailed list of supported types and insights into the
-load/dump process for special types, visit the
-`Supported Types`_ section of the docs.
+For more info, check out the `Supported Types`_ section in the docs for detailed insights into each type and the load/dump process!
 
 Usage and Examples
 ------------------
@@ -828,18 +893,15 @@ Dataclasses in ``Union`` Types
 ------------------------------
 
 The ``dataclass-wizard`` library fully supports declaring dataclass models in
-`Union`_ types as field annotations, such as ``list[Wizard | Archer | Barbarian]``.
+`Union`_ types, such as ``list[Wizard | Archer | Barbarian]``.
 
-As of *v0.19.0*, there is added support to  *auto-generate* tags for a dataclass model
--- based on the class name -- as well as to specify a custom *tag key* that will be
-present in the JSON object, which defaults to a special ``__tag__`` key otherwise.
-These two options are controlled by the ``auto_assign_tags`` and ``tag_key``
-attributes (respectively) in the ``Meta`` config.
+Starting from *v0.19.0*, the library introduces two key features:
+- **Auto-generated tags** for dataclass models (based on class names).
+- A customizable **tag key** (default: ``__tag__``) that identifies the model in JSON.
 
-To illustrate a specific example, a JSON object such as
-``{"oneOf": {"type": "A", ...}, ...}`` will now automatically map to a dataclass
-instance ``A``, provided that the ``tag_key`` is correctly set to "type", and
-the field ``one_of`` is annotated as a Union type in the ``A | B`` syntax.
+These options are controlled by the ``auto_assign_tags`` and ``tag_key`` attributes in the ``Meta`` config.
+
+For example, if a JSON object looks like ``{"type": "A", ...}``, you can set ``tag_key = "type"`` to automatically deserialize it into the appropriate class, like `A`.
 
 Let's start out with an example, which aims to demonstrate the simplest usage of
 dataclasses in ``Union`` types. For more info, check out the
@@ -850,7 +912,6 @@ dataclasses in ``Union`` types. For more info, check out the
     from __future__ import annotations
 
     from dataclasses import dataclass
-
     from dataclass_wizard import JSONWizard
 
 
@@ -890,26 +951,70 @@ dataclasses in ``Union`` types. For more info, check out the
         ]
     }
 
-
     c = Container.from_dict(data)
-    print(f'{c!r}')
+    print(repr(c))
 
-    # True
-    assert c == Container(objects=[A(my_int=42, my_bool=False),
-                                   C(my_str='hello world'),
-                                   B(my_int=123, my_bool=True),
-                                   A(my_int=321, my_bool=True)])
-
+    # Output:
+    # Container(objects=[A(my_int=42, my_bool=False),
+    #                    C(my_str='hello world'),
+    #                    B(my_int=123, my_bool=True),
+    #                    A(my_int=321, my_bool=True)])
 
     print(c.to_dict())
-    # prints the following on a single line:
-    # {'objects': [{'myInt': 42, 'myBool': False, 'type': 'A'},
-    #              {'myStr': 'hello world', 'type': 'C'},
-    #              {'myInt': 123, 'myBool': True, 'type': 'B'},
-    #              {'myInt': 321, 'myBool': True, 'type': 'A'}]}
 
     # True
     assert c == c.from_json(c.to_json())
+
+Supercharged ``Union`` Parsing
+------------------------------
+
+**What about untagged dataclasses in** ``Union`` **types or** ``|`` **syntax?** With the major release **V1** opt-in, ``dataclass-wizard`` supercharges *Union* parsing, making it intuitive and flexible, even without tags.
+
+This is especially useful for collections like ``list[Wizard]`` or when tags (discriminators) are not feasible.
+
+To enable this feature, opt in to **v1** using the ``Meta`` settings. For details, see the `Field Guide to V1 Opt-in`_.
+
+.. code-block:: python3
+
+    from __future__ import annotations  # Remove in Python 3.10+
+
+    from dataclasses import dataclass
+    from typing import Literal
+
+    from dataclass_wizard import JSONWizard
+
+    @dataclass
+    class MyClass(JSONWizard):
+
+        class _(JSONWizard.Meta):
+            v1 = True  # Enable v1 opt-in
+            v1_unsafe_parse_dataclass_in_union = True
+
+        literal_or_float: Literal['Auto'] | float
+        entry: int | MoreDetails
+        collection: list[MoreDetails | int]
+
+    @dataclass
+    class MoreDetails:
+        arg: str
+
+    # OK: Union types work seamlessly
+    c = MyClass.from_dict({
+        "literal_or_float": 1.23,
+        "entry": 123,
+        "collection": [{"arg": "test"}]
+    })
+    print(repr(c))
+    #> MyClass(literal_or_float=1.23, entry=123, collection=[MoreDetails(arg='test')])
+
+    # OK: Handles primitive and dataclass parsing
+    c = MyClass.from_dict({
+        "literal_or_float": "Auto",
+        "entry": {"arg": "example"},
+        "collection": [123]
+    })
+    print(repr(c))
+    #> MyClass(literal_or_float='Auto', entry=MoreDetails(arg='example'), collection=[123])
 
 Conditional Field Skipping
 --------------------------
@@ -1236,6 +1341,13 @@ refer to the `Using Field Properties`_ section in the documentation.
 What's New in v1.0
 ------------------
 
+.. admonition:: v1 Opt-in Now Available
+
+   Early opt-in for **v1** is now available with enhanced features, including intuitive ``Union`` parsing and optimized performance. To enable this,
+   set ``v1=True`` in your ``Meta`` settings.
+
+   For more details and migration guidance, see the `Field Guide to V1 Opt-in`_.
+
 .. warning::
 
    - **Default Key Transformation Update**
@@ -1243,9 +1355,9 @@ What's New in v1.0
      Starting with ``v1.0.0``, the default key transformation for JSON serialization
      will change to keep keys *as-is* instead of converting them to `camelCase`.
 
-     *New Default Behavior*: ``key_transform='NONE'`` will be the standard setting.
+     **New Default Behavior**: ``key_transform='NONE'`` will be the standard setting.
 
-     *How to Prepare*: You can enforce this future behavior right now by using the ``JSONPyWizard`` helper:
+     **How to Prepare**: You can enforce this future behavior right now by using the ``JSONPyWizard`` helper:
 
      .. code-block:: python3
 
@@ -1259,7 +1371,6 @@ What's New in v1.0
         print(MyModel(my_field="value").to_dict())
         # Output: {'my_field': 'value'}
 
-
    - **Float to Int Conversion Change**
 
      Starting in ``v1.0``, floats or float strings with fractional
@@ -1268,8 +1379,7 @@ What's New in v1.0
      However, floats with no fractional parts (e.g., ``3.0``
      or ``"3.0"``) will still convert to integers as before.
 
-     *How to Prepare*: To ensure compatibility with the new behavior:
-
+     **How to Prepare**: To ensure compatibility with the new behavior:
      - Use ``float`` annotations for fields that may include fractional values.
      - Review your data and avoid passing fractional values (e.g., ``123.4``) to fields annotated as ``int``.
      - Update tests or logic that rely on the current rounding behavior.

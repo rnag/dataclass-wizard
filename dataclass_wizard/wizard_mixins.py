@@ -13,7 +13,7 @@ from .class_helper import _META
 from .dumpers import asdict
 from .enums import LetterCase
 from .lazy_imports import toml, toml_w, yaml
-from .loaders import fromdict, fromlist
+from .loader_selection import fromdict, fromlist
 from .models import Container
 from .serial_json import JSONSerializable
 

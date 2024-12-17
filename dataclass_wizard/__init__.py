@@ -2,8 +2,8 @@
 Dataclass Wizard
 ~~~~~~~~~~~~~~~~
 
-Marshal dataclasses to/from JSON and Python dict objects. Support properties
-with initial values. Generate a dataclass schema for JSON input.
+Lightning-fast JSON wizardry for Python dataclasses — effortless
+serialization with no external tools required!
 
 Sample Usage:
 
@@ -120,7 +120,8 @@ import logging
 
 from .bases_meta import LoadMeta, DumpMeta, EnvMeta
 from .dumpers import DumpMixin, setup_default_dumper, asdict
-from .loaders import LoadMixin, setup_default_loader, fromlist, fromdict
+from .loaders import LoadMixin, setup_default_loader
+from .loader_selection import fromlist, fromdict
 from .models import (env_field, json_field, json_key, path_field, skip_if_field,
                      KeyPath, Container,
                      Pattern, DatePattern, TimePattern, DateTimePattern,

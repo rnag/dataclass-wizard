@@ -13,7 +13,7 @@ package_name = 'dataclass_wizard'
 packages = find_packages(include=[package_name, f'{package_name}.*'])
 
 requires = [
-    'typing-extensions>=4; python_version == "3.9" or python_version == "3.10"',
+    'typing-extensions>=4.9.0; python_version <= "3.12"'
 ]
 
 if (requires_dev_file := here / 'requirements-dev.txt').exists():
@@ -33,6 +33,12 @@ if (requires_test_file := here / 'requirements-test.txt').exists():
         test_requirements = [str(req) for req in parse_requirements(requires_test_txt)]
 else:   # Running on CI
     test_requirements = []
+
+if (requires_bench_file := here / 'requirements-bench.txt').exists():
+    with requires_bench_file.open() as requires_bench_txt:
+        bench_requirements = [str(req) for req in parse_requirements(requires_bench_txt)]
+else:   # Running on CI
+    bench_requirements = []
 
 # extras_require = {
 #     'dotenv': ['python-dotenv>=0.19.0'],
@@ -77,10 +83,11 @@ setup(
         'Bug Tracker': 'https://github.com/rnag/dataclass-wizard/issues',
     },
     license=about['__license__'],
-    keywords=['dataclasses', 'dataclass', 'wizard', 'json', 'marshal',
-              'json to dataclass', 'json2dataclass', 'dict to dataclass',
-              'property', 'field-property',
-              'serialization', 'deserialization'],
+    keywords=[
+        'dataclasses', 'wizard', 'json', 'serialization', 'deserialization',
+        'dataclass serialization', 'type hints', 'performance', 'alias',
+        'python', 'env', 'dotenv', 'lightweight'
+    ],
     classifiers=[
         # Ref: https://pypi.org/classifiers/
         'Development Status :: 5 - Production/Stable',
@@ -107,7 +114,7 @@ setup(
             'tomli-w>=1,<2'
         ],
         'yaml': ['PyYAML>=6,<7'],
-        'dev': dev_requires + doc_requires + test_requirements,
+        'dev': dev_requires + doc_requires + test_requirements + bench_requirements,
     },
     zip_safe=False
 )

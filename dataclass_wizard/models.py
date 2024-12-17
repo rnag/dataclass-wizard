@@ -1,14 +1,14 @@
 import json
 from dataclasses import MISSING, Field
 from datetime import date, datetime, time
-from typing import Generic, Mapping, NewType
+from typing import Generic, Mapping, NewType, Any, TypedDict
 
 from .constants import PY310_OR_ABOVE
 from .decorators import cached_property
+from .type_def import T, DT, PyNotRequired
 # noinspection PyProtectedMember
 from .utils.dataclass_compat import _create_fn
 from .utils.object_path import split_object_path
-from .type_def import T, DT, PyTypedDict
 from .utils.type_conv import as_datetime, as_time, as_date
 
 
@@ -26,10 +26,16 @@ CatchAll = NewType('CatchAll', Mapping)
 # DT_OR_NONE = Optional[DT]
 
 
-class Extras(PyTypedDict):
-    # noinspection PyUnresolvedReferences,PyTypedDict
-    config: 'META'
-    pattern: 'PatternedDT'
+class Extras(TypedDict):
+    """
+    "Extra" config that can be used in the load / dump process.
+    """
+    config: PyNotRequired['META']
+    cls: type
+    cls_name: str
+    fn_gen: 'FunctionBuilder'
+    locals: dict[str, Any]
+    pattern: PyNotRequired['PatternedDT']
 
 
 # noinspection PyShadowingBuiltins

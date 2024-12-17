@@ -3,9 +3,9 @@ Dataclass Wizard - a set of wizarding tools for interacting with `dataclasses`
 """
 
 __title__ = 'dataclass-wizard'
-__description__ = ('Effortlessly marshal dataclasses to/from JSON. '
-                   'Leverage field properties with default values. '
-                   'Generate dataclass schemas from JSON input.')
+
+__description__ = ('Lightning-fast JSON wizardry for Python dataclasses — '
+                   'effortless serialization with no external tools required!')
 __url__ = 'https://github.com/rnag/dataclass-wizard'
 __version__ = '0.32.1'
 __author__ = 'Ritvik Nag'

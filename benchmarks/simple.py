@@ -13,7 +13,7 @@ import marshmallow
 import attr
 import mashumaro
 
-from dataclass_wizard import JSONWizard
+from dataclass_wizard import JSONWizard, LoadMeta
 from dataclass_wizard.class_helper import create_new_class
 from dataclass_wizard.utils.string_conv import to_snake_case
 
@@ -65,6 +65,10 @@ MyClassWizard: WizType = create_new_class(MyClass, (MyClass, JSONWizard), "Wizar
 MyClassDJ: DJType = create_new_class(MyClass, (MyClass, DataClassJsonMixin), "DJ")
 MyClassJsons: JsonsType = create_new_class(MyClass, (MyClass, JsonSerializable), "Jsons")
 
+# Enable experimental `v1` mode for optimized de/serialization
+LoadMeta(v1=True).bind_to(MyClassWizard)
+
+
 @pytest.fixture(scope="session")
 def data():
     return {
@@ -77,7 +81,7 @@ def test_load(data, n):
     """
     [ RESULTS ON MAC OS X ]
 
-    benchmarks.simple.simple - [INFO] dataclass-wizard     0.076336
+    benchmarks.simple.simple - [INFO] dataclass-wizard     0.033917
     benchmarks.simple.simple - [INFO] dataclass-factory    0.103837
     benchmarks.simple.simple - [INFO] dataclasses-json     3.941902
     benchmarks.simple.simple - [INFO] jsons                5.636863

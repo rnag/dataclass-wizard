@@ -9,6 +9,7 @@ Subpackages
 
    dataclass_wizard.environ
    dataclass_wizard.utils
+   dataclass_wizard.v1
    dataclass_wizard.wizard_cli
 
 Submodules
@@ -90,6 +91,14 @@ dataclass\_wizard.lazy\_imports module
 --------------------------------------
 
 .. automodule:: dataclass_wizard.lazy_imports
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+dataclass\_wizard.loader\_selection module
+------------------------------------------
+
+.. automodule:: dataclass_wizard.loader_selection
    :members:
    :undoc-members:
    :show-inheritance:

@@ -51,6 +51,28 @@ class JSONWizardError(ABC, Exception):
 
     _TEMPLATE: ClassVar[str]
 
+    @property
+    def class_name(self) -> Optional[str]:
+        return self._class_name or self._default_class_name
+
+    @class_name.setter
+    def class_name(self, cls: Optional[Type]):
+        # Set parent class for errors
+        self.parent_cls = cls
+        # Set class name
+        if getattr(self, '_class_name', None) is None:
+            # noinspection PyAttributeOutsideInit
+            self._class_name = self.name(cls)
+
+    @property
+    def parent_cls(self) -> Optional[type]:
+        return self._parent_cls
+
+    @parent_cls.setter
+    def parent_cls(self, cls: Optional[type]):
+        # noinspection PyAttributeOutsideInit
+        self._parent_cls = cls
+
     @staticmethod
     def name(obj) -> str:
         """Return the type or class name of an object"""
@@ -102,15 +124,6 @@ class ParseError(JSONWizardError):
         self._field_name = _field_name
         self._json_object = _json_object
         self.fields = None
-
-    @property
-    def class_name(self) -> Optional[str]:
-        return self._class_name or self._default_class_name
-
-    @class_name.setter
-    def class_name(self, cls: Optional[Type]):
-        if self._class_name is None:
-            self._class_name = self.name(cls)
 
     @property
     def field_name(self) -> Optional[str]:
@@ -200,57 +213,97 @@ class MissingFields(JSONWizardError):
     missing arguments)
     """
 
-    _TEMPLATE = ('Failure calling constructor method of class `{cls}`. '
-                 'Missing values for required dataclass fields.\n'
-                 '  have fields: {fields!r}\n'
-                 '  missing fields: {missing_fields!r}\n'
-                 '  input JSON object: {json_string}\n'
-                 '  error: {e!s}')
+    _TEMPLATE = ('`{cls}.__init__()` missing required fields.\n'
+                 '  Provided: {fields!r}\n'
+                 '  Missing: {missing_fields!r}\n'
+                 '{expected_keys}'
+                 '  Input JSON: {json_string}'
+                 '{e}')
 
     def __init__(self, base_err: Exception,
                  obj: JSONObject,
                  cls: Type,
-                 cls_kwargs: JSONObject,
-                 cls_fields: Tuple[Field, ...], **kwargs):
+                 cls_fields: Tuple[Field, ...],
+                 cls_kwargs: 'JSONObject | None' = None,
+                 missing_fields: 'Collection[str] | None' = None,
+                 missing_keys: 'Collection[str] | None' = None,
+                 **kwargs):
 
         super().__init__()
 
         self.obj = obj
-        self.fields = list(cls_kwargs.keys())
 
-        self.missing_fields = [f.name for f in cls_fields
-                               if f.name not in self.fields
-                               and f.default is MISSING
-                               and f.default_factory is MISSING]
+        if missing_fields:
+            self.fields = [f.name for f in cls_fields
+                           if f.name not in missing_fields
+                           and f.default is MISSING
+                           and f.default_factory is MISSING]
+            self.missing_fields = missing_fields
+        else:
+            self.fields = list(cls_kwargs.keys())
+            self.missing_fields = [f.name for f in cls_fields
+                                   if f.name not in self.fields
+                                   and f.default is MISSING
+                                   and f.default_factory is MISSING]
+
+        self.base_error = base_err
+        self.missing_keys = missing_keys
+        self.kwargs = kwargs
+        self.class_name: str = self.name(cls)
+        self.parent_cls = cls
+
+    @property
+    def message(self) -> str:
+        from .class_helper import get_meta
+        from .utils.json_util import safe_dumps
+
+        # need to determine this, as we can't
+        # directly import `class_helper.py`
+        meta = get_meta(self.parent_cls)
+        v1 = meta.v1
 
         # check if any field names match, and where the key transform could be the cause
         # see https://github.com/rnag/dataclass-wizard/issues/54 for more info
 
-        normalized_json_keys = [normalize(key) for key in obj]
+        normalized_json_keys = [normalize(key) for key in self.obj]
         if next((f for f in self.missing_fields if normalize(f) in normalized_json_keys), None):
             from .enums import LetterCase
-            from .loaders import get_loader
+            from .v1.enums import KeyCase
+            from .loader_selection import get_loader
 
-            key_transform = get_loader(cls).transform_json_field
-            if isinstance(key_transform, LetterCase):
-                key_transform = key_transform.value.f
+            key_transform = get_loader(self.parent_cls).transform_json_field
+            if isinstance(key_transform, (LetterCase, KeyCase)):
+                if key_transform.value is None:
+                    key_transform = f'{key_transform.name}'
+                else:
+                    key_transform = f'{key_transform.value.f.__name__}()'
+            elif key_transform is not None:
+                key_transform = f'{getattr(key_transform, "__name__", key_transform)}()'
 
-            kwargs['key transform'] = f'{key_transform.__name__}()'
-            kwargs['resolution'] = 'For more details, please see https://github.com/rnag/dataclass-wizard/issues/54'
+            self.kwargs['Key Transform'] = key_transform
+            self.kwargs['Resolution'] = 'For more details, please see https://github.com/rnag/dataclass-wizard/issues/54'
 
-        self.base_error = base_err
-        self.kwargs = kwargs
-        self.class_name: str = self.name(cls)
+        if v1:
+            self.kwargs['Resolution'] = ('Ensure that all required fields are provided in the input. '
+                                         'For more details, see:\n'
+                                         '    https://github.com/rnag/dataclass-wizard/discussions/167')
 
-    @property
-    def message(self) -> str:
-        from .utils.json_util import safe_dumps
+        if self.base_error is not None:
+            e = f'\n  error: {self.base_error!s}'
+        else:
+            e = ''
+
+        if self.missing_keys is not None:
+            expected_keys = f'  Expected Keys: {self.missing_keys!r}\n'
+        else:
+            expected_keys = ''
 
         msg = self._TEMPLATE.format(
             cls=self.class_name,
             json_string=safe_dumps(self.obj),
-            e=self.base_error,
+            e=e,
             fields=self.fields,
+            expected_keys=expected_keys,
             missing_fields=self.missing_fields)
 
         if self.kwargs:
@@ -261,44 +314,56 @@ class MissingFields(JSONWizardError):
         return msg
 
 
-class UnknownJSONKey(JSONWizardError):
+class UnknownKeysError(JSONWizardError):
     """
-    Error raised when an unknown JSON key is encountered in the JSON load
-    process.
+    Error raised when unknown JSON key(s) are
+    encountered in the JSON load process.
 
     Note that this error class is only raised when the
-    `raise_on_unknown_json_key` flag is enabled in the :class:`Meta` class.
+    `raise_on_unknown_json_key` flag is enabled in
+    the :class:`Meta` class.
     """
 
-    _TEMPLATE = ('A JSON key is missing from the dataclass schema for class `{cls}`.\n'
-                 '  unknown key: {json_key!r}\n'
-                 '  dataclass fields: {fields!r}\n'
-                 '  input JSON object: {json_string}')
+    _TEMPLATE = ('One or more JSON keys are not mapped to the dataclass schema for class `{cls}`.\n'
+                 '  Unknown key{s}: {unknown_keys!r}\n'
+                 '  Dataclass fields: {fields!r}\n'
+                 '  Input JSON object: {json_string}')
 
     def __init__(self,
-                 json_key: str,
+                 unknown_keys: 'list[str] | str',
                  obj: JSONObject,
                  cls: Type,
                  cls_fields: Tuple[Field, ...], **kwargs):
         super().__init__()
 
-        self.json_key = json_key
+        self.unknown_keys = unknown_keys
         self.obj = obj
         self.fields = [f.name for f in cls_fields]
         self.kwargs = kwargs
         self.class_name: str = self.name(cls)
 
-        # self.class_name: str = type_name(cls)
+    @property
+    def json_key(self):
+        show_deprecation_warning(
+            UnknownKeysError.json_key.fget,
+            'use `unknown_keys` instead',
+        )
+        return self.unknown_keys
 
     @property
     def message(self) -> str:
         from .utils.json_util import safe_dumps
+        if not isinstance(self.unknown_keys, str) and len(self.unknown_keys) > 1:
+            s = 's'
+        else:
+            s = ''
 
         msg = self._TEMPLATE.format(
             cls=self.class_name,
+            s=s,
             json_string=safe_dumps(self.obj),
             fields=self.fields,
-            json_key=self.json_key)
+            unknown_keys=self.unknown_keys)
 
         if self.kwargs:
             sep = '\n  '
@@ -306,6 +371,10 @@ class UnknownJSONKey(JSONWizardError):
             msg = f'{msg}{sep}{parts}'
 
         return msg
+
+
+# Alias for backwards-compatibility.
+UnknownJSONKey = UnknownKeysError
 
 
 class MissingData(ParseError):

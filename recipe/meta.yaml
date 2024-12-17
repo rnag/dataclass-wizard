@@ -42,7 +42,7 @@ requirements:
     - setuptools
   run:
     - python
-    - typing-extensions >=4  # [py<=310]
+    - typing-extensions >=4.9.0  # [py<=312]
 
 test:
   imports:
@@ -65,7 +65,7 @@ about:
   # (even if the license doesn't require it) using the license_file entry.
   # See https://docs.conda.io/projects/conda-build/en/latest/resources/define-metadata.html#license-file
   license_file: LICENSE
-  summary: Marshal dataclasses to/from JSON. Use field properties with initial values. Construct a dataclass schema with JSON input.
+  summary: Lightning-fast JSON wizardry for Python dataclasses — effortless serialization with no external tools required!
   # The remaining entries in this section are optional, but recommended.
   description: |
     The dataclass-wizard library provides a set of simple, yet
@@ -79,7 +79,7 @@ about:
     The dataclass-wizard is pure Python code that relies entirely on
     stdlib, with the only added dependency being
     `typing-extensions` <https://pypi.org/project/typing-extensions/>
-    for Python 3.9 and below.
+    for Python 3.12 and below.
   doc_url: https://{{ name }}.readthedocs.io/
   dev_url: {{ repo_url }}
 

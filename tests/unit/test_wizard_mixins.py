@@ -231,7 +231,7 @@ def test_toml_wizard_list_to_toml():
         MyClass('testing!', {'333': 'this is a test.'})
     ])
 
-    print(toml_string)
+    # print(toml_string)
 
     assert toml_string == """\
 items = [

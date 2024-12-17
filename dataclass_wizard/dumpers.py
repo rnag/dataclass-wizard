@@ -27,10 +27,12 @@ from .class_helper import (
     dataclass_to_dumper, set_class_dumper,
     CLASS_TO_DUMP_FUNC, setup_dump_config_for_cls_if_needed, get_meta,
     dataclass_field_to_load_parser, dataclass_field_to_json_path, is_builtin, dataclass_field_to_skip_if,
+    v1_dataclass_field_to_alias,
 )
 from .constants import _DUMP_HOOKS, TAG, CATCH_ALL
 from .decorators import _alias
 from .errors import show_deprecation_warning
+from .loader_selection import _get_load_fn_for_dataclass
 from .log import LOG
 from .models import get_skip_if_condition, finalize_skip_if
 from .type_def import (
@@ -287,6 +289,9 @@ def dump_func_for_dataclass(cls: Type[T],
     # sub-classes from `DumpMixIn`, these hooks could be customized.
     hooks = cls_dumper.__DUMP_HOOKS__
 
+    # TODO this is temporary
+    if meta.v1:
+        _ = v1_dataclass_field_to_alias(cls)
     # Set up the initial dump config for the dataclass.
     setup_dump_config_for_cls_if_needed(cls)
 
@@ -311,11 +316,20 @@ def dump_func_for_dataclass(cls: Type[T],
         # we don't process the class annotations here. So instead, generate
         # the load parser for each field  (if needed), but don't cache the
         # result, as it's conceivable we might yet call `LoadMeta` later.
-        from .loaders import get_loader
-        cls_loader = get_loader(cls)
-        # Use the cached result if it exists, but don't cache it ourselves.
-        _ = dataclass_field_to_load_parser(
-            cls_loader, cls, config, save=False)
+        from .loader_selection import get_loader
+
+        if meta.v1:
+            # TODO there must be a better way to do this,
+            #   this is just a temporary workaround.
+            try:
+                _ = _get_load_fn_for_dataclass(cls, v1=True)
+            except Exception:
+                pass
+        else:
+            cls_loader = get_loader(cls, v1=meta.v1)
+            # Use the cached result if it exists, but don't cache it ourselves.
+            _ = dataclass_field_to_load_parser(
+                cls_loader, cls, config, save=False)
 
     # Tag key to populate when a dataclass is in a `Union` with other types.
     tag_key = meta.tag_key or TAG
@@ -336,9 +350,7 @@ def dump_func_for_dataclass(cls: Type[T],
         'cls_to_asdict': nested_cls_to_dump_func,
     }
 
-    _globals = {
-        'T': T,
-    }
+    _globals = {}
 
     skip_if_condition = get_skip_if_condition(
         meta.skip_if, _locals, '_skip_value')
@@ -351,11 +363,12 @@ def dump_func_for_dataclass(cls: Type[T],
 
     # Code for `cls_asdict`
     with fn_gen.function('cls_asdict',
-                         ['o:T',
+                         ['o',
                           'dict_factory=dict',
                           "exclude:'list[str]|None'=None",
                           f'skip_defaults:bool={skip_defaults}'],
-                         return_type='JSONObject'):
+                         'JSONObject',
+                         _locals):
 
         if (
             _pre_dict := getattr(cls, '_pre_dict', None)
@@ -485,7 +498,7 @@ def dump_func_for_dataclass(cls: Type[T],
             fn_gen.add_line("return dict_factory(result)")
 
     # Compile the code into a dynamic string
-    functions = fn_gen.create_functions(locals=_locals, globals=_globals)
+    functions = fn_gen.create_functions(_globals)
 
     cls_asdict = functions['cls_asdict']
 

@@ -1,12 +1,12 @@
 from abc import ABCMeta, abstractmethod
-from collections.abc import Sequence
-from typing import Callable, Type, Dict, Optional, ClassVar, Union, TypeVar, Sequence
+from typing import Callable, Type, Dict, Optional, ClassVar, Union, TypeVar
 
 from .constants import TAG
 from .decorators import cached_class_property
-from .models import Condition
 from .enums import DateTimeTo, LetterCase, LetterCasePriority
+from .models import Condition
 from .type_def import FrozenKeys, EnvFileType
+from .v1.enums import KeyAction, KeyCase
 
 
 # Create a generic variable that can be 'AbstractMeta', or any subclass.
@@ -46,10 +46,12 @@ class ABCOrAndMeta(ABCMeta):
             # defined on the abstract class. Use `other` instead, which
             # *will* be a concrete subclass of `AbstractMeta`.
             src = other
+            # noinspection PyTypeChecker
             for k in src.fields_to_merge:
                 if k in other_dict:
                     base_dict[k] = other_dict[k]
         else:
+            # noinspection PyTypeChecker
             for k in src.fields_to_merge:
                 if k in src_dict:
                     base_dict[k] = src_dict[k]
@@ -70,6 +72,7 @@ class ABCOrAndMeta(ABCMeta):
             # In a reversed MRO, the inheritance tree looks like this:
             #   |___ object -> AbstractMeta -> BaseJSONWizardMeta -> ...
             # So here, we want to choose the third-to-last class in the list.
+            # noinspection PyUnresolvedReferences
             src = src.__mro__[-3]
 
         # noinspection PyTypeChecker
@@ -88,6 +91,7 @@ class ABCOrAndMeta(ABCMeta):
         other_dict = other.__dict__
 
         # Set meta attributes here.
+        # noinspection PyTypeChecker
         for k in cls.all_fields:
             if k in other_dict:
                 setattr(cls, k, other_dict[k])
@@ -107,26 +111,26 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
     __special_attrs__ = frozenset({
         'recursive',
         'json_key_to_field',
+        'v1_field_to_alias',
         'tag',
     })
 
     # Class attribute which enables us to detect a `JSONWizard.Meta` subclass.
     __is_inner_meta__ = False
 
-    # True to enable Debug mode for additional (more verbose) log output.
+    # Enable Debug mode for more verbose log output.
     #
-    # The value can also be a `str` or `int` which specifies
-    # the minimum level for logs in this library to show up.
+    # This setting can be a `bool`, `int`, or `str`:
+    # - `True` enables debug mode with default verbosity.
+    # - A `str` or `int` specifies the minimum log level (e.g., 'DEBUG', 10).
     #
-    # For example, a message is logged whenever an unknown JSON key is
-    # encountered when `from_dict` or `from_json` is called.
+    # Debug mode provides additional helpful log messages, including:
+    # - Logging unknown JSON keys encountered during `from_dict` or `from_json`.
+    # - Detailed error messages for invalid types during unmarshalling.
     #
-    # This also results in more helpful messages during error handling, which
-    # can be useful when debugging the cause when values are an invalid type
-    # (i.e. they don't match the annotation for the field) when unmarshalling
-    # a JSON object to a dataclass instance.
+    # Note: Enabling Debug mode may have a minor performance impact.
     #
-    # Note there is a minor performance impact when DEBUG mode is enabled.
+    # @deprecated and will be removed in V1 - Use `v1_debug` instead.
     debug_enabled: ClassVar['bool | int | str'] = False
 
     # When enabled, a specified Meta config for the main dataclass (i.e. the
@@ -218,6 +222,68 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
     # (based on the `default` or `default_factory` argument specified for
     # the :func:`dataclasses.field`) in the serialization process.
     skip_defaults_if: ClassVar[Condition] = None
+
+    # Enable opt-in to the "experimental" major release `v1` feature.
+    # This feature offers optimized performance for de/serialization.
+    # Defaults to False.
+    v1: ClassVar[bool] = False
+
+    # Enable Debug mode for more verbose log output.
+    #
+    # This setting can be a `bool`, `int`, or `str`:
+    # - `True` enables debug mode with default verbosity.
+    # - A `str` or `int` specifies the minimum log level (e.g., 'DEBUG', 10).
+    #
+    # Debug mode provides additional helpful log messages, including:
+    # - Logging unknown JSON keys encountered during `from_dict` or `from_json`.
+    # - Detailed error messages for invalid types during unmarshalling.
+    #
+    # Note: Enabling Debug mode may have a minor performance impact.
+    v1_debug: ClassVar['bool | int | str'] = False
+
+    # Specifies the letter case used to match JSON keys when mapping them
+    # to dataclass fields.
+    #
+    # This setting determines how dataclass fields are transformed to match
+    # the expected case of JSON keys during lookup. It does not affect keys
+    # in `TypedDict` or `NamedTuple` subclasses.
+    #
+    # By default, JSON keys are assumed to be in `snake_case`, and fields
+    # are matched directly without transformation.
+    #
+    # The setting is case-insensitive and supports shorthand assignment,
+    # such as using the string 'C' instead of 'CAMEL'.
+    #
+    # If set to `A` or `AUTO`, all valid key casing transforms are attempted
+    # at runtime, and the result is cached for subsequent lookups.
+    v1_key_case: ClassVar[Union[KeyCase, str]] = None
+
+    # A custom mapping of dataclass fields to their JSON aliases (keys) used
+    # during deserialization (`from_dict` or `from_json`) and serialization
+    # (`to_dict` or `to_json`).
+    #
+    # This mapping overrides default behavior, including implicit field-to-key
+    # transformations (e.g., "my_field" -> "myField").
+    #
+    # By default, the reverse mapping (JSON alias to field) is applied during
+    # serialization, unless explicitly overridden.
+    v1_field_to_alias: ClassVar[Dict[str, str]] = None
+
+    # Defines the action to take when an unknown JSON key is encountered during
+    # `from_dict` or `from_json` calls. An unknown key is one that does not map
+    # to any dataclass field.
+    #
+    # Valid options are:
+    # - `"ignore"` (default): Silently ignore unknown keys.
+    # - `"warn"`: Log a warning for each unknown key. Requires `debug_enabled`
+    #   to be `True` and properly configured logging.
+    # - `"raise"`: Raise an `UnknownKeyError` for the first unknown key encountered.
+    v1_on_unknown_key: ClassVar[KeyAction] = None
+
+    # Unsafe: Enables parsing of dataclasses in unions without requiring
+    # the presence of a `tag_key`, i.e., a dictionary key identifying the
+    # tag field in the input. Defaults to False.
+    v1_unsafe_parse_dataclass_in_union: ClassVar[bool] = False
 
     # noinspection PyMethodParameters
     @cached_class_property
@@ -346,11 +412,13 @@ class AbstractEnvMeta(metaclass=ABCOrAndMeta):
     # the :func:`dataclasses.field`) in the serialization process.
     skip_defaults_if: ClassVar[Condition] = None
 
+    # noinspection PyMethodParameters
     @cached_class_property
     def all_fields(cls) -> FrozenKeys:
         """Return a list of all class attributes"""
         return frozenset(AbstractEnvMeta.__annotations__)
 
+    # noinspection PyMethodParameters
     @cached_class_property
     def fields_to_merge(cls) -> FrozenKeys:
         """Return a list of class attributes, minus `__special_attrs__`"""

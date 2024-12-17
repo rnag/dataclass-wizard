@@ -1,8 +1,8 @@
 from collections import defaultdict
 from dataclasses import Field
-from typing import Any, Callable
+from typing import Any, Callable, Literal, overload
 
-from .abstractions import W, AbstractLoader, AbstractDumper, AbstractParser, E
+from .abstractions import W, AbstractLoader, AbstractDumper, AbstractParser, E, AbstractLoaderGenerator
 from .bases import META, AbstractMeta
 from .models import Condition
 from .type_def import ExplicitNullType, T
@@ -27,12 +27,20 @@ CLASS_TO_DUMP_FUNC: dict[type, Any] = {}
 # A mapping of dataclass to its loader.
 CLASS_TO_LOADER: dict[type, type[AbstractLoader]] = {}
 
+# V1: A mapping of dataclass to its loader.
+CLASS_TO_V1_LOADER: dict[type, type[AbstractLoaderGenerator]] = {}
+
 # A mapping of dataclass to its dumper.
 CLASS_TO_DUMPER: dict[type, type[AbstractDumper]] = {}
 
 # A cached mapping of a dataclass to each of its case-insensitive field names
 # and load hook.
 FIELD_NAME_TO_LOAD_PARSER: dict[type, DictWithLowerStore[str, AbstractParser]] = {}
+
+# Since the load process in V1 doesn't use Parsers currently, we use a sentinel
+# mapping to confirm if we need to setup the load config for a dataclass
+# on an initial run.
+IS_V1_LOAD_CONFIG_SETUP: set[type] = set()
 
 # Since the dump process doesn't use Parsers currently, we use a sentinel
 # mapping to confirm if we need to setup the dump config for a dataclass
@@ -45,8 +53,14 @@ JSON_FIELD_TO_DATACLASS_FIELD: dict[type, dict[str, str | ExplicitNullType]] = d
 # A cached mapping, per dataclass, of instance field name to JSON path
 DATACLASS_FIELD_TO_JSON_PATH: dict[type, dict[str, PathType]] = defaultdict(dict)
 
+# V1: A cached mapping, per dataclass, of instance field name to JSON path
+DATACLASS_FIELD_TO_ALIAS_PATH_FOR_LOAD: dict[type, dict[str, PathType]] = defaultdict(dict)
+
+# V1: A cached mapping, per dataclass, of instance field name to JSON field
+DATACLASS_FIELD_TO_ALIAS_FOR_LOAD: dict[type, dict[str, str]] = defaultdict(dict)
+
 # A cached mapping, per dataclass, of instance field name to JSON field
-DATACLASS_FIELD_TO_JSON_FIELD: dict[type, dict[str, str]] = defaultdict(dict)
+DATACLASS_FIELD_TO_ALIAS: dict[type, dict[str, str]] = defaultdict(dict)
 
 # A cached mapping, per dataclass, of instance field name to `SkipIf` condition
 DATACLASS_FIELD_TO_SKIP_IF: dict[type, dict[str, Condition]] = defaultdict(dict)
@@ -64,19 +78,13 @@ META_INITIALIZER: dict[str, Callable[[type[W]], None]] = {}
 _META: dict[type, META] = {}
 
 
-def dataclass_to_loader(cls: type) -> type[AbstractLoader]:
-    """
-    Returns the loader for a dataclass.
-    """
-
-
 def dataclass_to_dumper(cls: type) -> type[AbstractDumper]:
     """
     Returns the dumper for a dataclass.
     """
 
 
-def set_class_loader(class_or_instance, loader: type[AbstractLoader]):
+def set_class_loader(cls_to_loader, class_or_instance, loader: type[AbstractLoader]):
     """
     Set (and return) the loader for a dataclass.
     """
@@ -103,6 +111,12 @@ def dataclass_field_to_json_path(cls: type) -> dict[str, PathType]:
 def dataclass_field_to_json_field(cls: type) -> dict[str, str]:
     """
     Returns a mapping of dataclass field to JSON field.
+    """
+
+
+def dataclass_field_to_alias_for_load(cls: type) -> dict[str, str]:
+    """
+    V1: Returns a mapping of dataclass field to alias or JSON key.
     """
 
 
@@ -177,7 +191,31 @@ def setup_dump_config_for_cls_if_needed(cls: type) -> None:
     """
 
 
-def call_meta_initializer_if_needed(cls: type[W | E]) -> None:
+def v1_dataclass_field_to_alias(cls: type) -> dict[str, str]: ...
+
+def _setup_v1_load_config_for_cls(cls: type):
+    """
+    This function processes a class `cls` on an initial run, and sets up the
+    load process for `cls` by iterating over each dataclass field. For each
+    field, it performs the following tasks:
+
+        * Check if the field's annotation is of type ``Annotated``. If so,
+          we iterate over each ``Annotated`` argument and find any special
+          :class:`JSON` objects (this can also be set via the helper function
+          ``json_key``). Assuming we find it, the class-specific mapping of
+          dataclass field name to JSON key is then updated with the input
+          passed in to this object.
+
+        * Check if the field type is a :class:`JSONField` object (this can
+          also be set by the helper function ``json_field``). Assuming this is
+          the case, the class-specific mapping of dataclass field name to
+          JSON key is then updated with the input passed in to
+          the :class:`JSON` attribute.
+    """
+
+
+def call_meta_initializer_if_needed(cls: type[W | E],
+                                    package_name='dataclass_wizard') -> None:
     """
     Calls the Meta initializer when the inner :class:`Meta` is sub-classed.
     """
@@ -191,6 +229,16 @@ def get_meta(cls: type, base_cls: T = AbstractMeta) -> T | META:
     """
 
 
+def create_meta(cls: type, cls_name: str | None = None, **kwargs) -> None:
+    """
+    Sets the Meta config for the :class:`AbstractJSONWizard` subclass.
+
+    WARNING: Only use if the Meta config is undefined,
+      e.g. `get_meta` for the `cls` returns `base_cls`.
+
+    """
+
+
 def dataclass_fields(cls: type) -> tuple[Field, ...]:
     """
     Cache the `dataclasses.fields()` call for each class, as overall that
@@ -198,13 +246,22 @@ def dataclass_fields(cls: type) -> tuple[Field, ...]:
 
     """
 
+@overload
+def dataclass_init_fields(cls: type, as_list: Literal[True] = False) -> list[Field]:
+    """Get only the dataclass fields that would be passed into the constructor."""
 
-def dataclass_init_fields(cls: type) -> tuple[Field, ...]:
+
+@overload
+def dataclass_init_fields(cls: type, as_list: Literal[False] = False) -> tuple[Field]:
     """Get only the dataclass fields that would be passed into the constructor."""
 
 
 def dataclass_field_names(cls: type) -> tuple[str, ...]:
     """Get the names of all dataclass fields"""
+
+
+def dataclass_init_field_names(cls: type) -> tuple[str, ...]:
+    """Get the names of all __init__() dataclass fields"""
 
 
 def dataclass_field_to_default(cls: type) -> dict[str, Any]:

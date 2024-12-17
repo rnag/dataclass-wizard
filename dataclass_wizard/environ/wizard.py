@@ -14,7 +14,7 @@ from ..decorators import cached_class_property
 from ..enums import LetterCase
 from ..environ.loaders import EnvLoader
 from ..errors import ExtraData, MissingVars, ParseError, type_name
-from ..loaders import get_loader
+from ..loader_selection import get_loader
 from ..models import Extras, JSONField
 from ..type_def import ExplicitNull, JSONObject, dataclass_transform
 from ..utils.function_builder import FunctionBuilder
@@ -213,7 +213,6 @@ class EnvWizard(AbstractEnvWizard):
         _meta_env_file = meta.env_file
 
         _locals = {'Env': Env,
-                   'MISSING': MISSING,
                    'ParseError': ParseError,
                    'field_names': field_names,
                    'get_env': get_env,
@@ -224,6 +223,7 @@ class EnvWizard(AbstractEnvWizard):
                     'cls': cls,
                     'fields_ordered': cls_fields.keys(),
                     'handle_err': _handle_parse_error,
+                    'MISSING': MISSING,
                     }
 
         if meta.secrets_dir is None:
@@ -242,7 +242,7 @@ class EnvWizard(AbstractEnvWizard):
 
         fn_gen = FunctionBuilder()
 
-        with fn_gen.function('__init__', init_params, None):
+        with fn_gen.function('__init__', init_params, None, _locals):
 
             # reload cached var names from `os.environ` as needed.
             with fn_gen.if_('_reload'):
@@ -333,11 +333,11 @@ class EnvWizard(AbstractEnvWizard):
                 #             with fn_gen.for_('attr in extra_kwargs'):
                 #                 fn_gen.add_line('setattr(self, attr, init_kwargs[attr])')
 
-        with fn_gen.function('dict', ['self'], JSONObject):
+        with fn_gen.function('dict', ['self'], JSONObject, _locals):
             parts = ','.join([f'{name!r}:self.{name}' for name, f in cls.__fields__.items()])
             fn_gen.add_line(f'return {{{parts}}}')
 
-        functions = fn_gen.create_functions(globals=_globals, locals=_locals)
+        functions = fn_gen.create_functions(_globals)
 
         # set the `__init__()` method.
         cls.__init__ = functions['__init__']
