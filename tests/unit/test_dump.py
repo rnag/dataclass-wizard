@@ -486,3 +486,25 @@ def test_typed_dict(input, expectation):
     with expectation:
         result = c.to_dict()
         log.debug('Parsed object: %r', result)
+
+
+def test_using_dataclass_in_dict():
+    """
+    Using dataclass in a dictionary (i.e., dict[str, Test])
+    works as expected.
+
+    See https://github.com/rnag/dataclass-wizard/issues/159
+    """
+    @dataclass
+    class Test:
+        field: str
+
+    @dataclass
+    class Config:
+        tests: dict[str, Test]
+
+    config = {"tests": {"test_a": {"field": "a"}, "test_b": {"field": "b"}}}
+
+    assert fromdict(Config, config) == Config(
+        tests={'test_a': Test(field='a'),
+               'test_b': Test(field='b')})
