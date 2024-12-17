@@ -65,7 +65,7 @@ about:
   # (even if the license doesn't require it) using the license_file entry.
   # See https://docs.conda.io/projects/conda-build/en/latest/resources/define-metadata.html#license-file
   license_file: LICENSE
-  summary: Marshal dataclasses to/from JSON. Use field properties with initial values. Construct a dataclass schema with JSON input.
+  summary: Lightning-fast JSON wizardry for Python dataclasses — effortless serialization with no external tools required!
   # The remaining entries in this section are optional, but recommended.
   description: |
     The dataclass-wizard library provides a set of simple, yet

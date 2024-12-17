@@ -2,8 +2,8 @@
 Dataclass Wizard
 ~~~~~~~~~~~~~~~~
 
-Marshal dataclasses to/from JSON and Python dict objects. Support properties
-with initial values. Generate a dataclass schema for JSON input.
+Lightning-fast JSON wizardry for Python dataclasses — effortless
+serialization with no external tools required!
 
 Sample Usage:
 
