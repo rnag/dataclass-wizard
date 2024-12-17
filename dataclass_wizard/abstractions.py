@@ -285,11 +285,6 @@ class AbstractLoaderGenerator(ABC):
     def load_after_type_check(tp: TypeInfo, extras: Extras) -> str:
         """
         Generate code to load an object after confirming its type.
-
-        :param type_str: The type annotation of the field as a string.
-        :param i: Index of the value being processed.
-        :param extras: Additional context or dependencies for code generation.
-        :raises ParseError: If the object type is not as expected.
         """
 
     @staticmethod

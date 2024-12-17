@@ -21,6 +21,7 @@ from dataclass_wizard.errors import (
     ParseError, MissingFields, UnknownKeysError, MissingData, InvalidConditionError
 )
 from dataclass_wizard.models import _PatternBase
+from dataclass_wizard.v1 import *
 from ..conftest import MyUUIDSubclass
 from ...conftest import *
 
@@ -764,8 +765,8 @@ def test_from_dict_with_missing_fields_with_resolution():
 
 def test_from_dict_key_transform_with_json_field():
     """
-    Specifying a custom mapping of JSON key to dataclass field, via the
-    `json_field` helper function.
+    Specifying a custom mapping of alias key to dataclass field, via the
+    `Alias` helper function.
     """
 
     @dataclass
@@ -1407,7 +1408,6 @@ def test_tuple_with_optional_args(input, expectation, expected):
         assert result.my_tuple == expected
 
 
-@pytest.mark.xfail(reason='Need to add support in v1')
 @pytest.mark.parametrize(
     'input,expectation,expected',
     [
@@ -2417,7 +2417,6 @@ def test_catch_all_with_auto_key_case():
     assert opt == Options(my_extras={}, email='x@y.org')
 
 
-@pytest.mark.xfail(reason='TODO add support in v1')
 def test_from_dict_with_nested_object_key_path():
     """
     Specifying a custom mapping of "nested" JSON key to dataclass field,
@@ -2425,13 +2424,13 @@ def test_from_dict_with_nested_object_key_path():
     """
 
     @dataclass
-    class A(JSONWizard, debug=True):
-        class _(JSONWizard.Meta):
+    class A(JSONPyWizard, debug=True):
+        class _(JSONPyWizard.Meta):
             v1 = True
 
         an_int: int
-        a_bool: Annotated[bool, KeyPath('x.y.z.0')]
-        my_str: str = path_field(['a', 'b', 'c', -1], default='xyz')
+        a_bool: Annotated[bool, AliasPath('x.y.z.0')]
+        my_str: str = AliasPath(['a', 'b', 'c', -1], default='xyz')
 
     # Failures
 
@@ -2478,7 +2477,7 @@ def test_from_dict_with_nested_object_key_path():
                 'c': { -1: '7' }
             }
         },
-        'anInt': 3
+        'an_int': 3
     }
 
     a = A.from_dict(d)
@@ -2504,11 +2503,10 @@ def test_from_dict_with_nested_object_key_path():
                 'c': { -1: 'xyz' }
             }
         },
-        'anInt': 5
+        'an_int': 5
     }
 
 
-@pytest.mark.xfail(reason='TODO add support in v1')
 def test_from_dict_with_nested_object_key_path_with_skip_defaults():
     """
     Specifying a custom mapping of "nested" JSON key to dataclass field,
@@ -2523,10 +2521,14 @@ def test_from_dict_with_nested_object_key_path_with_skip_defaults():
             v1 = True
             skip_defaults = True
 
-        an_int: Annotated[int, KeyPath('my."test value"[here!][0]')]
-        a_bool: Annotated[bool, KeyPath('x.y.z.-1', all=False)]
-        my_str: Annotated[str, KeyPath(['a', 'b', 'c', -1], dump=False)] = 'xyz1'
-        other_bool: bool = path_field('x.y."z z"', default=True)
+        an_int: Annotated[int, AliasPath('my."test value"[here!][0]')]
+        # a_bool: Annotated[bool, AliasPath('x.y.z.-1', all=False)]
+        # my_str: Annotated[str, AliasPath(['a', 'b', 'c', -1], dump=False)] = 'xyz1'
+
+        a_bool: Annotated[bool, AliasPath('x.y.z.-1')]
+        my_str: Annotated[str, AliasPath(['a', 'b', 'c', -1])] = 'xyz1'
+
+        other_bool: bool = AliasPath('x.y."z z"', default=True)
 
     # Failures
 

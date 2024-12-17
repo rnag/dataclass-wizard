@@ -199,7 +199,11 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
 
         # Check if the `Tuple` appears in the variadic form
         #   i.e. Tuple[str, ...]
-        is_variadic = args and args[-1] is ...
+        if args:
+            is_variadic = args[-1] is ...
+        else:
+            args = (Any, ...)
+            is_variadic = True
 
         if is_variadic:
             #     Parser that handles the variadic form of :class:`Tuple`'s,
@@ -915,8 +919,7 @@ def load_func_for_dataclass(
     #         raise RecursiveClassError(cls) from None
 
     field_to_path = dataclass_field_to_json_path(cls)
-    num_paths = len(field_to_path)
-    has_json_paths = True if num_paths else False
+    has_alias_paths = True if field_to_path else False
 
     # Fix for using `auto_assign_tags` and `raise_on_unknown_json_key` together
     # See https://github.com/rnag/dataclass-wizard/issues/137
@@ -962,11 +965,8 @@ def load_func_for_dataclass(
     else:
         should_raise = should_warn = None
 
-    if has_json_paths:
-        # loop_over_o = num_paths != len(cls_init_fields)
+    if has_alias_paths:
         _locals['safe_get'] = safe_get
-    # else:
-        # loop_over_o = True
 
     # Initialize the FuncBuilder
     fn_gen = FunctionBuilder()
@@ -996,26 +996,6 @@ def load_func_for_dataclass(
         if pre_assign:
             fn_gen.add_line('i = 0')
 
-        if has_json_paths:
-
-            with fn_gen.try_():
-                for field, path in field_to_path.items():
-                    if field in field_to_default:
-                        default_value = f'_default_{field}'
-                        _locals[default_value] = field_to_default[field]
-                        extra_args = f', {default_value}'
-                    else:
-                        extra_args = ''
-                    fn_gen.add_line(f'field={field!r}; init_kwargs[field] = field_to_parser[field](safe_get(o, {path!r}{extra_args}))')
-
-
-            # TODO raise some useful message like (ex. on IndexError):
-            #       Field "my_str" of type tuple[float, str] in A2 has invalid value ['123']
-
-            with fn_gen.except_(Exception, 'e', ParseError):
-                fn_gen.add_line('re_raise(e, cls, o, fields, field, v1)')
-
-
         vars_for_fields = []
 
         if cls_init_fields:
@@ -1035,6 +1015,18 @@ def load_func_for_dataclass(
                             and (key := field_to_alias.get(name)) is not None
                             and name != key):
                         f_assign = f'field={name!r}; key={key!r}; {val}=o.get(key, MISSING)'
+
+                    elif (has_alias_paths
+                            and (path := field_to_path.get(name)) is not None):
+
+                        if name in field_to_default:
+                            f_assign = f'field={name!r}; {val}=safe_get(o, {path!r}, MISSING, False)'
+                        else:
+                            f_assign = f'field={name!r}; {val}=safe_get(o, {path!r})'
+
+                        # TODO raise some useful message like (ex. on IndexError):
+                        #       Field "my_str" of type tuple[float, str] in A2 has invalid value ['123']
+
                     elif key_case is None:
                         field_to_alias[name] = name
                         f_assign = f'field={name!r}; {val}=o.get(field, MISSING)'
@@ -1047,11 +1039,6 @@ def load_func_for_dataclass(
                     string = generate_field_code(cls_loader, new_extras, f, i)
 
                     if name in field_to_default:
-                        # default = default_val = field_to_default[name]
-                        # FIXME might need to update default value logic
-                        # if not is_builtin(default):
-                        #     default = f'_dflt{i}'
-                        #     _locals[default] = default_val
                         fn_gen.add_line(f_assign)
 
                         with fn_gen.if_(f'{val} is not MISSING'):
@@ -1061,8 +1048,8 @@ def load_func_for_dataclass(
                         # TODO confirm this is ok
                         # vars_for_fields.append(f'{name}={var}')
                         vars_for_fields.append(var)
-
                         fn_gen.add_line(f_assign)
+
                         with fn_gen.if_(f'{val} is not MISSING'):
                             fn_gen.add_line(f'{pre_assign}{var} = {string}')
 

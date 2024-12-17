@@ -66,7 +66,9 @@ class Extras(TypedDict):
 
 
 # noinspection PyPep8Naming
-def AliasPath(keys: PathType | str | None = None, *,
+def AliasPath(all: PathType | str | None = None, *,
+              load : PathType | str | None = None,
+              dump : PathType | str | None = None,
               default=MISSING,
               default_factory: Callable[[], MISSING] = MISSING,
               init=True, repr=True,
@@ -83,12 +85,12 @@ def AliasPath(keys: PathType | str | None = None, *,
     or nested paths. For example, passing "myField" will not match "myfield"
     in JSON, and vice versa.
 
-    `keys` represents one or more nested JSON keys (as strings or a collection of strings)
+    `all` represents one or more nested JSON keys (as strings or a collection of strings)
     to associate with the dataclass field. The keys can include paths like `a.b.c`
     or even more complex nested paths such as `a["nested"]["key"]`.
 
     Arguments:
-        keys (_STR_COLLECTION): The JSON key(s) or nested path(s) to associate with the dataclass field.
+        all (_STR_COLLECTION): The JSON key(s) or nested path(s) to associate with the dataclass field.
         default (Any): The default value for the field. Mutually exclusive with `default_factory`.
         default_factory (Callable[[], Any]): A callable to generate the default value.
                                              Mutually exclusive with `default`.

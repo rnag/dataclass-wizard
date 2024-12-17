@@ -3,7 +3,7 @@ from typing import Any, TypedDict
 
 from ..constants import PY310_OR_ABOVE
 from ..log import LOG
-from ..type_def import DefFactory
+from ..type_def import DefFactory, ExplicitNull
 # noinspection PyProtectedMember
 from ..utils.object_path import split_object_path
 from ..utils.typing_compat import get_origin_v2, PyNotRequired
@@ -221,17 +221,29 @@ if PY310_OR_ABOVE:  # pragma: no cover
                      hash, compare, metadata, kw_only)
 
     # noinspection PyPep8Naming,PyShadowingBuiltins
-    def AliasPath(keys=None, *,
+    def AliasPath(all=None, *,
+                  load=None,
+                  dump=None,
                   default=MISSING,
                   default_factory=MISSING,
                   init=True, repr=True,
                   hash=None, compare=True,
                   metadata=None, kw_only=False):
 
-        if isinstance(keys, str):
-            keys = split_object_path(keys)
+        if load is not None:
+            all = load
+            load = None
+            dump = ExplicitNull
 
-        return Field(None, None, keys, default, default_factory, init, repr,
+        if dump is not None:
+            all = dump
+            dump = None
+            load = ExplicitNull
+
+        if isinstance(all, str):
+            all = split_object_path(all)
+
+        return Field(load, dump, all, default, default_factory, init, repr,
                      hash, compare, metadata, kw_only)
 
 
@@ -278,17 +290,32 @@ else:  # pragma: no cover
                      hash, compare, metadata)
 
     # noinspection PyPep8Naming,PyShadowingBuiltins
-    def AliasPath(keys=None, *,
+    def AliasPath(all=None, *,
+                  load=None,
+                  dump=None,
                   default=MISSING,
                   default_factory=MISSING,
                   init=True, repr=True,
                   hash=None, compare=True,
                   metadata=None):
 
-        if isinstance(keys, str):
-            keys = split_object_path(keys)
+        if load is not None:
+            all = load
+            load = None
+            dump = ExplicitNull
 
-        return Field(None, None, keys, default, default_factory, init, repr,
+        if dump is not None:
+            all = dump
+            dump = None
+            load = ExplicitNull
+
+        if isinstance(all, str):
+            all = split_object_path(all)
+
+        if isinstance(all, str):
+            all = split_object_path(all)
+
+        return Field(load, dump, all, default, default_factory, init, repr,
                      hash, compare, metadata)
 
 

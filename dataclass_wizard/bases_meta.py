@@ -128,7 +128,10 @@ class BaseJSONWizardMeta(AbstractMeta):
                                 base_cls=base_loader, v1=cls.v1)
         cls_dumper = get_dumper(dataclass, create=create)
 
-        if cls.debug_enabled:
+        if cls.v1_debug:
+            _enable_debug_mode_if_needed(cls_loader, cls.v1_debug)
+
+        elif cls.debug_enabled:
             _enable_debug_mode_if_needed(cls_loader, cls.debug_enabled)
 
         if cls.json_key_to_field is not None:

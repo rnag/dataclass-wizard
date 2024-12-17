@@ -27,6 +27,7 @@ from .class_helper import (
     dataclass_to_dumper, set_class_dumper,
     CLASS_TO_DUMP_FUNC, setup_dump_config_for_cls_if_needed, get_meta,
     dataclass_field_to_load_parser, dataclass_field_to_json_path, is_builtin, dataclass_field_to_skip_if,
+    v1_dataclass_field_to_alias,
 )
 from .constants import _DUMP_HOOKS, TAG, CATCH_ALL
 from .decorators import _alias
@@ -288,6 +289,9 @@ def dump_func_for_dataclass(cls: Type[T],
     # sub-classes from `DumpMixIn`, these hooks could be customized.
     hooks = cls_dumper.__DUMP_HOOKS__
 
+    # TODO this is temporary
+    if meta.v1:
+        _ = v1_dataclass_field_to_alias(cls)
     # Set up the initial dump config for the dataclass.
     setup_dump_config_for_cls_if_needed(cls)
 

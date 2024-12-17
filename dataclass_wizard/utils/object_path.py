@@ -3,7 +3,7 @@ from dataclasses import MISSING
 from ..errors import ParseError
 
 
-def safe_get(data, path, default=MISSING):
+def safe_get(data, path, default=MISSING, raise_=True):
     current_data = data
     p = path  # to avoid "unbound local variable" warnings
 
@@ -20,7 +20,7 @@ def safe_get(data, path, default=MISSING):
     # AttributeError -
     #   raised when `data` is an invalid type, such as a `None`
     except (IndexError, KeyError, AttributeError) as e:
-        if default is MISSING:
+        if raise_ and default is MISSING:
             raise _format_err(e, current_data, path, p) from None
         return default
 
@@ -28,12 +28,12 @@ def safe_get(data, path, default=MISSING):
     #   raised when `data` is a `list`, but we try to use it like a `dict`
     except TypeError:
         e = TypeError('Invalid path')
-        raise _format_err(e, current_data, path, p) from None
+        raise _format_err(e, current_data, path, p, True) from None
 
 
-def _format_err(e, current_data, path, current_path):
+def _format_err(e, current_data, path, current_path, invalid_path=False):
     return ParseError(
-        e, current_data, None,
+        e, current_data, dict if invalid_path else None,
         path=' => '.join(repr(p) for p in path),
         current_path=repr(current_path),
     )
