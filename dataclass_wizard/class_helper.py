@@ -55,7 +55,10 @@ JSON_FIELD_TO_DATACLASS_FIELD = defaultdict(dict)
 # A cached mapping, per dataclass, of instance field name to JSON path
 DATACLASS_FIELD_TO_JSON_PATH = defaultdict(dict)
 
-# V1 Load: A cached mapping, per dataclass, of instance field name to JSON field
+# V1 Load: A cached mapping, per dataclass, of instance field name to alias path
+DATACLASS_FIELD_TO_ALIAS_PATH_FOR_LOAD = defaultdict(dict)
+
+# V1 Load: A cached mapping, per dataclass, of instance field name to alias
 DATACLASS_FIELD_TO_ALIAS_FOR_LOAD = defaultdict(dict)
 
 # A cached mapping, per dataclass, of instance field name to JSON field
@@ -324,17 +327,24 @@ def v1_dataclass_field_to_alias(
 def _process_field(name: str,
                    f: Field,
                    set_paths: bool,
-                   dataclass_field_to_path,
+                   load_dataclass_field_to_path,
+                   dump_dataclass_field_to_path,
                    load_dataclass_field_to_alias,
                    dump_dataclass_field_to_alias):
     """Process a :class:`Field` for a dataclass field."""
 
     if f.path is not None:
-        if set_paths and f.load_alias is not ExplicitNull:
-                dataclass_field_to_path[name] = f.path
-        if f.dump_alias is not ExplicitNull:
-            value = ExplicitNull if f.skip else ''
-            dump_dataclass_field_to_alias[name] = value
+        if set_paths:
+            if f.load_alias is not ExplicitNull:
+                load_dataclass_field_to_path[name] = f.path
+            if not f.skip and f.dump_alias is not ExplicitNull:
+                dump_dataclass_field_to_path[name] = f.path
+        # TODO I forget why this is needed :o
+        if f.skip:
+            dump_dataclass_field_to_alias[name] = ExplicitNull
+        elif f.dump_alias is not ExplicitNull:
+            dump_dataclass_field_to_alias[name] = ''
+
     else:
         if f.load_alias is not None:
             load_dataclass_field_to_alias[name] = f.load_alias
@@ -354,7 +364,9 @@ def _setup_v1_load_config_for_cls(
     load_dataclass_field_to_alias = DATACLASS_FIELD_TO_ALIAS_FOR_LOAD[cls]
     dump_dataclass_field_to_alias = DATACLASS_FIELD_TO_ALIAS[cls]
 
-    dataclass_field_to_path = DATACLASS_FIELD_TO_JSON_PATH[cls]
+    dataclass_field_to_path = DATACLASS_FIELD_TO_ALIAS_PATH_FOR_LOAD[cls]
+    dump_dataclass_field_to_path = DATACLASS_FIELD_TO_JSON_PATH[cls]
+
     set_paths = False if dataclass_field_to_path else True
 
     for f in  dataclass_init_fields(cls):
@@ -369,6 +381,7 @@ def _setup_v1_load_config_for_cls(
         if isinstance(f, Field):
             _process_field(f.name, f, set_paths,
                            dataclass_field_to_path,
+                           dump_dataclass_field_to_path,
                            load_dataclass_field_to_alias,
                            dump_dataclass_field_to_alias)
 
@@ -377,6 +390,7 @@ def _setup_v1_load_config_for_cls(
                 if isinstance(value, Field):
                     _process_field(f.name, value, set_paths,
                                    dataclass_field_to_path,
+                                   dump_dataclass_field_to_path,
                                    load_dataclass_field_to_alias,
                                    dump_dataclass_field_to_alias)
 
@@ -396,6 +410,7 @@ def _setup_v1_load_config_for_cls(
                 if isinstance(extra, Field):
                     _process_field(f.name, extra, set_paths,
                                    dataclass_field_to_path,
+                                   dump_dataclass_field_to_path,
                                    load_dataclass_field_to_alias,
                                    dump_dataclass_field_to_alias)
                 # elif isinstance(extra, PatternedDT):

@@ -53,7 +53,10 @@ JSON_FIELD_TO_DATACLASS_FIELD: dict[type, dict[str, str | ExplicitNullType]] = d
 # A cached mapping, per dataclass, of instance field name to JSON path
 DATACLASS_FIELD_TO_JSON_PATH: dict[type, dict[str, PathType]] = defaultdict(dict)
 
-# A cached mapping, per dataclass, of instance field name to JSON field
+# V1: A cached mapping, per dataclass, of instance field name to JSON path
+DATACLASS_FIELD_TO_ALIAS_PATH_FOR_LOAD: dict[type, dict[str, PathType]] = defaultdict(dict)
+
+# V1: A cached mapping, per dataclass, of instance field name to JSON field
 DATACLASS_FIELD_TO_ALIAS_FOR_LOAD: dict[type, dict[str, str]] = defaultdict(dict)
 
 # A cached mapping, per dataclass, of instance field name to JSON field

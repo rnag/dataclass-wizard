@@ -21,7 +21,7 @@ from ..abstractions import AbstractLoaderGenerator
 from ..bases import BaseLoadHook, AbstractMeta
 from ..class_helper import (
     v1_dataclass_field_to_alias, json_field_to_dataclass_field,
-    CLASS_TO_LOAD_FUNC, dataclass_fields, get_meta, is_subclass_safe, dataclass_field_to_json_path,
+    CLASS_TO_LOAD_FUNC, dataclass_fields, get_meta, is_subclass_safe, DATACLASS_FIELD_TO_ALIAS_PATH_FOR_LOAD,
     dataclass_init_fields, dataclass_field_to_default, create_meta, dataclass_init_field_names,
 )
 from ..constants import CATCH_ALL, TAG
@@ -918,7 +918,7 @@ def load_func_for_dataclass(
     #     else:
     #         raise RecursiveClassError(cls) from None
 
-    field_to_path = dataclass_field_to_json_path(cls)
+    field_to_path = DATACLASS_FIELD_TO_ALIAS_PATH_FOR_LOAD[cls]
     has_alias_paths = True if field_to_path else False
 
     # Fix for using `auto_assign_tags` and `raise_on_unknown_json_key` together

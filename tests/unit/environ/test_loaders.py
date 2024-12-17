@@ -75,7 +75,7 @@ def test_load_to_dataclass():
         inner_cls_2: Inner2
 
     c = MyClass()
-    print(c)
+    # print(c)
 
     assert c.dict() == {
         'inner_cls_1': Inner1(my_bool=False,

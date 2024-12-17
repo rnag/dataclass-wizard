@@ -2417,10 +2417,10 @@ def test_catch_all_with_auto_key_case():
     assert opt == Options(my_extras={}, email='x@y.org')
 
 
-def test_from_dict_with_nested_object_key_path():
+def test_from_dict_with_nested_object_alias_path():
     """
-    Specifying a custom mapping of "nested" JSON key to dataclass field,
-    via the `KeyPath` and `path_field` helper functions.
+    Specifying a custom mapping of "nested" alias to dataclass field,
+    via the `AliasPath` helper function.
     """
 
     @dataclass
@@ -2507,12 +2507,12 @@ def test_from_dict_with_nested_object_key_path():
     }
 
 
-def test_from_dict_with_nested_object_key_path_with_skip_defaults():
+def test_from_dict_with_nested_object_alias_path_with_skip_defaults():
     """
-    Specifying a custom mapping of "nested" JSON key to dataclass field,
-    via the `KeyPath` and `path_field` helper functions.
+    Specifying a custom mapping of "nested" alias to dataclass field,
+    via the `AliasPath` helper function.
 
-    Test with `skip_defaults=True` and `dump=False`.
+    Test with `skip_defaults=True`, `load_alias`, and `skip=True`.
     """
 
     @dataclass
@@ -2615,6 +2615,48 @@ def test_from_dict_with_nested_object_key_path_with_skip_defaults():
                 'z z': False,
             }
         },
+    }
+
+
+def test_from_dict_with_nested_object_alias_path_with_dump_alias_and_skip():
+    """
+    Test nested object `AliasPath` with dump='...' and skip=True,
+    along with `Alias` with `skip=True`,
+    added for branch coverage.
+    """
+    @dataclass
+    class A(JSONWizard):
+
+        class _(JSONWizard.Meta):
+            v1 = True
+
+        my_str: str = AliasPath(dump='a.b.c[0]')
+        my_bool: bool = AliasPath('x.y."Z 1"', skip=True)
+        my_int: int = Alias('my Integer', skip=True)
+
+    d = {'a': {'b': {'c': [1, 2, 3]}},
+         'x': {'y': {'Z 1': 'f'}},}
+
+    with pytest.raises(MissingFields) as exc_info:
+        _ = A.from_dict(d)
+
+    e = exc_info.value
+    assert e.fields == ['my_bool']
+    assert e.missing_fields == ['my_str', 'my_int']
+
+    d = {'my_str': 'test',
+         'my Integer': '123',
+         'x': {'y': {'Z 1': 'f'}},}
+
+    a = A.from_dict(d)
+
+    assert a.my_str == 'test'
+    assert a.my_int == 123
+    assert a.my_bool is False
+
+    serialized = a.to_dict()
+    assert serialized == {
+        'a': {'b': {'c': {0: 'test'}}},
     }
 
 
