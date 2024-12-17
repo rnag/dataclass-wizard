@@ -69,6 +69,7 @@ class Extras(TypedDict):
 def AliasPath(all: PathType | str | None = None, *,
               load : PathType | str | None = None,
               dump : PathType | str | None = None,
+              skip: bool = False,
               default=MISSING,
               default_factory: Callable[[], MISSING] = MISSING,
               init=True, repr=True,
@@ -123,6 +124,7 @@ def AliasPath(all: PathType | str | None = None, *,
 def Alias(all: str | None = None, *,
           load: str | None = None,
           dump: str | None = None,
+          skip: bool = False,
           path: PathType | str | None = None,
           default=MISSING,
           default_factory: Callable[[], MISSING] = MISSING,
@@ -202,12 +204,15 @@ class Field(_Field):
 
     See the docs on the :func:`json_field` function for more info.
     """
-    __slots__ = ('load_alias', 'dump_alias', 'path', )
+    __slots__ = ('load_alias',
+                 'dump_alias',
+                 'skip',
+                 'path')
 
     load_alias: str | None
     dump_alias: str | None
     # keys: tuple[str, ...] | PathType
-
+    skip: bool
     path: PathType | None
 
     # In Python 3.10, dataclasses adds a new parameter to the :class:`Field`
@@ -218,6 +223,7 @@ class Field(_Field):
     def __init__(self,
                  load_alias: str | None,
                  dump_alias: str | None,
+                 skip: bool,
                  path: PathType, default, default_factory, init, repr, hash, compare,
                  metadata, kw_only):
         ...
@@ -226,6 +232,7 @@ class Field(_Field):
     def __init__(self, alias: str | None,
                  load_alias: str | None,
                  dump_alias: str | None,
+                 skip: bool,
                  path: PathType, default, default_factory, init, repr, hash, compare,
                  metadata):
         ...

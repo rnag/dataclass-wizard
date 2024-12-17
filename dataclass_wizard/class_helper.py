@@ -329,44 +329,19 @@ def _process_field(name: str,
                    dump_dataclass_field_to_alias):
     """Process a :class:`Field` for a dataclass field."""
 
-    if not f.dump_alias is ExplicitNull:
-        dump_dataclass_field_to_alias[f.name] = ExplicitNull
-
-    else:
-    # if not f.json.dump:
-    #     field_to_alias[f.name] = ExplicitNull
-    # elif f.json.all:
-    #     keys = f.json.keys
-    #     if f.json.path:
-    #         if set_paths:
-    #             field_to_path[f.name] = keys
-    #         field_to_alias[f.name] = ''
-    #     else:
-    #         field_to_alias[f.name] = keys[0]
-
-
-        if f.path is not None:
-            if set_paths:
+    if f.path is not None:
+        if set_paths and f.load_alias is not ExplicitNull:
                 dataclass_field_to_path[name] = f.path
-                # TODO: I forgot why this is needed >.>
-            dump_dataclass_field_to_alias[name] = ''
-
-        else:
-            if f.load_alias is not None:
-                load_dataclass_field_to_alias[name] = f.load_alias
-            if f.dump_alias is not None:
-                dump_dataclass_field_to_alias[name] = f.dump_alias
-
-    # if not f.json.dump:
-    #     field_to_alias[f.name] = ExplicitNull
-    # elif f.json.all:
-    #     keys = f.json.keys
-    #     if f.json.path:
-    #         if set_paths:
-    #             field_to_path[f.name] = keys
-    #         field_to_alias[f.name] = ''
-    #     else:
-    #         field_to_alias[f.name] = keys[0]
+        if f.dump_alias is not ExplicitNull:
+            value = ExplicitNull if f.skip else ''
+            dump_dataclass_field_to_alias[name] = value
+    else:
+        if f.load_alias is not None:
+            load_dataclass_field_to_alias[name] = f.load_alias
+        if f.skip:
+            dump_dataclass_field_to_alias[name] = ExplicitNull
+        elif f.dump_alias is not None:
+            dump_dataclass_field_to_alias[name] = f.dump_alias
 
 
 def _setup_v1_load_config_for_cls(

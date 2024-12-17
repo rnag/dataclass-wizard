@@ -204,6 +204,7 @@ if PY310_OR_ABOVE:  # pragma: no cover
     def Alias(all=None, *,
               load=None,
               dump=None,
+              skip=False,
               path=None,
               default=MISSING,
               default_factory=MISSING,
@@ -217,13 +218,14 @@ if PY310_OR_ABOVE:  # pragma: no cover
         if all is not None:
             load = dump = all
 
-        return Field(load, dump, path, default, default_factory, init, repr,
+        return Field(load, dump, skip, path, default, default_factory, init, repr,
                      hash, compare, metadata, kw_only)
 
     # noinspection PyPep8Naming,PyShadowingBuiltins
     def AliasPath(all=None, *,
                   load=None,
                   dump=None,
+                  skip=False,
                   default=MISSING,
                   default_factory=MISSING,
                   init=True, repr=True,
@@ -235,7 +237,7 @@ if PY310_OR_ABOVE:  # pragma: no cover
             load = None
             dump = ExplicitNull
 
-        if dump is not None:
+        elif dump is not None:
             all = dump
             dump = None
             load = ExplicitNull
@@ -243,19 +245,22 @@ if PY310_OR_ABOVE:  # pragma: no cover
         if isinstance(all, str):
             all = split_object_path(all)
 
-        return Field(load, dump, all, default, default_factory, init, repr,
+        return Field(load, dump, skip, all, default, default_factory, init, repr,
                      hash, compare, metadata, kw_only)
 
 
     class Field(_Field):
 
-        __slots__ = ('load_alias', 'dump_alias', 'path', )
+        __slots__ = ('load_alias',
+                     'dump_alias',
+                     'skip',
+                     'path')
 
         # noinspection PyShadowingBuiltins
-        def __init__(self, load_alias, dump_alias,
-                     path, default, default_factory, init, repr, hash, compare,
+        def __init__(self,
+                     load_alias, dump_alias, skip, path,
+                     default, default_factory, init, repr, hash, compare,
                      metadata, kw_only):
-
 
             super().__init__(default, default_factory, init, repr, hash,
                              compare, metadata, kw_only)
@@ -266,6 +271,7 @@ if PY310_OR_ABOVE:  # pragma: no cover
 
             self.load_alias = load_alias
             self.dump_alias = dump_alias
+            self.skip = skip
             self.path = path
 
 else:  # pragma: no cover
@@ -273,6 +279,7 @@ else:  # pragma: no cover
     def Alias(all=None, *,
               load=None,
               dump=None,
+              skip=False,
               path=None,
               default=MISSING,
               default_factory=MISSING,
@@ -285,7 +292,7 @@ else:  # pragma: no cover
         if all is not None:
             load = dump = all
 
-        return Field(load, dump, path,
+        return Field(load, dump, skip, path,
                      default, default_factory, init, repr,
                      hash, compare, metadata)
 
@@ -293,6 +300,7 @@ else:  # pragma: no cover
     def AliasPath(all=None, *,
                   load=None,
                   dump=None,
+                  skip=False,
                   default=MISSING,
                   default_factory=MISSING,
                   init=True, repr=True,
@@ -304,7 +312,7 @@ else:  # pragma: no cover
             load = None
             dump = ExplicitNull
 
-        if dump is not None:
+        elif dump is not None:
             all = dump
             dump = None
             load = ExplicitNull
@@ -315,18 +323,21 @@ else:  # pragma: no cover
         if isinstance(all, str):
             all = split_object_path(all)
 
-        return Field(load, dump, all, default, default_factory, init, repr,
+        return Field(load, dump, skip, all, default, default_factory, init, repr,
                      hash, compare, metadata)
 
 
     class Field(_Field):
 
-        __slots__ = ('load_alias', 'dump_alias', 'path', )
+        __slots__ = ('load_alias',
+                     'dump_alias',
+                     'skip',
+                     'path')
 
         # noinspection PyArgumentList,PyShadowingBuiltins
         def __init__(self,
-                     load_alias, dump_alias,
-                     path, default, default_factory, init, repr, hash, compare,
+                     load_alias, dump_alias, skip, path,
+                     default, default_factory, init, repr, hash, compare,
                      metadata):
 
             super().__init__(default, default_factory, init, repr, hash,
@@ -338,4 +349,5 @@ else:  # pragma: no cover
 
             self.load_alias = load_alias
             self.dump_alias = dump_alias
+            self.skip = skip
             self.path = path

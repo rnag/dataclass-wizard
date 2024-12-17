@@ -2034,7 +2034,7 @@ def test_from_dict_with_nested_object_key_path():
     """
 
     @dataclass
-    class A(JSONWizard, debug=True):
+    class A(JSONWizard):
         an_int: int
         a_bool: Annotated[bool, KeyPath('x.y.z.0')]
         my_str: str = path_field(['a', 'b', 'c', -1], default='xyz')
@@ -2123,7 +2123,7 @@ def test_from_dict_with_nested_object_key_path_with_skip_defaults():
     """
 
     @dataclass
-    class A(JSONWizard, debug=True):
+    class A(JSONWizard):
         class _(JSONWizard.Meta):
             skip_defaults = True
 
@@ -2267,7 +2267,7 @@ def test_auto_assign_tags_and_catch_all():
         extra: CatchAll = None
 
     @dataclass
-    class Container(JSONWizard, debug=False):
+    class Container(JSONWizard):
         obj2: Union[A, B]
         extra: CatchAll = None
 
@@ -2302,7 +2302,7 @@ def test_skip_if():
     skip serializing dataclass fields.
     """
     @dataclass
-    class Example(JSONWizard, debug=True):
+    class Example(JSONWizard):
         class _(JSONWizard.Meta):
             skip_if = IS_NOT(True)
             key_transform_with_dump = 'NONE'
@@ -2322,7 +2322,7 @@ def test_skip_defaults_if():
     skip serializing dataclass fields with default values.
     """
     @dataclass
-    class Example(JSONWizard, debug=True):
+    class Example(JSONWizard):
         class _(JSONWizard.Meta):
             key_transform_with_dump = 'None'
             skip_defaults_if = IS(None)
@@ -2355,7 +2355,7 @@ def test_per_field_skip_if():
     ``skip_if_field()`` which wraps ``dataclasses.Field``.
     """
     @dataclass
-    class Example(JSONWizard, debug=True):
+    class Example(JSONWizard):
         class _(JSONWizard.Meta):
             key_transform_with_dump = 'None'
 

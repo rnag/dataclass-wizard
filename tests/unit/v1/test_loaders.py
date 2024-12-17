@@ -2522,11 +2522,9 @@ def test_from_dict_with_nested_object_key_path_with_skip_defaults():
             skip_defaults = True
 
         an_int: Annotated[int, AliasPath('my."test value"[here!][0]')]
-        # a_bool: Annotated[bool, AliasPath('x.y.z.-1', all=False)]
-        # my_str: Annotated[str, AliasPath(['a', 'b', 'c', -1], dump=False)] = 'xyz1'
 
-        a_bool: Annotated[bool, AliasPath('x.y.z.-1')]
-        my_str: Annotated[str, AliasPath(['a', 'b', 'c', -1])] = 'xyz1'
+        a_bool: Annotated[bool, AliasPath(load='x.y.z.-1')]
+        my_str: Annotated[str, AliasPath(['a', 'b', 'c', -1], skip=True)] = 'xyz1'
 
         other_bool: bool = AliasPath('x.y."z z"', default=True)
 
