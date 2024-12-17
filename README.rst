@@ -2,7 +2,7 @@
 Dataclass Wizard
 ================
 
-📚 Full documentation available on `Read the Docs`_. (`Installation`_)
+Release v\ |version| | 📚 Full docs on `Read the Docs`_ (`Installation`_).
 
 .. image:: https://github.com/rnag/dataclass-wizard/actions/workflows/dev.yml/badge.svg
     :target: https://github.com/rnag/dataclass-wizard/actions/workflows/dev.yml
@@ -63,6 +63,36 @@ for complex and *nested dataclass* models!
    :depth: 1
    :local:
    :backlinks: none
+
+``v1`` Opt-In 🚀
+----------------
+
+Early access to **V1** is available! To opt in, simply enable ``v1=True`` in the ``Meta`` settings:
+
+.. code-block:: python3
+
+    from dataclasses import dataclass
+    from dataclass_wizard import JSONPyWizard
+    from dataclass_wizard.v1 import Alias
+
+    @dataclass
+    class A(JSONPyWizard):
+        class _(JSONPyWizard.Meta):
+            v1 = True
+
+        my_str: str
+        version_info: float = Alias('v_info')
+
+    # Alternatively, for simple dataclasses that don't subclass `JSONWizard`:
+    # LoadMeta(v1=True).bind_to(A)
+
+    a = A.from_dict({'my_str': 'test', 'v_info': '1.0'})
+    assert a.version_info == 1.0
+    assert a.to_dict() == {'my_str': 'test', 'v_info': 1.0}
+
+For more information, see the `Field Guide to V1 Opt-in`_.
+
+.. _`Field Guide to V1 Opt-in`: https://github.com/rnag/dataclass-wizard/wiki/Field-Guide-to-V1-Opt%E2%80%90in
 
 Why Use Dataclass Wizard?
 -------------------------
@@ -854,18 +884,15 @@ Dataclasses in ``Union`` Types
 ------------------------------
 
 The ``dataclass-wizard`` library fully supports declaring dataclass models in
-`Union`_ types as field annotations, such as ``list[Wizard | Archer | Barbarian]``.
+`Union`_ types, such as ``list[Wizard | Archer | Barbarian]``.
 
-As of *v0.19.0*, there is added support to  *auto-generate* tags for a dataclass model
--- based on the class name -- as well as to specify a custom *tag key* that will be
-present in the JSON object, which defaults to a special ``__tag__`` key otherwise.
-These two options are controlled by the ``auto_assign_tags`` and ``tag_key``
-attributes (respectively) in the ``Meta`` config.
+Starting from *v0.19.0*, the library introduces two key features:
+- **Auto-generated tags** for dataclass models (based on class names).
+- A customizable **tag key** (default: ``__tag__``) that identifies the model in JSON.
 
-To illustrate a specific example, a JSON object such as
-``{"oneOf": {"type": "A", ...}, ...}`` will now automatically map to a dataclass
-instance ``A``, provided that the ``tag_key`` is correctly set to "type", and
-the field ``one_of`` is annotated as a Union type in the ``A | B`` syntax.
+These options are controlled by the ``auto_assign_tags`` and ``tag_key`` attributes in the ``Meta`` config.
+
+For example, if a JSON object looks like ``{"type": "A", ...}``, you can set ``tag_key = "type"`` to automatically deserialize it into the appropriate class, like `A`.
 
 Let's start out with an example, which aims to demonstrate the simplest usage of
 dataclasses in ``Union`` types. For more info, check out the
@@ -876,7 +903,6 @@ dataclasses in ``Union`` types. For more info, check out the
     from __future__ import annotations
 
     from dataclasses import dataclass
-
     from dataclass_wizard import JSONWizard
 
 
@@ -916,26 +942,70 @@ dataclasses in ``Union`` types. For more info, check out the
         ]
     }
 
-
     c = Container.from_dict(data)
-    print(f'{c!r}')
+    print(repr(c))
 
-    # True
-    assert c == Container(objects=[A(my_int=42, my_bool=False),
-                                   C(my_str='hello world'),
-                                   B(my_int=123, my_bool=True),
-                                   A(my_int=321, my_bool=True)])
-
+    # Output:
+    # Container(objects=[A(my_int=42, my_bool=False),
+    #                    C(my_str='hello world'),
+    #                    B(my_int=123, my_bool=True),
+    #                    A(my_int=321, my_bool=True)])
 
     print(c.to_dict())
-    # prints the following on a single line:
-    # {'objects': [{'myInt': 42, 'myBool': False, 'type': 'A'},
-    #              {'myStr': 'hello world', 'type': 'C'},
-    #              {'myInt': 123, 'myBool': True, 'type': 'B'},
-    #              {'myInt': 321, 'myBool': True, 'type': 'A'}]}
 
     # True
     assert c == c.from_json(c.to_json())
+
+Supercharged ``Union`` Parsing
+------------------------------
+
+**What about untagged dataclasses in** ``Union`` **types or** ``|`` **syntax?** With the major release **V1** opt-in, ``dataclass-wizard`` supercharges *Union* parsing, making it intuitive and flexible, even without tags.
+
+This is especially useful for collections like ``list[Wizard]`` or when tags (discriminators) are not feasible.
+
+To enable this feature, opt in to **v1** using the ``Meta`` settings. For details, see the `Field Guide to V1 Opt-in`_.
+
+.. code-block:: python3
+
+    from __future__ import annotations  # Remove in Python 3.10+
+
+    from dataclasses import dataclass
+    from typing import Literal
+
+    from dataclass_wizard import JSONWizard
+
+    @dataclass
+    class MyClass(JSONWizard):
+
+        class _(JSONWizard.Meta):
+            v1 = True  # Enable v1 opt-in
+            v1_unsafe_parse_dataclass_in_union = True
+
+        literal_or_float: Literal['Auto'] | float
+        entry: int | MoreDetails
+        collection: list[MoreDetails | int]
+
+    @dataclass
+    class MoreDetails:
+        arg: str
+
+    # OK: Union types work seamlessly
+    c = MyClass.from_dict({
+        "literal_or_float": 1.23,
+        "entry": 123,
+        "collection": [{"arg": "test"}]
+    })
+    print(repr(c))
+    #> MyClass(literal_or_float=1.23, entry=123, collection=[MoreDetails(arg='test')])
+
+    # OK: Handles primitive and dataclass parsing
+    c = MyClass.from_dict({
+        "literal_or_float": "Auto",
+        "entry": {"arg": "example"},
+        "collection": [123]
+    })
+    print(repr(c))
+    #> MyClass(literal_or_float='Auto', entry=MoreDetails(arg='example'), collection=[123])
 
 Conditional Field Skipping
 --------------------------
@@ -1262,6 +1332,13 @@ refer to the `Using Field Properties`_ section in the documentation.
 What's New in v1.0
 ------------------
 
+.. admonition:: v1 Opt-in Now Available
+
+   Early opt-in for **v1** is now available with enhanced features, including intuitive ``Union`` parsing and optimized performance. To enable this,
+   set ``v1=True`` in your ``Meta`` settings.
+
+   For more details and migration guidance, see the `Field Guide to V1 Opt-in`_.
+
 .. warning::
 
    - **Default Key Transformation Update**
@@ -1269,9 +1346,9 @@ What's New in v1.0
      Starting with ``v1.0.0``, the default key transformation for JSON serialization
      will change to keep keys *as-is* instead of converting them to `camelCase`.
 
-     *New Default Behavior*: ``key_transform='NONE'`` will be the standard setting.
+     **New Default Behavior**: ``key_transform='NONE'`` will be the standard setting.
 
-     *How to Prepare*: You can enforce this future behavior right now by using the ``JSONPyWizard`` helper:
+     **How to Prepare**: You can enforce this future behavior right now by using the ``JSONPyWizard`` helper:
 
      .. code-block:: python3
 
@@ -1285,7 +1362,6 @@ What's New in v1.0
         print(MyModel(my_field="value").to_dict())
         # Output: {'my_field': 'value'}
 
-
    - **Float to Int Conversion Change**
 
      Starting in ``v1.0``, floats or float strings with fractional
@@ -1294,8 +1370,7 @@ What's New in v1.0
      However, floats with no fractional parts (e.g., ``3.0``
      or ``"3.0"``) will still convert to integers as before.
 
-     *How to Prepare*: To ensure compatibility with the new behavior:
-
+     **How to Prepare**: To ensure compatibility with the new behavior:
      - Use ``float`` annotations for fields that may include fractional values.
      - Review your data and avoid passing fractional values (e.g., ``123.4``) to fields annotated as ``int``.
      - Update tests or logic that rely on the current rounding behavior.
