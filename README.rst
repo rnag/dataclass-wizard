@@ -81,18 +81,26 @@ Early access to **V1** is available! To opt in, simply enable ``v1=True`` in the
             v1 = True
 
         my_str: str
-        version_info: float = Alias('v_info')
+        version_info: float = Alias(load='v-info')
 
-    # Alternatively, for simple dataclasses that don't subclass `JSONWizard`:
+    # Alternatively, for simple dataclasses that don't subclass `JSONPyWizard`:
     # LoadMeta(v1=True).bind_to(A)
 
-    a = A.from_dict({'my_str': 'test', 'v_info': '1.0'})
+    a = A.from_dict({'my_str': 'test', 'v-info': '1.0'})
     assert a.version_info == 1.0
-    assert a.to_dict() == {'my_str': 'test', 'v_info': 1.0}
+    assert a.to_dict() == {'my_str': 'test', 'version_info': 1.0}
 
 For more information, see the `Field Guide to V1 Opt-in`_.
 
 .. _`Field Guide to V1 Opt-in`: https://github.com/rnag/dataclass-wizard/wiki/Field-Guide-to-V1-Opt%E2%80%90in
+
+Performance Improvements
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+The upcoming **V1** release brings significant performance improvements in de/serialization. Personal benchmarks show that **V1** can make Dataclass Wizard
+approximately **2x faster** than ``pydantic``!
+
+While some features are still being refined and fully supported, **v1** positions Dataclass Wizard alongside other high-performance serialization libraries in Python.
 
 Why Use Dataclass Wizard?
 -------------------------
