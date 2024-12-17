@@ -159,8 +159,9 @@ of *Dataclass Wizard* for unsupported Python versions (3.6 – 3.8):
 .. _PyPI: https://pypi.org/project/dataclass-wizard/
 .. _conda: https://anaconda.org/conda-forge/dataclass-wizard
 .. _conda-forge: https://conda-forge.org/
+.. _Changelog: https://dataclass-wizard.readthedocs.io/en/latest/history.html
 
-See `PyPI`_ for the latest version details.
+See the package on `PyPI`_ and the `Changelog`_ in the docs for the latest version details.
 
 Wizard Mixins ✨
 ----------------
