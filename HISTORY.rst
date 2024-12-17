@@ -9,6 +9,17 @@ History
   and boasts performance improvements for de-serialization 🎉
 * Require ``typing-extensions`` library up till Python 3.11 now
   (it's main use for Python 3.11 is ``ReadOnly`` for ``TypedDict``)
+* Im phasing out exception class ``UnknownJSONKey`` and replacing it with ``UnknownKeysError``, since ``v1`` provides
+  *all* missing keys in JSON (not just the first one!)
+* Add models for ``v1``, import from ``dataclass_wizard.v1``
+    * :function:`Alias`
+    * :function:`AliasPath`
+* Add enums for ``v1``, import from ``dataclass_wizard.v1.enums``
+    * :class:`KeyCase`
+    * :class:`KeyAction`
+* Update benchmarks
+    * Add benchmark for ``CatchAll``
+    * Move benchmark dependencies to ``requirements-bench.txt``
 * Add test cases
 
 0.32.1 (2024-12-04)
