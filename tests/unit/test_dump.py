@@ -488,8 +488,6 @@ def test_typed_dict(input, expectation):
         log.debug('Parsed object: %r', result)
 
 
-# TODO
-@pytest.mark.skip('Trying to fix CI')
 def test_using_dataclass_in_dict():
     """
     Using dataclass in a dictionary (i.e., dict[str, Test])
