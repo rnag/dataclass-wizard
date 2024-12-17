@@ -7,16 +7,23 @@ History
 
 * Introduce ``v1`` opt-in, which is more user-friendly
   and boasts performance improvements for de-serialization 🎉
-* Require ``typing-extensions`` library up till Python 3.11 now
-  (it's main use for Python 3.11 is ``ReadOnly`` for ``TypedDict``)
-* Im phasing out exception class ``UnknownJSONKey`` and replacing it with ``UnknownKeysError``, since ``v1`` provides
-  *all* missing keys in JSON (not just the first one!)
 * Add models for ``v1``, import from ``dataclass_wizard.v1``
     * :function:`Alias`
     * :function:`AliasPath`
 * Add enums for ``v1``, import from ``dataclass_wizard.v1.enums``
     * :class:`KeyCase`
     * :class:`KeyAction`
+* Add ``Meta`` settings for ``v1``
+    * ``v1`` -- Enable opt-in to the "experimental" major release `v1` feature.
+    * ``v1_debug`` -- Replaces ``debug_enabled`` Meta setting,  which is deprecated and will be removed in ``v1``
+    * ``v1_key_case`` -- Specifies the letter case used to match JSON keys when mapping them to dataclass fields.
+    * ``v1_field_to_alias`` -- A custom mapping of dataclass fields to their JSON aliases (keys) used for de/serialization.
+    * ``v1_on_unknown_key`` -- Defines the action to take when an unknown JSON key is encountered during :meth:`from_dict`` or :meth:`from_json` calls.
+    * ``v1_unsafe_parse_dataclass_in_union`` - Unsafe: Enables parsing of dataclasses in unions without requiring the presence of a :attr:`tag_key`.
+* Require ``typing-extensions`` library up till Python 3.11 now
+  (it's main use for Python 3.11 is ``ReadOnly`` for ``TypedDict``)
+* Im phasing out exception class ``UnknownJSONKey`` and replacing it with ``UnknownKeysError``, since ``v1`` provides
+  *all* missing keys in JSON (not just the first one!)
 * Update benchmarks
     * Add benchmark for ``CatchAll``
     * Move benchmark dependencies to ``requirements-bench.txt``
