@@ -2,37 +2,30 @@
 Dataclass Wizard
 ================
 
-Full documentation is available at `Read The Docs`_. (`Installation`_)
-
-.. image:: https://img.shields.io/pypi/v/dataclass-wizard.svg
-        :target: https://pypi.org/project/dataclass-wizard
-
-.. image:: https://img.shields.io/conda/vn/conda-forge/dataclass-wizard.svg
-        :target: https://anaconda.org/conda-forge/dataclass-wizard
-
-.. image:: https://img.shields.io/pypi/pyversions/dataclass-wizard.svg
-        :target: https://pypi.org/project/dataclass-wizard
+📚 Full documentation available on `Read the Docs`_. (`Installation`_)
 
 .. image:: https://github.com/rnag/dataclass-wizard/actions/workflows/dev.yml/badge.svg
-        :target: https://github.com/rnag/dataclass-wizard/actions/workflows/dev.yml
+    :target: https://github.com/rnag/dataclass-wizard/actions/workflows/dev.yml
+    :alt: CI Status
 
-.. image:: https://readthedocs.org/projects/dataclass-wizard/badge/?version=latest
-        :target: https://dataclass-wizard.readthedocs.io/en/latest/?version=latest
-        :alt: Documentation Status
+.. image:: https://img.shields.io/pypi/pyversions/dataclass-wizard.svg
+    :target: https://pypi.org/project/dataclass-wizard
+    :alt: Supported Python Versions
 
+.. image:: https://img.shields.io/pypi/l/dataclass-wizard.svg
+    :target: https://pypi.org/project/dataclass-wizard/
+    :alt: License
 
-.. image:: https://pyup.io/repos/github/rnag/dataclass-wizard/shield.svg
-     :target: https://pyup.io/repos/github/rnag/dataclass-wizard/
-     :alt: Updates
+.. image:: https://static.pepy.tech/badge/dataclass-wizard/month
+    :target: https://pepy.tech/project/dataclass-wizard
+    :alt: Monthly Downloads
 
+**Dataclass Wizard** 🪄
+Simple, elegant *wizarding* tools for Python’s ``dataclasses``.
 
-
-**Dataclass Wizard** offers simple, elegant, *wizarding* 🪄 tools for
-interacting with Python's ``dataclasses``.
-
-    It excels at ⚡️ lightning-fast de/serialization, effortlessly
-    converting dataclass instances to/from JSON -- perfect for
-    *nested dataclass* models!
+Lightning-fast ⚡, pure Python, and lightweight — effortlessly
+convert dataclass instances to/from JSON, perfect
+for complex and *nested dataclass* models!
 
 -------------------
 
@@ -71,63 +64,96 @@ interacting with Python's ``dataclasses``.
    :local:
    :backlinks: none
 
+Why Use Dataclass Wizard?
+-------------------------
+
+Effortlessly handle complex data with one of the *fastest* and *lightweight* libraries available! Perfect for APIs, JSON wrangling, and more.
+
+- 🚀 **Blazing Fast** — One of the fastest libraries out there!
+- 🪶 **Lightweight** — Pure Python, minimal dependencies
+- 👶 Easy Setup — Intuitive, hassle-free
+- ☝️ **Battle-Tested** — Proven reliability with solid test coverage
+- ⚙️ Highly Customizable — Endless de/serialization options to fit your needs
+- 🎉 Built-in Support — JSON, YAML, TOML, and environment/settings management
+- 📦 **Full Python Type Support** — Powered by type hints with full support for native types and ``typing-extensions``
+- 📝 Auto-Generate Schemas — JSON to Dataclass made easy
+
+Key Features
+------------
+
+- 🔄 Flexible (de)serialization — Marshal dataclasses to/from JSON, TOML, YAML, or ``dict`` with ease.
+- 🌿 Environment Magic — Map env vars and ``.env`` files to strongly-typed class fields effortlessly.
+- 🧑‍💻 Field Properties Made Simple — Add properties with default values to your dataclasses.
+- 🧙‍♂️ JSON-to-Dataclass Wizardry — Auto-generate a dataclass schema from any JSON file or string instantly.
 
 Installation
 ------------
 
-Dataclass Wizard is available on `PyPI`_. Install with ``pip``:
+*Dataclass Wizard* is available on `PyPI`_. You can install it with ``pip``:
 
 .. code-block:: console
 
     $ pip install dataclass-wizard
 
-Also available on `conda`_ via `conda-forge`_. Install with ``conda``:
+Also available on `conda`_ via `conda-forge`_. To install via ``conda``:
 
 .. code-block:: console
 
     $ conda install dataclass-wizard -c conda-forge
 
-This library supports **Python 3.9** or higher.
+This library supports **Python 3.9+**. Support for Python 3.6 – 3.8 was
+available in earlier releases but is no longer maintained, as those
+versions no longer receive security updates.
 
+For convenience, the table below outlines the last compatible version
+of *Dataclass Wizard* for unsupported Python versions (3.6 – 3.8):
+
+.. list-table::
+   :header-rows: 1
+   :widths: 15 35 15
+
+   * - Python Version
+     - Last Version of ``dataclass-wizard``
+     - Python EOL
+   * - 3.6
+     - 0.26.1_
+     - 2021-12-23
+   * - 3.7
+     - 0.26.1_
+     - 2023-06-27
+   * - 3.8
+     - 0.26.1_
+     - 2024-10-07
+
+.. _0.26.1: https://pypi.org/project/dataclass-wizard/0.26.1/
 .. _PyPI: https://pypi.org/project/dataclass-wizard/
 .. _conda: https://anaconda.org/conda-forge/dataclass-wizard
 .. _conda-forge: https://conda-forge.org/
 
-Features
---------
+See `PyPI`_ for the latest version details.
 
-Unlock the full potential of your `dataclasses`_ with these key features:
+Wizard Mixins ✨
+----------------
 
-- *Flexible (de)serialization*: Marshal dataclasses to/from JSON, TOML, YAML, or ``dict`` with ease.
-- *Environment magic*: Map env vars and ``dotenv`` files to strongly-typed class fields effortlessly.
-- *Field properties made simple*: Add properties with default values to your dataclasses.
-- *JSON-to-Dataclass wizardry*: Auto-generate a dataclass schema from any JSON file or string instantly.
+In addition to ``JSONWizard``, these `Mixin`_ classes simplify common tasks and make your data handling *spellbindingly* efficient:
 
-Wizard Mixins
--------------
+- 🪄 `EnvWizard`_ — Load environment variables and `.env` files into typed schemas, even supporting secret files (keys as file names).
+- 🎩 `JSONPyWizard`_ — A helper for ``JSONWizard`` that preserves your keys as-is (no camelCase changes).
+- 🔮 `JSONListWizard`_ — Extend ``JSONWizard`` to convert lists into `Container`_ objects.
+- 💼 `JSONFileWizard`_ — Convert dataclass instances to/from local JSON files with ease.
+- 🌳 `TOMLWizard`_ — Map your dataclasses to/from TOML format.
+- 🧙‍♂️ `YAMLWizard`_ — Convert between YAML and dataclass instances using ``PyYAML``.
 
-In addition to ``JSONWizard``, these handy Mixin_ classes simplify your workflow:
+Supported Types 🧑‍💻
+--------------------
 
-* `EnvWizard`_ — Seamlessly load env variables and ``.env`` files into typed schemas. Supports secret files (file names as keys).
-* `JSONPyWizard`_ — A ``JSONWizard`` helper to skip *camelCase* and preserve keys as-is.
-* `JSONListWizard`_ — Extends ``JSONWizard`` to return `Container`_ objects instead of *lists* when possible.
-* `JSONFileWizard`_ — Effortlessly convert dataclass instances from/to JSON files on your local drive.
-* `TOMLWizard`_ — Easily map dataclass instances to/from TOML format.
-* `YAMLWizard`_ — Instantly convert dataclass instances to/from YAML, using the default ``PyYAML`` parser.
+*Dataclass Wizard* supports:
 
-Supported Types
----------------
+- 📋 **Collections**: Handle ``list``, ``dict``, and ``set`` effortlessly.
+- 🔢 **Typing Generics**: Manage ``Union``, ``Any``, and other types from the `typing`_ module.
+- 🌟 **Advanced Types**: Work with ``Enum``, ``defaultdict``, and ``datetime`` with ease.
 
-The Dataclass Wizard library natively supports standard Python
-collections like ``list``, ``dict``, and ``set``, along with
-popular `typing`_ module Generics such as ``Union`` and ``Any``.
-Additionally, it handles commonly used types like ``Enum``,
-``defaultdict``, and date/time objects (e.g., ``datetime``)
-with ease.
-
-For a detailed list of supported types and insights into the
-load/dump process for special types, visit the
-`Supported Types`_ section of the docs.
+For more info, check out the `Supported Types`_ section in the docs for detailed insights into each type and the load/dump process!
 
 Usage and Examples
 ------------------
