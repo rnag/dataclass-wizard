@@ -678,7 +678,7 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         # -> Atomic, immutable types which don't require
         #    any iterative / recursive handling.
         # TODO use subclass safe
-        elif origin in _SIMPLE_TYPES or issubclass(origin, _SIMPLE_TYPES):
+        elif origin in _SIMPLE_TYPES or is_subclass_safe(origin, _SIMPLE_TYPES):
             load_hook = hooks.get(origin)
 
         elif (load_hook := hooks.get(origin)) is not None:
