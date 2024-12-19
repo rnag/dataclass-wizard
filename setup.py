@@ -50,8 +50,8 @@ else:   # Running on CI
 about = {}
 exec((here / package_name / '__version__.py').read_text(), about)
 
-readme = (here / 'README.rst').read_text()
-history = (here / 'HISTORY.rst').read_text()
+readme = (here / 'README.rst').read_text(encoding='utf-8')
+history = (here / 'HISTORY.rst').read_text(encoding='utf-8')
 
 setup(
     name=about['__title__'],
