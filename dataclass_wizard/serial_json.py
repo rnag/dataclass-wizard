@@ -83,8 +83,8 @@ class JSONSerializable(AbstractJSONWizard):
             logging.basicConfig(level=default_lvl)
             # minimum logging level for logs by this library
             min_level = default_lvl if isinstance(debug, bool) else debug
-            # set `debug_enabled` flag for the class's Meta
-            load_meta_kwargs['debug_enabled'] = min_level
+            # set `v1_debug` flag for the class's Meta
+            load_meta_kwargs['v1_debug'] = min_level
 
         # Calls the Meta initializer when inner :class:`Meta` is sub-classed.
         call_meta_initializer_if_needed(cls)

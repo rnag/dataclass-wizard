@@ -24,7 +24,7 @@ def type_name(obj: type) -> str:
 
 
 def show_deprecation_warning(
-    fn: Callable,
+    fn: 'Callable | str',
     reason: str,
     fmt: str = "Deprecated function {name} ({reason})."
 ) -> None:
@@ -38,7 +38,7 @@ def show_deprecation_warning(
     import warnings
     warnings.simplefilter('always', DeprecationWarning)
     warnings.warn(
-        fmt.format(name=fn.__name__, reason=reason),
+        fmt.format(name=getattr(fn, '__name__', fn), reason=reason),
         category=DeprecationWarning,
         stacklevel=2,
     )

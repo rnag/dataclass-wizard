@@ -20,7 +20,7 @@ from .dumpers import get_dumper
 from .enums import DateTimeTo, LetterCase, LetterCasePriority
 from .v1.enums import KeyAction, KeyCase
 from .environ.loaders import EnvLoader
-from .errors import ParseError
+from .errors import ParseError, show_deprecation_warning
 from .loader_selection import get_loader
 from .log import LOG
 from .type_def import E
@@ -132,6 +132,11 @@ class BaseJSONWizardMeta(AbstractMeta):
             _enable_debug_mode_if_needed(cls_loader, cls.v1_debug)
 
         elif cls.debug_enabled:
+            show_deprecation_warning(
+                'debug_enabled',
+                fmt="Deprecated Meta setting {name} ({reason}).",
+                reason='Use `v1_debug` instead',
+            )
             _enable_debug_mode_if_needed(cls_loader, cls.debug_enabled)
 
         if cls.json_key_to_field is not None:

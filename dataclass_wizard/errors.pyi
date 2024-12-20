@@ -13,7 +13,7 @@ def type_name(obj: type) -> str:
 
 
 def show_deprecation_warning(
-    fn: Callable,
+    fn: Callable | str,
     reason: str,
     fmt: str = "Deprecated function {name} ({reason})."
 ) -> None:
