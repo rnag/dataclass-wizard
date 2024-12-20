@@ -5,6 +5,7 @@ Note: I might refactor this into a separate `test_parsers.py` as time permits.
 """
 import logging
 from abc import ABC
+from base64 import b64decode
 from collections import namedtuple, defaultdict, deque
 from dataclasses import dataclass, field
 from datetime import datetime, date, time, timedelta
@@ -3059,4 +3060,28 @@ def test_dataclass_decorator_is_automatically_applied():
     with pytest.raises(TypeError, match=".*Test\.__init__\(\) missing 1 required positional argument: 'my_field'"):
         Test()
 
-# TODO add test case for bytes
+
+def test_bytes_and_bytes_array_are_supported():
+    """Confirm `bytes` and `bytesarray` are supported."""
+
+    @dataclass
+    class Foo(JSONWizard):
+        class _(JSONWizard.Meta):
+            v1 = True
+
+        b: bytes = None
+        barray: bytearray = None
+        s: str = None
+
+    data = {'b': 'AAAA', 'barray': 'SGVsbG8sIFdvcmxkIQ==', 's': 'foobar'}
+
+    foo = Foo.from_dict(data)
+
+    # noinspection PyTypeChecker
+    assert foo == Foo(b=b64decode('AAAA'),
+                      barray=bytearray(b'Hello, World!'),
+                      s='foobar')
+    assert foo.to_dict() == data
+
+    # Check data consistency
+    assert Foo.from_dict(foo.to_dict()).to_dict() == data
