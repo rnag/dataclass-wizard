@@ -2173,7 +2173,6 @@ def test_load_with_python_3_11_regression():
     assert item.b is item.c is None
 
 
-@pytest.mark.skip(reason='TODO add support in v1')
 def test_with_self_referential_dataclasses_1():
     """
     Test loading JSON data, when a dataclass model has cyclic
@@ -2195,7 +2194,6 @@ def test_with_self_referential_dataclasses_1():
     assert a == A(a=A(a=A(a=None)))
 
 
-@pytest.mark.skip(reason='TODO add support in v1')
 def test_with_self_referential_dataclasses_2():
     """
     Test loading JSON data, when a dataclass model has cyclic
@@ -3060,3 +3058,5 @@ def test_dataclass_decorator_is_automatically_applied():
 
     with pytest.raises(TypeError, match=".*Test\.__init__\(\) missing 1 required positional argument: 'my_field'"):
         Test()
+
+# TODO add test case for bytes

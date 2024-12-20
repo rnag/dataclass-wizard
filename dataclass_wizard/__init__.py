@@ -3,7 +3,7 @@ Dataclass Wizard
 ~~~~~~~~~~~~~~~~
 
 Lightning-fast JSON wizardry for Python dataclasses — effortless
-serialization with no external tools required!
+serialization right out of the box!
 
 Sample Usage:
 

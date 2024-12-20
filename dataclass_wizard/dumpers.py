@@ -8,6 +8,7 @@ obtained from http://www.apache.org/licenses/LICENSE-2.0.
 
 See the end of this file for the original Apache license from this library.
 """
+from base64 import b64encode
 from collections import defaultdict, deque
 # noinspection PyProtectedMember,PyUnresolvedReferences
 from dataclasses import _is_dataclass_instance
@@ -16,6 +17,7 @@ from decimal import Decimal
 from enum import Enum
 # noinspection PyProtectedMember,PyUnresolvedReferences
 from typing import Type, List, Dict, Any, NamedTupleMeta, Optional, Callable, Collection
+from typing_extensions import Buffer
 from uuid import UUID
 
 from .abstractions import AbstractDumper
@@ -76,6 +78,10 @@ class DumpMixin(AbstractDumper, BaseDumpHook):
     @staticmethod
     def dump_with_str(o: str, *_):
         return o
+
+    @staticmethod
+    def dump_with_bytes(o: Buffer, *_) -> str:
+        return b64encode(o).decode()
 
     @staticmethod
     def dump_with_int(o: int, *_):
@@ -159,8 +165,8 @@ def setup_default_dumper(cls=DumpMixin):
     cls.register_dump_hook(int, cls.dump_with_int)
     cls.register_dump_hook(float, cls.dump_with_float)
     cls.register_dump_hook(bool, cls.dump_with_bool)
-    cls.register_dump_hook(bytes, cls.default_dump_with)
-    cls.register_dump_hook(bytearray, cls.default_dump_with)
+    cls.register_dump_hook(bytes, cls.dump_with_bytes)
+    cls.register_dump_hook(bytearray, cls.dump_with_bytes)
     cls.register_dump_hook(NoneType, cls.dump_with_null)
     # Complex types
     cls.register_dump_hook(Enum, cls.dump_with_enum)

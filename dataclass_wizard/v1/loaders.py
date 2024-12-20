@@ -1,7 +1,7 @@
 # TODO cleanup imports
 
 import collections.abc as abc
-from base64 import decodebytes
+from base64 import b64decode
 from collections import defaultdict, deque
 from dataclasses import is_dataclass, MISSING, Field
 from datetime import datetime, time, date, timedelta
@@ -16,19 +16,19 @@ from typing import (
 )
 from uuid import UUID
 
+from .enums import KeyAction, KeyCase
 from .models import TypeInfo
 from ..abstractions import AbstractLoaderGenerator
 from ..bases import BaseLoadHook, AbstractMeta
 from ..class_helper import (
-    v1_dataclass_field_to_alias, json_field_to_dataclass_field,
-    CLASS_TO_LOAD_FUNC, dataclass_fields, get_meta, is_subclass_safe, DATACLASS_FIELD_TO_ALIAS_PATH_FOR_LOAD,
+    v1_dataclass_field_to_alias, CLASS_TO_LOAD_FUNC, dataclass_fields, get_meta, is_subclass_safe,
+    DATACLASS_FIELD_TO_ALIAS_PATH_FOR_LOAD,
     dataclass_init_fields, dataclass_field_to_default, create_meta, dataclass_init_field_names,
 )
 from ..constants import CATCH_ALL, TAG
 from ..decorators import _identity
-from .enums import KeyAction, KeyCase
 from ..errors import (ParseError, MissingFields, UnknownKeysError,
-                      MissingData, JSONWizardError)
+                      MissingData, JSONWizardError, RecursiveClassError)
 from ..loader_selection import get_loader, fromdict
 from ..log import LOG
 from ..models import Extras
@@ -143,13 +143,13 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
 
     @staticmethod
     def load_to_bytes(tp: TypeInfo, extras: Extras) -> str:
-        extras['locals'].setdefault('decodebytes', decodebytes)
-        return f'decodebytes({tp.v()}.encode())'
+        extras['locals'].setdefault('b64decode', b64decode)
+        return f'b64decode({tp.v()})'
 
     @staticmethod
     def load_to_bytearray(tp: TypeInfo, extras: Extras) -> str:
-        extras['locals'].setdefault('decodebytes', decodebytes)
-        return f'{tp.name}(decodebytes({tp.v()}.encode()))'
+        extras['locals'].setdefault('b64decode', b64decode)
+        return f'{tp.name}(b64decode({tp.v()}))'
 
     @staticmethod
     def load_to_none(tp: TypeInfo, extras: Extras) -> str:
@@ -202,11 +202,12 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         if args:
             is_variadic = args[-1] is ...
         else:
+            # Annotated without args, as simply `tuple`
             args = (Any, ...)
             is_variadic = True
 
         if is_variadic:
-            #     Parser that handles the variadic form of :class:`Tuple`'s,
+            #     Logic that handles the variadic form of :class:`Tuple`'s,
             #     i.e. ``Tuple[str, ...]``
             #
             #     Per `PEP 484`_, only **one** required type is allowed before the
@@ -217,22 +218,14 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
             #     .. _See here: https://github.com/python/typing/issues/180
             v, v_next, i_next = tp.v_and_next()
 
+            # Given `Tuple[T, ...]`, we only need the generated string for `T`
             string = cls.get_string_for_annotation(
                 tp.replace(origin=args[0], i=i_next), extras)
 
-            # A one-element tuple containing the parser for the first type
-            # argument.
-            # Given `Tuple[T, ...]`, we only need a parser for `T`
-            # self.first_elem_parser = get_parser(elem_types[0], cls, extras),
-            # Total count should be `Infinity` here, since the variadic form
-            # accepts any number of possible arguments.
-            # self.total_count: N = float('inf')
-            # self.required_count = 0
-
             result = f'[{string} for {v_next} in {v}]'
+
             # Wrap because we need to create a tuple from list comprehension
             force_wrap = True
-
         else:
             string = ', '.join([
                 cls.get_string_for_annotation(
@@ -241,6 +234,7 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
                 for k, arg in enumerate(args)])
 
             result = f'({string}, )'
+
             force_wrap = False
 
         return tp.wrap(result, extras, force=force_wrap)
@@ -622,8 +616,18 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
 
     @staticmethod
     def load_to_dataclass(tp: TypeInfo, extras: Extras):
-        fn_name = load_func_for_dataclass(
-            tp.origin, extras, False)
+        # check for recursive classes, e.g. `A -> B -> A -> B
+        type_to_fn = extras.get('type_to_fn')
+
+        # Meta setting `recursive_classes` is not enabled
+        if type_to_fn is None:
+            fn_name = load_func_for_dataclass(
+                tp.origin, extras, False)
+
+        # Meta setting `recursive_classes` is enabled
+        elif (fn_name := type_to_fn.get(tp.origin)) is None:
+            fn_name = type_to_fn[tp.origin] = load_func_for_dataclass(
+                tp.origin, extras, False)
 
         return f'{fn_name}({tp.v()})'
 
@@ -697,12 +701,6 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
             if getattr(origin, '__annotations__', None):
                 # Annotated as a `typing.NamedTuple` subtype
                 load_hook = cls.load_to_named_tuple
-
-                # load_hook = hooks.get(NamedTupleMeta)
-                # return NamedTupleParser(
-                #     base_cls, extras, base_type, load_hook,
-                #     cls.get_parser_for_annotation
-                # )
             else:
                 # Annotated as a `collections.namedtuple` subtype
                 load_hook = cls.load_to_named_tuple_untyped
@@ -872,6 +870,10 @@ def load_func_for_dataclass(
     # Get the loader for the class, or create a new one as needed.
     cls_loader = get_loader(cls, base_cls=loader_cls, v1=True)
 
+    cls_name = cls.__name__
+
+    fn_name = f'__dataclass_wizard_from_dict_{cls_name}__'
+
     # Get the meta config for the class, or the default config otherwise.
     meta = get_meta(cls, base_meta_cls)
 
@@ -901,6 +903,9 @@ def load_func_for_dataclass(
             # recursively.
             meta = meta | config
             meta.bind_to(cls, is_default=False)
+
+    if config.recursive_classes:
+        extras['type_to_fn'][cls] = fn_name
 
     key_case: 'V1LetterCase | None' = cls_loader.transform_json_field
 
@@ -971,7 +976,6 @@ def load_func_for_dataclass(
     # Initialize the FuncBuilder
     fn_gen = FunctionBuilder()
 
-    cls_name = cls.__name__
     # noinspection PyTypeChecker
     new_extras: Extras = {
         'config': config,
@@ -981,7 +985,8 @@ def load_func_for_dataclass(
         'fn_gen': fn_gen,
     }
 
-    fn_name = f'__dataclass_wizard_from_dict_{cls_name}__'
+    if (type_to_fn := extras.get('type_to_fn')) is not None:
+        new_extras['type_to_fn'] = type_to_fn
 
     with fn_gen.function(fn_name, ['o'], MISSING, _locals):
 
@@ -1165,6 +1170,15 @@ def generate_field_code(cls_loader: LoadMixin,
             TypeInfo(field_type, field_i=field_i), extras
         )
 
+    except RecursionError:
+        if extras['config'].recursive_classes:
+            # recursion-safe loader is already in use; something else must have gone wrong
+            raise
+        else:
+            raise RecursiveClassError(cls) from None
+
+    # except Exception as e:
+    #     re_raise(e, cls, None, dataclass_init_fields(cls), field, None)
     except ParseError as pe:
         pe.class_name = cls
         pe.field_name = field.name

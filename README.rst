@@ -143,7 +143,7 @@ This library supports **Python 3.9+**. Support for Python 3.6 – 3.8 was
 available in earlier releases but is no longer maintained, as those
 versions no longer receive security updates.
 
-For convenience, the table below outlines the last compatible version
+For convenience, the table below outlines the last compatible release
 of *Dataclass Wizard* for unsupported Python versions (3.6 – 3.8):
 
 .. list-table::
@@ -153,15 +153,15 @@ of *Dataclass Wizard* for unsupported Python versions (3.6 – 3.8):
    * - Python Version
      - Last Version of ``dataclass-wizard``
      - Python EOL
-   * - 3.6
-     - 0.26.1_
-     - 2021-12-23
-   * - 3.7
-     - 0.26.1_
-     - 2023-06-27
    * - 3.8
      - 0.26.1_
      - 2024-10-07
+   * - 3.7
+     - 0.26.1_
+     - 2023-06-27
+   * - 3.6
+     - 0.26.1_
+     - 2021-12-23
 
 .. _0.26.1: https://pypi.org/project/dataclass-wizard/0.26.1/
 .. _PyPI: https://pypi.org/project/dataclass-wizard/
