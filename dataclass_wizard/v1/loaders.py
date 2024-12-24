@@ -861,9 +861,6 @@ def setup_default_loader(cls=LoadMixin):
     cls.register_load_hook(deque, cls.load_to_iterable)
     cls.register_load_hook(list, cls.load_to_iterable)
     cls.register_load_hook(tuple, cls.load_to_tuple)
-    # `typing` Generics
-    # cls.register_load_hook(Literal, cls.load_to_literal)
-    # noinspection PyTypeChecker
     cls.register_load_hook(defaultdict, cls.load_to_defaultdict)
     cls.register_load_hook(dict, cls.load_to_dict)
     cls.register_load_hook(Decimal, cls.load_to_decimal)
