@@ -214,15 +214,15 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
             is_variadic = True
 
         if is_variadic:
-            #     Logic that handles the variadic form of :class:`Tuple`'s,
-            #     i.e. ``Tuple[str, ...]``
+            # Logic that handles the variadic form of :class:`Tuple`'s,
+            # i.e. ``Tuple[str, ...]``
             #
-            #     Per `PEP 484`_, only **one** required type is allowed before the
-            #     ``Ellipsis``. That is, ``Tuple[int, ...]`` is valid whereas
-            #     ``Tuple[int, str, ...]`` would be invalid. `See here`_ for more info.
+            # Per `PEP 484`_, only **one** required type is allowed before the
+            # ``Ellipsis``. That is, ``Tuple[int, ...]`` is valid whereas
+            # ``Tuple[int, str, ...]`` would be invalid. `See here`_ for more info.
             #
-            #     .. _PEP 484: https://www.python.org/dev/peps/pep-0484/
-            #     .. _See here: https://github.com/python/typing/issues/180
+            # .. _PEP 484: https://www.python.org/dev/peps/pep-0484/
+            # .. _See here: https://github.com/python/typing/issues/180
             v, v_next, i_next = tp.v_and_next()
 
             # Given `Tuple[T, ...]`, we only need the generated string for `T`
@@ -629,7 +629,7 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
 
         if PY311_OR_ABOVE:
             _parse_iso_string = f'{__fromisoformat}({o})'
-        else:
+        else:  # pragma: no cover
             _parse_iso_string = f"{__fromisoformat}({o}.replace('Z', '+00:00', 1))"
 
         return (f'{_parse_iso_string} if {o}.__class__ is str '
@@ -661,7 +661,7 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
 
         if PY311_OR_ABOVE:
             _parse_iso_string = f'{_fromisoformat}({o})'
-        else:
+        else:  # pragma: no cover
             _parse_iso_string = f"{_fromisoformat}({o}.replace('Z', '+00:00', 1))"
 
         return (f'{_parse_iso_string} if {o}.__class__ is str '
@@ -715,34 +715,16 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
             name = getattr(origin, '__name__', origin)
             # origin = type_ann.__args__[0]
 
-        # -> Union[x]
-        if is_union(origin):
-            args = get_args(type_ann)
-
-            # Special case for Optional[x], which is actually Union[x, None]
-            if len(args) == 2 and NoneType in args:
-                new_tp = tp.replace(origin=args[0], args=None, name=None)
-                new_tp.in_optional = True
-                string = cls.get_string_for_annotation(new_tp, extras)
-                return f'None if {tp.v()} is None else {string}'
-
-            load_hook = cls.load_to_union
-
-            # raise NotImplementedError('`Union` support is not yet fully implemented!')
-
-        elif origin is Literal:
-            load_hook = cls.load_to_literal
-            args = get_args(type_ann)
-
+        # `LiteralString` enforces stricter rules at
+        # type-checking but behaves like `str` at runtime.
         # TODO maybe add `load_to_literal_string`
-        elif origin is PyLiteralString:
+        if origin is PyLiteralString:
             load_hook = cls.load_to_str
             origin = str
             name = 'str'
 
         # -> Atomic, immutable types which don't require
         #    any iterative / recursive handling.
-        # TODO use subclass safe
         elif origin in _SIMPLE_TYPES or is_subclass_safe(origin, _SIMPLE_TYPES):
             load_hook = hooks.get(origin)
 
@@ -752,6 +734,25 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
                 args = get_args(type_ann)
             except ValueError:
                 args = Any,
+
+        # -> Union[x]
+        elif is_union(origin):
+            load_hook = cls.load_to_union
+            args = get_args(type_ann)
+
+            # Special case for Optional[x], which is actually Union[x, None]
+            if len(args) == 2 and NoneType in args:
+                new_tp = tp.replace(origin=args[0], args=None, name=None)
+                new_tp.in_optional = True
+
+                string = cls.get_string_for_annotation(new_tp, extras)
+
+                return f'None if {tp.v()} is None else {string}'
+
+        # -> Literal[X, Y, ...]
+        elif origin is Literal:
+            load_hook = cls.load_to_literal
+            args = get_args(type_ann)
 
         # https://stackoverflow.com/questions/76520264/dataclasswizard-after-upgrading-to-python3-11-is-not-working-as-expected
         elif origin is Any:
@@ -774,6 +775,9 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
             # return a dynamically generated `fromdict`
             # for the `cls` (base_type)
             load_hook = cls.load_to_dataclass
+
+        elif is_subclass_safe(origin, Enum):
+            load_hook = cls.load_to_enum
 
         elif origin in (abc.Sequence, abc.MutableSequence, abc.Collection):
             if origin is abc.Sequence:
@@ -964,17 +968,6 @@ def load_func_for_dataclass(
 
     field_to_alias = v1_dataclass_field_to_alias(cls)
     check_aliases = True if field_to_alias else False
-
-    # This contains a mapping of the original field name to the parser for its
-    # annotated type; the item lookup *can* be case-insensitive.
-    # try:
-    #     field_to_parser = dataclass_field_to_load_parser(cls_loader, cls, config)
-    # except RecursionError:
-    #     if meta.recursive_classes:
-    #         # recursion-safe loader is already in use; something else must have gone wrong
-    #         raise
-    #     else:
-    #         raise RecursiveClassError(cls) from None
 
     field_to_path = DATACLASS_FIELD_TO_ALIAS_PATH_FOR_LOAD[cls]
     has_alias_paths = True if field_to_path else False
