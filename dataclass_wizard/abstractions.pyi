@@ -476,7 +476,7 @@ class AbstractLoaderGenerator(ABC):
 
     @staticmethod
     @abstractmethod
-    def load_to_float(tp: TypeInfo, extras: Extras) -> str:
+    def load_to_float(tp: TypeInfo, extras: Extras) -> str | TypeInfo:
         """
         Generate code to load a value into a float field.
         """
@@ -491,14 +491,14 @@ class AbstractLoaderGenerator(ABC):
 
     @staticmethod
     @abstractmethod
-    def load_to_bytes(tp: TypeInfo, extras: Extras) -> str:
+    def load_to_bytes(tp: TypeInfo, extras: Extras) -> str | TypeInfo:
         """
         Generate code to load a value into a bytes field.
         """
 
     @staticmethod
     @abstractmethod
-    def load_to_bytearray(tp: TypeInfo, extras: Extras) -> str:
+    def load_to_bytearray(tp: TypeInfo, extras: Extras) -> str | TypeInfo:
         """
         Generate code to load a value into a bytearray field.
         """
@@ -527,7 +527,7 @@ class AbstractLoaderGenerator(ABC):
 
     @staticmethod
     @abstractmethod
-    def load_to_enum(tp: TypeInfo, extras: Extras) -> str:
+    def load_to_enum(tp: TypeInfo, extras: Extras) -> str | TypeInfo:
         """
         Generate code to load a value into an Enum field.
         """
@@ -597,6 +597,20 @@ class AbstractLoaderGenerator(ABC):
 
     @staticmethod
     @abstractmethod
+    def load_to_path(tp: TypeInfo, extras: Extras) -> str | TypeInfo:
+        """
+        Generate code to load a value into a Path field.
+        """
+
+    @staticmethod
+    @abstractmethod
+    def load_to_date(tp: TypeInfo, extras: Extras) -> str | TypeInfo:
+        """
+        Generate code to load a value into a date field.
+        """
+
+    @staticmethod
+    @abstractmethod
     def load_to_datetime(tp: TypeInfo, extras: Extras) -> str | TypeInfo:
         """
         Generate code to load a value into a datetime field.
@@ -607,13 +621,6 @@ class AbstractLoaderGenerator(ABC):
     def load_to_time(tp: TypeInfo, extras: Extras) -> str:
         """
         Generate code to load a value into a time field.
-        """
-
-    @staticmethod
-    @abstractmethod
-    def load_to_date(tp: TypeInfo, extras: Extras) -> str | TypeInfo:
-        """
-        Generate code to load a value into a date field.
         """
 
     @staticmethod

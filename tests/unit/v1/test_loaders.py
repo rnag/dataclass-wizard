@@ -9,6 +9,9 @@ from base64 import b64decode
 from collections import namedtuple, defaultdict, deque
 from dataclasses import dataclass, field
 from datetime import datetime, date, time, timedelta
+from decimal import Decimal
+from enum import Enum
+from pathlib import Path
 from typing import (
     List, Optional, Union, Tuple, Dict, NamedTuple, DefaultDict,
     Set, FrozenSet, Annotated, Literal, Sequence, MutableSequence, Collection
@@ -22,6 +25,7 @@ from dataclass_wizard.errors import (
     ParseError, MissingFields, UnknownKeysError, MissingData, InvalidConditionError
 )
 from dataclass_wizard.models import _PatternBase
+from dataclass_wizard.type_def import NoneType
 from dataclass_wizard.v1 import *
 from ..conftest import MyUUIDSubclass
 from ...conftest import *
@@ -1088,7 +1092,7 @@ def test_forward_refs_are_resolved():
         ('2020-01-02T01:02:03Z', does_not_raise()),
         ('2010-12-31 23:59:59-04:00', does_not_raise()),
         (123456789, does_not_raise()),
-        (True, pytest.raises(ParseError)),
+        (True, does_not_raise()),
         (datetime(2010, 12, 31, 23, 59, 59), does_not_raise()),
     ]
 )
@@ -1116,7 +1120,7 @@ def test_datetime(input, expectation):
         ('2020-01-02', does_not_raise()),
         ('2010-12-31', does_not_raise()),
         (123456789, does_not_raise()),
-        (True, pytest.raises(ParseError)),
+        (True, does_not_raise()),
         (date(2010, 12, 31), does_not_raise()),
     ]
 )
@@ -3085,3 +3089,102 @@ def test_bytes_and_bytes_array_are_supported():
 
     # Check data consistency
     assert Foo.from_dict(foo.to_dict()).to_dict() == data
+
+
+def test_literal_string():
+    """Confirm `literal` strings (typing.LiteralString) are supported."""
+
+    @dataclass
+    class Test(JSONWizard):
+        class _(JSONWizard.Meta):
+            v1 = True
+
+        s: LiteralString
+
+    t = Test.from_dict({'s': 'value'})
+    assert t.s == 'value'
+    assert Test.from_dict(t.to_dict()).s == 'value'
+
+
+def test_decimal():
+    """Confirm `Decimal` is supported."""
+
+    @dataclass
+    class Test(JSONWizard):
+        class _(JSONWizard.Meta):
+            v1 = True
+
+        d1: Decimal
+        d2: Decimal
+        d3: Decimal
+
+    d = {'d1': 123,
+         'd2': 3.14,
+         'd3': '42.7'}
+
+    t = Test.from_dict(d)
+
+    assert t.d1 == Decimal(123)
+    assert t.d2 == Decimal('3.14')
+    assert t.d3 == Decimal('42.7')
+
+    assert t.to_dict() == {
+        'd1': '123',
+        'd2': '3.14',
+        'd3': '42.7',
+    }
+
+
+def test_path():
+    """Confirm `Path` objects are supported."""
+
+    @dataclass
+    class Test(JSONWizard):
+        class _(JSONWizard.Meta):
+            v1 = True
+
+        p: Path
+
+    t = Test.from_dict({'p': 'a/b/c'})
+    assert t.p == Path('a/b/c')
+    assert Test.from_dict(t.to_dict()).p == Path('a/b/c')
+
+
+def test_none():
+    """Confirm `None` type annotation is supported."""
+
+    @dataclass
+    class Test(JSONWizard):
+        class _(JSONWizard.Meta):
+            v1 = True
+
+        x: NoneType
+
+    t = Test.from_dict({'x': None})
+    assert t.x is None
+
+    t = Test.from_dict({'x': 'test'})
+    assert t.x is None
+
+
+def test_enum():
+    """Confirm `Enum` objects are supported."""
+
+    class MyEnum(Enum):
+        A = 'the A'
+        B = 'the B'
+        C = 'the C'
+
+    @dataclass
+    class Test(JSONWizard):
+        class _(JSONWizard.Meta):
+            v1 = True
+
+        e: MyEnum
+
+    with pytest.raises(ParseError):
+        Test.from_dict({'e': 'the D'})
+
+    t = Test.from_dict({'e': 'the B'})
+    assert t.e is MyEnum.B
+    assert Test.from_dict(t.to_dict()).e is MyEnum.B

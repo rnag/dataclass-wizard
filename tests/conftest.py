@@ -7,7 +7,8 @@ __all__ = [
     'TypedDict',
     # For compatibility with Python 3.9 and 3.10
     'Required',
-    'NotRequired'
+    'NotRequired',
+    'LiteralString',
 ]
 
 import sys
@@ -41,9 +42,11 @@ else:
 if PY311_OR_ABOVE:
     from typing import Required
     from typing import NotRequired
+    from typing import LiteralString
 else:
     from typing_extensions import Required
     from typing_extensions import NotRequired
+    from typing_extensions import LiteralString
 
 
 def data_file_path(name: str) -> str:

@@ -1,3 +1,4 @@
+from collections import defaultdict
 from dataclasses import MISSING, Field as _Field
 from typing import Any, TypedDict
 
@@ -38,6 +39,9 @@ class TypeInfo:
         # optional attribute, that indicates if we should wrap the
         # assignment with `name` -- ex. `(1, 2)` -> `deque((1, 2))`
         '_wrapped',
+        # optional attribute, that indicates if we are currently in Optional,
+        # e.g. `typing.Optional[...]` *or* `typing.Union[T, ...*T2, None]`
+        '_in_opt',
     )
 
     def __init__(self, origin,
@@ -73,18 +77,32 @@ class TypeInfo:
         # noinspection PyArgumentList
         return TypeInfo(**current_values)
 
+    @property
+    def in_optional(self):
+        return getattr(self, '_in_opt', False)
+
+    @in_optional.setter
+    def in_optional(self, value):
+        # noinspection PyAttributeOutsideInit
+        self._in_opt = value
+
     @staticmethod
-    def ensure_in_locals(extras, *types):
-        locals = extras['locals']
-        for tp in types:
+    def ensure_in_locals(extras, *tps, **name_to_tp):
+        locals: dict = extras['locals']
+
+        for tp in tps:
             locals.setdefault(tp.__name__, tp)
 
-    def type_name(self, extras):
+        for name, tp in name_to_tp.items():
+            locals.setdefault(name, tp)
+
+    def type_name(self, extras, bound=None):
         """Return type name as string (useful for `Union` type checks)"""
         if self.name is None:
             self.name = get_origin_v2(self.origin).__name__
 
-        return self._wrap_inner(extras, force=True)
+        return self._wrap_inner(
+            extras, force=True, bound=bound)
 
     def v(self):
         return (f'{self.prefix}{self.i}' if (idx := self.index) is None
@@ -99,8 +117,8 @@ class TypeInfo:
         return self.v(), f'k{next_i}', f'v{next_i}', next_i
 
     def wrap_dd(self, default_factory: DefFactory, result: str, extras):
-        tn = self._wrap_inner(extras, is_builtin=True)
-        tn_df = self._wrap_inner(extras, default_factory, 'df_')
+        tn = self._wrap_inner(extras, is_builtin=True, bound=defaultdict)
+        tn_df = self._wrap_inner(extras, default_factory)
         result = f'{tn}({tn_df}, {result})'
         setattr(self, '_wrapped', result)
         return self
@@ -112,15 +130,17 @@ class TypeInfo:
 
         return result
 
-    def wrap(self, result: str, extras, force=False, prefix=''):
-        if (tn := self._wrap_inner(extras, prefix=prefix, force=force)) is not None:
+    def wrap(self, result: str, extras, force=False, prefix='', bound=None):
+        if (tn := self._wrap_inner(
+                extras, prefix=prefix, force=force,
+                bound=bound)) is not None:
             result = f'{tn}({result})'
 
         setattr(self, '_wrapped', result)
         return self
 
-    def wrap_builtin(self, result: str, extras):
-        tn = self._wrap_inner(extras, is_builtin=True)
+    def wrap_builtin(self, bound, result, extras):
+        tn = self._wrap_inner(extras, is_builtin=True, bound=bound)
         result = f'{tn}({result})'
 
         setattr(self, '_wrapped', result)
@@ -130,27 +150,31 @@ class TypeInfo:
                     tp=None,
                     prefix='',
                     is_builtin=False,
-                    force=False) -> 'str | None':
+                    force=False,
+                    bound=None) -> 'str | None':
 
         if tp is None:
             tp = self.origin
             name = self.name
-            return_name = False
+            return_name = force
         else:
             name = tp.__name__
             return_name = True
 
-        if force:
-            return_name = True
+        # This ensures we don't create a "unique" name
+        # if it's a non-subclass, e.g. ensures we end
+        # up with `date` instead of `date_123`.
+        if bound is not None:
+            is_builtin = tp is bound
 
         if tp not in _BUILTIN_COLLECTION_TYPES:
-            # TODO?
-            if is_builtin or (mod := tp.__module__) == 'collections':
+            if (mod := tp.__module__) == 'builtins':
+                tn = name
+            elif (is_builtin
+                  or mod == 'collections'):
                 tn = name
                 LOG.debug(f'Ensuring %s=%s', tn, name)
                 extras['locals'].setdefault(tn, tp)
-            elif mod == 'builtins':
-                tn = name
             else:
                 tn = f'{prefix}{name}_{self.field_i}'
                 LOG.debug(f'Adding %s=%s', tn, name)

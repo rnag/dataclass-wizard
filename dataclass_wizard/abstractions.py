@@ -303,7 +303,7 @@ class AbstractLoaderGenerator(ABC):
 
     @staticmethod
     @abstractmethod
-    def load_to_float(tp: TypeInfo, extras: Extras) -> str:
+    def load_to_float(tp: TypeInfo, extras: Extras) -> 'str | TypeInfo':
         """
         Generate code to load a value into a float field.
         """
@@ -318,14 +318,14 @@ class AbstractLoaderGenerator(ABC):
 
     @staticmethod
     @abstractmethod
-    def load_to_bytes(tp: TypeInfo, extras: Extras) -> str:
+    def load_to_bytes(tp: TypeInfo, extras: Extras) -> 'str | TypeInfo':
         """
         Generate code to load a value into a bytes field.
         """
 
     @staticmethod
     @abstractmethod
-    def load_to_bytearray(tp: TypeInfo, extras: Extras) -> str:
+    def load_to_bytearray(tp: TypeInfo, extras: Extras) -> 'str | TypeInfo':
         """
         Generate code to load a value into a bytearray field.
         """
@@ -354,7 +354,7 @@ class AbstractLoaderGenerator(ABC):
 
     @staticmethod
     @abstractmethod
-    def load_to_enum(tp: TypeInfo, extras: Extras) -> str:
+    def load_to_enum(tp: TypeInfo, extras: Extras) -> 'str | TypeInfo':
         """
         Generate code to load a value into an Enum field.
         """
@@ -417,7 +417,14 @@ class AbstractLoaderGenerator(ABC):
 
     @staticmethod
     @abstractmethod
-    def load_to_decimal(tp: TypeInfo, extras: Extras) -> str:
+    def load_to_decimal(tp: TypeInfo, extras: Extras) -> 'str | TypeInfo':
+        """
+        Generate code to load a value into a Decimal field.
+        """
+
+    @staticmethod
+    @abstractmethod
+    def load_to_path(tp: TypeInfo, extras: Extras) -> 'str | TypeInfo':
         """
         Generate code to load a value into a Decimal field.
         """

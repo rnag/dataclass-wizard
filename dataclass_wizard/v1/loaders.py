@@ -25,7 +25,7 @@ from ..class_helper import (
     DATACLASS_FIELD_TO_ALIAS_PATH_FOR_LOAD,
     dataclass_init_fields, dataclass_field_to_default, create_meta, dataclass_init_field_names,
 )
-from ..constants import CATCH_ALL, TAG
+from ..constants import CATCH_ALL, TAG, PY311_OR_ABOVE
 from ..decorators import _identity
 from ..errors import (ParseError, MissingFields, UnknownKeysError,
                       MissingData, JSONWizardError, RecursiveClassError)
@@ -43,7 +43,8 @@ from ..utils.function_builder import FunctionBuilder
 from ..utils.object_path import safe_get
 from ..utils.string_conv import to_json_key
 from ..utils.type_conv import (
-    as_bool, as_datetime, as_date, as_time, as_int, as_timedelta,
+    as_datetime_v1, as_date_v1, as_time_v1,
+    as_int, as_timedelta, TRUTHY_VALUES,
 )
 from ..utils.typing_compat import (
     is_typed_dict, get_args, is_annotated,
@@ -116,55 +117,61 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
 
     @staticmethod
     def load_to_str(tp: TypeInfo, extras: Extras) -> str:
-        # TODO skip None check if in Optional
-        # return f'{tp.name}({tp.v()})'
-        return f"'' if {(v := tp.v())} is None else {tp.name}({v})"
+        tn = tp.type_name(extras)
+        o = tp.v()
+
+        if tp.in_optional:  # str(v)
+            return f'{tn}({o})'
+
+        # '' if v is None else str(v)
+        default = "''" if tp.origin is str else f'{tn}()'
+        return f'{default} if {o} is None else {tn}({o})'
 
     @staticmethod
     def load_to_int(tp: TypeInfo, extras: Extras) -> str:
-        # TODO
-        extras['locals'].setdefault('as_int', as_int)
+        # alias: as_int
+        tn = tp.type_name(extras)
+        tp.ensure_in_locals(extras, as_int)
 
-        # TODO
-        return f"as_int({tp.v()}, {tp.name})"
+        return f"as_int({tp.v()}, {tn})"
 
     @staticmethod
-    def load_to_float(tp: TypeInfo, extras: Extras) -> str:
-        # alias: base_type(o)
-        return f'{tp.name}({tp.v()})'
+    def load_to_float(tp: TypeInfo, extras: Extras):
+        # alias: float(o)
+        return tp.wrap_builtin(float, tp.v(), extras)
 
     @staticmethod
     def load_to_bool(tp: TypeInfo, extras: Extras) -> str:
-        extras['locals'].setdefault('as_bool', as_bool)
-        return f"as_bool({tp.v()})"
-        # Uncomment for efficiency!
-        # extras['locals']['_T'] = _TRUTHY_VALUES
-        # return f'{tp.v()} if (t := type({tp.v()})) is bool else ({tp.v()}.lower() in _T if t is str else {tp.v()} == 1)'
+        o = tp.v()
+        tp.ensure_in_locals(extras, __TRUTHY=TRUTHY_VALUES)
+
+        return (f'{o}.lower() in __TRUTHY '
+                f'if {o}.__class__ is str '
+                f'else {o} == 1')
 
     @staticmethod
-    def load_to_bytes(tp: TypeInfo, extras: Extras) -> str:
-        extras['locals'].setdefault('b64decode', b64decode)
+    def load_to_bytes(tp: TypeInfo, extras: Extras):
+        tp.ensure_in_locals(extras, b64decode)
         return f'b64decode({tp.v()})'
 
-    @staticmethod
-    def load_to_bytearray(tp: TypeInfo, extras: Extras) -> str:
-        extras['locals'].setdefault('b64decode', b64decode)
-        return f'{tp.name}(b64decode({tp.v()}))'
+    @classmethod
+    def load_to_bytearray(cls, tp: TypeInfo, extras: Extras):
+        as_bytes = cls.load_to_bytes(tp, extras)
+        return tp.wrap_builtin(bytearray, as_bytes, extras)
 
     @staticmethod
     def load_to_none(tp: TypeInfo, extras: Extras) -> str:
         return 'None'
 
     @staticmethod
-    def load_to_enum(tp: TypeInfo, extras: Extras) -> str:
-        # alias: base_type(o)
-        return tp.v()
+    def load_to_enum(tp: TypeInfo, extras: Extras):
+        # alias: enum_cls(o)
+        return tp.wrap(tp.v(), extras)
 
-    # load_to_uuid = load_to_enum
     @staticmethod
     def load_to_uuid(tp: TypeInfo, extras: Extras):
-        # alias: base_type(o)
-        return tp.wrap_builtin(tp.v(), extras)
+        # alias: UUID(o)
+        return tp.wrap_builtin(UUID, tp.v(), extras)
 
     @classmethod
     def load_to_iterable(cls, tp: TypeInfo, extras: Extras):
@@ -312,7 +319,6 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         result = cls._build_dict_comp(
             tp, v, i_next, k_next, v_next, kt, vt, extras)
 
-        # TODO
         return tp.wrap(result, extras)
 
     @classmethod
@@ -388,21 +394,22 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
     def load_to_union(cls, tp: TypeInfo, extras: Extras):
         fn_gen = FunctionBuilder()
         config = extras['config']
+        actual_cls = extras['cls']
 
         tag_key = config.tag_key or TAG
         auto_assign_tags = config.auto_assign_tags
 
-        fields = f'fields_{tp.field_i}'
+        i = tp.field_i
+        args = tp.args
+        in_optional = NoneType in args
 
         extras_cp: Extras = extras.copy()
         extras_cp['locals'] = _locals = {
-            fields: tp.args,
+            (fields := f'fields_{i}'): args,
             'tag_key': tag_key,
         }
 
-        actual_cls = extras['cls']
-
-        fn_name = f'load_to_{extras["cls_name"]}_union_{tp.field_i}'
+        fn_name = f'load_to_{extras["cls_name"]}_union_{i}'
 
         # TODO handle dataclasses in union (tag)
 
@@ -413,11 +420,12 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
             type_checks = []
             try_parse_at_end = []
 
-            for possible_tp in tp.args:
+            for possible_tp in args:
 
                 possible_tp = eval_forward_ref_if_needed(possible_tp, actual_cls)
 
-                tp_new = TypeInfo(possible_tp, field_i=tp.field_i)
+                tp_new = TypeInfo(possible_tp, field_i=i)
+                tp_new.in_optional = in_optional
 
                 if possible_tp is NoneType:
                     with fn_gen.if_('v1 is None'):
@@ -471,7 +479,10 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
 
                 # TODO disable for dataclasses
 
-                if possible_tp in _SIMPLE_TYPES or is_subclass_safe(get_origin_v2(possible_tp), _SIMPLE_TYPES):
+                if (possible_tp in _SIMPLE_TYPES
+                    or is_subclass_safe(
+                        get_origin_v2(possible_tp), _SIMPLE_TYPES)):
+
                     tn = tp_new.type_name(extras_cp)
                     type_checks.extend([
                         f'if tp is {tn}:',
@@ -584,35 +595,85 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
 
     @staticmethod
     def load_to_decimal(tp: TypeInfo, extras: Extras):
-        s = f'str({tp.v()}) if isinstance({tp.v()}, float) else {tp.v()}'
-        return tp.wrap_builtin(s, extras)
+        o = tp.v()
+        s = f'str({o}) if {o}.__class__ is float else {o}'
 
-    # alias: base_type(o)
-    load_to_path = load_to_uuid
+        return tp.wrap_builtin(Decimal, s, extras)
 
     @staticmethod
-    def load_to_datetime(tp: TypeInfo, extras: Extras):
-        # alias: as_datetime
-        tp.ensure_in_locals(extras, as_datetime, datetime)
-        return f'as_datetime({tp.v()}, {tp.name})'
+    def load_to_path(tp: TypeInfo, extras: Extras):
+        # alias: Path(o)
+        return tp.wrap_builtin(Path, tp.v(), extras)
+
+    @classmethod
+    def load_to_date(cls, tp: TypeInfo, extras: Extras):
+        return cls._load_to_date(tp, extras, date)
+
+    @classmethod
+    def load_to_datetime(cls, tp: TypeInfo, extras: Extras):
+        return cls._load_to_date(tp, extras, datetime)
 
     @staticmethod
     def load_to_time(tp: TypeInfo, extras: Extras):
-        # alias: as_time
-        tp.ensure_in_locals(extras, as_time, time)
-        return f'as_time({tp.v()}, {tp.name})'
+        o = tp.v()
+        tn = tp.type_name(extras, bound=time)
+        tp_time = cast('type[time]', tp.origin)
+
+        __fromisoformat = f'__{tn}_fromisoformat'
+
+        tp.ensure_in_locals(
+            extras,
+            __as_time=as_time_v1,
+            **{__fromisoformat: tp_time.fromisoformat}
+        )
+
+        if PY311_OR_ABOVE:
+            _parse_iso_string = f'{__fromisoformat}({o})'
+        else:
+            _parse_iso_string = f"{__fromisoformat}({o}.replace('Z', '+00:00', 1))"
+
+        return (f'{_parse_iso_string} if {o}.__class__ is str '
+                f'else __as_time({o}, {tn})')
 
     @staticmethod
-    def load_to_date(tp: TypeInfo, extras: Extras):
-        # alias: as_date
-        tp.ensure_in_locals(extras, as_date, date)
-        return f'as_date({tp.v()}, {tp.name})'
+    def _load_to_date(tp: TypeInfo, extras: Extras,
+                      cls: 'Union[type[date], type[datetime]]'):
+        o = tp.v()
+        tn = tp.type_name(extras, bound=cls)
+        tp_date_or_datetime = cast('type[date]', tp.origin)
+
+        _fromisoformat = f'__{tn}_fromisoformat'
+        _fromtimestamp = f'__{tn}_fromtimestamp'
+
+        name_to_func = {
+            _fromisoformat: tp_date_or_datetime.fromisoformat,
+            _fromtimestamp: tp_date_or_datetime.fromtimestamp,
+        }
+
+        if cls is datetime:
+            _as_func = '__as_datetime'
+            name_to_func[_as_func] = as_datetime_v1
+        else:
+            _as_func = '__as_date'
+            name_to_func[_as_func] = as_date_v1
+
+        tp.ensure_in_locals(extras, **name_to_func)
+
+        if PY311_OR_ABOVE:
+            _parse_iso_string = f'{_fromisoformat}({o})'
+        else:
+            _parse_iso_string = f"{_fromisoformat}({o}.replace('Z', '+00:00', 1))"
+
+        return (f'{_parse_iso_string} if {o}.__class__ is str '
+                f'else {_as_func}({o}, {_fromtimestamp})')
 
     @staticmethod
     def load_to_timedelta(tp: TypeInfo, extras: Extras):
         # alias: as_timedelta
-        tp.ensure_in_locals(extras, as_timedelta, timedelta)
-        return f'as_timedelta({tp.v()}, {tp.name})'
+        tn = tp.type_name(extras, bound=timedelta)
+        tp.ensure_in_locals(extras, as_timedelta)
+
+        return f'as_timedelta({tp.v()}, {tn})'
 
     @staticmethod
     def load_to_dataclass(tp: TypeInfo, extras: Extras):
@@ -645,7 +706,6 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         name = getattr(origin, '__name__', origin)
 
         args = None
-        wrap = False
 
         if is_annotated(type_ann) or is_typed_dict_type_qualifier(origin):
             # Given `Required[T]` or `NotRequired[T]`, we only need `T`
@@ -660,9 +720,10 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
             args = get_args(type_ann)
 
             # Special case for Optional[x], which is actually Union[x, None]
-            if NoneType in args and len(args) == 2:
-                string = cls.get_string_for_annotation(
-                    tp.replace(origin=args[0], args=None, name=None), extras)
+            if len(args) == 2 and NoneType in args:
+                new_tp = tp.replace(origin=args[0], args=None, name=None)
+                new_tp.in_optional = True
+                string = cls.get_string_for_annotation(new_tp, extras)
                 return f'None if {tp.v()} is None else {string}'
 
             load_hook = cls.load_to_union
@@ -696,7 +757,7 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         elif origin is Any:
             load_hook = cls.default_load_to
 
-        elif issubclass(origin, tuple) and hasattr(origin, '_fields'):
+        elif is_subclass_safe(origin, tuple) and hasattr(origin, '_fields'):
 
             if getattr(origin, '__annotations__', None):
                 # Annotated as a `typing.NamedTuple` subtype
@@ -750,10 +811,7 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
             for t in hooks:
                 if issubclass(origin, (t,)):
                     load_hook = hooks[t]
-                    wrap = True
                     break
-            else:
-                wrap = False
 
         tp.origin = origin
         tp.args = args
@@ -761,11 +819,6 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
 
         if load_hook is not None:
             result = load_hook(tp, extras)
-            # Only wrap result if not already wrapped
-            if wrap:
-                if (wrapped := getattr(result, '_wrapped', None)) is not None:
-                    return wrapped
-                return tp.wrap(result, extras)
             return result
 
         # No matching hook is found for the type.
