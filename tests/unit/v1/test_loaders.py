@@ -3,6 +3,7 @@ Tests for the `loaders` module, but more importantly for the `parsers` module.
 
 Note: I might refactor this into a separate `test_parsers.py` as time permits.
 """
+import enum
 import logging
 from abc import ABC
 from base64 import b64decode
@@ -10,7 +11,6 @@ from collections import namedtuple, defaultdict, deque
 from dataclasses import dataclass, field
 from datetime import datetime, date, time, timedelta
 from decimal import Decimal
-from enum import Enum
 from pathlib import Path
 from typing import (
     List, Optional, Union, Tuple, Dict, NamedTuple, DefaultDict,
@@ -3170,7 +3170,7 @@ def test_none():
 def test_enum():
     """Confirm `Enum` objects are supported."""
 
-    class MyEnum(Enum):
+    class MyEnum(enum.Enum):
         A = 'the A'
         B = 'the B'
         C = 'the C'
@@ -3188,3 +3188,40 @@ def test_enum():
     t = Test.from_dict({'e': 'the B'})
     assert t.e is MyEnum.B
     assert Test.from_dict(t.to_dict()).e is MyEnum.B
+
+
+@pytest.mark.skipif(not PY311_OR_ABOVE, reason='Requires Python 3.11 or higher')
+def test_str_and_int_enum():
+    """Confirm `StrEnum` objects are supported."""
+
+    class MyStrEnum(enum.StrEnum):
+        A = 'the A'
+        B = 'the B'
+        C = 'the C'
+
+    class MyIntEnum(enum.IntEnum):
+        X = enum.auto()
+        Y = enum.auto()
+        Z = enum.auto()
+
+    @dataclass
+    class Test(JSONPyWizard):
+        class _(JSONPyWizard.Meta):
+            v1 = True
+
+        str_e: MyStrEnum
+        int_e: MyIntEnum
+
+    with pytest.raises(ParseError):
+        Test.from_dict({'str_e': 'the D', 'int_e': 3})
+
+    with pytest.raises(ParseError):
+        Test.from_dict({'str_e': 'the C', 'int_e': 4})
+
+    t = Test.from_dict({'str_e': 'the B', 'int_e': 3})
+    assert t.str_e is MyStrEnum.B
+    assert t.int_e is MyIntEnum.Z
+
+    t2 = Test.from_dict(t.to_dict())
+    assert t2.str_e is MyStrEnum.B
+    assert t2.int_e is MyIntEnum.Z

@@ -4,10 +4,10 @@ from typing import Any, TypedDict
 
 from ..constants import PY310_OR_ABOVE
 from ..log import LOG
-from ..type_def import DefFactory, ExplicitNull
+from ..type_def import DefFactory, ExplicitNull, PyNotRequired
 # noinspection PyProtectedMember
 from ..utils.object_path import split_object_path
-from ..utils.typing_compat import get_origin_v2, PyNotRequired
+from ..utils.typing_compat import get_origin_v2
 
 
 _BUILTIN_COLLECTION_TYPES = frozenset({
@@ -81,6 +81,7 @@ class TypeInfo:
     def in_optional(self):
         return getattr(self, '_in_opt', False)
 
+    # noinspection PyUnresolvedReferences
     @in_optional.setter
     def in_optional(self, value):
         # noinspection PyAttributeOutsideInit
@@ -88,7 +89,7 @@ class TypeInfo:
 
     @staticmethod
     def ensure_in_locals(extras, *tps, **name_to_tp):
-        locals: dict = extras['locals']
+        locals = extras['locals']
 
         for tp in tps:
             locals.setdefault(tp.__name__, tp)
