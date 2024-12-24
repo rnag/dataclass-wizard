@@ -846,10 +846,6 @@ def setup_default_loader(cls=LoadMixin):
     """
     # TODO maybe `dict.update` might be better?
 
-    # Technically a complex type, however check this
-    # first, since `StrEnum` and `IntEnum` are subclasses
-    # of `str` and `int`
-    cls.register_load_hook(Enum, cls.load_to_enum)
     # Simple types
     cls.register_load_hook(str, cls.load_to_str)
     cls.register_load_hook(float, cls.load_to_float)
