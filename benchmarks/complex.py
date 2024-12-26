@@ -88,6 +88,7 @@ class Name(NamedTuple):
     last: str
     salutation: Optional[str] = 'Mr.'
 
+
 @dataclass
 class NameDataclass:
     first: str

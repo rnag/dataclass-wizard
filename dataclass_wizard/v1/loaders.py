@@ -363,7 +363,7 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
 
             result_list.append(f'{field_name}: {string}')
 
-        with fn_gen.function(fn_name, ['v1'], None, _locals):
+        with fn_gen.function(fn_name, ['v1'], MISSING, _locals):
             with fn_gen.try_():
                 fn_gen.add_lines('result = {',
                                  *(f'  {r},' for r in result_list),
@@ -413,7 +413,7 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
 
         # TODO handle dataclasses in union (tag)
 
-        with fn_gen.function(fn_name, ['v1'], None, _locals):
+        with fn_gen.function(fn_name, ['v1'], MISSING, _locals):
 
             dataclass_tag_to_lines: dict[str, list] = {}
 
@@ -548,7 +548,7 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
 
         fn_name = f'load_to_{extras["cls_name"]}_literal_{tp.field_i}'
 
-        with fn_gen.function(fn_name, ['v1'], None, _locals):
+        with fn_gen.function(fn_name, ['v1'], MISSING, _locals):
 
             with fn_gen.if_(f'{tp.v()} in {fields}'):
                 fn_gen.add_line('return v1')
