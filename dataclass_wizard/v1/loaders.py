@@ -1,6 +1,7 @@
 # TODO cleanup imports
 
 import collections.abc as abc
+import dataclasses
 from base64 import b64decode
 from collections import defaultdict, deque
 from dataclasses import is_dataclass, MISSING, Field
@@ -12,7 +13,7 @@ from pathlib import Path
 from typing import (
     Any, Type, Dict, List, Tuple, Iterable, Sequence, Union,
     NamedTupleMeta,
-    SupportsFloat, AnyStr, Text, Callable, Optional, cast, Literal, Annotated
+    SupportsFloat, AnyStr, Text, Callable, Optional, cast, Literal, Annotated, NamedTuple
 )
 from uuid import UUID
 
@@ -248,38 +249,70 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
 
     @classmethod
     def load_to_named_tuple(cls, tp: TypeInfo, extras: Extras):
-
         fn_gen = FunctionBuilder()
+        nt_tp = cast(NamedTuple, tp.origin)
 
         extras_cp: Extras = extras.copy()
         extras_cp['locals'] = _locals = {
+            'cls': nt_tp,
             'msg': "`dict` input is not supported for NamedTuple, use a dataclass instead."
         }
 
         fn_name = f'_load_{extras["cls_name"]}_nt_typed_{tp.name}'
 
-        field_names = []
-        result_list = []
+        req_field_to_assign = {}
+        field_assigns = []
+        optional_fields = set(nt_tp._field_defaults)
+        has_optionals = True if optional_fields else False
+        only_optionals = has_optionals and len(optional_fields) == len(nt_tp.__annotations__)
         num_fields = 0
-        # TODO set __annotations__?
-        for x, y in tp.origin.__annotations__.items():
-            result_list.append(cls.get_string_for_annotation(
-                tp.replace(origin=y, index=num_fields), extras_cp))
-            field_names.append(x)
+
+        for field, field_tp in nt_tp.__annotations__.items():
+            string = cls.get_string_for_annotation(
+                tp.replace(origin=field_tp, index=num_fields), extras_cp)
+
+            if has_optionals and field in optional_fields:
+                field_assigns.append(string)
+            else:
+                req_field_to_assign[f'__{field}'] = string
+
             num_fields += 1
 
-        with fn_gen.function(fn_name, ['v1'], None, _locals):
-            fn_gen.add_line('fields = []')
+        with fn_gen.function(fn_name, ['v1'], MISSING, _locals):
+
+            params = ', '.join(req_field_to_assign)
+
             with fn_gen.try_():
-                for i, string in enumerate(result_list):
-                    fn_gen.add_line(f'fields.append({string})')
-            with fn_gen.except_(IndexError):
-                fn_gen.add_line('pass')
-            with fn_gen.except_(KeyError):
-                # Input object is a `dict`
-                # TODO should we support dict for namedtuple?
-                fn_gen.add_line('raise TypeError(msg) from None')
-            fn_gen.add_line(f'return {tp.wrap("*fields", extras_cp, prefix="nt_")}')
+
+                for field, string in req_field_to_assign.items():
+                    fn_gen.add_line(f'{field} = {string}')
+
+                if has_optionals:
+                    opt_start = len(req_field_to_assign)
+                    fn_gen.add_line(f'L = len(v1); has_opt = L > {opt_start}')
+                    with fn_gen.if_(f'has_opt'):
+                        fn_gen.add_line(f'fields = [{field_assigns.pop(0)}]')
+                        for i, string in enumerate(field_assigns, start=opt_start + 1):
+                                fn_gen.add_line(f'if L > {i}: fields.append({string})')
+
+                        if only_optionals:
+                            fn_gen.add_line(f'return cls(*fields)')
+                        else:
+                            fn_gen.add_line(f'return cls({params}, *fields)')
+
+                fn_gen.add_line(f'return cls({params})')
+
+            with fn_gen.except_(Exception, 'e'):
+                with fn_gen.if_('(e_cls := e.__class__) is IndexError'):
+                    # raise `MissingFields`, as required NamedTuple fields
+                    # are not present in the input object `o`.
+                    fn_gen.add_line("raise_missing_fields(locals(), v1, cls, None)")
+                with fn_gen.if_('e_cls is KeyError and type(v1) is dict'):
+                    # Input object is a `dict`
+                    # TODO should we support dict for namedtuple?
+                    fn_gen.add_line('raise TypeError(msg) from None')
+                # re-raise
+                fn_gen.add_line('raise e from None')
 
         extras['fn_gen'] |= fn_gen
 
@@ -881,21 +914,43 @@ def add_to_missing_fields(missing_fields: 'list[str] | None', field: str):
 
 
 def check_and_raise_missing_fields(
-    _locals, o, cls, fields: tuple[Field, ...]):
+    _locals, o, cls,
+    fields: 'Union[tuple[Field, ...], None]'):
 
-    missing_fields = [f.name for f in fields
-                      if f.init
-                      and f'__{f.name}' not in _locals
-                      and (f.default is MISSING
-                           and f.default_factory is MISSING)]
+    if fields is None:  # named tuple
+        nt_tp = cast(NamedTuple, cls)
+        field_to_default = nt_tp._field_defaults
 
-    missing_keys = [v1_dataclass_field_to_alias(cls)[field]
-                    for field in missing_fields]
+        fields = tuple([
+            dataclasses.field(
+                default=field_to_default.get(field, MISSING),
+            )
+            for field in cls.__annotations__])
+
+        for field, name in zip(fields, cls.__annotations__):
+            field.name = name
+
+        missing_fields = [f for f in cls.__annotations__
+                          if f'__{f}' not in _locals
+                          and f not in field_to_default]
+
+        missing_keys = None
+
+    else:
+        missing_fields = [f.name for f in fields
+                          if f.init
+                          and f'__{f.name}' not in _locals
+                          and (f.default is MISSING
+                               and f.default_factory is MISSING)]
+
+        missing_keys = [v1_dataclass_field_to_alias(cls)[field]
+                        for field in missing_fields]
 
     raise MissingFields(
         None, o, cls, fields, None, missing_fields,
         missing_keys
     ) from None
+
 
 def load_func_for_dataclass(
         cls: type,
