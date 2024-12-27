@@ -28,7 +28,6 @@ from ..class_helper import (
     dataclass_init_fields, dataclass_field_to_default, create_meta, dataclass_init_field_names,
 )
 from ..constants import CATCH_ALL, TAG, PY311_OR_ABOVE
-from ..decorators import _identity
 from ..errors import (ParseError, MissingFields, UnknownKeysError,
                       MissingData, JSONWizardError)
 from ..loader_selection import get_loader, fromdict
@@ -100,21 +99,9 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
     transform_json_field = None
 
     @staticmethod
-    @_identity
     def default_load_to(tp: TypeInfo, extras: Extras) -> str:
         # identity: o
         return tp.v()
-
-    @staticmethod
-    def load_after_type_check(tp: TypeInfo, extras: Extras) -> str:
-        ...
-        # return f'{tp.v()} if instance({tp.v()}, {tp.t()}'
-
-        # if isinstance(o, base_type):
-        #     return o
-        #
-        # e = ValueError(f'data type is not a {base_type!s}')
-        # raise ParseError(e, o, base_type)
 
     @staticmethod
     def load_to_str(tp: TypeInfo, extras: Extras) -> str:
@@ -443,8 +430,6 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         }
 
         fn_name = f'load_to_{extras["cls_name"]}_union_{i}'
-
-        # TODO handle dataclasses in union (tag)
 
         with fn_gen.function(fn_name, ['v1'], MISSING, _locals):
 

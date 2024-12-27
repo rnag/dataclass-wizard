@@ -282,13 +282,6 @@ class AbstractLoaderGenerator(ABC):
 
     @staticmethod
     @abstractmethod
-    def load_after_type_check(tp: TypeInfo, extras: Extras) -> str:
-        """
-        Generate code to load an object after confirming its type.
-        """
-
-    @staticmethod
-    @abstractmethod
     def load_to_str(tp: TypeInfo, extras: Extras) -> str:
         """
         Generate code to load a value into a string field.
