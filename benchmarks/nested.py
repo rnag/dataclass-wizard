@@ -214,13 +214,13 @@ def test_load(request, data, n):
     """
     [ RESULTS ON MAC OS X ]
 
-    benchmarks.nested.nested - [INFO] dataclass-wizard     0.135700
-    benchmarks.nested.nested - [INFO] dataclass-factory    0.412265
-    benchmarks.nested.nested - [INFO] dataclasses-json     11.448704
-    benchmarks.nested.nested - [INFO] mashumaro            0.150680
-    benchmarks.nested.nested - [INFO] pydantic             0.328947
-    benchmarks.nested.nested - [INFO] jsons                25.052287
-    benchmarks.nested.nested - [INFO] jsons (strict)       43.233567
+    benchmarks.nested.nested - [INFO] dataclass-wizard     0.130734
+    benchmarks.nested.nested - [INFO] dataclass-factory    0.404371
+    benchmarks.nested.nested - [INFO] dataclasses-json     11.315233
+    benchmarks.nested.nested - [INFO] mashumaro            0.158986
+    benchmarks.nested.nested - [INFO] pydantic             0.330295
+    benchmarks.nested.nested - [INFO] jsons                25.084872
+    benchmarks.nested.nested - [INFO] jsons (strict)       28.306646
 
     """
     g = globals().copy()

@@ -2187,8 +2187,8 @@ def test_with_self_referential_dataclasses_1():
     class A:
         a: Optional['A'] = None
 
-    # enable support for self-referential / recursive dataclasses
-    LoadMeta(v1=True, recursive_classes=True).bind_to(A)
+    # enable `v1` opt-in`
+    LoadMeta(v1=True).bind_to(A)
 
     # Fix for local test cases so the forward reference works
     globals().update(locals())
@@ -2208,8 +2208,6 @@ def test_with_self_referential_dataclasses_2():
     class A(JSONWizard):
         class _(JSONWizard.Meta):
             v1 = True
-            # enable support for self-referential / recursive dataclasses
-            recursive_classes = True
 
         b: Optional['B'] = None
 
