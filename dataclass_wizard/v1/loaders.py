@@ -17,6 +17,7 @@ from typing import (
 )
 from uuid import UUID
 
+from .decorators import setup_recursive_safe_function
 from .enums import KeyAction, KeyCase
 from .models import Extras, TypeInfo
 from ..abstractions import AbstractLoaderGenerator
@@ -29,7 +30,7 @@ from ..class_helper import (
 from ..constants import CATCH_ALL, TAG, PY311_OR_ABOVE
 from ..decorators import _identity
 from ..errors import (ParseError, MissingFields, UnknownKeysError,
-                      MissingData, JSONWizardError, RecursiveClassError)
+                      MissingData, JSONWizardError)
 from ..loader_selection import get_loader, fromdict
 from ..log import LOG
 from ..type_def import (
@@ -708,28 +709,9 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         return f'as_timedelta({tp.v()}, {tn})'
 
     @staticmethod
+    @setup_recursive_safe_function
     def load_to_dataclass(tp: TypeInfo, extras: Extras):
-        cls = tp.origin
-
-        # check for recursive classes, e.g. `A -> B -> A -> B
-        recursive_guard = extras['recursive_guard']
-
-        if (fn_name := recursive_guard.get(cls)) is None:
-            main_fn_gen = extras['fn_gen']
-
-            extras_cp: Extras = extras.copy()
-            # Set new locals
-            extras_cp['locals'] = {'cls': cls}
-            # Initialize the FuncBuilder
-            extras_cp['fn_gen'] = fn_gen = FunctionBuilder()
-
-            fn_name = recursive_guard[cls] = load_func_for_dataclass(
-                cls, extras_cp)
-
-            # Update the FunctionBuilder
-            main_fn_gen |= fn_gen
-
-        return f'{fn_name}({tp.v()})'
+        return load_func_for_dataclass(tp.origin, extras)
 
     @classmethod
     def get_string_for_annotation(cls,
@@ -1001,7 +983,7 @@ def load_func_for_dataclass(
             'cls': cls,
             'cls_name': cls_name,
             'locals': new_locals,
-            'recursive_guard': {cls: fn_name},
+            'recursion_guard': {cls: fn_name},
             'fn_gen': fn_gen,
         }
 
@@ -1034,7 +1016,7 @@ def load_func_for_dataclass(
         # TODO need a way to auto-magically do this
         extras['cls'] = cls
         extras['cls_name'] = cls_name
-        extras['recursive_guard'][cls] = fn_name
+        extras['recursion_guard'][cls] = fn_name
 
     key_case: 'V1LetterCase | None' = cls_loader.transform_json_field
 
