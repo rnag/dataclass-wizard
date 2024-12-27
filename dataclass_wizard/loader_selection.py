@@ -54,9 +54,8 @@ def _get_load_fn_for_dataclass(cls: type[T], v1=None) -> Callable[[JSONObject], 
 
     if v1:
         from .v1.loaders import load_func_for_dataclass as V1_load_func_for_dataclass
-        extras = {'recursive_guard': {}} if meta.recursive_classes else {}
         # noinspection PyTypeChecker
-        load = V1_load_func_for_dataclass(cls, extras)
+        load = V1_load_func_for_dataclass(cls)
     else:
         from .loaders import load_func_for_dataclass
         load = load_func_for_dataclass(cls)

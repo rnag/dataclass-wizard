@@ -20,7 +20,7 @@ from uuid import UUID
 from .enums import KeyAction, KeyCase
 from .models import Extras, TypeInfo
 from ..abstractions import AbstractLoaderGenerator
-from ..bases import BaseLoadHook, AbstractMeta
+from ..bases import BaseLoadHook, AbstractMeta, META
 from ..class_helper import (
     v1_dataclass_field_to_alias, CLASS_TO_LOAD_FUNC, dataclass_fields, get_meta, is_subclass_safe,
     DATACLASS_FIELD_TO_ALIAS_PATH_FOR_LOAD,
@@ -709,18 +709,25 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
 
     @staticmethod
     def load_to_dataclass(tp: TypeInfo, extras: Extras):
+        cls = tp.origin
+
         # check for recursive classes, e.g. `A -> B -> A -> B
-        recursive_guard = extras.get('recursive_guard')
+        recursive_guard = extras['recursive_guard']
 
-        # Meta setting `recursive_classes` is not enabled
-        if recursive_guard is None:
-            fn_name = load_func_for_dataclass(
-                tp.origin, extras, False)
+        if (fn_name := recursive_guard.get(cls)) is None:
+            main_fn_gen = extras['fn_gen']
 
-        # Meta setting `recursive_classes` is enabled
-        elif (fn_name := recursive_guard.get(tp.origin)) is None:
-            fn_name = recursive_guard[tp.origin] = load_func_for_dataclass(
-                tp.origin, extras, False)
+            extras_cp: Extras = extras.copy()
+            # Set new locals
+            extras_cp['locals'] = {'cls': cls}
+            # Initialize the FuncBuilder
+            extras_cp['fn_gen'] = fn_gen = FunctionBuilder()
+
+            fn_name = recursive_guard[cls] = load_func_for_dataclass(
+                cls, extras_cp)
+
+            # Update the FunctionBuilder
+            main_fn_gen |= fn_gen
 
         return f'{fn_name}({tp.v()})'
 
@@ -904,14 +911,6 @@ def setup_default_loader(cls=LoadMixin):
     cls.register_load_hook(timedelta, cls.load_to_timedelta)
 
 
-def add_to_missing_fields(missing_fields: 'list[str] | None', field: str):
-    if missing_fields is None:
-        missing_fields = [field]
-    else:
-        missing_fields.append(field)
-    return missing_fields
-
-
 def check_and_raise_missing_fields(
     _locals, o, cls,
     fields: 'Union[tuple[Field, ...], None]'):
@@ -953,8 +952,7 @@ def check_and_raise_missing_fields(
 
 def load_func_for_dataclass(
         cls: type,
-        extras: Extras,
-        is_main_class: bool = True,
+        extras: 'Extras | None' = None,
         loader_cls=LoadMixin,
         base_meta_cls: type = AbstractMeta,
 ) -> Union[Callable[[JSONObject], T], str]:
@@ -981,26 +979,48 @@ def load_func_for_dataclass(
     # Get the meta config for the class, or the default config otherwise.
     meta = get_meta(cls, base_meta_cls)
 
-    if is_main_class:  # we are being run for the main dataclass
+    if extras is None:  # we are being run for the main dataclass
+        is_main_class = True
+
         # If the `recursive` flag is enabled and a Meta config is provided,
         # apply the Meta recursively to any nested classes.
         #
         # Else, just use the base `AbstractMeta`.
-        config = meta if meta.recursive else base_meta_cls
+        config: META = meta if meta.recursive else base_meta_cls
+
+        # Initialize the FuncBuilder
+        fn_gen = FunctionBuilder()
+
+        new_locals = {
+            'cls': cls,
+            'fields': fields,
+        }
+
+        extras: Extras = {
+            'config': config,
+            'cls': cls,
+            'cls_name': cls_name,
+            'locals': new_locals,
+            'recursive_guard': {cls: fn_name},
+            'fn_gen': fn_gen,
+        }
 
         _globals = {
-            'add': add_to_missing_fields,
-            're_raise': re_raise,
-            'ParseError': ParseError,
-            # 'LOG': LOG,
-            'raise_missing_fields': check_and_raise_missing_fields,
             'MISSING': MISSING,
+            'ParseError': ParseError,
+            'raise_missing_fields': check_and_raise_missing_fields,
+            're_raise': re_raise,
         }
 
     # we are being run for a nested dataclass
     else:
+        is_main_class = False
+
         # config for nested dataclasses
         config = extras['config']
+
+        # Initialize the FuncBuilder
+        fn_gen = extras['fn_gen']
 
         if config is not base_meta_cls:
             # we want to apply the meta config from the main dataclass
@@ -1008,7 +1028,12 @@ def load_func_for_dataclass(
             meta = meta | config
             meta.bind_to(cls, is_default=False)
 
-    if config.recursive_classes:
+        new_locals = extras['locals']
+        new_locals['fields'] = fields
+
+        # TODO need a way to auto-magically do this
+        extras['cls'] = cls
+        extras['cls_name'] = cls_name
         extras['recursive_guard'][cls] = fn_name
 
     key_case: 'V1LetterCase | None' = cls_loader.transform_json_field
@@ -1031,14 +1056,9 @@ def load_func_for_dataclass(
     else:
         expect_tag_as_unknown_key = False
 
-    _locals = {
-        'cls': cls,
-        'fields': fields,
-    }
-
     if key_case is KeyCase.AUTO:
-        _locals['f2k'] = field_to_alias
-        _locals['to_key'] = to_json_key
+        new_locals['f2k'] = field_to_alias
+        new_locals['to_key'] = to_json_key
 
     on_unknown_key = meta.v1_on_unknown_key
 
@@ -1064,27 +1084,12 @@ def load_func_for_dataclass(
         should_raise = should_warn = None
 
     if has_alias_paths:
-        _locals['safe_get'] = safe_get
+        new_locals['safe_get'] = safe_get
 
-    # Initialize the FuncBuilder
-    fn_gen = FunctionBuilder()
-
-    # noinspection PyTypeChecker
-    new_extras: Extras = {
-        'config': config,
-        'locals': _locals,
-        'cls': cls,
-        'cls_name': cls_name,
-        'fn_gen': fn_gen,
-    }
-
-    if (recursive_guard := extras.get('recursive_guard')) is not None:
-        new_extras['recursive_guard'] = recursive_guard
-
-    with fn_gen.function(fn_name, ['o'], MISSING, _locals):
+    with fn_gen.function(fn_name, ['o'], MISSING, new_locals):
 
         if (_pre_from_dict := getattr(cls, '_pre_from_dict', None)) is not None:
-            _locals['__pre_from_dict__'] = _pre_from_dict
+            new_locals['__pre_from_dict__'] = _pre_from_dict
             fn_gen.add_line('o = __pre_from_dict__(o)')
 
         # Need to create a separate dictionary to copy over the constructor
@@ -1134,7 +1139,7 @@ def load_func_for_dataclass(
                         field_to_alias[name] = key = key_case(name)
                         f_assign = f'field={name!r}; key={key!r}; {val}=o.get(key, MISSING)'
 
-                    string = generate_field_code(cls_loader, new_extras, f, i)
+                    string = generate_field_code(cls_loader, extras, f, i)
 
                     if name in field_to_default:
                         fn_gen.add_line(f_assign)
@@ -1161,14 +1166,14 @@ def load_func_for_dataclass(
                 # add an alias for the tag key, so we don't capture it
                 field_to_alias['...'] = meta.tag_key
 
-            if 'f2k' in _locals:
+            if 'f2k' in new_locals:
                 # If this is the case, then `AUTO` key transform mode is enabled
                 # line = 'extra_keys = o.keys() - f2k.values()'
                 aliases_var = 'f2k.values()'
 
             else:
                 aliases_var = 'aliases'
-                _locals['aliases'] = set(field_to_alias.values())
+                new_locals['aliases'] = set(field_to_alias.values())
 
             catch_all_def = f'{{k: o[k] for k in o if k not in {aliases_var}}}'
 
@@ -1185,22 +1190,22 @@ def load_func_for_dataclass(
                 # add an alias for the tag key, so we don't raise an error when we see it
                 field_to_alias['...'] = meta.tag_key
 
-            if 'f2k' in _locals:
+            if 'f2k' in new_locals:
                 # If this is the case, then `AUTO` key transform mode is enabled
                 line = 'extra_keys = o.keys() - f2k.values()'
             else:
-                _locals['aliases'] = set(field_to_alias.values())
+                new_locals['aliases'] = set(field_to_alias.values())
                 line = 'extra_keys = set(o) - aliases'
 
             with fn_gen.if_('len(o) != i'):
                 fn_gen.add_line(line)
                 if should_raise:
                     # Raise an error here (if needed)
-                    _locals['UnknownKeysError'] = UnknownKeysError
+                    new_locals['UnknownKeysError'] = UnknownKeysError
                     fn_gen.add_line("raise UnknownKeysError(extra_keys, o, cls, fields) from None")
                 elif should_warn:
                     # Show a warning here
-                    _locals['LOG'] = LOG
+                    new_locals['LOG'] = LOG
                     fn_gen.add_line(r"LOG.warning('Found %d unknown keys %r not mapped to the dataclass schema.\n"
                                         r"  Class: %r\n  Dataclass fields: %r', len(extra_keys), extra_keys, cls.__qualname__, [f.name for f in fields])")
 
@@ -1245,9 +1250,6 @@ def load_func_for_dataclass(
 
         return cls_fromdict
 
-    # Update the FunctionBuilder
-    extras['fn_gen'] |= fn_gen
-
     return fn_name
 
 def generate_field_code(cls_loader: LoadMixin,
@@ -1262,13 +1264,6 @@ def generate_field_code(cls_loader: LoadMixin,
         return cls_loader.get_string_for_annotation(
             TypeInfo(field_type, field_i=field_i), extras
         )
-
-    except RecursionError:
-        if extras['config'].recursive_classes:
-            # recursion-safe loader is already in use; something else must have gone wrong
-            raise
-        else:
-            raise RecursiveClassError(cls) from None
 
     # except Exception as e:
     #     re_raise(e, cls, None, dataclass_init_fields(cls), field, None)
