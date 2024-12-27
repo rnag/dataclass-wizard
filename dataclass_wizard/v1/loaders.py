@@ -18,7 +18,7 @@ from typing import (
 from uuid import UUID
 
 from .enums import KeyAction, KeyCase
-from .models import TypeInfo
+from .models import Extras, TypeInfo
 from ..abstractions import AbstractLoaderGenerator
 from ..bases import BaseLoadHook, AbstractMeta
 from ..class_helper import (
@@ -32,7 +32,6 @@ from ..errors import (ParseError, MissingFields, UnknownKeysError,
                       MissingData, JSONWizardError, RecursiveClassError)
 from ..loader_selection import get_loader, fromdict
 from ..log import LOG
-from ..models import Extras
 from ..type_def import (
     DefFactory, NoneType, JSONObject,
     PyLiteralString,
@@ -711,16 +710,16 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
     @staticmethod
     def load_to_dataclass(tp: TypeInfo, extras: Extras):
         # check for recursive classes, e.g. `A -> B -> A -> B
-        type_to_fn = extras.get('type_to_fn')
+        recursive_guard = extras.get('recursive_guard')
 
         # Meta setting `recursive_classes` is not enabled
-        if type_to_fn is None:
+        if recursive_guard is None:
             fn_name = load_func_for_dataclass(
                 tp.origin, extras, False)
 
         # Meta setting `recursive_classes` is enabled
-        elif (fn_name := type_to_fn.get(tp.origin)) is None:
-            fn_name = type_to_fn[tp.origin] = load_func_for_dataclass(
+        elif (fn_name := recursive_guard.get(tp.origin)) is None:
+            fn_name = recursive_guard[tp.origin] = load_func_for_dataclass(
                 tp.origin, extras, False)
 
         return f'{fn_name}({tp.v()})'
@@ -1010,7 +1009,7 @@ def load_func_for_dataclass(
             meta.bind_to(cls, is_default=False)
 
     if config.recursive_classes:
-        extras['type_to_fn'][cls] = fn_name
+        extras['recursive_guard'][cls] = fn_name
 
     key_case: 'V1LetterCase | None' = cls_loader.transform_json_field
 
@@ -1079,8 +1078,8 @@ def load_func_for_dataclass(
         'fn_gen': fn_gen,
     }
 
-    if (type_to_fn := extras.get('type_to_fn')) is not None:
-        new_extras['type_to_fn'] = type_to_fn
+    if (recursive_guard := extras.get('recursive_guard')) is not None:
+        new_extras['recursive_guard'] = recursive_guard
 
     with fn_gen.function(fn_name, ['o'], MISSING, _locals):
 

@@ -206,6 +206,7 @@ class Extras(TypedDict):
     fn_gen: 'FunctionBuilder'
     locals: dict[str, Any]
     pattern: PyNotRequired['PatternedDT']
+    recursive_guard: dict[type, str]
 
 
 # Instances of Field are only ever created from within this module,

@@ -72,6 +72,7 @@ class Extras(TypedDict):
     fn_gen: FunctionBuilder
     locals: dict[str, Any]
     pattern: NotRequired[PatternedDT]
+    recursive_guard: dict[type, str]
 
 
 # noinspection PyPep8Naming
