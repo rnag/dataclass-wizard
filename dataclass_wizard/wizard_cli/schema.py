@@ -68,6 +68,7 @@ from typing import (
 )
 
 from .. import property_wizard
+from ..constants import PACKAGE_NAME
 from ..class_helper import get_class_name
 from ..type_def import PyDeque, JSONList, JSONObject, JSONValue, T
 from ..utils.string_conv import to_snake_case, to_pascal_case
@@ -830,7 +831,7 @@ class PyDataclassGenerator(metaclass=property_wizard):
     def get_lines(self) -> List[str]:
         if self.is_root:
             ModuleImporter.register_import_by_name(
-                'dataclass_wizard', 'JSONWizard', level=2)
+                PACKAGE_NAME, 'JSONWizard', level=2)
             class_name = f'class {self.name}(JSONWizard):'
         else:
             class_name = f'class {self.name}:'

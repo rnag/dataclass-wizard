@@ -2033,6 +2033,50 @@ def test_named_tuple_with_input_dict(input, expectation, expected):
         assert result.my_nt == expected
 
 
+def test_named_tuple_recursive():
+    """Test case for recursive or self-referential `NamedTuple`s."""
+
+    class NT(NamedTuple):
+        field_one: str
+        field_two: 'NT | None'
+        field_three: dict[int, list['NT']] = {}
+        field_four: list['NT'] = []
+
+    @dataclass
+    class MyContainer(JSONWizard, debug=True):
+        class _(JSONWizard.Meta):
+            v1 = True
+
+        test1: NT
+
+    # Fix for local test cases so the forward reference works
+    globals().update(locals())
+
+    d = {
+        'test1': [
+            'S1',
+            ['S2', None],
+            {
+                '123': [
+                    ['S3', ['S4', None], {}]
+                ]
+            },
+            [['test', ['S5', ['S6', None]]]]
+        ]
+    }
+    a = MyContainer.from_dict(d)
+    print(repr(a))
+
+    assert a == MyContainer(
+        test1=NT(field_one='S1',
+                 field_two=NT('S2', None),
+                 field_three={123: [NT('S3', NT('S4', None))]},
+                 field_four=[
+                     NT('test', NT('S5', NT('S6', None)))
+                 ])
+    )
+
+
 @pytest.mark.parametrize(
     'input,expectation,expected',
     [

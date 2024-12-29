@@ -17,7 +17,8 @@ from typing import (
 )
 from uuid import UUID
 
-from .decorators import setup_recursive_safe_function, setup_recursive_safe_function_for_generic
+from .decorators import (setup_recursive_safe_function,
+                         setup_recursive_safe_function_for_generic)
 from .enums import KeyAction, KeyCase
 from .models import Extras, TypeInfo
 from ..abstractions import AbstractLoaderGenerator
@@ -27,7 +28,7 @@ from ..class_helper import (
     DATACLASS_FIELD_TO_ALIAS_PATH_FOR_LOAD,
     dataclass_init_fields, dataclass_field_to_default, create_meta, dataclass_init_field_names,
 )
-from ..constants import CATCH_ALL, TAG, PY311_OR_ABOVE
+from ..constants import CATCH_ALL, TAG, PY311_OR_ABOVE, PACKAGE_NAME
 from ..errors import (ParseError, MissingFields, UnknownKeysError,
                       MissingData, JSONWizardError)
 from ..loader_selection import get_loader, fromdict
@@ -172,7 +173,7 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
             elem_type = Any
 
         string = cls.get_string_for_annotation(
-            tp.replace(origin=elem_type, i=i_next), extras)
+            tp.replace(origin=elem_type, i=i_next, index=None), extras)
 
         # TODO
         if issubclass(gorg, (set, frozenset)):
@@ -215,7 +216,7 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
 
             # Given `Tuple[T, ...]`, we only need the generated string for `T`
             string = cls.get_string_for_annotation(
-                tp.replace(origin=args[0], i=i_next), extras)
+                tp.replace(origin=args[0], i=i_next, index=None), extras)
 
             result = f'[{string} for {v_next} in {v}]'
 
@@ -235,17 +236,14 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         return tp.wrap(result, extras, force=force_wrap)
 
     @classmethod
+    @setup_recursive_safe_function
     def load_to_named_tuple(cls, tp: TypeInfo, extras: Extras):
-        fn_gen = FunctionBuilder()
+        fn_gen = extras['fn_gen']
         nt_tp = cast(NamedTuple, tp.origin)
 
-        extras_cp: Extras = extras.copy()
-        extras_cp['locals'] = _locals = {
-            'cls': nt_tp,
-            'msg': "`dict` input is not supported for NamedTuple, use a dataclass instead."
-        }
-
-        fn_name = f'_load_{extras["cls_name"]}_nt_typed_{tp.name}'
+        _locals = extras['locals']
+        _locals['cls'] = nt_tp
+        _locals['msg'] = "`dict` input is not supported for NamedTuple, use a dataclass instead."
 
         req_field_to_assign = {}
         field_assigns = []
@@ -256,7 +254,7 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
 
         for field, field_tp in nt_tp.__annotations__.items():
             string = cls.get_string_for_annotation(
-                tp.replace(origin=field_tp, index=num_fields), extras_cp)
+                tp.replace(origin=field_tp, index=num_fields), extras)
 
             if has_optionals and field in optional_fields:
                 field_assigns.append(string)
@@ -265,45 +263,39 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
 
             num_fields += 1
 
-        with fn_gen.function(fn_name, ['v1'], MISSING, _locals):
+        params = ', '.join(req_field_to_assign)
 
-            params = ', '.join(req_field_to_assign)
+        with fn_gen.try_():
 
-            with fn_gen.try_():
+            for field, string in req_field_to_assign.items():
+                fn_gen.add_line(f'{field} = {string}')
 
-                for field, string in req_field_to_assign.items():
-                    fn_gen.add_line(f'{field} = {string}')
+            if has_optionals:
+                opt_start = len(req_field_to_assign)
+                fn_gen.add_line(f'L = len(v1); has_opt = L > {opt_start}')
+                with fn_gen.if_(f'has_opt'):
+                    fn_gen.add_line(f'fields = [{field_assigns.pop(0)}]')
+                    for i, string in enumerate(field_assigns, start=opt_start + 1):
+                            fn_gen.add_line(f'if L > {i}: fields.append({string})')
 
-                if has_optionals:
-                    opt_start = len(req_field_to_assign)
-                    fn_gen.add_line(f'L = len(v1); has_opt = L > {opt_start}')
-                    with fn_gen.if_(f'has_opt'):
-                        fn_gen.add_line(f'fields = [{field_assigns.pop(0)}]')
-                        for i, string in enumerate(field_assigns, start=opt_start + 1):
-                                fn_gen.add_line(f'if L > {i}: fields.append({string})')
+                    if only_optionals:
+                        fn_gen.add_line(f'return cls(*fields)')
+                    else:
+                        fn_gen.add_line(f'return cls({params}, *fields)')
 
-                        if only_optionals:
-                            fn_gen.add_line(f'return cls(*fields)')
-                        else:
-                            fn_gen.add_line(f'return cls({params}, *fields)')
+            fn_gen.add_line(f'return cls({params})')
 
-                fn_gen.add_line(f'return cls({params})')
-
-            with fn_gen.except_(Exception, 'e'):
-                with fn_gen.if_('(e_cls := e.__class__) is IndexError'):
-                    # raise `MissingFields`, as required NamedTuple fields
-                    # are not present in the input object `o`.
-                    fn_gen.add_line("raise_missing_fields(locals(), v1, cls, None)")
-                with fn_gen.if_('e_cls is KeyError and type(v1) is dict'):
-                    # Input object is a `dict`
-                    # TODO should we support dict for namedtuple?
-                    fn_gen.add_line('raise TypeError(msg) from None')
-                # re-raise
-                fn_gen.add_line('raise e from None')
-
-        extras['fn_gen'] |= fn_gen
-
-        return f'{fn_name}({tp.v()})'
+        with fn_gen.except_(Exception, 'e'):
+            with fn_gen.if_('(e_cls := e.__class__) is IndexError'):
+                # raise `MissingFields`, as required NamedTuple fields
+                # are not present in the input object `o`.
+                fn_gen.add_line("raise_missing_fields(locals(), v1, cls, None)")
+            with fn_gen.if_('e_cls is KeyError and type(v1) is dict'):
+                # Input object is a `dict`
+                # TODO should we support dict for namedtuple?
+                fn_gen.add_line('raise TypeError(msg) from None')
+            # re-raise
+            fn_gen.add_line('raise e from None')
 
     @classmethod
     def load_to_named_tuple_untyped(cls, tp: TypeInfo, extras: Extras):
@@ -318,10 +310,10 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
 
     @classmethod
     def _build_dict_comp(cls, tp, v, i_next, k_next, v_next, kt, vt, extras):
-        tp_k_next = tp.replace(origin=kt, i=i_next, prefix='k')
+        tp_k_next = tp.replace(origin=kt, i=i_next, prefix='k', index=None)
         string_k = cls.get_string_for_annotation(tp_k_next, extras)
 
-        tp_v_next = tp.replace(origin=vt, i=i_next, prefix='v')
+        tp_v_next = tp.replace(origin=vt, i=i_next, prefix='v', index=None)
         string_v = cls.get_string_for_annotation(tp_v_next, extras)
 
         return f'{{{string_k}: {string_v} for {k_next}, {v_next} in {v}.items()}}'
@@ -394,8 +386,7 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
                     field_tp = annotations[k]
                     field_name = repr(k)
                     string = cls.get_string_for_annotation(
-                        tp.replace(origin=field_tp,
-                                   i=2), extras_cp)
+                        tp.replace(origin=field_tp, i=2, index=None), extras_cp)
                     with fn_gen.if_(f'(v2 := v1.get({field_name}, MISSING)) is not MISSING'):
                         fn_gen.add_line(f'result[{field_name}] = {string}')
                 fn_gen.add_line('return result')
@@ -563,17 +554,13 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         _locals = extras['locals']
         _locals[fields] = frozenset(tp.args)
 
-        fn_name = f'load_to_{extras["cls_name"]}_literal_{tp.field_i}'
+        with fn_gen.if_(f'{tp.v()} in {fields}', comment=repr(tp.args)):
+            fn_gen.add_line('return v1')
 
-        with fn_gen.function(fn_name, ['v1'], MISSING, _locals):
-
-            with fn_gen.if_(f'{tp.v()} in {fields}', comment=repr(tp.args)):
-                fn_gen.add_line('return v1')
-
-            # No such Literal with the value of `o`
-            fn_gen.add_line("e = ValueError('Value not in expected Literal values')")
-            fn_gen.add_line(f'raise ParseError(e, v1, {fields}, '
-                            f'allowed_values=list({fields}))')
+        # No such Literal with the value of `o`
+        fn_gen.add_line("e = ValueError('Value not in expected Literal values')")
+        fn_gen.add_line(f'raise ParseError(e, v1, {fields}, '
+                        f'allowed_values=list({fields}))')
 
         # TODO Checks for Literal equivalence, as mentioned here:
         #   https://www.python.org/dev/peps/pep-0586/#equivalence-of-two-literals
@@ -605,8 +592,6 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         #         fn_gen.add_line('raise ParseError('
         #                         f'e, v1, {fields}, allowed_values=list({fields})'
         #                         f')')
-
-        return fn_name
 
     @staticmethod
     def load_to_decimal(tp: TypeInfo, extras: Extras):
@@ -691,9 +676,10 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         return f'as_timedelta({tp.v()}, {tn})'
 
     @staticmethod
-    @setup_recursive_safe_function
+    @setup_recursive_safe_function(
+        fn_name=f'__{PACKAGE_NAME}_from_dict_{{cls_name}}__')
     def load_to_dataclass(tp: TypeInfo, extras: Extras):
-        return load_func_for_dataclass(tp.origin, extras)
+        load_func_for_dataclass(tp.origin, extras)
 
     @classmethod
     def get_string_for_annotation(cls,
@@ -919,7 +905,7 @@ def load_func_for_dataclass(
         extras: 'Extras | None' = None,
         loader_cls=LoadMixin,
         base_meta_cls: type = AbstractMeta,
-) -> Union[Callable[[JSONObject], T], str]:
+) -> Optional[Callable[[JSONObject], T]]:
 
     # TODO dynamically generate for multiple nested classes at once
 
@@ -938,7 +924,7 @@ def load_func_for_dataclass(
 
     cls_name = cls.__name__
 
-    fn_name = f'__dataclass_wizard_from_dict_{cls_name}__'
+    fn_name = f'__{PACKAGE_NAME}_from_dict_{cls_name}__'
 
     # Get the meta config for the class, or the default config otherwise.
     meta = get_meta(cls, base_meta_cls)
@@ -998,7 +984,6 @@ def load_func_for_dataclass(
         # TODO need a way to auto-magically do this
         extras['cls'] = cls
         extras['cls_name'] = cls_name
-        extras['recursion_guard'][cls] = fn_name
 
     key_case: 'V1LetterCase | None' = cls_loader.transform_json_field
 
@@ -1204,17 +1189,16 @@ def load_func_for_dataclass(
             _set_new_attribute(cls, 'from_dict', cls_fromdict)
 
         _set_new_attribute(
-            cls, '__dataclass_wizard_from_dict__', cls_fromdict)
+            cls, f'__{PACKAGE_NAME}_from_dict__', cls_fromdict)
         LOG.debug(
-            "setattr(%s, '__dataclass_wizard_from_dict__', %s)",
-            cls_name, fn_name)
+            "setattr(%s, '__%s_from_dict__', %s)",
+            cls_name, PACKAGE_NAME, fn_name)
 
         # TODO in `v1`, we will use class attribute (set above) instead.
         CLASS_TO_LOAD_FUNC[cls] = cls_fromdict
 
         return cls_fromdict
 
-    return fn_name
 
 def generate_field_code(cls_loader: LoadMixin,
                         extras: Extras,

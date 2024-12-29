@@ -132,6 +132,7 @@ class MissingFields(JSONWizardError):
 
     obj: JSONObject
     fields: list[str]
+    all_fields: tuple[Field, ...]
     missing_fields: Collection[str]
     base_error: Exception
     missing_keys: Collection[str] | None

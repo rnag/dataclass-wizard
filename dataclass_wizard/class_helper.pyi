@@ -4,6 +4,7 @@ from typing import Any, Callable, Literal, overload
 
 from .abstractions import W, AbstractLoader, AbstractDumper, AbstractParser, E, AbstractLoaderGenerator
 from .bases import META, AbstractMeta
+from .constants import PACKAGE_NAME
 from .models import Condition
 from .type_def import ExplicitNullType, T
 from .utils.dict_helper import DictWithLowerStore
@@ -215,7 +216,7 @@ def _setup_v1_load_config_for_cls(cls: type):
 
 
 def call_meta_initializer_if_needed(cls: type[W | E],
-                                    package_name='dataclass_wizard') -> None:
+                                    package_name=PACKAGE_NAME) -> None:
     """
     Calls the Meta initializer when the inner :class:`Meta` is sub-classed.
     """

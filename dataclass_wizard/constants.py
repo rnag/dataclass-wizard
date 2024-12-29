@@ -2,6 +2,9 @@ import os
 import sys
 
 
+# Package name
+PACKAGE_NAME = 'dataclass_wizard'
+
 # Library Log Level
 LOG_LEVEL = os.getenv('WIZARD_LOG_LEVEL', 'ERROR').upper()
 
