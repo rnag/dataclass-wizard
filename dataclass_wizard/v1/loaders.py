@@ -167,6 +167,7 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         v, v_next, i_next = tp.v_and_next()
         gorg = tp.origin
 
+        # noinspection PyBroadException
         try:
             elem_type = tp.args[0]
         except:
@@ -1210,6 +1211,7 @@ def generate_field_code(cls_loader: LoadMixin,
     #     re_raise(e, cls, None, dataclass_init_fields(cls), field, None)
     except ParseError as pe:
         pe.class_name = cls
+        # noinspection PyPropertyAccess
         pe.field_name = field.name
         raise pe from None
 

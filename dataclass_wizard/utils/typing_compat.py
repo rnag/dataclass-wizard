@@ -4,6 +4,7 @@ Utility module for checking generic types provided by the `typing` library.
 
 __all__ = [
     'is_literal',
+    'is_union',
     'get_origin',
     'get_origin_v2',
     'is_typed_dict_type_qualifier',

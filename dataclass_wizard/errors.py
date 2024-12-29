@@ -221,7 +221,7 @@ class MissingFields(JSONWizardError):
                  '  Input JSON: {json_string}'
                  '{e}')
 
-    def __init__(self, base_err: Exception,
+    def __init__(self, base_err: 'Exception | None',
                  obj: JSONObject,
                  cls: Type,
                  cls_fields: Tuple[Field, ...],
