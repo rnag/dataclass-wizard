@@ -17,7 +17,7 @@ from typing import (
 )
 from uuid import UUID
 
-from .decorators import setup_recursive_safe_function
+from .decorators import setup_recursive_safe_function, setup_recursive_safe_function_for_generic
 from .enums import KeyAction, KeyCase
 from .models import Extras, TypeInfo
 from ..abstractions import AbstractLoaderGenerator
@@ -554,21 +554,20 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         return f'{fn_name}({tp.v()})'
 
     @staticmethod
+    @setup_recursive_safe_function_for_generic
     def load_to_literal(tp: TypeInfo, extras: Extras):
-        fn_gen = FunctionBuilder()
+        fn_gen = extras['fn_gen']
 
         fields = f'fields_{tp.field_i}'
 
-        extras_cp: Extras = extras.copy()
-        extras_cp['locals'] = _locals = {
-            fields: frozenset(tp.args),
-        }
+        _locals = extras['locals']
+        _locals[fields] = frozenset(tp.args)
 
         fn_name = f'load_to_{extras["cls_name"]}_literal_{tp.field_i}'
 
         with fn_gen.function(fn_name, ['v1'], MISSING, _locals):
 
-            with fn_gen.if_(f'{tp.v()} in {fields}'):
+            with fn_gen.if_(f'{tp.v()} in {fields}', comment=repr(tp.args)):
                 fn_gen.add_line('return v1')
 
             # No such Literal with the value of `o`
@@ -607,9 +606,7 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         #                         f'e, v1, {fields}, allowed_values=list({fields})'
         #                         f')')
 
-        extras['fn_gen'] |= fn_gen
-
-        return f'{fn_name}({tp.v()})'
+        return fn_name
 
     @staticmethod
     def load_to_decimal(tp: TypeInfo, extras: Extras):

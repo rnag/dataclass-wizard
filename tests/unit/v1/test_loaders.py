@@ -913,6 +913,39 @@ def test_literal(input, expectation):
         log.debug('Parsed object: %r', result)
 
 
+def test_literal_recursive():
+    """Test case for recursive or self-referential `typing.Literal` usage."""
+
+    L1 = Literal['A', 'B']
+    L2 = Literal['C', 'D', L1]
+    L2_FINAL = Union[L1, L2]
+    L3 = Literal[Literal[Literal[1, 2, 3], "foo"], 5, None]  # Literal[1, 2, 3, "foo", 5, None]
+
+    @dataclass
+    class A(JSONWizard, debug=True):
+        class _(JSONWizard.Meta):
+            v1 = True
+
+        test1: L1
+        test2: L2_FINAL
+        test3: L3
+
+    a = A.from_dict({'test1': 'B', 'test2': 'D', 'test3': 'foo'})
+    assert a == A(test1='B', test2='D', test3='foo')
+
+    a = A.from_dict({'test1': 'A', 'test2': 'B', 'test3': None})
+    assert a == A(test1='A', test2='B', test3=None)
+
+    with pytest.raises(ParseError):
+        A.from_dict({'test1': 'C', 'test2': 'D', 'test3': 'foo'})
+
+    with pytest.raises(ParseError):
+        A.from_dict({'test1': 'A', 'test2': 'E', 'test3': 'foo'})
+
+    with pytest.raises(ParseError):
+        A.from_dict({'test1': 'A', 'test2': 'B', 'test3': 'None'})
+
+
 @pytest.mark.parametrize(
     'input,expected',
     [
