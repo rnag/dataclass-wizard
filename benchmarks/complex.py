@@ -237,9 +237,6 @@ def test_load(request, data, data_2, data_dacite, n):
     log.info('dataclass-factory    %f',
              timeit('factory.load(data_2, MyClass)', globals=g, number=n))
 
-    log.info('dataclasses-json     %f',
-             timeit('MyClassDJ.from_dict(data_2)', globals=g, number=n))
-
     log.info('dacite               %f',
              timeit('dacite_from_dict(MyClassDacite, data_dacite, config=dacite_cfg)',
                     globals=g, number=n))
@@ -264,6 +261,9 @@ def test_load(request, data, data_2, data_dacite, n):
 
     if not request.config.getoption("--all"):
         pytest.skip("Skipping benchmarks for the rest by default, unless --all is specified.")
+
+    log.info('dataclasses-json     %f',
+             timeit('MyClassDJ.from_dict(data_2)', globals=g, number=n))
 
     log.info('jsons                %f',
              timeit('MyClassJsons.load(data)', globals=g, number=n))
