@@ -396,8 +396,9 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
             fn_gen.add_line('raise ParseError(e, v1, {}) from None')
 
     @classmethod
+    @setup_recursive_safe_function_for_generic
     def load_to_union(cls, tp: TypeInfo, extras: Extras):
-        fn_gen = FunctionBuilder()
+        fn_gen = extras['fn_gen']
         config = extras['config']
         actual_cls = extras['cls']
 
@@ -408,135 +409,125 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         args = tp.args
         in_optional = NoneType in args
 
-        extras_cp: Extras = extras.copy()
-        extras_cp['locals'] = _locals = {
-            (fields := f'fields_{i}'): args,
-            'tag_key': tag_key,
-        }
+        _locals = extras['locals']
+        _locals[fields := f'fields_{i}'] = args
+        _locals['tag_key'] = tag_key
 
-        fn_name = f'load_to_{extras["cls_name"]}_union_{i}'
+        dataclass_tag_to_lines: dict[str, list] = {}
 
-        with fn_gen.function(fn_name, ['v1'], MISSING, _locals):
+        type_checks = []
+        try_parse_at_end = []
 
-            dataclass_tag_to_lines: dict[str, list] = {}
+        for possible_tp in args:
 
-            type_checks = []
-            try_parse_at_end = []
+            possible_tp = eval_forward_ref_if_needed(possible_tp, actual_cls)
 
-            for possible_tp in args:
+            tp_new = TypeInfo(possible_tp, field_i=i)
+            tp_new.in_optional = in_optional
 
-                possible_tp = eval_forward_ref_if_needed(possible_tp, actual_cls)
+            if possible_tp is NoneType:
+                with fn_gen.if_('v1 is None'):
+                    fn_gen.add_line('return None')
+                continue
 
-                tp_new = TypeInfo(possible_tp, field_i=i)
-                tp_new.in_optional = in_optional
+            if is_dataclass(possible_tp):
+                # we see a dataclass in `Union` declaration
+                meta = get_meta(possible_tp)
+                tag = meta.tag
+                assign_tags_to_cls = auto_assign_tags or meta.auto_assign_tags
+                cls_name = possible_tp.__name__
 
-                if possible_tp is NoneType:
-                    with fn_gen.if_('v1 is None'):
-                        fn_gen.add_line('return None')
+                if assign_tags_to_cls and not tag:
+                    tag = cls_name
+                    # We don't want to mutate the base Meta class here
+                    if meta is AbstractMeta:
+                        create_meta(possible_tp, cls_name, tag=tag)
+                    else:
+                        meta.tag = cls_name
+
+                if tag:
+                    string = cls.get_string_for_annotation(tp_new, extras)
+
+                    dataclass_tag_to_lines[tag] = [
+                        f'if tag == {tag!r}:',
+                        f'  return {string}'
+                    ]
                     continue
 
-                if is_dataclass(possible_tp):
-                    # we see a dataclass in `Union` declaration
-                    meta = get_meta(possible_tp)
-                    tag = meta.tag
-                    assign_tags_to_cls = auto_assign_tags or meta.auto_assign_tags
-                    cls_name = possible_tp.__name__
+                elif not config.v1_unsafe_parse_dataclass_in_union:
+                    e = ValueError(f'Cannot parse dataclass types in a Union without one of the following `Meta` settings:\n\n'
+                                   '  * `auto_assign_tags = True`\n'
+                                  f'    - Set on class `{extras["cls_name"]}`.\n\n'
+                                  f'  * `tag = "{cls_name}"`\n'
+                                  f'    - Set on class `{possible_tp.__qualname__}`.\n\n'
+                                   '  * `v1_unsafe_parse_dataclass_in_union = True`\n'
+                                  f'    - Set on class `{extras["cls_name"]}`\n\n'
+                                   'For more information, refer to:\n'
+                                   '  https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/dataclasses_in_union_types.html')
+                    raise e from None
 
-                    if assign_tags_to_cls and not tag:
-                        tag = cls_name
-                        # We don't want to mutate the base Meta class here
-                        if meta is AbstractMeta:
-                            create_meta(possible_tp, cls_name, tag=tag)
-                        else:
-                            meta.tag = cls_name
+            string = cls.get_string_for_annotation(tp_new, extras)
 
-                    if tag:
-                        string = cls.get_string_for_annotation(tp_new, extras_cp)
+            try_parse_lines = [
+                'try:',
+               f'  return {string}',
+                'except Exception:',
+                '  pass',
+            ]
 
-                        dataclass_tag_to_lines[tag] = [
-                            f'if tag == {tag!r}:',
-                            f'  return {string}'
-                        ]
-                        continue
+            # TODO disable for dataclasses
 
-                    elif not config.v1_unsafe_parse_dataclass_in_union:
-                        e = ValueError(f'Cannot parse dataclass types in a Union without one of the following `Meta` settings:\n\n'
-                                       '  * `auto_assign_tags = True`\n'
-                                      f'    - Set on class `{extras["cls_name"]}`.\n\n'
-                                      f'  * `tag = "{cls_name}"`\n'
-                                      f'    - Set on class `{possible_tp.__qualname__}`.\n\n'
-                                       '  * `v1_unsafe_parse_dataclass_in_union = True`\n'
-                                      f'    - Set on class `{extras["cls_name"]}`\n\n'
-                                       'For more information, refer to:\n'
-                                       '  https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/dataclasses_in_union_types.html')
-                        raise e from None
+            if (possible_tp in _SIMPLE_TYPES
+                or is_subclass_safe(
+                    get_origin_v2(possible_tp), _SIMPLE_TYPES)):
 
-                string = cls.get_string_for_annotation(tp_new, extras_cp)
+                tn = tp_new.type_name(extras)
+                type_checks.extend([
+                    f'if tp is {tn}:',
+                    '  return v1'
+                ])
+                list_to_add = try_parse_at_end
+            else:
+                list_to_add = type_checks
 
-                try_parse_lines = [
-                    'try:',
-                   f'  return {string}',
-                    'except Exception:',
-                    '  pass',
-                ]
+            list_to_add.extend(try_parse_lines)
 
-                # TODO disable for dataclasses
+        if dataclass_tag_to_lines:
 
-                if (possible_tp in _SIMPLE_TYPES
-                    or is_subclass_safe(
-                        get_origin_v2(possible_tp), _SIMPLE_TYPES)):
+            with fn_gen.try_():
+                fn_gen.add_line(f'tag = v1[tag_key]')
 
-                    tn = tp_new.type_name(extras_cp)
-                    type_checks.extend([
-                        f'if tp is {tn}:',
-                        '  return v1'
-                    ])
-                    list_to_add = try_parse_at_end
-                else:
-                    list_to_add = type_checks
+            with fn_gen.except_(Exception):
+                fn_gen.add_line('pass')
 
-                list_to_add.extend(try_parse_lines)
+            with fn_gen.else_():
 
-            if dataclass_tag_to_lines:
+                for lines in dataclass_tag_to_lines.values():
+                    fn_gen.add_lines(*lines)
 
-                with fn_gen.try_():
-                    fn_gen.add_line(f'tag = v1[tag_key]')
+                fn_gen.add_line(
+                    "raise ParseError("
+                    "TypeError('Object with tag was not in any of Union types'),"
+                   f"v1,{fields},"
+                    "input_tag=tag,"
+                    "tag_key=tag_key,"
+                   f"valid_tags={list(dataclass_tag_to_lines)})"
+                )
 
-                with fn_gen.except_(Exception):
-                    fn_gen.add_line('pass')
+        fn_gen.add_line('tp = type(v1)')
 
-                with fn_gen.else_():
+        if type_checks:
+            fn_gen.add_lines(*type_checks)
 
-                    for lines in dataclass_tag_to_lines.values():
-                        fn_gen.add_lines(*lines)
+        if try_parse_at_end:
+            fn_gen.add_lines(*try_parse_at_end)
 
-                    fn_gen.add_line(
-                        "raise ParseError("
-                        "TypeError('Object with tag was not in any of Union types'),"
-                       f"v1,{fields},"
-                        "input_tag=tag,"
-                        "tag_key=tag_key,"
-                       f"valid_tags={list(dataclass_tag_to_lines)})"
-                    )
-
-            fn_gen.add_line('tp = type(v1)')
-
-            if type_checks:
-                fn_gen.add_lines(*type_checks)
-
-            if try_parse_at_end:
-                fn_gen.add_lines(*try_parse_at_end)
-
-            # Invalid type for Union
-            fn_gen.add_line("raise ParseError("
-                            "TypeError('Object was not in any of Union types'),"
-                            f"v1,{fields},"
-                            "tag_key=tag_key"
-                            ")")
-
-        extras['fn_gen'] |= fn_gen
-
-        return f'{fn_name}({tp.v()})'
+        # Invalid type for Union
+        fn_gen.add_line("raise ParseError("
+                        "TypeError('Object was not in any of Union types'),"
+                        f"v1,{fields},"
+                        "tag_key=tag_key"
+                        ")")
 
     @staticmethod
     @setup_recursive_safe_function_for_generic
@@ -697,6 +688,13 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
             origin = get_origin_v2(type_ann)
             name = getattr(origin, '__name__', origin)
             # origin = type_ann.__args__[0]
+
+        # TypeAliasType: Type aliases are created through
+        # the `type` statement
+        if (value := getattr(origin, '__value__', None)) is not None:
+            type_ann = value
+            origin = get_origin_v2(type_ann)
+            name = getattr(origin, '__name__', origin)
 
         # `LiteralString` enforces stricter rules at
         # type-checking but behaves like `str` at runtime.

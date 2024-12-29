@@ -4,6 +4,7 @@ __all__ = [
     'data_file_path',
     'PY310_OR_ABOVE',
     'PY311_OR_ABOVE',
+    'PY312_OR_ABOVE',
     'TypedDict',
     # For compatibility with Python 3.9 and 3.10
     'Required',
@@ -27,6 +28,9 @@ PY310_OR_ABOVE = sys.version_info[:2] >= (3, 10)
 
 # Check if we are running Python 3.11+
 PY311_OR_ABOVE = sys.version_info[:2] >= (3, 11)
+
+# Check if we are running Python 3.12+
+PY312_OR_ABOVE = sys.version_info[:2] >= (3, 12)
 
 # Check if we are running Python 3.9 or 3.10
 PY310_OR_EARLIER = not PY311_OR_ABOVE

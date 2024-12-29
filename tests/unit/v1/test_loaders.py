@@ -946,6 +946,94 @@ def test_literal_recursive():
         A.from_dict({'test1': 'A', 'test2': 'B', 'test3': 'None'})
 
 
+def test_union_recursive():
+    """Recursive or self-referential `Union` types are supported."""
+    JSON = Union[str, int, float, bool, dict[str, 'JSON'], list['JSON'], None]
+
+    @dataclass
+    class MyClass(JSONWizard):
+
+        class _(JSONWizard.Meta):
+            v1 = True
+
+        x: str
+        y: JSON
+
+    # Fix for local tests
+    globals().update(locals())
+
+    assert MyClass(
+        x="x", y={"x": [{"x": {"x": [{"x": ["x", 1, 1.0, True, None]}]}}]}
+    ).to_dict() == {
+        "x": "x",
+        "y": {"x": [{"x": {"x": [{"x": ["x", 1, 1.0, True, None]}]}}]},
+    }
+
+    assert MyClass.from_dict(
+        {
+            "x": "x",
+            "y": {"x": [{"x": {"x": [{"x": ["x", 1, 1.0, True, None]}]}}]},
+        }
+    ) == MyClass(
+        x="x", y={"x": [{"x": {"x": [{"x": ["x", 1, 1.0, True, None]}]}}]}
+    )
+
+
+# noinspection PyCompatibility
+@pytest.mark.skipif(not PY312_OR_ABOVE, reason='Requires Python 3.12 or higher')
+def test_union_as_type_alias_recursive():
+    """
+    Recursive or self-referential `Union` (defined as `TypeAlias`)
+    types are supported.
+    """
+    type JSON = str | int | float | bool | dict[str, JSON] | list[JSON] | None
+
+    @dataclass
+    class MyTestClass(JSONWizard):
+
+        class _(JSONWizard.Meta):
+            v1 = True
+
+        name: str
+        meta: str
+        msg: JSON
+
+    x = MyTestClass.from_dict(
+        {
+            "name": "name",
+            "meta": "meta",
+            "msg": [{"x": {"x": [{"x": ["x", 1, 1.0, True, None]}]}}],
+        }
+    )
+    assert x == MyTestClass(
+        name="name",
+        meta="meta",
+        msg=[{"x": {"x": [{"x": ["x", 1, 1.0, True, None]}]}}],
+    )
+
+
+def test_multiple_union():
+    """Test case for a dataclass with multiple `Union` fields."""
+
+    @dataclass
+    class A(JSONWizard):
+
+        class _(JSONWizard.Meta):
+            v1 = True
+
+        a: Union[int, float, list[str]]
+        b: Union[float, bool]
+
+    a = A.from_dict({'a': '123', 'b': '456'})
+    assert a == A(a=['1', '2', '3'], b=456.0)
+
+    a = A.from_dict({'a': 123, 'b': 'True'})
+    assert a == A(a=123, b=True)
+
+    a = A.from_dict({'a': 3.21, 'b': '0'})
+    assert a == A(a=3.21, b=0.0)
+
+
 @pytest.mark.parametrize(
     'input,expected',
     [
