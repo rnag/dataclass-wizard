@@ -351,15 +351,12 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         return tp.wrap_dd(default_factory, result, extras)
 
     @classmethod
+    @setup_recursive_safe_function
     def load_to_typed_dict(cls, tp: TypeInfo, extras: Extras):
-        fn_gen = FunctionBuilder()
+        fn_gen = extras['fn_gen']
 
         req_keys, opt_keys = get_keys_for_typed_dict(tp.origin)
-
-        extras_cp: Extras = extras.copy()
-        extras_cp['locals'] = _locals = {}
-
-        fn_name = f'_load_{extras["cls_name"]}_typeddict_{tp.name}'
+        # _locals = extras['locals']
 
         result_list = []
         # TODO set __annotations__?
@@ -371,35 +368,31 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
             field_name = repr(k)
             string = cls.get_string_for_annotation(
                 tp.replace(origin=field_tp,
-                           index=field_name), extras_cp)
+                           index=field_name), extras)
 
             result_list.append(f'{field_name}: {string}')
 
-        with fn_gen.function(fn_name, ['v1'], MISSING, _locals):
-            with fn_gen.try_():
-                fn_gen.add_lines('result = {',
-                                 *(f'  {r},' for r in result_list),
-                                 '}')
+        with fn_gen.try_():
+            fn_gen.add_lines('result = {',
+                             *(f'  {r},' for r in result_list),
+                             '}')
 
-                # Set optional keys for the `TypedDict` (if they exist)
-                for k in opt_keys:
-                    field_tp = annotations[k]
-                    field_name = repr(k)
-                    string = cls.get_string_for_annotation(
-                        tp.replace(origin=field_tp, i=2, index=None), extras_cp)
-                    with fn_gen.if_(f'(v2 := v1.get({field_name}, MISSING)) is not MISSING'):
-                        fn_gen.add_line(f'result[{field_name}] = {string}')
-                fn_gen.add_line('return result')
-            with fn_gen.except_(Exception, 'e'):
-                with fn_gen.if_('type(e) is KeyError'):
-                    fn_gen.add_line('name = e.args[0]; e = KeyError(f"Missing required key: {name!r}")')
-                with fn_gen.elif_('not isinstance(v1, dict)'):
-                    fn_gen.add_line('e = TypeError("Incorrect type for object")')
-                fn_gen.add_line('raise ParseError(e, v1, {}) from None')
+            # Set optional keys for the `TypedDict` (if they exist)
+            for k in opt_keys:
+                field_tp = annotations[k]
+                field_name = repr(k)
+                string = cls.get_string_for_annotation(
+                    tp.replace(origin=field_tp, i=2, index=None), extras)
+                with fn_gen.if_(f'(v2 := v1.get({field_name}, MISSING)) is not MISSING'):
+                    fn_gen.add_line(f'result[{field_name}] = {string}')
+            fn_gen.add_line('return result')
 
-        extras['fn_gen'] |= fn_gen
-
-        return f'{fn_name}({tp.v()})'
+        with fn_gen.except_(Exception, 'e'):
+            with fn_gen.if_('type(e) is KeyError'):
+                fn_gen.add_line('name = e.args[0]; e = KeyError(f"Missing required key: {name!r}")')
+            with fn_gen.elif_('not isinstance(v1, dict)'):
+                fn_gen.add_line('e = TypeError("Incorrect type for object")')
+            fn_gen.add_line('raise ParseError(e, v1, {}) from None')
 
     @classmethod
     def load_to_union(cls, tp: TypeInfo, extras: Extras):

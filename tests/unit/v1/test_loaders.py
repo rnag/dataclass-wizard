@@ -1935,6 +1935,68 @@ def test_typed_dict_with_one_field_required(input, expectation, expected):
         assert result.my_typed_dict == expected
 
 
+def test_typed_dict_recursive():
+    """Test case for recursive or self-referential `TypedDict`s."""
+
+    class TD(TypedDict):
+        key_one: str
+        key_two: 'TD | None'
+        key_three: NotRequired[dict[int, list['TD']]]
+        key_four: NotRequired[list['TD']]
+
+    @dataclass
+    class MyContainer(JSONWizard, debug=True):
+        class _(JSONWizard.Meta):
+            v1 = True
+
+        test1: TD
+
+    # Fix for local test cases so the forward reference works
+    globals().update(locals())
+
+    d = {
+        'test1': {
+            'key_one': 'S1',
+            'key_two': {'key_one': 'S2', 'key_two': None},
+            'key_three': {
+                '123': [
+                    {'key_one': 'S3',
+                     'key_two': {'key_one': 'S4', 'key_two': None},
+                     'key_three': {}}
+                ]
+            },
+            'key_four': [
+                {'key_one': 'test',
+                 'key_two': {'key_one': 'S5',
+                             'key_two': {'key_one': 'S6', 'key_two': None}
+                             }
+                 }
+            ]
+        }
+    }
+    a = MyContainer.from_dict(d)
+    print(repr(a))
+
+    assert a == MyContainer(
+        test1={'key_one': 'S1',
+               'key_two': {'key_one': 'S2', 'key_two': None},
+               'key_three': {123: [{'key_one': 'S3',
+                                    'key_two': {'key_one': 'S4', 'key_two': None},
+                                    'key_three': {}}]},
+               'key_four': [
+                   {
+                       'key_one': 'test',
+                       'key_two': {
+                           'key_one': 'S5',
+                           'key_two': {
+                               'key_one': 'S6',
+                               'key_two': None
+                           }
+                       }
+                   }
+               ]})
+
+
 @pytest.mark.parametrize(
     'input,expectation,expected',
     [
