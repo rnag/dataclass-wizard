@@ -406,11 +406,13 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         auto_assign_tags = config.auto_assign_tags
 
         i = tp.field_i
+        fields = f'fields_{i}'
+
         args = tp.args
         in_optional = NoneType in args
 
         _locals = extras['locals']
-        _locals[fields := f'fields_{i}'] = args
+        _locals[fields] = args
         _locals['tag_key'] = tag_key
 
         dataclass_tag_to_lines: dict[str, list] = {}
