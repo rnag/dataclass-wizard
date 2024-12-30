@@ -53,6 +53,13 @@ else:
     from typing_extensions import LiteralString
 
 
+# Ignore test files if the Python version is below 3.12
+if not PY312_OR_ABOVE:
+    print("Python version is below 3.12. Ignoring test files.")
+    collect_ignore = [
+        Path('unit', 'v1', 'test_union_as_type_alias_recursive.py').as_posix(),
+    ]
+
 def data_file_path(name: str) -> str:
     """Returns the full path to a test file."""
     return str((TEST_DATA_DIR / name).absolute())
