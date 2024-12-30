@@ -834,10 +834,10 @@ A brief example of the intended usage is shown below:
     # serialization. In fact, it'll be faster than parsing the custom patterns!
     assert class_obj == fromdict(MyClass, asdict(class_obj))
 
-"Recursive" Dataclasses with Cyclic References
-----------------------------------------------
+Recursive Types and Dataclasses with Cyclic References
+------------------------------------------------------
 
-Prior to version `v0.27.0`, dataclasses with cyclic references
+Prior to version **0.27.0**, dataclasses with cyclic references
 or self-referential structures were not supported. This
 limitation is shown in the following toy example:
 
@@ -851,28 +851,24 @@ limitation is shown in the following toy example:
 
     a = A(a=A(a=A(a=A())))
 
-This was a `longstanding issue`_.
+This was a `longstanding issue`_, but starting with ``v0.27.0``, Dataclass Wizard now supports
+recursive dataclasses, including cyclic references.
 
-New in ``v0.27.0``: The Dataclass Wizard now extends its support
-to cyclic and self-referential dataclass models.
-
-The example below demonstrates recursive dataclasses with cyclic
-dependencies, following the pattern ``A -> B -> A -> B``. For more details, see
-the `Cyclic or "Recursive" Dataclasses`_ section in the documentation.
+The example below demonstrates recursive
+dataclasses with cyclic dependencies, following the pattern ``A -> B -> A -> B``.
+For more details, see the `Cyclic or "Recursive" Dataclasses`_ section in the documentation.
 
 .. code:: python3
 
     from __future__ import annotations  # This can be removed in Python 3.10+
 
     from dataclasses import dataclass
-
     from dataclass_wizard import JSONWizard
-
 
     @dataclass
     class A(JSONWizard):
         class _(JSONWizard.Meta):
-            # enable support for self-referential / recursive dataclasses
+            # Enable support for self-referential / recursive dataclasses
             recursive_classes = True
 
         b: 'B | None' = None
@@ -882,20 +878,17 @@ the `Cyclic or "Recursive" Dataclasses`_ section in the documentation.
     class B:
         a: A | None = None
 
-
-    # confirm that `from_dict` with a recursive, self-referential
+    # Confirm that `from_dict` with a recursive, self-referential
     # input `dict` works as expected.
     a = A.from_dict({'b': {'a': {'b': {'a': None}}}})
 
     assert a == A(b=B(a=A(b=B())))
 
-Recursive Types
----------------
+Starting with version **0.34.0**, recursive types are supported *out of the box* (OOTB) with ``v1`` opt-in,
+removing the need for any ``Meta`` settings like ``recursive_classes = True``.
 
-Starting with version **0.34.0**, recursive types are supported out of the box (OOTB) when the ``v1`` option is enabled.
-This eliminates the need for any ``Meta`` settings such as ``recursive_classes``.
-
-Recursive types are supported for the following Python type constructs:
+This makes working with recursive dataclasses even easier and more streamlined. In addition, recursive types
+are now supported for the following Python type constructs:
 
 - NamedTuple_
 - TypedDict_
@@ -913,11 +906,9 @@ Recursive types are supported for the following Python type constructs:
 Example Usage
 ~~~~~~~~~~~~~
 
-Overview
-########
-
 Recursive types allow handling complex nested data structures, such as deeply nested JSON objects or lists.
-With ``dataclass-wizard``, de-serializing and serializing these structures becomes seamless and more intuitive.
+With ``v0.34.0`` of Dataclass Wizard, de-serializing and serializing these structures becomes seamless
+and more intuitive.
 
 Recursive ``Union``
 ###################
@@ -961,8 +952,7 @@ Recursive ``Union``
     )
 
 .. note::
-   The ``type`` statement in Python 3.12+ simplifies type alias definitions by avoiding string annotations
-   for recursive references.
+   The ``type`` statement in Python 3.12+ simplifies type alias definitions by avoiding string annotations for recursive references.
 
 Recursive ``Union`` with Nested ``dataclasses``
 ###############################################
@@ -1002,8 +992,7 @@ Recursive ``Union`` with Nested ``dataclasses``
     )
 
 .. note::
-   Nested ``dataclasses`` are particularly useful for representing hierarchical structures, such as trees
-   or graphs, in a readable and maintainable way.
+   Nested ``dataclasses`` are particularly useful for representing hierarchical structures, such as trees or graphs, in a readable and maintainable way.
 
 Official References
 ~~~~~~~~~~~~~~~~~~~
