@@ -907,7 +907,7 @@ Example Usage
 ~~~~~~~~~~~~~
 
 Recursive types allow handling complex nested data structures, such as deeply nested JSON objects or lists.
-With ``v0.34.0`` of Dataclass Wizard, de-serializing and serializing these structures becomes seamless
+With ``v0.34.0`` of Dataclass Wizard, de/serializing these structures becomes seamless
 and more intuitive.
 
 Recursive ``Union``
