@@ -158,16 +158,18 @@ if PY313_OR_ABOVE:  # pragma: no cover
                         ReadOnly as PyReadOnly,
                         LiteralString as PyLiteralString,
                         dataclass_transform)
-
-elif PY312_OR_ABOVE:
-    from collections.abc import Buffer
 elif PY311_OR_ABOVE:  # pragma: no cover
     from typing import (Required as PyRequired,
                         NotRequired as PyNotRequired,
                         LiteralString as PyLiteralString,
                         dataclass_transform)
-    from typing_extensions import (Buffer,
-                                   ReadOnly as PyReadOnly)
+    from typing_extensions import ReadOnly as PyReadOnly
+
+    if PY312_OR_ABOVE:
+        from collections.abc import Buffer
+    else:
+        from typing_extensions import Buffer
+
 else:
     from typing_extensions import (Buffer,
                                    Required as PyRequired,
