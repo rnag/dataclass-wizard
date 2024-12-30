@@ -2155,7 +2155,7 @@ def test_named_tuple_recursive():
 
     class NT(NamedTuple):
         field_one: str
-        field_two: 'NT | None'
+        field_two: Union['NT', None]
         field_three: dict[int, list['NT']] = {}
         field_four: list['NT'] = []
 
