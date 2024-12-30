@@ -83,13 +83,32 @@ servedocs: docs ## compile the docs watching for changes
 release: dist ## package and upload a release
 	twine upload dist/*
 
-check: dist  ## verify release before upload to PyPI
+check: dist-local  ## verify release before upload to PyPI
 	twine check dist/*
 
 dist: clean ## builds source and wheel package
 	python setup.py sdist
 	python setup.py bdist_wheel
 	ls -l dist
+
+dist-local: clean replace_version ## builds source and wheel package (for local testing)
+	python setup.py sdist
+	python setup.py bdist_wheel
+	ls -l dist
+	$(MAKE) revert_readme
+
+replace_version: ## replace |version| in README.rst with the current version
+	cp README.rst README.rst.bak
+	python -c "import re; \
+from pathlib import Path; \
+version = re.search(r\"__version__\\s*=\\s*'(.+?)'\", Path('dataclass_wizard/__version__.py').read_text()).group(1); \
+readme_path = Path('README.rst'); \
+readme_content = readme_path.read_text(); \
+readme_path.write_text(readme_content.replace('|version|', version)); \
+print(f'Replaced version in {readme_path}: {version}')"
+
+revert_readme: ## revert README.rst to its original state
+	mv README.rst.bak README.rst
 
 install: clean ## install the package to the active Python's site-packages
 	python setup.py install

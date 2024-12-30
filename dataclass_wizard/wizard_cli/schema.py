@@ -68,11 +68,12 @@ from typing import (
 )
 
 from .. import property_wizard
+from ..constants import PACKAGE_NAME
 from ..class_helper import get_class_name
 from ..type_def import PyDeque, JSONList, JSONObject, JSONValue, T
 from ..utils.string_conv import to_snake_case, to_pascal_case
 # noinspection PyProtectedMember
-from ..utils.type_conv import _TRUTHY_VALUES
+from ..utils.type_conv import TRUTHY_VALUES
 from ..utils.type_conv import as_datetime, as_date, as_time
 
 
@@ -83,7 +84,7 @@ _S = TypeVar('_S')
 # Merge both the "truthy" and "falsy" values, so we can determine the criteria
 # under which a string can be considered as a boolean value.
 _FALSY_VALUES = {'false', 'f', 'no', 'n', 'off', '0'}
-_BOOL_VALUES = _TRUTHY_VALUES | _FALSY_VALUES
+_BOOL_VALUES = TRUTHY_VALUES | _FALSY_VALUES
 
 # Valid types for JSON contents; this can be either a list of any type,
 # or a dictionary with `string` keys and values of any type.
@@ -830,7 +831,7 @@ class PyDataclassGenerator(metaclass=property_wizard):
     def get_lines(self) -> List[str]:
         if self.is_root:
             ModuleImporter.register_import_by_name(
-                'dataclass_wizard', 'JSONWizard', level=2)
+                PACKAGE_NAME, 'JSONWizard', level=2)
             class_name = f'class {self.name}(JSONWizard):'
         else:
             class_name = f'class {self.name}:'

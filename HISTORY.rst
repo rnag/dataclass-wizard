@@ -2,6 +2,36 @@
 History
 =======
 
+0.34.0 (2024-12-30)
+-------------------
+
+**Features and Improvements**
+
+- **V1 Opt-in**
+    - Support for recursive types OOTB for the following Python types:
+        - ``NamedTuple``
+        - ``TypedDict``
+        - ``Union``
+        - ``Literal``
+        - Nested `dataclasses`
+        - `Type aliases`_ (introduced in Python 3.12+)
+    - Full support for ``bytes`` and ``bytearray`` in the de/serialization process (fixes :issue:`140`).
+    - Performance improvements: Optimized Load functions for ``bool``, ``NamedTuple``, ``datetime``, ``date``, and ``time``.
+    - Added support for `Type aliases`_ (via ``type`` statement in Python 3.12+).
+    - Improved logic in ``load_to_str`` to better check if it's within an ``Optional[...]`` type.
+    - Enhanced handling of sub-types in de/serialization (**TODO**: add test cases).
+    - Show deprecation warning for Meta setting ``debug_enabled`` (replaced by ``v1_debug``).
+
+- Updated benchmarks for improved accuracy.
+
+**Bugfixes**
+
+- Fixed issue where code generation failed to correctly account for indexes, especially when nested collection types like ``dict`` were used within a ``NamedTuple``.
+- ``make check`` now works out-of-the-box for validating ``README.rst`` and other RST files for PyPI deployment.
+- :pr:`169`: Explicitly added ``utf-8`` encoding for ``setup.py`` to enable installation from source on Windows (shoutout to :user:`birkholz-cubert`!).
+
+.. _Type aliases: https://docs.python.org/3/library/typing.html#type-aliases
+
 0.33.0 (2024-12-17)
 -------------------
 

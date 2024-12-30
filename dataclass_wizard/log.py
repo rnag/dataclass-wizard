@@ -1,7 +1,7 @@
 from logging import getLogger
 
-from .constants import LOG_LEVEL
+from .constants import LOG_LEVEL, PACKAGE_NAME
 
 
-LOG = getLogger('dataclass_wizard')
+LOG = getLogger(PACKAGE_NAME)
 LOG.setLevel(LOG_LEVEL)

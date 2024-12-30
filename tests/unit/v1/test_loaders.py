@@ -3,11 +3,15 @@ Tests for the `loaders` module, but more importantly for the `parsers` module.
 
 Note: I might refactor this into a separate `test_parsers.py` as time permits.
 """
+import enum
 import logging
 from abc import ABC
+from base64 import b64decode
 from collections import namedtuple, defaultdict, deque
 from dataclasses import dataclass, field
 from datetime import datetime, date, time, timedelta
+from decimal import Decimal
+from pathlib import Path
 from typing import (
     List, Optional, Union, Tuple, Dict, NamedTuple, DefaultDict,
     Set, FrozenSet, Annotated, Literal, Sequence, MutableSequence, Collection
@@ -21,6 +25,7 @@ from dataclass_wizard.errors import (
     ParseError, MissingFields, UnknownKeysError, MissingData, InvalidConditionError
 )
 from dataclass_wizard.models import _PatternBase
+from dataclass_wizard.type_def import NoneType
 from dataclass_wizard.v1 import *
 from ..conftest import MyUUIDSubclass
 from ...conftest import *
@@ -908,6 +913,94 @@ def test_literal(input, expectation):
         log.debug('Parsed object: %r', result)
 
 
+def test_literal_recursive():
+    """Test case for recursive or self-referential `typing.Literal` usage."""
+
+    L1 = Literal['A', 'B']
+    L2 = Literal['C', 'D', L1]
+    L2_FINAL = Union[L1, L2]
+    L3 = Literal[Literal[Literal[1, 2, 3], "foo"], 5, None]  # Literal[1, 2, 3, "foo", 5, None]
+
+    @dataclass
+    class A(JSONWizard, debug=True):
+        class _(JSONWizard.Meta):
+            v1 = True
+
+        test1: L1
+        test2: L2_FINAL
+        test3: L3
+
+    a = A.from_dict({'test1': 'B', 'test2': 'D', 'test3': 'foo'})
+    assert a == A(test1='B', test2='D', test3='foo')
+
+    a = A.from_dict({'test1': 'A', 'test2': 'B', 'test3': None})
+    assert a == A(test1='A', test2='B', test3=None)
+
+    with pytest.raises(ParseError):
+        A.from_dict({'test1': 'C', 'test2': 'D', 'test3': 'foo'})
+
+    with pytest.raises(ParseError):
+        A.from_dict({'test1': 'A', 'test2': 'E', 'test3': 'foo'})
+
+    with pytest.raises(ParseError):
+        A.from_dict({'test1': 'A', 'test2': 'B', 'test3': 'None'})
+
+
+def test_union_recursive():
+    """Recursive or self-referential `Union` types are supported."""
+    JSON = Union[str, int, float, bool, dict[str, 'JSON'], list['JSON'], None]
+
+    @dataclass
+    class MyClass(JSONWizard):
+
+        class _(JSONWizard.Meta):
+            v1 = True
+
+        x: str
+        y: JSON
+
+    # Fix for local tests
+    globals().update(locals())
+
+    assert MyClass(
+        x="x", y={"x": [{"x": {"x": [{"x": ["x", 1, 1.0, True, None]}]}}]}
+    ).to_dict() == {
+        "x": "x",
+        "y": {"x": [{"x": {"x": [{"x": ["x", 1, 1.0, True, None]}]}}]},
+    }
+
+    assert MyClass.from_dict(
+        {
+            "x": "x",
+            "y": {"x": [{"x": {"x": [{"x": ["x", 1, 1.0, True, None]}]}}]},
+        }
+    ) == MyClass(
+        x="x", y={"x": [{"x": {"x": [{"x": ["x", 1, 1.0, True, None]}]}}]}
+    )
+
+
+def test_multiple_union():
+    """Test case for a dataclass with multiple `Union` fields."""
+
+    @dataclass
+    class A(JSONWizard):
+
+        class _(JSONWizard.Meta):
+            v1 = True
+
+        a: Union[int, float, list[str]]
+        b: Union[float, bool]
+
+    a = A.from_dict({'a': '123', 'b': '456'})
+    assert a == A(a=['1', '2', '3'], b=456.0)
+
+    a = A.from_dict({'a': 123, 'b': 'True'})
+    assert a == A(a=123, b=True)
+
+    a = A.from_dict({'a': 3.21, 'b': '0'})
+    assert a == A(a=3.21, b=0.0)
+
+
 @pytest.mark.parametrize(
     'input,expected',
     [
@@ -1087,7 +1180,7 @@ def test_forward_refs_are_resolved():
         ('2020-01-02T01:02:03Z', does_not_raise()),
         ('2010-12-31 23:59:59-04:00', does_not_raise()),
         (123456789, does_not_raise()),
-        (True, pytest.raises(ParseError)),
+        (True, does_not_raise()),
         (datetime(2010, 12, 31, 23, 59, 59), does_not_raise()),
     ]
 )
@@ -1115,7 +1208,7 @@ def test_datetime(input, expectation):
         ('2020-01-02', does_not_raise()),
         ('2010-12-31', does_not_raise()),
         (123456789, does_not_raise()),
-        (True, pytest.raises(ParseError)),
+        (True, does_not_raise()),
         (date(2010, 12, 31), does_not_raise()),
     ]
 )
@@ -1897,6 +1990,68 @@ def test_typed_dict_with_one_field_required(input, expectation, expected):
         assert result.my_typed_dict == expected
 
 
+def test_typed_dict_recursive():
+    """Test case for recursive or self-referential `TypedDict`s."""
+
+    class TD(TypedDict):
+        key_one: str
+        key_two: Union['TD', None]
+        key_three: NotRequired[dict[int, list['TD']]]
+        key_four: NotRequired[list['TD']]
+
+    @dataclass
+    class MyContainer(JSONWizard, debug=True):
+        class _(JSONWizard.Meta):
+            v1 = True
+
+        test1: TD
+
+    # Fix for local test cases so the forward reference works
+    globals().update(locals())
+
+    d = {
+        'test1': {
+            'key_one': 'S1',
+            'key_two': {'key_one': 'S2', 'key_two': None},
+            'key_three': {
+                '123': [
+                    {'key_one': 'S3',
+                     'key_two': {'key_one': 'S4', 'key_two': None},
+                     'key_three': {}}
+                ]
+            },
+            'key_four': [
+                {'key_one': 'test',
+                 'key_two': {'key_one': 'S5',
+                             'key_two': {'key_one': 'S6', 'key_two': None}
+                             }
+                 }
+            ]
+        }
+    }
+    a = MyContainer.from_dict(d)
+    print(repr(a))
+
+    assert a == MyContainer(
+        test1={'key_one': 'S1',
+               'key_two': {'key_one': 'S2', 'key_two': None},
+               'key_three': {123: [{'key_one': 'S3',
+                                    'key_two': {'key_one': 'S4', 'key_two': None},
+                                    'key_three': {}}]},
+               'key_four': [
+                   {
+                       'key_one': 'test',
+                       'key_two': {
+                           'key_one': 'S5',
+                           'key_two': {
+                               'key_one': 'S6',
+                               'key_two': None
+                           }
+                       }
+                   }
+               ]})
+
+
 @pytest.mark.parametrize(
     'input,expectation,expected',
     [
@@ -1993,6 +2148,50 @@ def test_named_tuple_with_input_dict(input, expectation, expected):
             expected = MyNamedTuple(**expected)
 
         assert result.my_nt == expected
+
+
+def test_named_tuple_recursive():
+    """Test case for recursive or self-referential `NamedTuple`s."""
+
+    class NT(NamedTuple):
+        field_one: str
+        field_two: Union['NT', None]
+        field_three: dict[int, list['NT']] = {}
+        field_four: list['NT'] = []
+
+    @dataclass
+    class MyContainer(JSONWizard, debug=True):
+        class _(JSONWizard.Meta):
+            v1 = True
+
+        test1: NT
+
+    # Fix for local test cases so the forward reference works
+    globals().update(locals())
+
+    d = {
+        'test1': [
+            'S1',
+            ['S2', None],
+            {
+                '123': [
+                    ['S3', ['S4', None], {}]
+                ]
+            },
+            [['test', ['S5', ['S6', None]]]]
+        ]
+    }
+    a = MyContainer.from_dict(d)
+    print(repr(a))
+
+    assert a == MyContainer(
+        test1=NT(field_one='S1',
+                 field_two=NT('S2', None),
+                 field_three={123: [NT('S3', NT('S4', None))]},
+                 field_four=[
+                     NT('test', NT('S5', NT('S6', None)))
+                 ])
+    )
 
 
 @pytest.mark.parametrize(
@@ -2173,7 +2372,6 @@ def test_load_with_python_3_11_regression():
     assert item.b is item.c is None
 
 
-@pytest.mark.skip(reason='TODO add support in v1')
 def test_with_self_referential_dataclasses_1():
     """
     Test loading JSON data, when a dataclass model has cyclic
@@ -2183,8 +2381,8 @@ def test_with_self_referential_dataclasses_1():
     class A:
         a: Optional['A'] = None
 
-    # enable support for self-referential / recursive dataclasses
-    LoadMeta(v1=True, recursive_classes=True).bind_to(A)
+    # enable `v1` opt-in`
+    LoadMeta(v1=True).bind_to(A)
 
     # Fix for local test cases so the forward reference works
     globals().update(locals())
@@ -2195,7 +2393,6 @@ def test_with_self_referential_dataclasses_1():
     assert a == A(a=A(a=A(a=None)))
 
 
-@pytest.mark.skip(reason='TODO add support in v1')
 def test_with_self_referential_dataclasses_2():
     """
     Test loading JSON data, when a dataclass model has cyclic
@@ -2205,8 +2402,6 @@ def test_with_self_referential_dataclasses_2():
     class A(JSONWizard):
         class _(JSONWizard.Meta):
             v1 = True
-            # enable support for self-referential / recursive dataclasses
-            recursive_classes = True
 
         b: Optional['B'] = None
 
@@ -3060,3 +3255,165 @@ def test_dataclass_decorator_is_automatically_applied():
 
     with pytest.raises(TypeError, match=".*Test\.__init__\(\) missing 1 required positional argument: 'my_field'"):
         Test()
+
+
+def test_bytes_and_bytes_array_are_supported():
+    """Confirm `bytes` and `bytesarray` are supported."""
+
+    @dataclass
+    class Foo(JSONWizard):
+        class _(JSONWizard.Meta):
+            v1 = True
+
+        b: bytes = None
+        barray: bytearray = None
+        s: str = None
+
+    data = {'b': 'AAAA', 'barray': 'SGVsbG8sIFdvcmxkIQ==', 's': 'foobar'}
+
+    foo = Foo.from_dict(data)
+
+    # noinspection PyTypeChecker
+    assert foo == Foo(b=b64decode('AAAA'),
+                      barray=bytearray(b'Hello, World!'),
+                      s='foobar')
+    assert foo.to_dict() == data
+
+    # Check data consistency
+    assert Foo.from_dict(foo.to_dict()).to_dict() == data
+
+
+def test_literal_string():
+    """Confirm `literal` strings (typing.LiteralString) are supported."""
+
+    @dataclass
+    class Test(JSONWizard):
+        class _(JSONWizard.Meta):
+            v1 = True
+
+        s: LiteralString
+
+    t = Test.from_dict({'s': 'value'})
+    assert t.s == 'value'
+    assert Test.from_dict(t.to_dict()).s == 'value'
+
+
+def test_decimal():
+    """Confirm `Decimal` is supported."""
+
+    @dataclass
+    class Test(JSONWizard):
+        class _(JSONWizard.Meta):
+            v1 = True
+
+        d1: Decimal
+        d2: Decimal
+        d3: Decimal
+
+    d = {'d1': 123,
+         'd2': 3.14,
+         'd3': '42.7'}
+
+    t = Test.from_dict(d)
+
+    assert t.d1 == Decimal(123)
+    assert t.d2 == Decimal('3.14')
+    assert t.d3 == Decimal('42.7')
+
+    assert t.to_dict() == {
+        'd1': '123',
+        'd2': '3.14',
+        'd3': '42.7',
+    }
+
+
+def test_path():
+    """Confirm `Path` objects are supported."""
+
+    @dataclass
+    class Test(JSONWizard):
+        class _(JSONWizard.Meta):
+            v1 = True
+
+        p: Path
+
+    t = Test.from_dict({'p': 'a/b/c'})
+    assert t.p == Path('a/b/c')
+    assert Test.from_dict(t.to_dict()).p == Path('a/b/c')
+
+
+def test_none():
+    """Confirm `None` type annotation is supported."""
+
+    @dataclass
+    class Test(JSONWizard):
+        class _(JSONWizard.Meta):
+            v1 = True
+
+        x: NoneType
+
+    t = Test.from_dict({'x': None})
+    assert t.x is None
+
+    t = Test.from_dict({'x': 'test'})
+    assert t.x is None
+
+
+def test_enum():
+    """Confirm `Enum` objects are supported."""
+
+    class MyEnum(enum.Enum):
+        A = 'the A'
+        B = 'the B'
+        C = 'the C'
+
+    @dataclass
+    class Test(JSONWizard):
+        class _(JSONWizard.Meta):
+            v1 = True
+
+        e: MyEnum
+
+    with pytest.raises(ParseError):
+        Test.from_dict({'e': 'the D'})
+
+    t = Test.from_dict({'e': 'the B'})
+    assert t.e is MyEnum.B
+    assert Test.from_dict(t.to_dict()).e is MyEnum.B
+
+
+@pytest.mark.skipif(not PY311_OR_ABOVE, reason='Requires Python 3.11 or higher')
+def test_str_and_int_enum():
+    """Confirm `StrEnum` objects are supported."""
+
+    class MyStrEnum(enum.StrEnum):
+        A = 'the A'
+        B = 'the B'
+        C = 'the C'
+
+    class MyIntEnum(enum.IntEnum):
+        X = enum.auto()
+        Y = enum.auto()
+        Z = enum.auto()
+
+    @dataclass
+    class Test(JSONPyWizard):
+        class _(JSONPyWizard.Meta):
+            v1 = True
+
+        str_e: MyStrEnum
+        int_e: MyIntEnum
+
+    with pytest.raises(ParseError):
+        Test.from_dict({'str_e': 'the D', 'int_e': 3})
+
+    with pytest.raises(ParseError):
+        Test.from_dict({'str_e': 'the C', 'int_e': 4})
+
+    t = Test.from_dict({'str_e': 'the B', 'int_e': 3})
+    assert t.str_e is MyStrEnum.B
+    assert t.int_e is MyIntEnum.Z
+
+    t2 = Test.from_dict(t.to_dict())
+    assert t2.str_e is MyStrEnum.B
+    assert t2.int_e is MyIntEnum.Z

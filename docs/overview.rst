@@ -47,63 +47,103 @@ Supported Types
 ~~~~~~~~~~~~~~~
 
 .. tip::
-   See the below section on `Special Cases`_ for additional info
-   on the JSON load/dump process for special Python types.
+   See the section on `Special Cases`_ for additional information on how Dataclass Wizard handles JSON
+   load/dump for special Python types.
 
-* Strings
-    - ``str``
-    - ``bytes``
-    - ``bytearray``
+Dataclass Wizard supports a wide range of Python types, making it easier to work with complex data structures.
+This includes built-in types, collections, and more advanced type annotations.
+The following types are supported:
 
-* Numerics
-    - ``int``
-    - ``float``
-    - ``Decimal``
+- **Basic Types**:
 
-* Booleans (``bool``)
+  - ``str``
+  - ``int``
+  - ``float``
+  - ``bool``
+  - ``None`` (`docs <https://docs.python.org/3/library/constants.html#None>`_)
 
-* Sequences (and their equivalents in the ``typing`` module)
-    - ``list``
-    - ``deque``
-    - ``tuple``
-    - ``NamedTuple``
+- **Binary Types**:
 
-* Sets (and their equivalents in the ``typing`` module)
-    - ``set``
-    - ``frozenset``
+  - ``bytes`` (`docs <https://docs.python.org/3/library/stdtypes.html#bytes>`_)
+  - ``bytearray`` (`docs <https://docs.python.org/3/library/stdtypes.html#bytearray>`_)
 
-* Mappings (and their equivalents in the ``typing`` module)
-    - ``dict``
-    - ``defaultdict``
-    - ``TypedDict``
-    - ``OrderedDict``
+- **Decimal Type**:
 
-* ``Enum`` subclasses
+  - ``Decimal`` (`docs <https://docs.python.org/3/library/decimal.html#decimal.Decimal>`_)
 
-* ``UUID``
+- **Pathlib**:
 
-* *date* and *time* objects
-    - ``datetime``
-    - ``date``
-    - ``time``
-    - ``timedelta``
+  - ``Path`` (`docs <https://docs.python.org/3/library/pathlib.html>`_)
 
-* Special `typing primitives`_ from the ``typing`` module
-    - ``Any``
-    - ``Union`` - Also supports `using dataclasses`_.
-    - ``Optional``
+- **Typed Collections**:
+  Typed collections are supported for structured data, including:
 
-- `ABC Containers`_ in ``typing`` and ``collections.abc``
-    - ``Collection`` -- instantiated as ``list``
-    - ``MutableSequence`` -- mapped to ``list``
-    - ``Sequence`` -- mapped to ``tuple``
+  - ``TypedDict`` (`docs <https://docs.python.org/3/library/typing.html#typing.TypedDict>`_)
+  - ``NamedTuple`` (`docs <https://docs.python.org/3/library/typing.html#typing.NamedTuple>`_)
+  - ``namedtuple`` (`docs <https://docs.python.org/3/library/collections.html#collections.namedtuple>`_)
 
-* Recently introduced Generic types
-    - ``Annotated``
-    - ``Literal``
+- **ABC Containers** (`docs <https://docs.python.org/3/library/typing.html#aliases-to-container-abcs-in-collections-abc>`_):
 
+  - ``Sequence`` (`docs <https://docs.python.org/3/library/collections.abc.html#collections.abc.Sequence>`_) -- instantiated as ``tuple``
+  - ``MutableSequence`` (`docs <https://docs.python.org/3/library/collections.abc.html#collections.abc.MutableSequence>`_) -- mapped to ``list``
+  - ``Collection`` (`docs <https://docs.python.org/3/library/collections.abc.html#collections.abc.Collection>`_) -- instantiated as ``list``
 
-.. _typing primitives: https://docs.python.org/3/library/typing.html#special-typing-primitives
+- **Type Annotations and Qualifiers**:
+
+  - ``Required``, ``NotRequired``, ``ReadOnly`` (`docs <https://docs.python.org/3/library/typing.html#typing.Required>`_)
+  - ``Annotated`` (`docs <https://docs.python.org/3/library/typing.html#typing.Annotated>`_)
+  - ``Literal`` (`docs <https://docs.python.org/3/library/typing.html#typing.Literal>`_)
+  - ``LiteralString`` (`docs <https://docs.python.org/3/library/typing.html#typing.LiteralString>`_)
+  - ``Union`` (`docs <https://docs.python.org/3/library/typing.html#typing.Union>`_) -- Also supports `using dataclasses`_.
+  - ``Optional`` (`docs <https://docs.python.org/3/library/typing.html#typing.Optional>`_)
+  - ``Any`` (`docs <https://docs.python.org/3/library/typing.html#typing.Any>`_)
+
+- **Enum Types**:
+
+  - ``Enum`` (`docs <https://docs.python.org/3/library/enum.html#enum.Enum>`_)
+  - ``StrEnum`` (`docs <https://docs.python.org/3/library/enum.html#enum.StrEnum>`_)
+  - ``IntEnum`` (`docs <https://docs.python.org/3/library/enum.html#enum.IntEnum>`_)
+
+- **Sets**:
+
+  - ``set`` (`docs <https://docs.python.org/3/library/stdtypes.html#set>`_)
+  - ``frozenset`` (`docs <https://docs.python.org/3/library/stdtypes.html#frozenset>`_)
+
+- **Mappings**:
+
+  - ``dict`` (`docs <https://docs.python.org/3/library/stdtypes.html#dict>`_)
+  - ``defaultdict`` (`docs <https://docs.python.org/3/library/collections.html#collections.defaultdict>`_)
+  - ``OrderedDict`` (`docs <https://docs.python.org/3/library/collections.html#collections.OrderedDict>`_)
+
+- **Sequences**:
+
+  - ``list`` (`docs <https://docs.python.org/3/library/stdtypes.html#list>`_)
+  - ``deque`` (`docs <https://docs.python.org/3/library/collections.html#collections.deque>`_)
+  - ``tuple`` (`docs <https://docs.python.org/3/library/stdtypes.html#tuple>`_)
+
+- **UUID**:
+
+  - ``UUID`` (`docs <https://docs.python.org/3/library/uuid.html#uuid.UUID>`_)
+
+- **Date and Time**:
+
+  - ``datetime`` (`docs <https://docs.python.org/3/library/datetime.html#datetime.datetime>`_)
+  - ``date`` (`docs <https://docs.python.org/3/library/datetime.html#datetime.date>`_)
+  - ``time`` (`docs <https://docs.python.org/3/library/datetime.html#datetime.time>`_)
+  - ``timedelta`` (`docs <https://docs.python.org/3/library/datetime.html#datetime.timedelta>`_)
+
+- **Nested Dataclasses**: Nested dataclasses are supported, allowing you to serialize and deserialize
+  nested data structures.
+
+Starting with **v0.34.0**, recursive and self-referential dataclasses are supported out of the box
+when the ``v1`` option is enabled in the ``Meta`` setting (i.e., ``v1 = True``). This removes the
+need for custom settings like ``recursive_classes`` and expands type support beyond what is
+available in ``v0.x``.
+
+For more advanced functionality and additional types, enabling ``v1`` is recommended. It forms
+the basis for more complex cases and will evolve into the standard model for Dataclass Wizard.
+
+For more info, see the `Field Guide to V1 Opt-in <https://github.com/rnag/dataclass-wizard/wiki/Field-Guide-to-V1-Opt%E2%80%90in>`_.
 
 Special Cases
 -------------
@@ -183,4 +223,3 @@ Special Cases
 
 .. _using dataclasses: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/dataclasses_in_union_types.html
 .. _pytimeparse: https://pypi.org/project/pytimeparse/
-.. _ABC Containers: https://docs.python.org/3/library/typing.html#aliases-to-container-abcs-in-collections-abc

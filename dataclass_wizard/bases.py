@@ -154,7 +154,7 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
     # one that does not have a known mapping to a dataclass field.
     #
     # The default is to only log a "warning" for such cases, which is visible
-    # when `debug_enabled` is true and logging is properly configured.
+    # when `v1_debug` is true and logging is properly configured.
     raise_on_unknown_json_key: ClassVar[bool] = False
 
     # A customized mapping of JSON keys to dataclass fields, that is used
@@ -275,7 +275,7 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
     #
     # Valid options are:
     # - `"ignore"` (default): Silently ignore unknown keys.
-    # - `"warn"`: Log a warning for each unknown key. Requires `debug_enabled`
+    # - `"warn"`: Log a warning for each unknown key. Requires `v1_debug`
     #   to be `True` and properly configured logging.
     # - `"raise"`: Raise an `UnknownKeyError` for the first unknown key encountered.
     v1_on_unknown_key: ClassVar[KeyAction] = None

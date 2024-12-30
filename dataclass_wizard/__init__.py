@@ -3,7 +3,7 @@ Dataclass Wizard
 ~~~~~~~~~~~~~~~~
 
 Lightning-fast JSON wizardry for Python dataclasses — effortless
-serialization with no external tools required!
+serialization right out of the box!
 
 Sample Usage:
 
@@ -119,6 +119,7 @@ __all__ = [
 import logging
 
 from .bases_meta import LoadMeta, DumpMeta, EnvMeta
+from .constants import PACKAGE_NAME
 from .dumpers import DumpMixin, setup_default_dumper, asdict
 from .loaders import LoadMixin, setup_default_loader
 from .loader_selection import fromlist, fromdict
@@ -135,7 +136,7 @@ from .wizard_mixins import JSONListWizard, JSONFileWizard, TOMLWizard, YAMLWizar
 
 # Set up logging to ``/dev/null`` like a library is supposed to.
 # http://docs.python.org/3.3/howto/logging.html#configuring-logging-for-a-library
-logging.getLogger('dataclass_wizard').addHandler(logging.NullHandler())
+logging.getLogger(PACKAGE_NAME).addHandler(logging.NullHandler())
 
 # Setup the default type hooks to use when converting `str` (json) or a Python
 # `dict` object to a `dataclass` instance.

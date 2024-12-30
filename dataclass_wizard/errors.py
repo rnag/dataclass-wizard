@@ -3,6 +3,7 @@ from dataclasses import Field, MISSING
 from typing import (Any, Type, Dict, Tuple, ClassVar,
                     Optional, Union, Iterable, Callable, Collection, Sequence)
 
+from .constants import PACKAGE_NAME
 from .utils.string_conv import normalize
 
 
@@ -24,7 +25,7 @@ def type_name(obj: type) -> str:
 
 
 def show_deprecation_warning(
-    fn: Callable,
+    fn: 'Callable | str',
     reason: str,
     fmt: str = "Deprecated function {name} ({reason})."
 ) -> None:
@@ -38,7 +39,7 @@ def show_deprecation_warning(
     import warnings
     warnings.simplefilter('always', DeprecationWarning)
     warnings.warn(
-        fmt.format(name=fn.__name__, reason=reason),
+        fmt.format(name=getattr(fn, '__name__', fn), reason=reason),
         category=DeprecationWarning,
         stacklevel=2,
     )
@@ -220,7 +221,7 @@ class MissingFields(JSONWizardError):
                  '  Input JSON: {json_string}'
                  '{e}')
 
-    def __init__(self, base_err: Exception,
+    def __init__(self, base_err: 'Exception | None',
                  obj: JSONObject,
                  cls: Type,
                  cls_fields: Tuple[Field, ...],
@@ -251,6 +252,7 @@ class MissingFields(JSONWizardError):
         self.kwargs = kwargs
         self.class_name: str = self.name(cls)
         self.parent_cls = cls
+        self.all_fields = cls_fields
 
     @property
     def message(self) -> str:
@@ -262,10 +264,16 @@ class MissingFields(JSONWizardError):
         meta = get_meta(self.parent_cls)
         v1 = meta.v1
 
+        if isinstance(self.obj, list):
+            keys = [f.name for f in self.all_fields]
+            obj = dict(zip(keys, self.obj))
+        else:
+            obj = self.obj
+
         # check if any field names match, and where the key transform could be the cause
         # see https://github.com/rnag/dataclass-wizard/issues/54 for more info
 
-        normalized_json_keys = [normalize(key) for key in self.obj]
+        normalized_json_keys = [normalize(key) for key in obj]
         if next((f for f in self.missing_fields if normalize(f) in normalized_json_keys), None):
             from .enums import LetterCase
             from .v1.enums import KeyCase
@@ -424,7 +432,7 @@ class RecursiveClassError(JSONWizardError):
     _TEMPLATE = ('Failure parsing class `{cls}`. '
                  'Consider updating the Meta config to enable '
                  'the `recursive_classes` flag.\n\n'
-                 'Example with `dataclass_wizard.LoadMeta`:\n'
+                f'Example with `{PACKAGE_NAME}.LoadMeta`:\n'
                  ' >>> LoadMeta(recursive_classes=True).bind_to({cls})\n\n'
                  'For more info, please see:\n'
                  '  https://github.com/rnag/dataclass-wizard/issues/62')

@@ -61,14 +61,18 @@ class FunctionBuilder:
 
     def _with_new_block(self,
                         name: str,
-                        condition: 'str | None' = None) -> 'FunctionBuilder':
+                        condition: 'str | None' = None,
+                        comment: str = '') -> 'FunctionBuilder':
         """Creates a new block. Used with a context manager (with)."""
         indent = '  ' * self.indent_level
 
+        if comment:
+            comment = f'  # {comment}'
+
         if condition is not None:
-            self.current_function["body"].append(f"{indent}{name} {condition}:")
+            self.current_function["body"].append(f"{indent}{name} {condition}:{comment}")
         else:
-            self.current_function["body"].append(f"{indent}{name}:")
+            self.current_function["body"].append(f"{indent}{name}:{comment}")
 
         return self
 
@@ -88,7 +92,7 @@ class FunctionBuilder:
         """
         return self._with_new_block('for', condition)
 
-    def if_(self, condition: str) -> 'FunctionBuilder':
+    def if_(self, condition: str, comment: str = '') -> 'FunctionBuilder':
         """Equivalent to the `if` statement in Python.
 
         Sample Usage:
@@ -102,7 +106,7 @@ class FunctionBuilder:
             >>>     ...
 
         """
-        return self._with_new_block('if', condition)
+        return self._with_new_block('if', condition, comment)
 
     def elif_(self, condition: str) -> 'FunctionBuilder':
         """Equivalent to the `elif` statement in Python.

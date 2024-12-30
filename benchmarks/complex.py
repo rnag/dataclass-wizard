@@ -88,6 +88,7 @@ class Name(NamedTuple):
     last: str
     salutation: Optional[str] = 'Mr.'
 
+
 @dataclass
 class NameDataclass:
     first: str
@@ -218,14 +219,14 @@ def test_load(request, data, data_2, data_dacite, n):
     """
     [ RESULTS ON MAC OS X ]
 
-    benchmarks.complex.complex - [INFO] dataclass-wizard     0.373847
-    benchmarks.complex.complex - [INFO] dataclass-factory    0.777164
-    benchmarks.complex.complex - [INFO] dataclasses-json     28.177022
-    benchmarks.complex.complex - [INFO] dacite               6.619898
-    benchmarks.complex.complex - [INFO] mashumaro            0.351623
-    benchmarks.complex.complex - [INFO] pydantic             0.563395
-    benchmarks.complex.complex - [INFO] jsons                30.564242
-    benchmarks.complex.complex - [INFO] jsons (strict)       35.122489
+    benchmarks.complex.complex - [INFO] dataclass-wizard     0.325364
+    benchmarks.complex.complex - [INFO] dataclass-factory    0.773195
+    benchmarks.complex.complex - [INFO] dataclasses-json     28.435088
+    benchmarks.complex.complex - [INFO] dacite               6.287875
+    benchmarks.complex.complex - [INFO] mashumaro            0.344701
+    benchmarks.complex.complex - [INFO] pydantic             0.547749
+    benchmarks.complex.complex - [INFO] jsons                29.978993
+    benchmarks.complex.complex - [INFO] jsons (strict)       34.052532
     """
     g = globals().copy()
     g.update(locals())
@@ -235,9 +236,6 @@ def test_load(request, data, data_2, data_dacite, n):
 
     log.info('dataclass-factory    %f',
              timeit('factory.load(data_2, MyClass)', globals=g, number=n))
-
-    log.info('dataclasses-json     %f',
-             timeit('MyClassDJ.from_dict(data_2)', globals=g, number=n))
 
     log.info('dacite               %f',
              timeit('dacite_from_dict(MyClassDacite, data_dacite, config=dacite_cfg)',
@@ -263,6 +261,9 @@ def test_load(request, data, data_2, data_dacite, n):
 
     if not request.config.getoption("--all"):
         pytest.skip("Skipping benchmarks for the rest by default, unless --all is specified.")
+
+    log.info('dataclasses-json     %f',
+             timeit('MyClassDJ.from_dict(data_2)', globals=g, number=n))
 
     log.info('jsons                %f',
              timeit('MyClassJsons.load(data)', globals=g, number=n))

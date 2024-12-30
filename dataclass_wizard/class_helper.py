@@ -2,7 +2,7 @@ from collections import defaultdict
 from dataclasses import MISSING, fields
 
 from .bases import AbstractMeta
-from .constants import CATCH_ALL
+from .constants import CATCH_ALL, PACKAGE_NAME
 from .errors import InvalidConditionError
 from .models import JSONField, JSON, Extras, PatternedDT, CatchAll, Condition
 from .type_def import ExplicitNull
@@ -421,7 +421,7 @@ def _setup_v1_load_config_for_cls(
     return load_dataclass_field_to_alias
 
 
-def call_meta_initializer_if_needed(cls, package_name='dataclass_wizard'):
+def call_meta_initializer_if_needed(cls, package_name=PACKAGE_NAME):
     """
     Calls the Meta initializer when the inner :class:`Meta` is sub-classed.
     """

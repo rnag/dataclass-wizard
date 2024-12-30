@@ -143,7 +143,7 @@ This library supports **Python 3.9+**. Support for Python 3.6 – 3.8 was
 available in earlier releases but is no longer maintained, as those
 versions no longer receive security updates.
 
-For convenience, the table below outlines the last compatible version
+For convenience, the table below outlines the last compatible release
 of *Dataclass Wizard* for unsupported Python versions (3.6 – 3.8):
 
 .. list-table::
@@ -153,15 +153,15 @@ of *Dataclass Wizard* for unsupported Python versions (3.6 – 3.8):
    * - Python Version
      - Last Version of ``dataclass-wizard``
      - Python EOL
-   * - 3.6
-     - 0.26.1_
-     - 2021-12-23
-   * - 3.7
-     - 0.26.1_
-     - 2023-06-27
    * - 3.8
      - 0.26.1_
      - 2024-10-07
+   * - 3.7
+     - 0.26.1_
+     - 2023-06-27
+   * - 3.6
+     - 0.26.1_
+     - 2021-12-23
 
 .. _0.26.1: https://pypi.org/project/dataclass-wizard/0.26.1/
 .. _PyPI: https://pypi.org/project/dataclass-wizard/
@@ -834,10 +834,10 @@ A brief example of the intended usage is shown below:
     # serialization. In fact, it'll be faster than parsing the custom patterns!
     assert class_obj == fromdict(MyClass, asdict(class_obj))
 
-"Recursive" Dataclasses with Cyclic References
-----------------------------------------------
+Recursive Types and Dataclasses with Cyclic References
+------------------------------------------------------
 
-Prior to version `v0.27.0`, dataclasses with cyclic references
+Prior to version **0.27.0**, dataclasses with cyclic references
 or self-referential structures were not supported. This
 limitation is shown in the following toy example:
 
@@ -851,28 +851,24 @@ limitation is shown in the following toy example:
 
     a = A(a=A(a=A(a=A())))
 
-This was a `longstanding issue`_.
+This was a `longstanding issue`_, but starting with ``v0.27.0``, Dataclass Wizard now supports
+recursive dataclasses, including cyclic references.
 
-New in ``v0.27.0``: The Dataclass Wizard now extends its support
-to cyclic and self-referential dataclass models.
-
-The example below demonstrates recursive dataclasses with cyclic
-dependencies, following the pattern ``A -> B -> A -> B``. For more details, see
-the `Cyclic or "Recursive" Dataclasses`_ section in the documentation.
+The example below demonstrates recursive
+dataclasses with cyclic dependencies, following the pattern ``A -> B -> A -> B``.
+For more details, see the `Cyclic or "Recursive" Dataclasses`_ section in the documentation.
 
 .. code:: python3
 
     from __future__ import annotations  # This can be removed in Python 3.10+
 
     from dataclasses import dataclass
-
     from dataclass_wizard import JSONWizard
-
 
     @dataclass
     class A(JSONWizard):
         class _(JSONWizard.Meta):
-            # enable support for self-referential / recursive dataclasses
+            # Enable support for self-referential / recursive dataclasses
             recursive_classes = True
 
         b: 'B | None' = None
@@ -882,12 +878,131 @@ the `Cyclic or "Recursive" Dataclasses`_ section in the documentation.
     class B:
         a: A | None = None
 
-
-    # confirm that `from_dict` with a recursive, self-referential
+    # Confirm that `from_dict` with a recursive, self-referential
     # input `dict` works as expected.
     a = A.from_dict({'b': {'a': {'b': {'a': None}}}})
 
     assert a == A(b=B(a=A(b=B())))
+
+Starting with version **0.34.0**, recursive types are supported *out of the box* (OOTB) with ``v1`` opt-in,
+removing the need for any ``Meta`` settings like ``recursive_classes = True``.
+
+This makes working with recursive dataclasses even easier and more streamlined. In addition, recursive types
+are now supported for the following Python type constructs:
+
+- NamedTuple_
+- TypedDict_
+- Union_
+- Literal_
+- Nested dataclasses_
+- `Type aliases`_ (introduced in Python 3.12+)
+
+.. _NamedTuple: https://docs.python.org/3/library/typing.html#typing.NamedTuple
+.. _TypedDict: https://docs.python.org/3/library/typing.html#typing.TypedDict
+.. _Union: https://docs.python.org/3/library/typing.html#typing.Union
+.. _Literal: https://docs.python.org/3/library/typing.html#typing.Literal
+.. _Type aliases: https://docs.python.org/3/library/typing.html#type-aliases
+
+Example Usage
+~~~~~~~~~~~~~
+
+Recursive types allow handling complex nested data structures, such as deeply nested JSON objects or lists.
+With ``v0.34.0`` of Dataclass Wizard, de/serializing these structures becomes seamless
+and more intuitive.
+
+Recursive ``Union``
+###################
+
+.. code-block:: python3
+
+    from dataclasses import dataclass
+    from dataclass_wizard import JSONWizard
+
+    # For Python 3.9, use this `Union` approach:
+    from typing_extensions import TypeAlias
+    JSON: TypeAlias = 'str | int | float | bool | dict[str, JSON] | list[JSON] | None'
+
+    # For Python 3.10 and above, use this simpler approach:
+    # JSON = str | int | float | bool | dict[str, 'JSON'] | list['JSON'] | None
+
+    # For Python 3.12+, you can use the `type` statement:
+    # type JSON = str | int | float | bool | dict[str, JSON] | list[JSON] | None
+
+    @dataclass
+    class MyTestClass(JSONWizard):
+
+        class _(JSONWizard.Meta):
+            v1 = True
+
+        name: str
+        meta: str
+        msg: JSON
+
+    x = MyTestClass.from_dict(
+        {
+            "name": "name",
+            "meta": "meta",
+            "msg": [{"x": {"x": [{"x": ["x", 1, 1.0, True, None]}]}}],
+        }
+    )
+    assert x == MyTestClass(
+        name="name",
+        meta="meta",
+        msg=[{"x": {"x": [{"x": ["x", 1, 1.0, True, None]}]}}],
+    )
+
+.. note::
+   The ``type`` statement in Python 3.12+ simplifies type alias definitions by avoiding string annotations for recursive references.
+
+Recursive ``Union`` with Nested ``dataclasses``
+###############################################
+
+.. code-block:: python3
+
+    from dataclasses import dataclass, field
+    from dataclass_wizard import JSONWizard
+
+    @dataclass
+    class A(JSONWizard):
+
+        class _(JSONWizard.Meta):
+            v1 = True
+
+        value: int
+        nested: 'B'
+        next: 'A | None' = None
+
+
+    @dataclass
+    class B:
+        items: list[A] = field(default_factory=list)
+
+
+    x = A.from_dict(
+        {
+            "value": 1,
+            "next": {"value": 2, "next": None, "nested": {}},
+            "nested": {"items": [{"value": 3, "nested": {}}]},
+        }
+    )
+    assert x == A(
+        value=1,
+        next=A(value=2, next=None, nested=B(items=[])),
+        nested=B(items=[A(value=3, nested=B())]),
+    )
+
+.. note::
+   Nested ``dataclasses`` are particularly useful for representing hierarchical structures, such as trees or graphs, in a readable and maintainable way.
+
+Official References
+~~~~~~~~~~~~~~~~~~~
+
+For more information, see:
+
+- `Typing in Python <https://docs.python.org/3/library/typing.html>`_
+- `PEP 695: Type Syntax <https://peps.python.org/pep-0695/>`_
+
+These examples illustrate the power of recursive types in simplifying complex data structures while leveraging the functionality of ``dataclass-wizard``.
 
 Dataclasses in ``Union`` Types
 ------------------------------
