@@ -17,7 +17,6 @@ from decimal import Decimal
 from enum import Enum
 # noinspection PyProtectedMember,PyUnresolvedReferences
 from typing import Type, List, Dict, Any, NamedTupleMeta, Optional, Callable, Collection
-from typing_extensions import Buffer
 from uuid import UUID
 
 from .abstractions import AbstractDumper
@@ -38,7 +37,7 @@ from .loader_selection import _get_load_fn_for_dataclass
 from .log import LOG
 from .models import get_skip_if_condition, finalize_skip_if
 from .type_def import (
-    ExplicitNull, NoneType, JSONObject,
+    Buffer, ExplicitNull, NoneType, JSONObject,
     DD, LSQ, E, U, LT, NT, T
 )
 from .utils.dict_helper import NestedDict

@@ -1,4 +1,5 @@
 __all__ = [
+    'Buffer',
     'PyForwardRef',
     'PyProtocol',
     'PyDeque',
@@ -55,8 +56,7 @@ from typing import (
 )
 from uuid import UUID
 
-from .constants import PY310_OR_ABOVE, PY311_OR_ABOVE, PY313_OR_ABOVE
-
+from .constants import PY310_OR_ABOVE, PY311_OR_ABOVE, PY313_OR_ABOVE, PY312_OR_ABOVE
 
 # The class of the `None` singleton, cached for re-usability
 if PY310_OR_ABOVE:
@@ -159,16 +159,20 @@ if PY313_OR_ABOVE:  # pragma: no cover
                         LiteralString as PyLiteralString,
                         dataclass_transform)
 
+elif PY312_OR_ABOVE:
+    from collections.abc import Buffer
 elif PY311_OR_ABOVE:  # pragma: no cover
     from typing import (Required as PyRequired,
                         NotRequired as PyNotRequired,
                         LiteralString as PyLiteralString,
                         dataclass_transform)
-    from typing_extensions import ReadOnly as PyReadOnly
+    from typing_extensions import (Buffer,
+                                   ReadOnly as PyReadOnly)
 else:
-    from typing_extensions import (Required as PyRequired,
+    from typing_extensions import (Buffer,
+                                   Required as PyRequired,
                                    NotRequired as PyNotRequired,
-                                    ReadOnly as PyReadOnly,
+                                   ReadOnly as PyReadOnly,
                                    LiteralString as PyLiteralString,
                                    dataclass_transform)
 
