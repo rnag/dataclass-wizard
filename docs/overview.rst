@@ -47,10 +47,11 @@ Supported Types
 ~~~~~~~~~~~~~~~
 
 .. tip::
-   See the below section on `Special Cases`_ for additional info
-   on the JSON load/dump process for special Python types.
+   See the section on `Special Cases`_ for additional information on how Dataclass Wizard handles JSON
+   load/dump for special Python types.
 
-Dataclass Wizard supports a variety of Python types, making it easier to work with complex data structures.
+Dataclass Wizard supports a wide range of Python types, making it easier to work with complex data structures.
+This includes built-in types, collections, and more advanced type annotations.
 The following types are supported:
 
 - **Basic Types**:
@@ -75,6 +76,7 @@ The following types are supported:
   - ``Path`` (`docs <https://docs.python.org/3/library/pathlib.html>`_)
 
 - **Typed Collections**:
+  Typed collections are supported for structured data, including:
 
   - ``TypedDict`` (`docs <https://docs.python.org/3/library/typing.html#typing.TypedDict>`_)
   - ``NamedTuple`` (`docs <https://docs.python.org/3/library/typing.html#typing.NamedTuple>`_)
@@ -92,7 +94,7 @@ The following types are supported:
   - ``Annotated`` (`docs <https://docs.python.org/3/library/typing.html#typing.Annotated>`_)
   - ``Literal`` (`docs <https://docs.python.org/3/library/typing.html#typing.Literal>`_)
   - ``LiteralString`` (`docs <https://docs.python.org/3/library/typing.html#typing.LiteralString>`_)
-  - ``Union`` (`docs <https://docs.python.org/3/library/typing.html#typing.Union>`_) - Also supports `using dataclasses`_.
+  - ``Union`` (`docs <https://docs.python.org/3/library/typing.html#typing.Union>`_) -- Also supports `using dataclasses`_.
   - ``Optional`` (`docs <https://docs.python.org/3/library/typing.html#typing.Optional>`_)
   - ``Any`` (`docs <https://docs.python.org/3/library/typing.html#typing.Any>`_)
 
@@ -130,18 +132,18 @@ The following types are supported:
   - ``time`` (`docs <https://docs.python.org/3/library/datetime.html#datetime.time>`_)
   - ``timedelta`` (`docs <https://docs.python.org/3/library/datetime.html#datetime.timedelta>`_)
 
-- **Nested Dataclasses**:
-
-  - Nested dataclasses are supported, which allows de/serialization of nested structures.
+- **Nested Dataclasses**: Nested dataclasses are supported, allowing you to serialize and deserialize
+  nested data structures.
 
 Starting with **v0.34.0**, recursive and self-referential dataclasses are supported out of the box
-when the ``v1`` option is enabled in the ``Meta`` setting (i.e., ``v1 = True``). This eliminates
-the need for custom settings such as ``recursive_classes``, enabling the use of additional types
-that were previously unsupported in the ``v0.x`` series.
+when the ``v1`` option is enabled in the ``Meta`` setting (i.e., ``v1 = True``). This removes the
+need for custom settings like ``recursive_classes`` and expands type support beyond what is
+available in ``v0.x``.
 
-For more advanced functionality and extended type support, enabling ``v1`` is recommended as
-it is the foundation for the upcoming major release. For more info,
-see the `Field Guide to V1 Opt-in <https://github.com/rnag/dataclass-wizard/wiki/Field-Guide-to-V1-Opt%E2%80%90in>`_.
+For more advanced functionality and additional types, enabling ``v1`` is recommended. It forms
+the basis for more complex cases and will evolve into the standard model for Dataclass Wizard.
+
+For more info, see the `Field Guide to V1 Opt-in <https://github.com/rnag/dataclass-wizard/wiki/Field-Guide-to-V1-Opt%E2%80%90in>`_.
 
 Special Cases
 -------------
