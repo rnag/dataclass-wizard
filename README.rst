@@ -889,6 +889,111 @@ the `Cyclic or "Recursive" Dataclasses`_ section in the documentation.
 
     assert a == A(b=B(a=A(b=B())))
 
+Recursive Types
+---------------
+
+As of release **v0.34.0**, recursive types are supported out of the box (OOTB) with the ``v1`` opt-in.
+This eliminates the need for any ``Meta`` setting such as ``recursive_classes=True``.
+
+Recursive types are supported for the following Python type constructs:
+
+- `NamedTuple`_
+- `TypedDict`_
+- `Union`_
+- `Literal`_
+- Nested `dataclasses`_
+- `Type aliases`_ defined using the `type` statement, introduced in Python 3.12+
+
+.. _NamedTuple: https://docs.python.org/3/library/typing.html#typing.NamedTuple
+.. _TypedDict: https://docs.python.org/3/library/typing.html#typing.TypedDict
+.. _Union: https://docs.python.org/3/library/typing.html#typing.Union
+.. _Literal: https://docs.python.org/3/library/typing.html#typing.Literal
+.. _Type aliases: https://docs.python.org/3/library/typing.html#type-aliases
+
+Example Usage
+~~~~~~~~~~~~~
+
+Recursive ``Union``
+###################
+
+.. code-block:: python3
+
+    from dataclasses import dataclass
+    from dataclass_wizard import JSONWizard
+
+    # Use this `Union` approach for Python 3.9 - 3.11:
+    from typing_extensions import TypeAlias
+    JSON: TypeAlias = 'str | int | float | bool | dict[str, JSON] | list[JSON] | None'
+    # equivalent to:
+    #   JSON = typing.Union[str, int, float, bool, dict[str, 'JSON'], list['JSON'], None]
+
+    # For Python 3.12+, uncomment the following line and use the ``type`` statement:
+    # type JSON = str | int | float | bool | dict[str, JSON] | list[JSON] | None
+
+    @dataclass
+    class MyTestClass(JSONWizard):
+
+        class _(JSONWizard.Meta):
+            v1 = True
+
+        name: str
+        meta: str
+        msg: JSON
+
+    x = MyTestClass.from_dict(
+        {
+            "name": "name",
+            "meta": "meta",
+            "msg": [{"x": {"x": [{"x": ["x", 1, 1.0, True, None]}]}}],
+        }
+    )
+    assert x == MyTestClass(
+        name="name",
+        meta="meta",
+        msg=[{"x": {"x": [{"x": ["x", 1, 1.0, True, None]}]}}],
+    )
+
+Nested, Recursive ``dataclasses``
+#################################
+
+.. code-block:: python3
+
+    from dataclasses import dataclass, field
+    from dataclass_wizard import JSONWizard
+
+
+    @dataclass
+    class A(JSONWizard):
+        class _(JSONWizard.Meta):
+            v1 = True
+
+        value: int
+        nested: 'B'
+        next: 'A | None' = None
+
+
+    @dataclass
+    class B(JSONWizard):
+        items: list[A] = field(default_factory=list)
+
+
+    x = A.from_dict(
+        {
+            "value": 1,
+            "next": {"value": 2, "next": None, "nested": {}},
+            "nested": {"items": [{"value": 3, "nested": {}}]},
+        }
+    )
+    assert x == A(
+        value=1,
+        next=A(value=2, next=None, nested=B(items=[])),
+        nested=B(items=[A(value=3, nested=B())]),
+    )
+
+
+These examples illustrate the power of recursive types in simplifying complex data structures while leveraging the functionality of ``dataclass-wizard``.
+Let me know if you have feedback or ideas for further documentation improvements!
+
 Dataclasses in ``Union`` Types
 ------------------------------
 
