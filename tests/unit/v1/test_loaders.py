@@ -1995,7 +1995,7 @@ def test_typed_dict_recursive():
 
     class TD(TypedDict):
         key_one: str
-        key_two: 'TD | None'
+        key_two: Union['TD', None]
         key_three: NotRequired[dict[int, list['TD']]]
         key_four: NotRequired[list['TD']]
 
