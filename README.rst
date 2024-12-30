@@ -892,17 +892,17 @@ the `Cyclic or "Recursive" Dataclasses`_ section in the documentation.
 Recursive Types
 ---------------
 
-As of release **v0.34.0**, recursive types are supported out of the box (OOTB) with the ``v1`` opt-in.
-This eliminates the need for any ``Meta`` setting such as ``recursive_classes=True``.
+Starting with version **0.34.0**, recursive types are supported out of the box (OOTB) when the ``v1`` option is enabled.
+This eliminates the need for any ``Meta`` settings such as ``recursive_classes``.
 
 Recursive types are supported for the following Python type constructs:
 
-- `NamedTuple`_
-- `TypedDict`_
-- `Union`_
-- `Literal`_
-- Nested `dataclasses`_
-- `Type aliases`_ defined using the `type` statement, introduced in Python 3.12+
+- NamedTuple_
+- TypedDict_
+- Union_
+- Literal_
+- Nested dataclasses_
+- `Type aliases`_ (introduced in Python 3.12+)
 
 .. _NamedTuple: https://docs.python.org/3/library/typing.html#typing.NamedTuple
 .. _TypedDict: https://docs.python.org/3/library/typing.html#typing.TypedDict
@@ -913,6 +913,12 @@ Recursive types are supported for the following Python type constructs:
 Example Usage
 ~~~~~~~~~~~~~
 
+Overview
+########
+
+Recursive types allow handling complex nested data structures, such as deeply nested JSON objects or lists.
+With ``dataclass-wizard``, de-serializing and serializing these structures becomes seamless and more intuitive.
+
 Recursive ``Union``
 ###################
 
@@ -921,13 +927,14 @@ Recursive ``Union``
     from dataclasses import dataclass
     from dataclass_wizard import JSONWizard
 
-    # Use this `Union` approach for Python 3.9 - 3.11:
+    # For Python 3.9, use this `Union` approach:
     from typing_extensions import TypeAlias
     JSON: TypeAlias = 'str | int | float | bool | dict[str, JSON] | list[JSON] | None'
-    # equivalent to:
-    #   JSON = typing.Union[str, int, float, bool, dict[str, 'JSON'], list['JSON'], None]
 
-    # For Python 3.12+, uncomment the following line and use the ``type`` statement:
+    # For Python 3.10 and above, use this simpler approach:
+    # JSON = str | int | float | bool | dict[str, 'JSON'] | list['JSON'] | None
+
+    # For Python 3.12+, you can use the `type` statement:
     # type JSON = str | int | float | bool | dict[str, JSON] | list[JSON] | None
 
     @dataclass
@@ -953,17 +960,21 @@ Recursive ``Union``
         msg=[{"x": {"x": [{"x": ["x", 1, 1.0, True, None]}]}}],
     )
 
-Nested, Recursive ``dataclasses``
-#################################
+.. note::
+   The ``type`` statement in Python 3.12+ simplifies type alias definitions by avoiding string annotations
+   for recursive references.
+
+Recursive ``Union`` with Nested ``dataclasses``
+###############################################
 
 .. code-block:: python3
 
     from dataclasses import dataclass, field
     from dataclass_wizard import JSONWizard
 
-
     @dataclass
     class A(JSONWizard):
+
         class _(JSONWizard.Meta):
             v1 = True
 
@@ -973,7 +984,7 @@ Nested, Recursive ``dataclasses``
 
 
     @dataclass
-    class B(JSONWizard):
+    class B:
         items: list[A] = field(default_factory=list)
 
 
@@ -990,9 +1001,19 @@ Nested, Recursive ``dataclasses``
         nested=B(items=[A(value=3, nested=B())]),
     )
 
+.. note::
+   Nested ``dataclasses`` are particularly useful for representing hierarchical structures, such as trees
+   or graphs, in a readable and maintainable way.
+
+Official References
+~~~~~~~~~~~~~~~~~~~
+
+For more information, see:
+
+- `Typing in Python <https://docs.python.org/3/library/typing.html>`_
+- `PEP 695: Type Syntax <https://peps.python.org/pep-0695/>`_
 
 These examples illustrate the power of recursive types in simplifying complex data structures while leveraging the functionality of ``dataclass-wizard``.
-Let me know if you have feedback or ideas for further documentation improvements!
 
 Dataclasses in ``Union`` Types
 ------------------------------
