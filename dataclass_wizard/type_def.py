@@ -153,23 +153,24 @@ except ImportError:
 # wrappers from `typing_extensions`.
 
 if PY313_OR_ABOVE:  # pragma: no cover
+    from collections.abc import Buffer
+
     from typing import (Required as PyRequired,
                         NotRequired as PyNotRequired,
                         ReadOnly as PyReadOnly,
                         LiteralString as PyLiteralString,
                         dataclass_transform)
 elif PY311_OR_ABOVE:  # pragma: no cover
-    from typing import (Required as PyRequired,
-                        NotRequired as PyNotRequired,
-                        LiteralString as PyLiteralString,
-                        dataclass_transform)
-    from typing_extensions import ReadOnly as PyReadOnly
-
     if PY312_OR_ABOVE:
         from collections.abc import Buffer
     else:
         from typing_extensions import Buffer
 
+    from typing import (Required as PyRequired,
+                        NotRequired as PyNotRequired,
+                        LiteralString as PyLiteralString,
+                        dataclass_transform)
+    from typing_extensions import ReadOnly as PyReadOnly
 else:
     from typing_extensions import (Buffer,
                                    Required as PyRequired,
