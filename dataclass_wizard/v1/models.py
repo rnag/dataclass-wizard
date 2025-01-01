@@ -366,6 +366,10 @@ class PatternBase:
            f'with the provided patterns: {patterns!r}")')
 
     def __repr__(self):
+        # Short path: Temporary state / placeholder
+        if self.base is ...:
+            return '...'
+
         if (_repr := getattr(self, '_repr', None)) is not None:
             return _repr
 
@@ -379,7 +383,7 @@ class PatternBase:
         return _repr
 
 
-Pattern = PatternBase(Any)
+Pattern = PatternBase(...)
 
 # noinspection PyTypeChecker
 DatePattern = PatternBase(date)
