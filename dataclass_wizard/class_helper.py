@@ -413,8 +413,6 @@ def _setup_v1_load_config_for_cls(
                                    dump_dataclass_field_to_path,
                                    load_dataclass_field_to_alias,
                                    dump_dataclass_field_to_alias)
-                # elif isinstance(extra, PatternedDT):
-                    # field_extras['pattern'] = extra
 
     IS_V1_LOAD_CONFIG_SETUP.add(cls)
 

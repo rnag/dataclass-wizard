@@ -1,11 +1,12 @@
 from dataclasses import MISSING, Field as _Field, dataclass
+from datetime import datetime, date, time
 from typing import (Collection, Callable,
-                    Mapping)
+                    Mapping, Generic)
 from typing import TypedDict, overload, Any, NotRequired, Self
 
 from ..bases import META
 from ..models import Condition
-from ..type_def import DefFactory
+from ..type_def import DefFactory, DT, T
 from ..utils.function_builder import FunctionBuilder
 from ..utils.object_path import PathType
 
@@ -71,8 +72,41 @@ class Extras(TypedDict):
     cls_name: str
     fn_gen: FunctionBuilder
     locals: dict[str, Any]
-    pattern: NotRequired[PatternedDT]
+    pattern: NotRequired[PatternBase]
     recursion_guard: dict[type, str]
+
+
+class PatternBase:
+
+    # base type for pattern, a type (or subtype) of `DT`
+    base: type[DT]
+
+    # a sequence of custom (non-ISO format) date string patterns
+    patterns: tuple[str, ...]
+
+    def __init__(self, base, patterns=None): ...
+
+    @overload
+    def __getitem__(self, key: type[DT]) -> type[DT]: ...
+    def __getitem__(self, key: tuple[type[DT], *tuple[str, ...]]) -> type[DT]: ...
+
+    def load_to_pattern(self, tp: TypeInfo, extras: Extras): ...
+
+
+class _Pattern(Generic[DT]):
+    @overload
+    def __getitem__(self, *item: tuple[str, ...]) -> type[DT]: ...
+    def __getitem__(self, item: str) -> type[DT]: ...
+
+
+Pattern = PatternBase(Any)
+# DatePattern = _Pattern[date]
+# TimePattern = _Pattern[time]()
+# DateTimePattern = _Pattern[datetime]()
+
+class DatePattern(date, Generic[T]): ...
+class TimePattern(time, Generic[T]): ...
+class DateTimePattern(datetime, Generic[T]): ...
 
 
 # noinspection PyPep8Naming

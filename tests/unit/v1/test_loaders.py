@@ -24,13 +24,27 @@ from dataclass_wizard.constants import TAG
 from dataclass_wizard.errors import (
     ParseError, MissingFields, UnknownKeysError, MissingData, InvalidConditionError
 )
-from dataclass_wizard.models import _PatternBase
+from dataclass_wizard.v1.models import PatternBase
 from dataclass_wizard.type_def import NoneType
 from dataclass_wizard.v1 import *
 from ..conftest import MyUUIDSubclass
 from ...conftest import *
 
 log = logging.getLogger(__name__)
+
+
+def create_strict_eq(name, bases, cls_dict):
+    """Generate a strict "type" equality method for a class."""
+    cls = type(name, bases, cls_dict)
+    __class__ = cls  # provide closure cell for super()
+
+    def __eq__(self, other):
+        if type(other) is not cls:  # explicitly check the type
+            return False
+        return super().__eq__(other)
+
+    cls.__eq__ = __eq__
+    return cls
 
 
 def test_missing_fields_is_raised():
@@ -404,7 +418,6 @@ def test_from_dict_called_with_incorrect_type():
     assert (err.ann_type, err.obj_type) == (dict, list)
 
 
-@pytest.mark.xfail(reason='Need to add support in v1')
 def test_date_times_with_custom_pattern():
     """
     Date, time, and datetime objects with a custom date string
@@ -414,19 +427,6 @@ def test_date_times_with_custom_pattern():
     Note that the serialization format for dates and times still use ISO
     format, by default.
     """
-
-    def create_strict_eq(name, bases, cls_dict):
-        """Generate a strict "type" equality method for a class."""
-        cls = type(name, bases, cls_dict)
-        __class__ = cls  # provide closure cell for super()
-
-        def __eq__(self, other):
-            if type(other) is not cls:  # explicitly check the type
-                return False
-            return super().__eq__(other)
-
-        cls.__eq__ = __eq__
-        return cls
 
     class MyDate(date, metaclass=create_strict_eq):
         ...
@@ -444,7 +444,7 @@ def test_date_times_with_custom_pattern():
         date_field1: DatePattern['%m-%y']
         time_field1: TimePattern['%H-%M']
         dt_field1: DateTimePattern['%d, %b, %Y %I::%M::%S.%f %p']
-        date_field2: Annotated[MyDate, Pattern('%Y/%m/%d')]
+        date_field2: Annotated[MyDate, Pattern['%Y/%m/%d']]
         time_field2: Annotated[List[MyTime], Pattern('%I:%M %p')]
         dt_field2: Annotated[MyDT, Pattern('%m/%d/%y %H@%M@%S')]
 
@@ -459,6 +459,7 @@ def test_date_times_with_custom_pattern():
             'other_field': 'testing'}
 
     LoadMeta(v1=True).bind_to(MyClass)
+    DumpMeta(key_transform='NONE').bind_to(MyClass)
 
     class_obj = fromdict(MyClass, data)
 
@@ -477,13 +478,13 @@ def test_date_times_with_custom_pattern():
 
     serialized_dict = asdict(class_obj)
 
-    expected_dict = {'dateField1': '2022-12-01',
+    expected_dict = snake({'dateField1': '2022-12-01',
                      'timeField1': '15:20:00',
                      'dtField1': '2022-01-03T23:30:12.123456',
                      'dateField2': '2021-12-30',
                      'timeField2': ['13:20:00', '00:30:00'],
                      'dtField2': '2023-01-02T02:03:52',
-                     'otherField': 'testing'}
+                     'otherField': 'testing'})
 
     log.debug('Serialized dict object: %s', serialized_dict)
     # Assert that dates / times are correctly serialized as expected.
@@ -494,7 +495,43 @@ def test_date_times_with_custom_pattern():
     assert fromdict(MyClass, serialized_dict) == expected_obj
 
 
-@pytest.mark.xfail(reason='Need to add support in v1')
+def test_date_times_with_subclass_of_time_and_plus_or_minus_in_pattern():
+
+    class MyTime(time, metaclass=create_strict_eq):
+        def print_hour(self):
+            print(self.hour)
+
+    @dataclass
+    class MyClass:
+        my_time_field: Annotated[List[MyTime], Pattern('%I+%M -%p-')]
+
+    data = {'my_time_field': ['11+20 -PM-', '4+52 -am-']}
+
+    LoadMeta(v1=True).bind_to(MyClass)
+    DumpMeta(key_transform='NONE').bind_to(MyClass)
+
+    class_obj = fromdict(MyClass, data)
+
+    # noinspection PyTypeChecker
+    expected_obj = MyClass(my_time_field=[MyTime(23, 20), MyTime(4, 52)])
+
+    log.debug('Deserialized object: %r', class_obj)
+    # Assert that dates / times are correctly de-serialized as expected.
+    assert class_obj == expected_obj
+
+    serialized_dict = asdict(class_obj)
+
+    expected_dict = {'my_time_field': ['23:20:00', '04:52:00']}
+
+    log.debug('Serialized dict object: %s', serialized_dict)
+    # Assert that dates / times are correctly serialized as expected.
+    assert serialized_dict == expected_dict
+
+    # Assert that de-serializing again, using the serialized date strings
+    # in ISO format, still works.
+    assert fromdict(MyClass, serialized_dict) == expected_obj
+
+
 def test_date_times_with_custom_pattern_when_input_is_invalid():
     """
     Date, time, and datetime objects with a custom date string
@@ -513,14 +550,24 @@ def test_date_times_with_custom_pattern_when_input_is_invalid():
         _ = fromdict(MyClass, data)
 
 
-@pytest.mark.skip(reason='Need to add support in v1')
 def test_date_times_with_custom_pattern_when_annotation_is_invalid():
     """
     Date, time, and datetime objects with a custom date string
     format, but the annotated type is not a valid date/time type.
     """
-    class MyCustomPattern(str, _PatternBase):
-        pass
+    class MyCustomPattern(PatternBase):
+        def __init__(self, value: str):
+            super().__init__(str, ('test', ))
+            self._value = value
+
+        def __class_getitem__(cls, item):
+            return MyCustomPattern(item)
+
+        def __str__(self):
+            return self._value.replace('%', '_').replace('-', '_')
+
+        def __repr__(self):
+            return f"MyCustomPattern({self._value!r})"
 
     @dataclass
     class MyClass:
@@ -530,7 +577,7 @@ def test_date_times_with_custom_pattern_when_annotation_is_invalid():
 
     LoadMeta(v1=True).bind_to(MyClass)
 
-    with pytest.raises(TypeError) as e:
+    with pytest.raises(AttributeError) as e:
         _ = fromdict(MyClass, data)
 
     log.debug('Error details: %r', e.value)

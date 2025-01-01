@@ -1,12 +1,16 @@
+import hashlib
 from collections import defaultdict
 from dataclasses import MISSING, Field as _Field
-from typing import Any, TypedDict
+from datetime import datetime, date, time
+from typing import Any, TypedDict, cast
 
-from ..constants import PY310_OR_ABOVE
+from .decorators import setup_recursive_safe_function
+from ..constants import PY310_OR_ABOVE, PY311_OR_ABOVE
 from ..log import LOG
-from ..type_def import DefFactory, ExplicitNull, PyNotRequired
+from ..type_def import DefFactory, ExplicitNull, PyNotRequired, DT
 # noinspection PyProtectedMember
 from ..utils.object_path import split_object_path
+from ..utils.type_conv import as_datetime_v1, as_date_v1, as_time_v1
 from ..utils.typing_compat import get_origin_v2
 
 
@@ -205,9 +209,186 @@ class Extras(TypedDict):
     cls_name: str
     fn_gen: 'FunctionBuilder'
     locals: dict[str, Any]
-    pattern: PyNotRequired['PatternedDT']
+    pattern: PyNotRequired['PatternBase']
     recursion_guard: dict[type, str]
 
+
+class PatternBase:
+
+    __slots__ = ('base',
+                 'patterns',
+                 '_repr')
+
+    def __init__(self, base, patterns=None):
+        self.base = base
+        if patterns is not None:
+            self.patterns = patterns
+
+    def __getitem__(self, patterns):
+        return PatternBase(
+            self.base,
+            (patterns, ) if patterns.__class__ is str else patterns
+        )
+
+    __call__ = __getitem__
+
+    @setup_recursive_safe_function(add_cls=False)
+    def load_to_pattern(self, tp: TypeInfo, extras: Extras):
+        pb = cast(PatternBase, tp.origin)
+        patterns = pb.patterns
+        __base__ = pb.base
+        tn = __base__.__name__
+
+        fn_gen = extras['fn_gen']
+        _locals = extras['locals']
+
+        assert 'cls' not in _locals
+
+        is_datetime \
+            = is_date \
+            = is_time \
+            = is_subclass_date \
+            = is_subclass_time \
+            = is_subclass_datetime = False
+
+        if __base__ is datetime:
+            is_datetime = True
+        elif __base__ is date:
+            is_date = True
+        elif __base__ is time:
+            is_time = True
+        elif issubclass(__base__, datetime):
+            is_datetime = is_subclass_datetime = True
+        elif issubclass(__base__, date):
+            is_date = is_subclass_date = True
+            _locals['cls'] = __base__
+        elif issubclass(__base__, time):
+            is_time = is_subclass_time = True
+            _locals['cls'] = __base__
+
+        _fromisoformat = f'__{tn}_fromisoformat'
+        _fromtimestamp = f'__{tn}_fromtimestamp'
+
+        name_to_func = {
+            _fromisoformat: __base__.fromisoformat,
+        }
+        if is_subclass_datetime:
+            _strptime = f'__{tn}_strptime'
+            name_to_func[_strptime] = __base__.strptime
+        else:
+            _strptime = f'__datetime_strptime'
+            name_to_func[_strptime] = datetime.strptime
+
+        if is_datetime:
+            _as_func = '__as_datetime'
+            name_to_func[_as_func] = as_datetime_v1
+            # `datetime` has a `fromtimestamp` method
+            name_to_func[_fromtimestamp] = __base__.fromtimestamp
+            end_part = ''
+        elif is_date:
+            _as_func = '__as_date'
+            name_to_func[_as_func] = as_date_v1
+            # `date` has a `fromtimestamp` method
+            name_to_func[_fromtimestamp] = __base__.fromtimestamp
+            end_part = '.date()'
+        else:
+            _as_func = '__as_time'
+            name_to_func[_as_func] = as_time_v1
+            end_part = '.time()'
+
+        tp.ensure_in_locals(extras, **name_to_func)
+
+        if PY311_OR_ABOVE:
+            _parse_iso_string = f'{_fromisoformat}(v1)'
+        else:  # pragma: no cover
+            _parse_iso_string = f"{_fromisoformat}(v1.replace('Z', '+00:00', 1))"
+
+        # temp fix for Python 3.11+, since `time.fromisoformat` is updated
+        # to support more formats, such as "-" and "+" in strings.
+        if (is_time and
+            any('-' in s or '+' in s for s in patterns)):
+
+            for p in patterns:
+                # Try to parse with `datetime.strptime` first
+                with fn_gen.try_():
+                    if is_subclass_time:
+                        fn_gen.add_line(f'__dt = {_strptime}(v1, {p!r})')
+                        fn_gen.add_line('return cls('
+                                        '__dt.hour, '
+                                        '__dt.minute, '
+                                        '__dt.second, '
+                                        '__dt.microsecond, '
+                                        'fold=__dt.fold)')
+                    else:
+                        fn_gen.add_line(f'return {_strptime}(v1, {p!r}).time()')
+                with fn_gen.except_(Exception):
+                    fn_gen.add_line('pass')
+            # If that doesn't work, fallback to `time.fromisoformat`
+            with fn_gen.try_():
+                fn_gen.add_line(f'return {_parse_iso_string}')
+            with fn_gen.except_(TypeError):
+                fn_gen.add_line(f'return {_as_func}(v1, {_fromtimestamp})')
+            with fn_gen.except_(ValueError):
+                fn_gen.add_line('pass')
+        # Optimized parsing logic (default)
+        else:
+            # Try to parse with `{base_type}.fromisoformat` first
+            with fn_gen.try_():
+                fn_gen.add_line(f'return {_parse_iso_string}')
+            with fn_gen.except_(TypeError):
+                fn_gen.add_line(f'return {_as_func}(v1, {_fromtimestamp})')
+            with fn_gen.except_(ValueError):
+                # If that doesn't work, fallback to `datetime.strptime`
+                for p in patterns:
+                    with fn_gen.try_():
+                        if is_subclass_date:
+                            fn_gen.add_line(f'__dt = {_strptime}(v1, {p!r})')
+                            fn_gen.add_line('return cls('
+                                            '__dt.year, '
+                                            '__dt.month, '
+                                            '__dt.day)')
+                        elif is_subclass_time:
+                            fn_gen.add_line(f'__dt = {_strptime}(v1, {p!r})')
+                            fn_gen.add_line('return cls('
+                                            '__dt.hour, '
+                                            '__dt.minute, '
+                                            '__dt.second, '
+                                            '__dt.microsecond, '
+                                            'fold=__dt.fold)')
+                        else:
+                            fn_gen.add_line(f'return {_strptime}(v1, {p!r}){end_part}')
+                    with fn_gen.except_(Exception):
+                        fn_gen.add_line('pass')
+        # Raise a helpful error if we are unable to parse
+        # the date string with the provided patterns.
+        fn_gen.add_line(
+            'raise ValueError(f"Unable to parse the string \'{v1}\' '
+           f'with the provided patterns: {patterns!r}")')
+
+    def __repr__(self):
+        if (_repr := getattr(self, '_repr', None)) is not None:
+            return _repr
+
+        # Create a stable hash of the patterns
+        # noinspection PyTypeChecker
+        pat = hashlib.md5(str(self.patterns).encode('utf-8')).hexdigest()
+
+        # Directly use the hash as part of the identifier
+        self._repr = _repr = f'{self.base.__name__}_{pat}'
+
+        return _repr
+
+
+Pattern = PatternBase(Any)
+
+# noinspection PyTypeChecker
+DatePattern = PatternBase(date)
+
+# noinspection PyTypeChecker
+TimePattern = PatternBase(time)
+
+# noinspection PyTypeChecker
+DateTimePattern = PatternBase(datetime)
 
 # Instances of Field are only ever created from within this module,
 # and only from the field() function, although Field instances are

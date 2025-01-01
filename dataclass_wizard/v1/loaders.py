@@ -20,7 +20,7 @@ from uuid import UUID
 from .decorators import (setup_recursive_safe_function,
                          setup_recursive_safe_function_for_generic)
 from .enums import KeyAction, KeyCase
-from .models import Extras, TypeInfo
+from .models import Extras, TypeInfo, PatternBase
 from ..abstractions import AbstractLoaderGenerator
 from ..bases import BaseLoadHook, AbstractMeta, META
 from ..class_helper import (
@@ -36,7 +36,7 @@ from ..log import LOG
 from ..type_def import (
     DefFactory, NoneType, JSONObject,
     PyLiteralString,
-    T
+    T, DT
 )
 # noinspection PyProtectedMember
 from ..utils.dataclass_compat import _set_new_attribute
@@ -594,14 +594,32 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
 
     @classmethod
     def load_to_date(cls, tp: TypeInfo, extras: Extras):
+        # TODO
+        if (pb := extras.get('pattern')) is not None:
+            pb.base = cast(type[DT], tp.origin)
+            tp.origin = cast(type, pb)
+            return pb.load_to_pattern(tp, extras)
+
         return cls._load_to_date(tp, extras, date)
 
     @classmethod
     def load_to_datetime(cls, tp: TypeInfo, extras: Extras):
+        # TODO
+        if (pb := extras.get('pattern')) is not None:
+            pb.base = cast(type[DT], tp.origin)
+            tp.origin = cast(type, pb)
+            return pb.load_to_pattern(tp, extras)
+
         return cls._load_to_date(tp, extras, datetime)
 
     @staticmethod
     def load_to_time(tp: TypeInfo, extras: Extras):
+        # TODO
+        if (pb := extras.get('pattern')) is not None:
+            pb.base = cast(type[DT], tp.origin)
+            tp.origin = cast(type, pb)
+            return pb.load_to_pattern(tp, extras)
+
         o = tp.v()
         tn = tp.type_name(extras, bound=time)
         tp_time = cast('type[time]', tp.origin)
@@ -683,13 +701,21 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
 
         args = None
 
-        if is_annotated(type_ann) or is_typed_dict_type_qualifier(origin):
+        if is_annotated(type_ann):
+            # Given `Annotated[T, ...]`, we only need `T`
+            type_ann, *field_extras = get_args(type_ann)
+            origin = get_origin_v2(type_ann)
+            name = getattr(origin, '__name__', origin)
+            # Check for Custom Patterns for date / time / datetime
+            for extra in field_extras:
+                if isinstance(extra, PatternBase):
+                    extras['pattern'] = extra
+
+        elif is_typed_dict_type_qualifier(origin):
             # Given `Required[T]` or `NotRequired[T]`, we only need `T`
-            # noinspection PyUnresolvedReferences
             type_ann = get_args(type_ann)[0]
             origin = get_origin_v2(type_ann)
             name = getattr(origin, '__name__', origin)
-            # origin = type_ann.__args__[0]
 
         # TypeAliasType: Type aliases are created through
         # the `type` statement
@@ -784,6 +810,9 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
                     args = get_args(type_ann)
                 except ValueError:
                     args = Any,
+
+        elif isinstance(origin, PatternBase):
+            load_hook = origin.load_to_pattern
 
         else:
 
@@ -900,8 +929,6 @@ def load_func_for_dataclass(
         loader_cls=LoadMixin,
         base_meta_cls: type = AbstractMeta,
 ) -> Optional[Callable[[JSONObject], T]]:
-
-    # TODO dynamically generate for multiple nested classes at once
 
     # Tuple describing the fields of this dataclass.
     fields = dataclass_fields(cls)

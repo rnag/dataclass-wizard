@@ -1,9 +1,14 @@
+from __future__ import annotations
+
 from dataclasses import MISSING
 from functools import wraps
-from typing import Callable, Union
+from typing import Callable, Union, TYPE_CHECKING
 
-from .models import Extras, TypeInfo
 from ..utils.function_builder import FunctionBuilder
+
+
+if TYPE_CHECKING:  # pragma: no cover
+    from .models import Extras, TypeInfo
 
 
 def setup_recursive_safe_function(
@@ -11,6 +16,7 @@ def setup_recursive_safe_function(
     *,
     fn_name: Union[str, None] = None,
     is_generic: bool = False,
+    add_cls: bool = True,
 ) -> Callable:
     """
     A decorator to ensure recursion safety and facilitate dynamic function generation
@@ -27,13 +33,19 @@ def setup_recursive_safe_function(
     :type fn_name: str, optional
     :param is_generic: Whether the function deals with generic types.
     :type is_generic: bool, optional
+    :param add_cls: Whether the class should be added to the function locals
+      for `FunctionBuilder`.
+    :type add_cls: bool, optional
     :return: The decorated function with recursion safety and dynamic function generation.
     :rtype: Callable
     """
 
     if func is None:
         return lambda f: setup_recursive_safe_function(
-            f, fn_name=fn_name, is_generic=is_generic
+            f,
+            fn_name=fn_name,
+            is_generic=is_generic,
+            add_cls=add_cls,
         )
 
     def _wrapper_logic(tp: TypeInfo, extras: Extras, _cls=None) -> str:
@@ -72,7 +84,7 @@ def setup_recursive_safe_function(
 
             # Prepare a new FunctionBuilder for this function
             updated_extras = extras.copy()
-            updated_extras['locals'] = _locals = {'cls': cls}
+            updated_extras['locals'] = _locals = {'cls': cls} if add_cls else {}
             updated_extras['fn_gen'] = new_fn_gen = FunctionBuilder()
 
             # Apply the decorated function logic
