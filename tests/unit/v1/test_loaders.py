@@ -259,10 +259,9 @@ def test_from_dict_raises_on_unknown_json_key_nested():
     assert e.fields == ['my_str']
 
 
-@pytest.mark.xfail(reason='TODO need to support multiple JSON keys for a dataclass field')
-def test_fromdict_with_key_case_auto_expected_failure():
+def test_fromdict_with_key_case_auto():
     """
-    Failure in `fromdict()` because multiple JSON keys are not mapped to single dataclass field.
+    `fromdict()` when multiple JSON keys are (and can be) mapped to single dataclass field.
     """
     @dataclass
     class MyElement:
@@ -279,13 +278,21 @@ def test_fromdict_with_key_case_auto_expected_failure():
              {'orderIndex': 111,
               'statusCode': '200'},
              {'order_index': '222',
-              'status_code': 404}
+              'status_code': 404},
+             {'Order-Index': '333',
+              'StatusCode': '502'},
          ]}
 
     LoadMeta(v1=True, v1_key_case='AUTO').bind_to(Container)
 
-    # Failure!
+    # Success :-)
     c = fromdict(Container, d)
+    assert c == Container(id=123,
+                          my_elements=[MyElement(order_index=111, status_code='200'),
+                                       MyElement(order_index=222, status_code=404),
+                                       MyElement(order_index=333, status_code='502')])
+
+    assert c == fromdict(Container, asdict(c))
 
 
 def test_fromdict_with_nested_dataclass():

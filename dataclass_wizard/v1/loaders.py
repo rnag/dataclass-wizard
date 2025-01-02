@@ -1007,6 +1007,7 @@ def load_func_for_dataclass(
         extras['cls_name'] = cls_name
 
     key_case: 'V1LetterCase | None' = cls_loader.transform_json_field
+    auto_key_case = key_case is KeyCase.AUTO
 
     field_to_alias = v1_dataclass_field_to_alias(cls)
     check_aliases = True if field_to_alias else False
@@ -1026,9 +1027,10 @@ def load_func_for_dataclass(
     else:
         expect_tag_as_unknown_key = False
 
-    if key_case is KeyCase.AUTO:
+    if auto_key_case:
         new_locals['f2k'] = field_to_alias
         new_locals['to_key'] = to_json_key
+        new_locals['f2keys'] = {}
 
     on_unknown_key = meta.v1_on_unknown_key
 
@@ -1079,8 +1081,13 @@ def load_func_for_dataclass(
                     with fn_gen.if_(f'{meta.tag_key!r} in o'):
                         fn_gen.add_line('i+=1')
 
+                val = 'v1'
+                if auto_key_case:
+                    val_is_found = 'found'
+                else:
+                    val_is_found = f'{val} is not MISSING'
+
                 for i, f in enumerate(cls_init_fields):
-                    val = 'v1'
                     name = f.name
                     var = f'__{name}'
 
@@ -1103,27 +1110,40 @@ def load_func_for_dataclass(
                     elif key_case is None:
                         field_to_alias[name] = name
                         f_assign = f'field={name!r}; {val}=o.get(field, MISSING)'
-                    elif key_case is KeyCase.AUTO:
-                        f_assign = f'field={name!r}; key=f2k.get(field) or to_key(o,field,f2k); {val}=o.get(key, MISSING)'
+                    elif auto_key_case:
+
+                        f_assign = None
+
+                        fn_gen.add_line(f'field={name!r}; key=f2k.get(field) or to_key(o,field,f2k,f2keys); {val}=o.get(key, MISSING)')
+                        with fn_gen.if_(f'{val} is not MISSING'):
+                            fn_gen.add_line('found = True')
+                        with fn_gen.else_():
+                            with fn_gen.for_('key in f2keys[field]'):
+                                with fn_gen.if_(f'({val} := o.get(key, MISSING)) is not MISSING'):
+                                    fn_gen.add_line('found = True')
+                                    fn_gen.break_()
+                            with fn_gen.else_():
+                                fn_gen.add_line('found = False')
+
                     else:
                         field_to_alias[name] = key = key_case(name)
                         f_assign = f'field={name!r}; key={key!r}; {val}=o.get(key, MISSING)'
 
                     string = generate_field_code(cls_loader, extras, f, i)
 
-                    if name in field_to_default:
+                    if f_assign is not None:
                         fn_gen.add_line(f_assign)
 
-                        with fn_gen.if_(f'{val} is not MISSING'):
+                    if name in field_to_default:
+                        with fn_gen.if_(val_is_found):
                             fn_gen.add_line(f'{pre_assign}init_kwargs[field] = {string}')
 
                     else:
                         # TODO confirm this is ok
                         # vars_for_fields.append(f'{name}={var}')
                         vars_for_fields.append(var)
-                        fn_gen.add_line(f_assign)
 
-                        with fn_gen.if_(f'{val} is not MISSING'):
+                        with fn_gen.if_(val_is_found):
                             fn_gen.add_line(f'{pre_assign}{var} = {string}')
 
             # create a broad `except Exception` block, as we will be

@@ -195,6 +195,10 @@ class FunctionBuilder:
 
         return self._with_new_block('except', statement)
 
+    def break_(self):
+        """Equivalent to the `break` statement in Python."""
+        self.add_line('break')
+
     def add_line(self, line: str):
         """Add a line to the current function's body with proper indentation."""
         indent = '  ' * self.indent_level
