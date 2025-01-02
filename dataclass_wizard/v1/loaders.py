@@ -1114,13 +1114,11 @@ def load_func_for_dataclass(
 
                         f_assign = None
 
-                        fn_gen.add_line(f'field={name!r}; key=f2k.get(field) or to_key(o,field,f2k,f2keys); {val}=o.get(key, MISSING)')
-                        with fn_gen.if_(f'{val} is not MISSING'):
-                            fn_gen.add_line('found = True')
-                        with fn_gen.else_():
+                        fn_gen.add_line(f'field={name!r}; key=f2k.get(field) or to_key(o,field,f2k,f2keys)')
+                        fn_gen.add_line(f'found = True; {val}=o.get(key, MISSING)')
+                        with fn_gen.if_(f'{val} is MISSING'):
                             with fn_gen.for_('key in f2keys[field]'):
                                 with fn_gen.if_(f'({val} := o.get(key, MISSING)) is not MISSING'):
-                                    fn_gen.add_line('found = True')
                                     fn_gen.break_()
                             with fn_gen.else_():
                                 fn_gen.add_line('found = False')
