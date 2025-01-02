@@ -1110,18 +1110,16 @@ def load_func_for_dataclass(
                     elif key_case is None:
                         field_to_alias[name] = name
                         f_assign = f'field={name!r}; {val}=o.get(field, MISSING)'
+
                     elif auto_key_case:
-
                         f_assign = None
-
-                        fn_gen.add_line(f'field={name!r}; key=f2k.get(field) or to_key(o,field,f2k,f2keys)')
-                        fn_gen.add_line(f'found = True; {val}=o.get(key, MISSING)')
+                        fn_gen.add_line(f'field={name!r}; key=f2k.get(field) or to_key(o,field,f2k,f2keys); found=True; {val}=o.get(key, MISSING)')
                         with fn_gen.if_(f'{val} is MISSING'):
                             with fn_gen.for_('key in f2keys[field]'):
                                 with fn_gen.if_(f'({val} := o.get(key, MISSING)) is not MISSING'):
                                     fn_gen.break_()
                             with fn_gen.else_():
-                                fn_gen.add_line('found = False')
+                                fn_gen.add_line('found=False')
 
                     else:
                         field_to_alias[name] = key = key_case(name)
