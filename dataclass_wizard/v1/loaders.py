@@ -1154,8 +1154,8 @@ def load_func_for_dataclass(
                 # add an alias for the tag key, so we don't capture it
                 field_to_alias['...'] = meta.tag_key
 
-            if 'f2k' in new_locals:
-                # If this is the case, then `AUTO` key transform mode is enabled
+            # check if `AUTO` key transform mode is enabled
+            if auto_key_case:
                 # line = 'extra_keys = o.keys() - f2k.values()'
                 aliases_var = 'f2k.values()'
 
@@ -1178,8 +1178,8 @@ def load_func_for_dataclass(
                 # add an alias for the tag key, so we don't raise an error when we see it
                 field_to_alias['...'] = meta.tag_key
 
-            if 'f2k' in new_locals:
-                # If this is the case, then `AUTO` key transform mode is enabled
+            # check if `AUTO` key transform mode is enabled
+            if auto_key_case:
                 line = 'extra_keys = o.keys() - f2k.values()'
             else:
                 new_locals['aliases'] = set(field_to_alias.values())
