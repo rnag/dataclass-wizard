@@ -1082,14 +1082,11 @@ def load_func_for_dataclass(
                         fn_gen.add_line('i+=1')
 
                 val = 'v1'
-                if auto_key_case:
-                    val_is_found = 'found'
-                else:
-                    val_is_found = f'{val} is not MISSING'
-
                 for i, f in enumerate(cls_init_fields):
                     name = f.name
                     var = f'__{name}'
+                    has_default = name in field_to_default
+                    val_is_found = f'{val} is not MISSING'
 
                     if (check_aliases
                             and (key := field_to_alias.get(name)) is not None
@@ -1099,7 +1096,7 @@ def load_func_for_dataclass(
                     elif (has_alias_paths
                             and (path := field_to_path.get(name)) is not None):
 
-                        if name in field_to_default:
+                        if has_default:
                             f_assign = f'field={name!r}; {val}=safe_get(o, {path!r}, MISSING, False)'
                         else:
                             f_assign = f'field={name!r}; {val}=safe_get(o, {path!r})'
@@ -1113,13 +1110,18 @@ def load_func_for_dataclass(
 
                     elif auto_key_case:
                         f_assign = None
-                        fn_gen.add_line(f'field={name!r}; key=f2k.get(field) or to_key(o,field,f2k,f2keys); found=True; {val}=o.get(key, MISSING)')
-                        with fn_gen.if_(f'{val} is MISSING'):
-                            with fn_gen.for_('key in f2keys[field]'):
-                                with fn_gen.if_(f'({val} := o.get(key, MISSING)) is not MISSING'):
-                                    fn_gen.break_()
-                            with fn_gen.else_():
-                                fn_gen.add_line('found=False')
+
+                        if has_default:
+                            fn_gen.add_line(f'field={name!r}; key=f2k.get(field) or to_key(o,field,f2k,f2keys); {val}=o.get(key, MISSING)')
+                        else:
+                            val_is_found = 'found'
+                            fn_gen.add_line(f'field={name!r}; key=f2k.get(field) or to_key(o,field,f2k,f2keys); found=True; {val}=o.get(key, MISSING)')
+                            with fn_gen.if_(f'{val} is MISSING'):
+                                with fn_gen.for_('key in f2keys[field]'):
+                                    with fn_gen.if_(f'({val} := o.get(key, MISSING)) is not MISSING'):
+                                        fn_gen.break_()
+                                with fn_gen.else_():
+                                    fn_gen.add_line('found=False')
 
                     else:
                         field_to_alias[name] = key = key_case(name)
@@ -1130,7 +1132,7 @@ def load_func_for_dataclass(
                     if f_assign is not None:
                         fn_gen.add_line(f_assign)
 
-                    if name in field_to_default:
+                    if has_default:
                         with fn_gen.if_(val_is_found):
                             fn_gen.add_line(f'{pre_assign}init_kwargs[field] = {string}')
 

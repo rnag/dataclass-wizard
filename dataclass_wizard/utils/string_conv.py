@@ -23,7 +23,7 @@ def normalize(string: str) -> str:
 def to_json_key(o: JSONObject,
                 field: str,
                 f2k: 'dict[str, str]',
-                f2ks: 'dict[str, list[str]]') -> 'str | None':
+                f2keys: 'dict[str, list[str]]') -> 'str | None':
     """
     Maps a dataclass field name to its corresponding key in a JSON object.
 
@@ -35,63 +35,74 @@ def to_json_key(o: JSONObject,
         o (dict[str, Any]): The JSON object to search for the key.
         field (str): The dataclass field name to map.
         f2k (dict[str, str]): A dictionary to cache field-to-key mappings.
-        f2ks (dict[str, list[str]]): A dictionary to cache field-to-possible-key mappings (1:many).
+        f2keys (dict[str, list[str]]): A dictionary to cache field-to-possible-key mappings (1:many).
 
     Returns:
         str: The matching JSON key for the given field.
         None: If no matching key is found in `o`.
     """
-    possible_keys = []
-    key = None
-
-    # Short path: key matching field name exists in `o`
-    if field in o:
-        key = field
+    if (possible_keys := f2keys.get(field)) is not None:
+        # In this case, `f2k.get(field)` is `None`, which
+        # also means it's an optional field (field with a
+        # default value).
+        #
+        # Also, note that `f2keys` already has a list of
+        # possible keys for the field.
+        for key in possible_keys:
+            if key in o:
+                break
+        else:
+            key = None
     else:
-        possible_keys.append(field)
+        key = None
+        possible_keys = []
+        # Short path: key matching field name exists in `o`
+        if field in o:
+            key = field
+        else:
+            possible_keys.append(field)
 
-    # `camelCase`
-    if (_key := to_camel_case(field)) in o:
-        key = _key
-    else:
-        possible_keys.append(_key)
+        # `camelCase`
+        if (_key := to_camel_case(field)) in o:
+            key = _key
+        else:
+            possible_keys.append(_key)
 
-    # `PascalCase`: same as `camelCase` but first letter is capitalized
-    if (_key := _key[0].upper() + _key[1:]) in o:
-        key = _key
-    else:
-        possible_keys.append(_key)
+        # `PascalCase`: same as `camelCase` but first letter is capitalized
+        if (_key := _key[0].upper() + _key[1:]) in o:
+            key = _key
+        else:
+            possible_keys.append(_key)
 
-    # `kebab-case`
-    if (_key := to_lisp_case(field)) in o:
-        key = _key
-    else:
-        possible_keys.append(_key)
+        # `kebab-case`
+        if (_key := to_lisp_case(field)) in o:
+            key = _key
+        else:
+            possible_keys.append(_key)
 
-    # `Upper-Kebab`: same as `kebab-case`, each word is title-cased
-    if (_key := _key.title()) in o:
-        key = _key
-    else:
-        possible_keys.append(_key)
+        # `Upper-Kebab`: same as `kebab-case`, each word is title-cased
+        if (_key := _key.title()) in o:
+            key = _key
+        else:
+            possible_keys.append(_key)
 
-    # `Upper_Snake`
-    if (_key := _key.replace('-', '_')) in o:
-        key = _key
-    else:
-        possible_keys.append(_key)
+        # `Upper_Snake`
+        if (_key := _key.replace('-', '_')) in o:
+            key = _key
+        else:
+            possible_keys.append(_key)
 
-    # `snake_case`
-    if (_key := _key.lower()) in o:
-        key = _key
-    else:
-        possible_keys.append(_key)
+        # `snake_case`
+        if (_key := _key.lower()) in o:
+            key = _key
+        else:
+            possible_keys.append(_key)
 
-    # Cache the result (if needed)
-    if key is not None:
-        f2k[field] = key
+        # Cache the list of field to multiple (possible) keys
+        f2keys[field] = possible_keys
 
-    # Cache the list of field to multiple (possible) keys
-    f2ks[field] = possible_keys
+    # Cache the result
+    f2k[field] = key
 
     return key
 
