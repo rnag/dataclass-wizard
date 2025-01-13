@@ -4,6 +4,7 @@ Tests for the `loaders` module, but more importantly for the `parsers` module.
 Note: I might refactor this into a separate `test_parsers.py` as time permits.
 """
 import enum
+import json
 import logging
 from abc import ABC
 from base64 import b64decode
@@ -191,6 +192,81 @@ def test_alias_mapping_with_load_or_dump():
                            'DumpedInt': 321,
                            'myDumpedBool': True,
                            'my_float': 42.0}
+
+
+def test_alias_with_multiple_mappings():
+    """Test `Alias(...)` usage with multiple aliases or mappings."""
+
+    @dataclass
+    class MyClass(JSONWizard):
+
+        class _(JSONWizard.Meta):
+            v1 = True
+            v1_key_case = 'CAMEL'
+            key_transform_with_dump = 'PASCAL'
+            v1_on_unknown_key = 'RAISE'
+
+        my_str: 'str | None' = Alias('my_str', 'MyStr')
+        is_active_tuple: tuple[bool, ...]
+        list_of_int: list[int] = Alias(load=('listOfInt', 'LISTY'), dump='myIntList', default_factory=list)
+        other_int: Annotated[int, Alias('other_int')] = 2
+
+    string = """
+    {
+      "MyStr": 20,
+      "listOfInt": ["1", "2", 3],
+      "isActiveTuple": ["true", false, 1]
+    }
+    """
+
+    instance = MyClass.from_json(string)
+    assert instance == MyClass(my_str='20', is_active_tuple=(True, False, True), list_of_int=[1, 2, 3], other_int=2)
+    assert instance.to_dict() == {'my_str': '20', 'IsActiveTuple': (True, False, True), 'myIntList': [1, 2, 3],
+                                  'other_int': 2}
+
+    string = """
+    {
+      "MyStr": 21,
+      "LISTY": ["3", "2", 1],
+      "isActiveTuple": ["false", 1, 0],
+      "other_int": "1"
+    }
+    """
+
+    instance = MyClass.from_json(string)
+    assert instance == MyClass(my_str='21', is_active_tuple=(False, True, False), list_of_int=[3, 2, 1], other_int=1)
+    assert instance.to_dict() == {'my_str': '21', 'IsActiveTuple': (False, True, False), 'myIntList': [3, 2, 1],
+                                  'other_int': 1}
+
+    string = """
+    {
+      "my_str": "14",
+      "isActiveTuple": ["off", 1, "on"]
+    }
+    """
+
+    instance = MyClass.from_json(string)
+    assert instance == MyClass(my_str='14', is_active_tuple=(False, True, True), list_of_int=[], other_int=2)
+    assert instance.to_dict() == {'my_str': '14', 'IsActiveTuple': (False, True, True), 'myIntList': [], 'other_int': 2}
+
+
+    string = """
+    {
+      "myStr": "14",
+      "isActiveTuple": ["off", 1, "on"],
+      "otherInt": "3",
+      "ListOfInt": ["1", "2", 3]
+    }
+    """
+
+    with pytest.raises(UnknownKeysError) as exc_info:
+        _ = MyClass.from_json(string)
+
+    e = exc_info.value
+
+    assert e.unknown_keys == {'otherInt', 'ListOfInt', 'myStr'}
+    assert e.obj == json.loads(string)
+    assert e.fields == ['my_str', 'is_active_tuple', 'list_of_int', 'other_int']
 
 
 def test_fromdict():
@@ -3262,7 +3338,7 @@ def test_invalid_condition_annotation_raises_error():
         class Example(JSONWizard):
 
             class _(JSONWizard.Meta):
-                debug_enabled = True
+                debug_enabled = False
 
             my_field: Annotated[int, LT(5)]  # Invalid: LT is not wrapped in SkipIf.
 

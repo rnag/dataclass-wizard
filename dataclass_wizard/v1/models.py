@@ -412,7 +412,7 @@ DateTimePattern = PatternBase(datetime)
 if PY310_OR_ABOVE:  # pragma: no cover
 
     # noinspection PyPep8Naming,PyShadowingBuiltins
-    def Alias(all=None, *,
+    def Alias(*all,
               load=None,
               dump=None,
               skip=False,
@@ -426,8 +426,11 @@ if PY310_OR_ABOVE:  # pragma: no cover
         if default is not MISSING and default_factory is not MISSING:
             raise ValueError('cannot specify both default and default_factory')
 
-        if all is not None:
+        if all:
             load = dump = all
+
+        elif load is not None and isinstance(load, str):
+            load = (load, )
 
         return Field(load, dump, skip, path, default, default_factory, init, repr,
                      hash, compare, metadata, kw_only)
@@ -487,7 +490,7 @@ if PY310_OR_ABOVE:  # pragma: no cover
 
 else:  # pragma: no cover
     # noinspection PyPep8Naming,PyShadowingBuiltins
-    def Alias(all=None, *,
+    def Alias(*all,
               load=None,
               dump=None,
               skip=False,
@@ -500,8 +503,11 @@ else:  # pragma: no cover
         if default is not MISSING and default_factory is not MISSING:
             raise ValueError('cannot specify both default and default_factory')
 
-        if all is not None:
+        if all:
             load = dump = all
+
+        elif load is not None and isinstance(load, str):
+            load = (load, )
 
         return Field(load, dump, skip, path,
                      default, default_factory, init, repr,

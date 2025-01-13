@@ -914,7 +914,7 @@ def check_and_raise_missing_fields(
                           and (f.default is MISSING
                                and f.default_factory is MISSING)]
 
-        missing_keys = [v1_dataclass_field_to_alias(cls).get(field, field)
+        missing_keys = [v1_dataclass_field_to_alias(cls).get(field, [field])[0]
                         for field in missing_fields]
 
     raise MissingFields(
@@ -1042,7 +1042,7 @@ def load_func_for_dataclass(
         pre_assign = ''
         catch_all_field_stripped = catch_all_idx = None
 
-    aliases = set(field_to_alias.values()) if check_aliases else set()
+    aliases = set()
 
     if auto_key_case:
         new_locals['aliases'] = aliases
@@ -1090,9 +1090,23 @@ def load_func_for_dataclass(
                     val_is_found = _val_is_found
 
                     if (check_aliases
-                            and (key := field_to_alias.get(name)) is not None
-                            and name != key):
-                        f_assign = f'field={name!r}; {val}=o.get({key!r}, MISSING)'
+                        and (_aliases := field_to_alias.get(name)) is not None):
+
+                        if len(_aliases) == 1:
+                            alias = _aliases[0]
+                            aliases.add(alias)
+                            f_assign = f'field={name!r}; {val}=o.get({alias!r}, MISSING)'
+                        else:
+                            f_assign = None
+
+                            # add possible JSON keys
+                            aliases.update(_aliases)
+
+                            fn_gen.add_line(f'field={name!r}')
+                            condition = [f'({val} := o.get({alias!r}, MISSING)) is not MISSING'
+                                         for alias in _aliases]
+
+                            val_is_found = '(' + '\n     or '.join(condition) + ')'
 
                     elif (has_alias_paths
                             and (path := field_to_path.get(name)) is not None):
@@ -1112,23 +1126,26 @@ def load_func_for_dataclass(
                     elif auto_key_case:
                         f_assign = None
 
-                        keys = possible_json_keys(name)
+                        _aliases = possible_json_keys(name)
                         # add field name itself
                         aliases.add(name)
                         # add possible JSON keys
-                        aliases.update(keys)
+                        aliases.update(_aliases)
 
                         fn_gen.add_line(f'field={name!r}')
                         condition = [f'({val} := o.get(field, MISSING)) is not MISSING']
-                        for key in keys:
-                            condition.append(f'({val} := o.get({key!r}, MISSING)) is not MISSING')
+                        for alias in _aliases:
+                            condition.append(f'({val} := o.get({alias!r}, MISSING)) is not MISSING')
 
                         val_is_found = '(' + '\n     or '.join(condition) + ')'
 
                     else:
-                        field_to_alias[name] = key = key_case(name)
-                        aliases.add(key)
-                        f_assign = f'field={name!r}; {val}=o.get({key!r}, MISSING)'
+                        alias = key_case(name)
+                        aliases.add(alias)
+                        if alias != name:
+                            field_to_alias[name] = (alias, )
+
+                        f_assign = f'field={name!r}; {val}=o.get({alias!r}, MISSING)'
 
                     string = generate_field_code(cls_loader, extras, f, i)
 

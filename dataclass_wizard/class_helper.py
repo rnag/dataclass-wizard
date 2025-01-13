@@ -350,8 +350,8 @@ def _process_field(name: str,
             load_dataclass_field_to_alias[name] = f.load_alias
         if f.skip:
             dump_dataclass_field_to_alias[name] = ExplicitNull
-        elif f.dump_alias is not None:
-            dump_dataclass_field_to_alias[name] = f.dump_alias
+        elif (dump := f.dump_alias) is not None:
+            dump_dataclass_field_to_alias[name] = dump if isinstance(dump, str) else dump[0]
 
 
 def _setup_v1_load_config_for_cls(

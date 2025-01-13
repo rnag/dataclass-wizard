@@ -188,13 +188,19 @@ class BaseJSONWizardMeta(AbstractMeta):
             add_for_load = field_to_alias.pop('__load__', True)
             add_for_dump = field_to_alias.pop('__dump__', True)
 
+            # Convert string values to single-element tuples
+            field_to_aliases = {k: (v, ) if isinstance(v, str) else v
+                              for k, v in field_to_alias.items()}
+
             if add_for_load:
                 DATACLASS_FIELD_TO_ALIAS_FOR_LOAD[dataclass].update(
-                    field_to_alias)
+                    field_to_aliases
+                )
 
             if add_for_dump:
                 dataclass_field_to_json_field(dataclass).update(
-                    field_to_alias)
+                    {k: v[0] for k, v in field_to_aliases.items()}
+                )
 
         if cls.key_transform_with_dump is not None:
             cls_dumper.transform_dataclass_field = _as_enum_safe(

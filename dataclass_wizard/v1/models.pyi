@@ -1,7 +1,7 @@
 from dataclasses import MISSING, Field as _Field, dataclass
 from datetime import datetime, date, time
 from typing import (Collection, Callable,
-                    Mapping, Generic)
+                    Mapping, Generic, Sequence)
 from typing import TypedDict, overload, Any, NotRequired, Self
 
 from ..bases import META
@@ -15,7 +15,7 @@ from ..utils.object_path import PathType
 CatchAll = Mapping | None
 
 # Type for a string or a collection of strings.
-_STR_COLLECTION = str | Collection[str]
+type _STR_COLLECTION = str | Collection[str]
 
 
 @dataclass(order=True)
@@ -165,8 +165,8 @@ def AliasPath(all: PathType | str | None = None, *,
 
 
 # noinspection PyPep8Naming
-def Alias(all: str | None = None, *,
-          load: str | None = None,
+def Alias(*all: str,
+          load: str | Sequence[str] | None = None,
           dump: str | None = None,
           skip: bool = False,
           path: PathType | str | None = None,
