@@ -42,7 +42,7 @@ from ..type_def import (
 from ..utils.dataclass_compat import _set_new_attribute
 from ..utils.function_builder import FunctionBuilder
 from ..utils.object_path import safe_get
-from ..utils.string_conv import to_json_key
+from ..utils.string_conv import possible_json_keys
 from ..utils.type_conv import (
     as_datetime_v1, as_date_v1, as_time_v1,
     as_int, as_timedelta, TRUTHY_VALUES,
@@ -914,7 +914,7 @@ def check_and_raise_missing_fields(
                           and (f.default is MISSING
                                and f.default_factory is MISSING)]
 
-        missing_keys = [v1_dataclass_field_to_alias(cls)[field]
+        missing_keys = [v1_dataclass_field_to_alias(cls).get(field, field)
                         for field in missing_fields]
 
     raise MissingFields(
@@ -1027,11 +1027,6 @@ def load_func_for_dataclass(
     else:
         expect_tag_as_unknown_key = False
 
-    if auto_key_case:
-        new_locals['f2k'] = field_to_alias
-        new_locals['to_key'] = to_json_key
-        new_locals['f2keys'] = {}
-
     on_unknown_key = meta.v1_on_unknown_key
 
     catch_all_field = field_to_alias.pop(CATCH_ALL, None)
@@ -1046,6 +1041,11 @@ def load_func_for_dataclass(
     else:
         pre_assign = ''
         catch_all_field_stripped = catch_all_idx = None
+
+    aliases = set(field_to_alias.values()) if check_aliases else set()
+
+    if auto_key_case:
+        new_locals['aliases'] = aliases
 
     if on_unknown_key is not None:
         should_raise = on_unknown_key is KeyAction.RAISE
@@ -1082,16 +1082,17 @@ def load_func_for_dataclass(
                         fn_gen.add_line('i+=1')
 
                 val = 'v1'
+                _val_is_found = f'{val} is not MISSING'
                 for i, f in enumerate(cls_init_fields):
                     name = f.name
                     var = f'__{name}'
                     has_default = name in field_to_default
-                    val_is_found = f'{val} is not MISSING'
+                    val_is_found = _val_is_found
 
                     if (check_aliases
                             and (key := field_to_alias.get(name)) is not None
                             and name != key):
-                        f_assign = f'field={name!r}; key={key!r}; {val}=o.get(key, MISSING)'
+                        f_assign = f'field={name!r}; {val}=o.get({key!r}, MISSING)'
 
                     elif (has_alias_paths
                             and (path := field_to_path.get(name)) is not None):
@@ -1105,27 +1106,29 @@ def load_func_for_dataclass(
                         #       Field "my_str" of type tuple[float, str] in A2 has invalid value ['123']
 
                     elif key_case is None:
-                        field_to_alias[name] = name
+                        aliases.add(name)
                         f_assign = f'field={name!r}; {val}=o.get(field, MISSING)'
 
                     elif auto_key_case:
                         f_assign = None
 
-                        if has_default:
-                            fn_gen.add_line(f'field={name!r}; key=f2k.get(field) or to_key(o,field,f2k,f2keys); {val}=o.get(key, MISSING)')
-                        else:
-                            val_is_found = 'found'
-                            fn_gen.add_line(f'field={name!r}; key=f2k.get(field) or to_key(o,field,f2k,f2keys); found=True; {val}=o.get(key, MISSING)')
-                            with fn_gen.if_(f'{val} is MISSING'):
-                                with fn_gen.for_('key in f2keys[field]'):
-                                    with fn_gen.if_(f'({val} := o.get(key, MISSING)) is not MISSING'):
-                                        fn_gen.break_()
-                                with fn_gen.else_():
-                                    fn_gen.add_line('found=False')
+                        keys = possible_json_keys(name)
+                        # add field name itself
+                        aliases.add(name)
+                        # add possible JSON keys
+                        aliases.update(keys)
+
+                        fn_gen.add_line(f'field={name!r}')
+                        condition = [f'({val}:=o.get(field, MISSING)) is not MISSING']
+                        for key in keys:
+                            condition.append(f'({val} := o.get({key!r}, MISSING)) is not MISSING')
+
+                        val_is_found = '(' + '\n     or '.join(condition) + ')'
 
                     else:
                         field_to_alias[name] = key = key_case(name)
-                        f_assign = f'field={name!r}; key={key!r}; {val}=o.get(key, MISSING)'
+                        aliases.add(key)
+                        f_assign = f'field={name!r}; {val}=o.get({key!r}, MISSING)'
 
                     string = generate_field_code(cls_loader, extras, f, i)
 
@@ -1150,20 +1153,13 @@ def load_func_for_dataclass(
                 fn_gen.add_line("re_raise(e, cls, o, fields, field, locals().get('v1'))")
 
         if has_catch_all:
+            new_locals.setdefault('aliases', aliases)
+
             if expect_tag_as_unknown_key:
                 # add an alias for the tag key, so we don't capture it
-                field_to_alias['...'] = meta.tag_key
+                aliases.add(meta.tag_key)
 
-            # check if `AUTO` key transform mode is enabled
-            if auto_key_case:
-                # line = 'extra_keys = o.keys() - f2k.values()'
-                aliases_var = 'f2k.values()'
-
-            else:
-                aliases_var = 'aliases'
-                new_locals['aliases'] = set(field_to_alias.values())
-
-            catch_all_def = f'{{k: o[k] for k in o if k not in {aliases_var}}}'
+            catch_all_def = f'{{k: o[k] for k in o if k not in aliases}}'
 
             if catch_all_field.endswith('?'):  # Default value
                 with fn_gen.if_('len(o) != i'):
@@ -1174,16 +1170,13 @@ def load_func_for_dataclass(
                 vars_for_fields.insert(catch_all_idx, var)
 
         elif should_warn or should_raise:
+            new_locals.setdefault('aliases', aliases)
+
             if expect_tag_as_unknown_key:
                 # add an alias for the tag key, so we don't raise an error when we see it
-                field_to_alias['...'] = meta.tag_key
+                aliases.add(meta.tag_key)
 
-            # check if `AUTO` key transform mode is enabled
-            if auto_key_case:
-                line = 'extra_keys = o.keys() - f2k.values()'
-            else:
-                new_locals['aliases'] = set(field_to_alias.values())
-                line = 'extra_keys = set(o) - aliases'
+            line = 'extra_keys = set(o) - aliases'
 
             with fn_gen.if_('len(o) != i'):
                 fn_gen.add_line(line)

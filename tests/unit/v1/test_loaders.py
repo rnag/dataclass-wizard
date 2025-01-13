@@ -50,7 +50,7 @@ def create_strict_eq(name, bases, cls_dict):
 def test_missing_fields_is_raised():
 
     @dataclass
-    class Test(JSONWizard, debug=True):
+    class Test(JSONWizard):
         class _(JSONWizard.Meta):
             v1 = True
 
@@ -86,6 +86,51 @@ def test_auto_key_casing():
     d = {'My-Str': 'test', 'myBoolTest': True, 'MyInt': 123, 'my_float': 42, }
 
     assert Test.from_dict(d) == Test(my_str='test', my_bool_test=True, my_int=123, my_float=42.0)
+
+def test_auto_key_casing_with_optional_fields():
+    from dataclass_wizard import JSONWizard
+
+    @dataclass
+    class MyClass(JSONWizard, key_case='AUTO'):
+        my_str: 'str | None'
+        is_active_tuple: tuple[bool, ...]
+        list_of_int: list[int] = field(default_factory=list)
+        other_int: int = 2
+
+    string = """
+    {
+      "my_str": 20,
+      "ListOfInt": ["1", "2", 3],
+      "isActiveTuple": ["true", false, 1]
+    }
+    """
+
+    instance = MyClass.from_json(string)
+    assert instance == MyClass(
+        my_str='20',
+        is_active_tuple=(True, False, True),
+        list_of_int=[1, 2, 3],
+        other_int=2,
+    )
+
+    string = """
+    {
+      "MyStr": 21,
+      "listOfInt": ["3", "2", 1],
+      "IsActiveTuple": ["false", 1, 0],
+      "OtherInt": "1"
+    }
+    """
+
+    instance = MyClass.from_json(string)
+    assert instance == MyClass(
+        my_str='21',
+        is_active_tuple=(False, True, False),
+        list_of_int=[3, 2, 1],
+        other_int=1,
+    )
+
+    assert instance == MyClass.from_dict(instance.to_dict())
 
 
 def test_alias_mapping():
@@ -209,7 +254,7 @@ def test_from_dict_raises_on_unknown_json_key_nested():
         my_str: str
 
     @dataclass
-    class Test(JSONWizard, debug=True):
+    class Test(JSONWizard):
         class _(JSONWizard.Meta):
             v1 = True
             v1_on_unknown_key = 'RAISE'
@@ -256,6 +301,65 @@ def test_from_dict_raises_on_unknown_json_key_nested():
 
     assert e.unknown_keys == {'myBoolTest'}
     assert e.obj == d['my_sub']
+    assert e.fields == ['my_str']
+
+
+def test_from_dict_raises_on_unknown_json_key_with_key_case_auto():
+    """
+    Raises on Unknown Key with `key_case='AUTO'`
+    """
+    @dataclass
+    class Sub(JSONWizard):
+        my_str: str
+
+    @dataclass
+    class Test(JSONWizard):
+        class _(JSONWizard.Meta):
+            v1 = True
+            v1_key_case = 'A'
+            v1_on_unknown_key = 'RAISE'
+
+        my_str: str = Alias('a_str')
+        my_bool: bool
+        my_sub: Sub
+
+
+    d = {'a_str': 'test',
+         'my_bool': True,
+         'my_sub': {'MyStr': 'test'}}
+    t = Test.from_dict(d)
+    log.debug(repr(t))
+
+    d = {'a_str': 'test',
+         'My-Sub': {'MyStr': 'test'},
+         'myBool': 'F',
+         'my_str': 'test2', 'myBoolTest': True, 'MyInt': 123}
+
+    with pytest.raises(UnknownKeysError) as exc_info:
+        _ = Test.from_dict(d)
+
+    e = exc_info.value
+
+    assert e.unknown_keys == {'myBoolTest', 'MyInt', 'my_str'}
+    assert e.obj == d
+    assert e.fields == ['my_str', 'my_bool', 'my_sub']
+
+    d = {'a_str': 'test',
+         'MyBool': True,
+         'my-sub': {'MyStr': 'test', 'myBoolTest': False}}
+
+    # d = {'a_str': 'test',
+    #      'my_bool': True,
+    #      'my_sub': {'MyStr': 'test', 'my_bool': False, 'myBoolTest': False},
+    #      }
+
+    with pytest.raises(UnknownKeysError) as exc_info:
+        _ = Test.from_dict(d)
+
+    e = exc_info.value
+
+    assert e.unknown_keys == {'myBoolTest'}
+    assert e.obj == d['my-sub']
     assert e.fields == ['my_str']
 
 
@@ -976,7 +1080,7 @@ def test_literal_recursive():
     L3 = Literal[Literal[Literal[1, 2, 3], "foo"], 5, None]  # Literal[1, 2, 3, "foo", 5, None]
 
     @dataclass
-    class A(JSONWizard, debug=True):
+    class A(JSONWizard):
         class _(JSONWizard.Meta):
             v1 = True
 
@@ -2054,7 +2158,7 @@ def test_typed_dict_recursive():
         key_four: NotRequired[list['TD']]
 
     @dataclass
-    class MyContainer(JSONWizard, debug=True):
+    class MyContainer(JSONWizard):
         class _(JSONWizard.Meta):
             v1 = True
 
@@ -2214,7 +2318,7 @@ def test_named_tuple_recursive():
         field_four: list['NT'] = []
 
     @dataclass
-    class MyContainer(JSONWizard, debug=True):
+    class MyContainer(JSONWizard):
         class _(JSONWizard.Meta):
             v1 = True
 
@@ -2652,18 +2756,23 @@ def test_catch_all_with_auto_key_case():
             v1_key_case = 'Auto'
 
         my_extras: CatchAll
-        email: str
+        the_email: str
 
     opt = Options.from_dict({
-        'Email': 'a@b.org',
+        'The-Email': 'a@b.org',
         'token': '<PASSWORD>',
     })
-    assert opt == Options(my_extras={'token': '<PASSWORD>'}, email='a@b.org')
+    assert opt == Options(my_extras={'token': '<PASSWORD>'}, the_email='a@b.org')
 
     opt = Options.from_dict({
-        'Email': 'x@y.org',
+        'theEmail': 'a@b.org',
     })
-    assert opt == Options(my_extras={}, email='x@y.org')
+    assert opt == Options(my_extras={}, the_email='a@b.org')
+
+    opt = Options.from_dict({
+        'the_email': 'x@y.com',
+    })
+    assert opt == Options(my_extras={}, the_email='x@y.com')
 
 
 def test_from_dict_with_nested_object_alias_path():
@@ -2673,7 +2782,7 @@ def test_from_dict_with_nested_object_alias_path():
     """
 
     @dataclass
-    class A(JSONPyWizard, debug=True):
+    class A(JSONPyWizard):
         class _(JSONPyWizard.Meta):
             v1 = True
 
@@ -2765,7 +2874,7 @@ def test_from_dict_with_nested_object_alias_path_with_skip_defaults():
     """
 
     @dataclass
-    class A(JSONWizard, debug=True):
+    class A(JSONWizard):
         class _(JSONWizard.Meta):
             v1 = True
             skip_defaults = True
@@ -2970,7 +3079,7 @@ def test_auto_assign_tags_and_catch_all():
         extra: CatchAll = None
 
     @dataclass
-    class Container(JSONWizard, debug=False):
+    class Container(JSONWizard):
         obj2: Union[A, B]
         extra: CatchAll = None
 
@@ -3006,7 +3115,7 @@ def test_skip_if():
     skip serializing dataclass fields.
     """
     @dataclass
-    class Example(JSONPyWizard, debug=True):
+    class Example(JSONPyWizard):
         class _(JSONPyWizard.Meta):
             v1 = True
             skip_if = IS_NOT(True)

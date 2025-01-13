@@ -1,5 +1,5 @@
 __all__ = ['normalize',
-           'to_json_key',
+           'possible_json_keys',
            'to_camel_case',
            'to_pascal_case',
            'to_lisp_case',
@@ -20,91 +20,52 @@ def normalize(string: str) -> str:
     return string.replace('-', '').replace('_', '').upper()
 
 
-def to_json_key(o: JSONObject,
-                field: str,
-                f2k: 'dict[str, str]',
-                f2keys: 'dict[str, list[str]]') -> 'str | None':
+def possible_json_keys(field: str) -> list[str]:
     """
-    Maps a dataclass field name to its corresponding key in a JSON object.
+    Maps a dataclass field name to its possible keys in a JSON object.
 
     This function checks multiple naming conventions (e.g., camelCase,
     PascalCase, kebab-case, etc.) to find the matching key in the JSON
     object `o`. It also caches the mapping for future use.
 
     Args:
-        o (dict[str, Any]): The JSON object to search for the key.
         field (str): The dataclass field name to map.
-        f2k (dict[str, str]): A dictionary to cache field-to-key mappings.
-        f2keys (dict[str, list[str]]): A dictionary to cache field-to-possible-key mappings (1:many).
 
     Returns:
-        str: The matching JSON key for the given field.
-        None: If no matching key is found in `o`.
+        list[str]: The possible JSON keys for the given field.
     """
-    if (possible_keys := f2keys.get(field)) is not None:
-        # In this case, `f2k.get(field)` is `None`, which
-        # also means it's an optional field (field with a
-        # default value).
-        #
-        # Also, note that `f2keys` already has a list of
-        # possible keys for the field.
-        for key in possible_keys:
-            if key in o:
-                break
-        else:
-            key = None
-    else:
-        key = None
-        possible_keys = []
-        # Short path: key matching field name exists in `o`
-        if field in o:
-            key = field
-        else:
-            possible_keys.append(field)
+    possible_keys = []
 
-        # `camelCase`
-        if (_key := to_camel_case(field)) in o:
-            key = _key
-        else:
-            possible_keys.append(_key)
+    # `camelCase`
+    _key = to_camel_case(field)
+    possible_keys.append(_key)
 
-        # `PascalCase`: same as `camelCase` but first letter is capitalized
-        if (_key := _key[0].upper() + _key[1:]) in o:
-            key = _key
-        else:
-            possible_keys.append(_key)
+    # `PascalCase`: same as `camelCase` but first letter is capitalized
+    _key = _key[0].upper() + _key[1:]
+    possible_keys.append(_key)
 
-        # `kebab-case`
-        if (_key := to_lisp_case(field)) in o:
-            key = _key
-        else:
-            possible_keys.append(_key)
+    # `kebab-case`
+    _key = to_lisp_case(field)
+    possible_keys.append(_key)
 
-        # `Upper-Kebab`: same as `kebab-case`, each word is title-cased
-        if (_key := _key.title()) in o:
-            key = _key
-        else:
-            possible_keys.append(_key)
+    # `Upper-Kebab`: same as `kebab-case`, each word is title-cased
+    _key = _key.title()
+    possible_keys.append(_key)
 
-        # `Upper_Snake`
-        if (_key := _key.replace('-', '_')) in o:
-            key = _key
-        else:
-            possible_keys.append(_key)
+    # `Upper_Snake`
+    _key = _key.replace('-', '_')
+    possible_keys.append(_key)
 
-        # `snake_case`
-        if (_key := _key.lower()) in o:
-            key = _key
-        else:
-            possible_keys.append(_key)
+    # `snake_case`
+    _key = _key.lower()
+    possible_keys.append(_key)
 
-        # Cache the list of field to multiple (possible) keys
-        f2keys[field] = possible_keys
+    # remove 1:1 field mapping from possible keys,
+    # as that's the first thing we check.
+    if field in possible_keys:
+        possible_keys.remove(field)
 
-    # Cache the result
-    f2k[field] = key
-
-    return key
+    return possible_keys
 
 
 def to_camel_case(string: str) -> str:
