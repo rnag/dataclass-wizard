@@ -1119,7 +1119,7 @@ def load_func_for_dataclass(
                         aliases.update(keys)
 
                         fn_gen.add_line(f'field={name!r}')
-                        condition = [f'({val}:=o.get(field, MISSING)) is not MISSING']
+                        condition = [f'({val} := o.get(field, MISSING)) is not MISSING']
                         for key in keys:
                             condition.append(f'({val} := o.get({key!r}, MISSING)) is not MISSING')
 
