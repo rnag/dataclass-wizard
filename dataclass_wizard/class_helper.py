@@ -338,7 +338,7 @@ def _process_field(name: str,
             if f.load_alias is not ExplicitNull:
                 load_dataclass_field_to_path[name] = f.path
             if not f.skip and f.dump_alias is not ExplicitNull:
-                dump_dataclass_field_to_path[name] = f.path
+                dump_dataclass_field_to_path[name] = f.path[0]
         # TODO I forget why this is needed :o
         if f.skip:
             dump_dataclass_field_to_alias[name] = ExplicitNull

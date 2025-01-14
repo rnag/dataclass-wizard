@@ -436,7 +436,7 @@ if PY310_OR_ABOVE:  # pragma: no cover
                      hash, compare, metadata, kw_only)
 
     # noinspection PyPep8Naming,PyShadowingBuiltins
-    def AliasPath(all=None, *,
+    def AliasPath(*all,
                   load=None,
                   dump=None,
                   skip=False,
@@ -457,7 +457,12 @@ if PY310_OR_ABOVE:  # pragma: no cover
             load = ExplicitNull
 
         if isinstance(all, str):
-            all = split_object_path(all)
+            all = (split_object_path(all), )
+        else:
+            all = tuple([
+                split_object_path(a) if isinstance(a, str) else a
+                for a in all
+            ])
 
         return Field(load, dump, skip, all, default, default_factory, init, repr,
                      hash, compare, metadata, kw_only)
@@ -514,7 +519,7 @@ else:  # pragma: no cover
                      hash, compare, metadata)
 
     # noinspection PyPep8Naming,PyShadowingBuiltins
-    def AliasPath(all=None, *,
+    def AliasPath(*all,
                   load=None,
                   dump=None,
                   skip=False,
@@ -535,10 +540,12 @@ else:  # pragma: no cover
             load = ExplicitNull
 
         if isinstance(all, str):
-            all = split_object_path(all)
-
-        if isinstance(all, str):
-            all = split_object_path(all)
+            all = (split_object_path(all), )
+        else:
+            all = tuple([
+                split_object_path(a) if isinstance(a, str) else a
+                for a in all
+            ])
 
         return Field(load, dump, skip, all, default, default_factory, init, repr,
                      hash, compare, metadata)

@@ -41,7 +41,7 @@ from ..type_def import (
 # noinspection PyProtectedMember
 from ..utils.dataclass_compat import _set_new_attribute
 from ..utils.function_builder import FunctionBuilder
-from ..utils.object_path import safe_get
+from ..utils.object_path import v1_safe_get
 from ..utils.string_conv import possible_json_keys
 from ..utils.type_conv import (
     as_datetime_v1, as_date_v1, as_time_v1,
@@ -1009,11 +1009,11 @@ def load_func_for_dataclass(
     key_case: 'V1LetterCase | None' = cls_loader.transform_json_field
     auto_key_case = key_case is KeyCase.AUTO
 
-    field_to_alias = v1_dataclass_field_to_alias(cls)
-    check_aliases = True if field_to_alias else False
+    field_to_aliases = v1_dataclass_field_to_alias(cls)
+    check_aliases = True if field_to_aliases else False
 
-    field_to_path = DATACLASS_FIELD_TO_ALIAS_PATH_FOR_LOAD[cls]
-    has_alias_paths = True if field_to_path else False
+    field_to_paths = DATACLASS_FIELD_TO_ALIAS_PATH_FOR_LOAD[cls]
+    has_alias_paths = True if field_to_paths else False
 
     # Fix for using `auto_assign_tags` and `raise_on_unknown_json_key` together
     # See https://github.com/rnag/dataclass-wizard/issues/137
@@ -1029,7 +1029,7 @@ def load_func_for_dataclass(
 
     on_unknown_key = meta.v1_on_unknown_key
 
-    catch_all_field = field_to_alias.pop(CATCH_ALL, None)
+    catch_all_field = field_to_aliases.pop(CATCH_ALL, None)
     has_catch_all = catch_all_field is not None
 
     if has_catch_all:
@@ -1056,7 +1056,7 @@ def load_func_for_dataclass(
         should_raise = should_warn = None
 
     if has_alias_paths:
-        new_locals['safe_get'] = safe_get
+        new_locals['safe_get'] = v1_safe_get
 
     with fn_gen.function(fn_name, ['o'], MISSING, new_locals):
 
@@ -1090,7 +1090,7 @@ def load_func_for_dataclass(
                     val_is_found = _val_is_found
 
                     if (check_aliases
-                        and (_aliases := field_to_alias.get(name)) is not None):
+                        and (_aliases := field_to_aliases.get(name)) is not None):
 
                         if len(_aliases) == 1:
                             alias = _aliases[0]
@@ -1109,12 +1109,27 @@ def load_func_for_dataclass(
                             val_is_found = '(' + '\n     or '.join(condition) + ')'
 
                     elif (has_alias_paths
-                            and (path := field_to_path.get(name)) is not None):
+                            and (paths := field_to_paths.get(name)) is not None):
 
-                        if has_default:
-                            f_assign = f'field={name!r}; {val}=safe_get(o, {path!r}, MISSING, False)'
+                        if len(paths) == 1:
+                            path = paths[0]
+                            # add the first part (top-level key) of the path
+                            aliases.add(path[0])
+                            f_assign = f'field={name!r}; {val}=safe_get(o, {path!r}, {not has_default})'
                         else:
-                            f_assign = f'field={name!r}; {val}=safe_get(o, {path!r})'
+                            f_assign = None
+                            fn_gen.add_line(f'field={name!r}')
+                            condition = []
+                            last_idx = len(paths) - 1
+                            for k, path in enumerate(paths):
+                                # add the first part (top-level key) of each path
+                                aliases.add(path[0])
+                                if k == last_idx:
+                                    condition.append(f'({val} := safe_get(o, {path!r}, {not has_default})) is not MISSING')
+                                else:
+                                    condition.append(f'({val} := safe_get(o, {path!r}, False)) is not MISSING')
+
+                            val_is_found = '(' + '\n     or '.join(condition) + ')'
 
                         # TODO raise some useful message like (ex. on IndexError):
                         #       Field "my_str" of type tuple[float, str] in A2 has invalid value ['123']
@@ -1143,7 +1158,7 @@ def load_func_for_dataclass(
                         alias = key_case(name)
                         aliases.add(alias)
                         if alias != name:
-                            field_to_alias[name] = (alias, )
+                            field_to_aliases[name] = (alias, )
 
                         f_assign = f'field={name!r}; {val}=o.get({alias!r}, MISSING)'
 

@@ -356,7 +356,6 @@ def test_from_dict_raises_on_unknown_json_key_nested():
 
     e = exc_info.value
 
-    # TODO
     assert e.unknown_keys == {'myBoolTest', 'MyInt', 'my_str'}
     assert e.obj == d
     assert e.fields == ['my_str', 'my_bool', 'my_sub']
@@ -1015,10 +1014,7 @@ def test_from_dict_key_transform_with_json_field():
             v1 = True
 
         my_str: str = Alias('myCustomStr')
-        my_bool: bool = Alias('myTestBool')
-
-        # TODO: currently multiple aliases are not supported
-        # my_bool: bool = Alias(('my_json_bool', 'myTestBool'))
+        my_bool: bool = Alias('my_json_bool', 'myTestBool')
 
     value = 'Testing'
     d = {'myCustomStr': value, 'myTestBool': 'true'}
@@ -3092,6 +3088,94 @@ def test_from_dict_with_nested_object_alias_path_with_dump_alias_and_skip():
     assert serialized == {
         'a': {'b': {'c': {0: 'test'}}},
     }
+
+def test_from_dict_with_multiple_nested_object_alias_paths():
+    """Confirm `AliasPath` works for multiple nested paths."""
+
+    @dataclass
+    class MyClass(JSONWizard):
+
+        class _(JSONWizard.Meta):
+            v1 = True
+            v1_key_case = 'CAMEL'
+            key_transform_with_dump = 'PASCAL'
+            v1_on_unknown_key = 'RAISE'
+
+        my_str: 'str | None' = AliasPath('ace.in.hole.0[1]', 'bears.eat.b33ts')
+        is_active_tuple: tuple[bool, ...]
+        list_of_int: list[int] = AliasPath(load=('the-path.0', ('another-path', 'here', 0)), default_factory=list)
+        other_int: Annotated[int, AliasPath('this.Other."Int 1.23"')] = 2
+        dump_only: int = AliasPath(dump='1.2.3', default=123)
+
+    string = """
+    {
+      "ace": {"in": {"hole": [["test", "value"]]}},
+      "the-path": [["1", "2", 3]],
+      "isActiveTuple": ["true", false, 1]
+    }
+    """
+
+    instance = MyClass.from_json(string)
+    assert instance == MyClass(my_str='value', is_active_tuple=(True, False, True), list_of_int=[1, 2, 3])
+    assert instance.to_dict() == {
+        'ace': {'in': {'hole': {0: {1: 'value'}}}},
+        'this': {'Other': {'Int 1.23': 2}},
+        1: {2: {3: 123}},
+        'IsActiveTuple': (True, False, True),
+        'ListOfInt': [1, 2, 3],
+    }
+
+    string = """
+    {
+      "bears": {"eat": {"b33ts": "Fact!"}},
+      "another-path": {"here": [["3", "2", 1]]},
+      "isActiveTuple": ["false", 1, 0],
+      "this": {"Other": {"Int 1.23": "321"}},
+      "dumpOnly": "789"
+    }
+    """
+
+    instance = MyClass.from_json(string)
+
+    assert instance == MyClass(my_str='Fact!', is_active_tuple=(False, True, False), list_of_int=[3, 2, 1],
+                               other_int=321, dump_only=789)
+    assert instance.to_dict() == {
+        'ace': {'in': {'hole': {0: {1: 'Fact!'}}}},
+        'this': {'Other': {'Int 1.23': 321}},
+        1: {2: {3: 789}},
+        'IsActiveTuple': (False, True, False),
+        'ListOfInt': [3, 2, 1]
+    }
+
+    string = """
+    {
+      "ace": {"in": {"hole": [["test", "14"]]}},
+      "isActiveTuple": ["off", 1, "on"]
+    }
+    """
+
+    instance = MyClass.from_json(string)
+    assert instance == MyClass(my_str='14', is_active_tuple=(False, True, True))
+    assert instance.to_dict() == {
+        'ace': {'in': {'hole': {0: {1: '14'}}}},
+        'this': {'Other': {'Int 1.23': 2}},
+        'IsActiveTuple': (False, True, True),
+        1: {2: {3: 123}},
+        'ListOfInt': []
+    }
+
+    string = """
+    {
+      "my_str": "14",
+      "isActiveTuple": ["off", 1, "on"]
+    }
+    """
+
+    with pytest.raises(ParseError) as e:
+        _ = MyClass.from_json(string)
+
+    assert e.value.kwargs['current_path'] == "'bears'"
+    assert e.value.kwargs['path'] == "'bears' => 'eat' => 'b33ts'"
 
 
 def test_auto_assign_tags_and_raise_on_unknown_json_key():

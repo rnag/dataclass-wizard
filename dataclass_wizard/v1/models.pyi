@@ -110,7 +110,7 @@ class DateTimePattern(datetime, Generic[T]): ...
 
 
 # noinspection PyPep8Naming
-def AliasPath(all: PathType | str | None = None, *,
+def AliasPath(*all: PathType | str,
               load : PathType | str | None = None,
               dump : PathType | str | None = None,
               skip: bool = False,
@@ -135,7 +135,12 @@ def AliasPath(all: PathType | str | None = None, *,
     or even more complex nested paths such as `a["nested"]["key"]`.
 
     Arguments:
-        all (_STR_COLLECTION): The JSON key(s) or nested path(s) to associate with the dataclass field.
+        all (PathType | str): The nested path(s) to associate with the dataclass field.
+        load (PathType | str | None): * De-serialize / load *: The nested path(s)
+          to associate with the dataclass field.
+        dump (PathType | str | None): * Serialize / dump *: The nested path(s)
+          to associate with the dataclass field.
+        skip (bool): True to omit the dataclass field in serialization (dump).
         default (Any): The default value for the field. Mutually exclusive with `default_factory`.
         default_factory (Callable[[], Any]): A callable to generate the default value.
                                              Mutually exclusive with `default`.

@@ -31,6 +31,34 @@ def safe_get(data, path, default=MISSING, raise_=True):
         raise _format_err(e, current_data, path, p, True) from None
 
 
+def v1_safe_get(data, path, raise_):
+    current_data = data
+    p = path  # to avoid "unbound local variable" warnings
+
+    try:
+        for p in path:
+            current_data = current_data[p]
+
+        return current_data
+
+    # IndexError -
+    #   raised when `data` is a `list`, and we access an index that is "out of bounds"
+    # KeyError -
+    #   raised when `data` is a `dict`, and we access a key that is not present
+    # AttributeError -
+    #   raised when `data` is an invalid type, such as a `None`
+    except (IndexError, KeyError, AttributeError) as e:
+        if raise_:
+            raise _format_err(e, current_data, path, p) from None
+        return MISSING
+
+    # TypeError -
+    #   raised when `data` is a `list`, but we try to use it like a `dict`
+    except TypeError:
+        e = TypeError('Invalid path')
+        raise _format_err(e, current_data, path, p, True) from None
+
+
 def _format_err(e, current_data, path, current_path, invalid_path=False):
     return ParseError(
         e, current_data, dict if invalid_path else None,
