@@ -7,8 +7,8 @@ from typing import Any, TypedDict, cast
 from .decorators import setup_recursive_safe_function
 from ..constants import PY310_OR_ABOVE, PY311_OR_ABOVE
 from ..log import LOG
-from ..type_def import DefFactory, ExplicitNull, PyNotRequired, DT
-# noinspection PyProtectedMember
+from ..type_def import DefFactory, ExplicitNull, PyNotRequired
+from ..utils.function_builder import FunctionBuilder
 from ..utils.object_path import split_object_path
 from ..utils.type_conv import as_datetime_v1, as_date_v1, as_time_v1
 from ..utils.typing_compat import get_origin_v2
@@ -207,7 +207,7 @@ class Extras(TypedDict):
     config: PyNotRequired['META']
     cls: type
     cls_name: str
-    fn_gen: 'FunctionBuilder'
+    fn_gen: FunctionBuilder
     locals: dict[str, Any]
     pattern: PyNotRequired['PatternBase']
     recursion_guard: dict[type, str]
