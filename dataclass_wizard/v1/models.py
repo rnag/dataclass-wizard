@@ -2,7 +2,7 @@ import hashlib
 from collections import defaultdict
 from dataclasses import MISSING, Field as _Field
 from datetime import datetime, date, time
-from typing import Any, TypedDict, cast
+from typing import TYPE_CHECKING, Any, TypedDict, cast
 
 from .decorators import setup_recursive_safe_function
 from ..constants import PY310_OR_ABOVE, PY311_OR_ABOVE
@@ -12,6 +12,10 @@ from ..utils.function_builder import FunctionBuilder
 from ..utils.object_path import split_object_path
 from ..utils.type_conv import as_datetime_v1, as_date_v1, as_time_v1
 from ..utils.typing_compat import get_origin_v2
+
+
+if TYPE_CHECKING:
+    from ..bases import META
 
 
 _BUILTIN_COLLECTION_TYPES = frozenset({
