@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import MISSING
 from functools import wraps
-from typing import Callable, Union, TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Callable, Union, cast
 
 from ..type_def import DT
 from ..utils.function_builder import FunctionBuilder
