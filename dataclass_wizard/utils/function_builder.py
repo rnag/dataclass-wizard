@@ -1,6 +1,5 @@
 from dataclasses import MISSING
 
-from ..class_helper import is_builtin_class
 from ..log import LOG
 
 
@@ -173,6 +172,10 @@ class FunctionBuilder:
             >>>     ...
 
         """
+        # TODO This is here because `v1.decorators` imports this module,
+        #   and we run into a recursive import issue otherwise.
+        from ..class_helper import is_builtin_class
+
         cls_name = cls.__name__
         statement = f'{cls_name} as {var_name}' if var_name else cls_name
 
@@ -191,6 +194,10 @@ class FunctionBuilder:
                         self.globals[cls_name] = cls
 
         return self._with_new_block('except', statement)
+
+    def break_(self):
+        """Equivalent to the `break` statement in Python."""
+        self.add_line('break')
 
     def add_line(self, line: str):
         """Add a line to the current function's body with proper indentation."""

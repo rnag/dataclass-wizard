@@ -36,7 +36,7 @@ for complex and *nested dataclass* models!
     >>> from dataclass_wizard import JSONWizard
     ...
     >>> @dataclass
-    ... class MyClass(JSONWizard):
+    ... class MyClass(JSONWizard, key_case='AUTO'):
     ...     my_str: str | None
     ...     is_active_tuple: tuple[bool, ...]
     ...     list_of_int: list[int] = field(default_factory=list)
