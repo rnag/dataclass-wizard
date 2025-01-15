@@ -1029,7 +1029,7 @@ def load_func_for_dataclass(
 
     on_unknown_key = meta.v1_on_unknown_key
 
-    catch_all_field = field_to_aliases.pop(CATCH_ALL, None)
+    catch_all_field: 'str | None' = field_to_aliases.pop(CATCH_ALL, None)
     has_catch_all = catch_all_field is not None
 
     if has_catch_all:
@@ -1042,18 +1042,29 @@ def load_func_for_dataclass(
         pre_assign = ''
         catch_all_field_stripped = catch_all_idx = None
 
-    aliases = set()
-
-    if auto_key_case:
-        new_locals['aliases'] = aliases
-
     if on_unknown_key is not None:
         should_raise = on_unknown_key is KeyAction.RAISE
         should_warn = on_unknown_key is KeyAction.WARN
         if should_warn or should_raise:
             pre_assign = 'i+=1; '
+            set_aliases = True
+        else:
+            set_aliases = has_catch_all
     else:
         should_raise = should_warn = None
+        set_aliases = has_catch_all
+
+    if set_aliases:
+        if expect_tag_as_unknown_key:
+            # add an alias for the tag key, so we don't
+            # capture or raise an error when we see it
+            aliases = { meta.tag_key }
+        else:
+            aliases = set()
+
+        new_locals['aliases'] = aliases
+    else:
+        aliases = None
 
     if has_alias_paths:
         new_locals['safe_get'] = v1_safe_get
@@ -1094,13 +1105,17 @@ def load_func_for_dataclass(
 
                         if len(_aliases) == 1:
                             alias = _aliases[0]
-                            aliases.add(alias)
+
+                            if set_aliases:
+                                aliases.add(alias)
+
                             f_assign = f'field={name!r}; {val}=o.get({alias!r}, MISSING)'
                         else:
                             f_assign = None
 
                             # add possible JSON keys
-                            aliases.update(_aliases)
+                            if set_aliases:
+                                aliases.update(_aliases)
 
                             fn_gen.add_line(f'field={name!r}')
                             condition = [f'({val} := o.get({alias!r}, MISSING)) is not MISSING'
@@ -1113,8 +1128,11 @@ def load_func_for_dataclass(
 
                         if len(paths) == 1:
                             path = paths[0]
+
                             # add the first part (top-level key) of the path
-                            aliases.add(path[0])
+                            if set_aliases:
+                                aliases.add(path[0])
+
                             f_assign = f'field={name!r}; {val}=safe_get(o, {path!r}, {not has_default})'
                         else:
                             f_assign = None
@@ -1122,8 +1140,11 @@ def load_func_for_dataclass(
                             condition = []
                             last_idx = len(paths) - 1
                             for k, path in enumerate(paths):
+
                                 # add the first part (top-level key) of each path
-                                aliases.add(path[0])
+                                if set_aliases:
+                                    aliases.add(path[0])
+
                                 if k == last_idx:
                                     condition.append(f'({val} := safe_get(o, {path!r}, {not has_default})) is not MISSING')
                                 else:
@@ -1135,17 +1156,22 @@ def load_func_for_dataclass(
                         #       Field "my_str" of type tuple[float, str] in A2 has invalid value ['123']
 
                     elif key_case is None:
-                        aliases.add(name)
+
+                        if set_aliases:
+                            aliases.add(name)
+
                         f_assign = f'field={name!r}; {val}=o.get(field, MISSING)'
 
                     elif auto_key_case:
                         f_assign = None
 
                         _aliases = possible_json_keys(name)
-                        # add field name itself
-                        aliases.add(name)
-                        # add possible JSON keys
-                        aliases.update(_aliases)
+
+                        if set_aliases:
+                            # add field name itself
+                            aliases.add(name)
+                            # add possible JSON keys
+                            aliases.update(_aliases)
 
                         fn_gen.add_line(f'field={name!r}')
                         condition = [f'({val} := o.get(field, MISSING)) is not MISSING']
@@ -1156,7 +1182,10 @@ def load_func_for_dataclass(
 
                     else:
                         alias = key_case(name)
-                        aliases.add(alias)
+
+                        if set_aliases:
+                            aliases.add(alias)
+
                         if alias != name:
                             field_to_aliases[name] = (alias, )
 
@@ -1185,12 +1214,6 @@ def load_func_for_dataclass(
                 fn_gen.add_line("re_raise(e, cls, o, fields, field, locals().get('v1'))")
 
         if has_catch_all:
-            new_locals.setdefault('aliases', aliases)
-
-            if expect_tag_as_unknown_key:
-                # add an alias for the tag key, so we don't capture it
-                aliases.add(meta.tag_key)
-
             catch_all_def = f'{{k: o[k] for k in o if k not in aliases}}'
 
             if catch_all_field.endswith('?'):  # Default value
@@ -1201,13 +1224,7 @@ def load_func_for_dataclass(
                 fn_gen.add_line(f'{var} = {{}} if len(o) == i else {catch_all_def}')
                 vars_for_fields.insert(catch_all_idx, var)
 
-        elif should_warn or should_raise:
-            new_locals.setdefault('aliases', aliases)
-
-            if expect_tag_as_unknown_key:
-                # add an alias for the tag key, so we don't raise an error when we see it
-                aliases.add(meta.tag_key)
-
+        elif set_aliases:  # warn / raise on unknown key
             line = 'extra_keys = set(o) - aliases'
 
             with fn_gen.if_('len(o) != i'):
