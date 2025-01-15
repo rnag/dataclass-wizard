@@ -18,7 +18,8 @@ from typing import (
 from uuid import UUID
 
 from .decorators import (setup_recursive_safe_function,
-                         setup_recursive_safe_function_for_generic)
+                         setup_recursive_safe_function_for_generic,
+                         process_patterned_date_time)
 from .enums import KeyAction, KeyCase
 from .models import Extras, TypeInfo, PatternBase
 from ..abstractions import AbstractLoaderGenerator
@@ -593,33 +594,18 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         return tp.wrap_builtin(Path, tp.v(), extras)
 
     @classmethod
+    @process_patterned_date_time
     def load_to_date(cls, tp: TypeInfo, extras: Extras):
-        # TODO
-        if (pb := extras.get('pattern')) is not None:
-            pb.base = cast(type[DT], tp.origin)
-            tp.origin = cast(type, pb)
-            return pb.load_to_pattern(tp, extras)
-
         return cls._load_to_date(tp, extras, date)
 
     @classmethod
+    @process_patterned_date_time
     def load_to_datetime(cls, tp: TypeInfo, extras: Extras):
-        # TODO
-        if (pb := extras.get('pattern')) is not None:
-            pb.base = cast(type[DT], tp.origin)
-            tp.origin = cast(type, pb)
-            return pb.load_to_pattern(tp, extras)
-
         return cls._load_to_date(tp, extras, datetime)
 
     @staticmethod
+    @process_patterned_date_time
     def load_to_time(tp: TypeInfo, extras: Extras):
-        # TODO
-        if (pb := extras.get('pattern')) is not None:
-            pb.base = cast(type[DT], tp.origin)
-            tp.origin = cast(type, pb)
-            return pb.load_to_pattern(tp, extras)
-
         o = tp.v()
         tn = tp.type_name(extras, bound=time)
         tp_time = cast('type[time]', tp.origin)

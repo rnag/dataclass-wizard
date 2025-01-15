@@ -2,13 +2,66 @@ from __future__ import annotations
 
 from dataclasses import MISSING
 from functools import wraps
-from typing import Callable, Union, TYPE_CHECKING
+from typing import Callable, Union, TYPE_CHECKING, cast
 
+from ..type_def import DT
 from ..utils.function_builder import FunctionBuilder
 
 
 if TYPE_CHECKING:  # pragma: no cover
     from .models import Extras, TypeInfo
+
+
+def process_patterned_date_time(func: Callable) -> Callable:
+    """
+    Decorator for processing patterned date and time data.
+
+    If the 'pattern' key exists in the `extras` dictionary, it updates
+    the base and origin of the type information and processes the
+    pattern before calling the original function.
+
+    Supports both class methods and static methods.
+
+    Args:
+        func (Callable): The function to decorate, either a class method
+        or static method.
+
+    Returns:
+        Callable: The wrapped function with pattern processing applied.
+    """
+
+    # Determine if the function is a class method
+    # noinspection PyUnresolvedReferences
+    is_class_method = func.__code__.co_argcount == 3
+
+    if is_class_method:
+
+        @wraps(func)
+        def class_method_wrapper(cls, tp: TypeInfo, extras: Extras):
+            # Process pattern if it exists in extras
+            if (pb := extras.get('pattern')) is not None:
+                pb.base = cast(type[DT], tp.origin)
+                tp.origin = cast(type, pb)
+                return pb.load_to_pattern(tp, extras)
+
+            # Fallback to the original method
+            return func(cls, tp, extras)
+
+        return class_method_wrapper
+    else:
+
+        @wraps(func)
+        def static_method_wrapper(tp: TypeInfo, extras: Extras):
+            # Process pattern if it exists in extras
+            if (pb := extras.get('pattern')) is not None:
+                pb.base = cast(type[DT], tp.origin)
+                tp.origin = cast(type, pb)
+                return pb.load_to_pattern(tp, extras)
+
+            # Fallback to the original method
+            return func(tp, extras)
+
+        return static_method_wrapper
 
 
 def setup_recursive_safe_function(
