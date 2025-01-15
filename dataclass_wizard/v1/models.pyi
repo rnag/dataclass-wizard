@@ -111,8 +111,8 @@ class DateTimePattern(datetime, Generic[T]): ...
 
 # noinspection PyPep8Naming
 def AliasPath(*all: PathType | str,
-              load : PathType | str | None = None,
-              dump : PathType | str | None = None,
+              load: PathType | str | None = None,
+              dump: PathType | str | None = None,
               skip: bool = False,
               default=MISSING,
               default_factory: Callable[[], MISSING] = MISSING,
@@ -121,51 +121,52 @@ def AliasPath(*all: PathType | str,
     """
     Creates a dataclass field mapped to one or more nested JSON paths.
 
-    This function is an alias for ``dataclasses.field(...)``, with additional
-    logic for associating a field with one or more JSON key paths, including
-    nested structures. It can be used to specify custom mappings between
-    dataclass fields and complex, nested JSON key names.
+    This function acts as an alias for ``dataclasses.field(...)``, with additional
+    functionality to associate a field with one or more nested JSON paths,
+    including complex or deeply nested structures.
 
-    This mapping is **case-sensitive** and applies to the provided JSON keys
-    or nested paths. For example, passing "myField" will not match "myfield"
-    in JSON, and vice versa.
+    The mapping is case-sensitive, meaning that JSON keys must match exactly
+    (e.g., "myField" will not match "myfield"). Nested paths can include dot
+    notations or bracketed syntax for accessing specific indices or keys.
 
-    `all` represents one or more nested JSON keys (as strings or a collection of strings)
-    to associate with the dataclass field. The keys can include paths like `a.b.c`
-    or even more complex nested paths such as `a["nested"]["key"]`.
-
-    Arguments:
-        all (PathType | str): The nested path(s) to associate with the dataclass field.
-        load (PathType | str | None): * De-serialize / load *: The nested path(s)
-          to associate with the dataclass field.
-        dump (PathType | str | None): * Serialize / dump *: The nested path(s)
-          to associate with the dataclass field.
-        skip (bool): True to omit the dataclass field in serialization (dump).
-        default (Any): The default value for the field. Mutually exclusive with `default_factory`.
+    Args:
+        all (PathType | str): One or more nested JSON paths to associate with
+            the dataclass field (e.g., ``a.b.c`` or ``a["nested"]["key"]``).
+        load (PathType | str | None): Path(s) to use for deserialization.
+            Defaults to ``all`` if not specified.
+        dump (PathType | str | None): Path(s) to use for serialization.
+            Defaults to ``all`` if not specified.
+        skip (bool): If True, the field is excluded during serialization. Defaults to False.
+        default (Any): Default value for the field. Cannot be used with ``default_factory``.
         default_factory (Callable[[], Any]): A callable to generate the default value.
-                                             Mutually exclusive with `default`.
-        init (bool): Include the field in the generated `__init__` method. Defaults to True.
-        repr (bool): Include the field in the `__repr__` output. Defaults to True.
-        hash (bool): Include the field in the `__hash__` method. Defaults to None.
-        compare (bool): Include the field in comparison methods. Defaults to True.
-        metadata (dict): Metadata to associate with the field. Defaults to None.
+            Cannot be used with ``default``.
+        init (bool): Whether the field is included in the generated ``__init__`` method. Defaults to True.
+        repr (bool): Whether the field appears in the ``__repr__`` output. Defaults to True.
+        hash (bool): Whether the field is included in the ``__hash__`` method. Defaults to None.
+        compare (bool): Whether the field is included in comparison methods. Defaults to True.
+        metadata (dict): Additional metadata for the field. Defaults to None.
+        kw_only (bool): If True, the field is keyword-only. Defaults to False.
 
     Returns:
-        JSONField: A dataclass field with logic for mapping to one or more nested JSON paths.
+        Field: A dataclass field with additional mapping to one or more nested JSON paths.
 
-    Example #1:
-        >>> from dataclasses import dataclass
-        >>> @dataclass
-        >>> class Example:
-        >>>     my_str: str = AliasPath(['a.b.c.1', 'x.y["-1"].z'], default=42)
-        >>> # Maps nested paths ('a', 'b', 'c', 1) and ('x', 'y', '-1', 'z')
-        >>> # to the `my_str` attribute.
+    Examples:
 
-    Example #2:
+        **Example 1** -- Mapping multiple nested paths to a field:
 
-    >>> from typing import Annotated
-    >>> my_str: Annotated[str, AliasPath('my."7".nested.path.-321')]
-    >>> # where path.keys == ('my', '7', 'nested', 'path', -321)
+            >>> from dataclasses import dataclass
+            >>> from dataclass_wizard.v1 import AliasPath
+            >>> @dataclass
+            >>> class Example:
+            >>>     my_str: str = AliasPath('a.b.c.1', 'x.y["-1"].z', default="default_value")
+            >>> # Maps nested paths ('a', 'b', 'c', 1) and ('x', 'y', '-1', 'z')
+            >>> # to the `my_str` attribute. '-1' is treated as a literal string key,
+            >>> # not an index, for the second path.
+
+        **Example 2** -- Using ``Annotated``:
+
+            >>> from typing import Annotated
+            >>> my_str: Annotated[str, AliasPath('my."7".nested.path.-321')]
     """
 
 
@@ -180,32 +181,51 @@ def Alias(*all: str,
           init=True, repr=True,
           hash=None, compare=True, metadata=None, kw_only=False):
     """
-    This is a helper function that sets the same defaults for keyword
-    arguments as the ``dataclasses.field`` function. It can be thought of as
-    an alias to ``dataclasses.field(...)``, but one which also represents
-    a mapping of one or more JSON key names to a dataclass field.
+    Maps one or more JSON key names to a dataclass field.
 
-    This is only in *addition* to the default key transform; for example, a
-    JSON key appearing as "myField", "MyField" or "my-field" will already map
-    to a dataclass field "my_field" by default (assuming the key transform
-    converts to snake case).
+    This function acts as an alias for ``dataclasses.field(...)``, with additional
+    support for associating a field with one or more JSON keys. It can be used
+    to customize serialization and deserialization behavior, including handling
+    keys with varying cases or alternative names.
 
-    The mapping to each JSON key name is case-sensitive, so passing "myfield"
-    will not match a "myField" key in a JSON string or a Python dict object.
+    The mapping is case-sensitive, meaning that JSON keys must match exactly
+    (e.g., "myField" will not match "myfield"). If multiple keys are provided,
+    the first one is used as the default for serialization.
 
-    `keys` is a string, or a collection (list, tuple, etc.) of strings. It
-    represents one of more JSON keys to associate with the dataclass field.
+    Args:
+        all (str): One or more JSON key names to associate with the dataclass field.
+        load (str | Sequence[str] | None): Key(s) to use for deserialization.
+            Defaults to ``all`` if not specified.
+        dump (str | None): Key to use for serialization. Defaults to the first key in ``all``.
+        skip (bool): If True, the field is excluded during serialization. Defaults to False.
+        path (PathType | str | None): A nested path to associate with the field.
+        default (Any): Default value for the field. Cannot be used with ``default_factory``.
+        default_factory (Callable[[], Any]): A callable to generate the default value.
+            Cannot be used with `default`.
+        init (bool): Whether the field is included in the generated ``__init__`` method. Defaults to True.
+        repr (bool): Whether the field appears in the ``__repr__`` output. Defaults to True.
+        hash (bool): Whether the field is included in the ``__hash__`` method. Defaults to None.
+        compare (bool): Whether the field is included in comparison methods. Defaults to True.
+        metadata (dict): Additional metadata for the field. Defaults to None.
+        kw_only (bool): If True, the field is keyword-only. Defaults to False.
 
-    When `all` is passed as True (default is False), it will also associate
-    the reverse mapping, i.e. from dataclass field to JSON key. If multiple
-    JSON keys are passed in, it uses the first one provided in this case.
-    This mapping is then used when ``to_dict`` or ``to_json`` is called,
-    instead of the default key transform.
+    Returns:
+        Field: A dataclass field with additional mappings to one or more JSON keys.
 
-    When `dump` is passed as False (default is True), this field will be
-    skipped, or excluded, in the serialization process to JSON.
+    Examples:
+        **Example 1**: Mapping multiple key names to a field.
+
+        >>> from dataclasses import dataclass
+        >>> from dataclass_wizard.v1 import Alias
+        >>> @dataclass
+        >>> class Example:
+        >>>     my_field: str = Alias('key1', 'key2', default="default_value")
+
+        **Example 2**: Skipping a field during serialization.
+
+        >>> from dataclass_wizard.v1 import Alias
+        >>> my_field: str = Alias('key', skip=True)
     """
-    ...
 
 
 def skip_if_field(condition: Condition, *,
