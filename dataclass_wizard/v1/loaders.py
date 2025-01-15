@@ -1,7 +1,6 @@
-# TODO cleanup imports
-
 import collections.abc as abc
 import dataclasses
+
 from base64 import b64decode
 from collections import defaultdict, deque
 from dataclasses import is_dataclass, MISSING, Field
@@ -12,8 +11,8 @@ from pathlib import Path
 # noinspection PyUnresolvedReferences,PyProtectedMember
 from typing import (
     Any, Type, Dict, List, Tuple, Iterable, Sequence, Union,
-    NamedTupleMeta,
-    SupportsFloat, AnyStr, Text, Callable, Optional, cast, Literal, Annotated, NamedTuple
+    NamedTupleMeta, SupportsFloat, AnyStr, Text, Callable,
+    Optional, Literal, Annotated, NamedTuple, cast,
 )
 from uuid import UUID
 
@@ -37,7 +36,7 @@ from ..log import LOG
 from ..type_def import (
     DefFactory, NoneType, JSONObject,
     PyLiteralString,
-    T, DT
+    T,
 )
 # noinspection PyProtectedMember
 from ..utils.dataclass_compat import _set_new_attribute
