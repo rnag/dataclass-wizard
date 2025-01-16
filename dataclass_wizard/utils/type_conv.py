@@ -46,7 +46,7 @@ def as_bool(o: Union[str, bool, N]):
     return o == 1
 
 
-def as_int_v1(o: Union[str, float, bool],
+def as_int_v1(o: Union[float, bool],
               tp: type,
               base_type=int):
     """
