@@ -97,13 +97,13 @@ class TypeInfo:
 
     @staticmethod
     def ensure_in_locals(extras, *tps, **name_to_tp):
-        locals = extras['locals']
+        _locals = extras['locals']
 
         for tp in tps:
-            locals.setdefault(tp.__name__, tp)
+            _locals.setdefault(tp.__name__, tp)
 
         for name, tp in name_to_tp.items():
-            locals.setdefault(name, tp)
+            _locals.setdefault(name, tp)
 
     def type_name(self, extras, bound=None):
         """Return type name as string (useful for `Union` type checks)"""
@@ -208,7 +208,7 @@ class Extras(TypedDict):
     """
     "Extra" config that can be used in the load / dump process.
     """
-    config: PyNotRequired['META']
+    config: 'META'
     cls: type
     cls_name: str
     fn_gen: FunctionBuilder
@@ -310,7 +310,7 @@ class PatternBase:
         # temp fix for Python 3.11+, since `time.fromisoformat` is updated
         # to support more formats, such as "-" and "+" in strings.
         if (is_time and
-            any('-' in s or '+' in s for s in patterns)):
+                any('-' in s or '+' in s for s in patterns)):
 
             for p in patterns:
                 # Try to parse with `datetime.strptime` first
@@ -367,7 +367,7 @@ class PatternBase:
         # the date string with the provided patterns.
         fn_gen.add_line(
             'raise ValueError(f"Unable to parse the string \'{v1}\' '
-           f'with the provided patterns: {patterns!r}")')
+            f'with the provided patterns: {patterns!r}")')
 
     def __repr__(self):
         # Short path: Temporary state / placeholder
@@ -420,7 +420,6 @@ if PY310_OR_ABOVE:  # pragma: no cover
               load=None,
               dump=None,
               skip=False,
-              path=None,
               default=MISSING,
               default_factory=MISSING,
               init=True, repr=True,
@@ -436,7 +435,7 @@ if PY310_OR_ABOVE:  # pragma: no cover
         elif load is not None and isinstance(load, str):
             load = (load, )
 
-        return Field(load, dump, skip, path, default, default_factory, init, repr,
+        return Field(load, dump, skip, None, default, default_factory, init, repr,
                      hash, compare, metadata, kw_only)
 
     # noinspection PyPep8Naming,PyShadowingBuiltins
@@ -488,10 +487,6 @@ if PY310_OR_ABOVE:  # pragma: no cover
             super().__init__(default, default_factory, init, repr, hash,
                              compare, metadata, kw_only)
 
-            if path is not None:
-                if isinstance(path, str):
-                    path = split_object_path(path) if path else (path, )
-
             self.load_alias = load_alias
             self.dump_alias = dump_alias
             self.skip = skip
@@ -503,7 +498,6 @@ else:  # pragma: no cover
               load=None,
               dump=None,
               skip=False,
-              path=None,
               default=MISSING,
               default_factory=MISSING,
               init=True, repr=True,
@@ -518,7 +512,7 @@ else:  # pragma: no cover
         elif load is not None and isinstance(load, str):
             load = (load, )
 
-        return Field(load, dump, skip, path,
+        return Field(load, dump, skip, None,
                      default, default_factory, init, repr,
                      hash, compare, metadata)
 
@@ -570,10 +564,6 @@ else:  # pragma: no cover
 
             super().__init__(default, default_factory, init, repr, hash,
                              compare, metadata)
-
-            if path is not None:
-                if isinstance(path, str):
-                    path = split_object_path(path) if path else (path,)
 
             self.load_alias = load_alias
             self.dump_alias = dump_alias

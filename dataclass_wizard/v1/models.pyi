@@ -67,7 +67,7 @@ class Extras(TypedDict):
     """
     "Extra" config that can be used in the load / dump process.
     """
-    config: NotRequired[META]
+    config: META
     cls: type
     cls_name: str
     fn_gen: FunctionBuilder
@@ -175,7 +175,6 @@ def Alias(*all: str,
           load: str | Sequence[str] | None = None,
           dump: str | None = None,
           skip: bool = False,
-          path: PathType | str | None = None,
           default=MISSING,
           default_factory: Callable[[], MISSING] = MISSING,
           init=True, repr=True,
@@ -198,7 +197,6 @@ def Alias(*all: str,
             Defaults to ``all`` if not specified.
         dump (str | None): Key to use for serialization. Defaults to the first key in ``all``.
         skip (bool): If True, the field is excluded during serialization. Defaults to False.
-        path (PathType | str | None): A nested path to associate with the field.
         default (Any): Default value for the field. Cannot be used with ``default_factory``.
         default_factory (Callable[[], Any]): A callable to generate the default value.
             Cannot be used with `default`.
@@ -293,15 +291,17 @@ class Field(_Field):
                  load_alias: str | None,
                  dump_alias: str | None,
                  skip: bool,
-                 path: PathType, default, default_factory, init, repr, hash, compare,
+                 path: PathType | None,
+                 default, default_factory, init, repr, hash, compare,
                  metadata, kw_only):
         ...
 
     @overload
-    def __init__(self, alias: str | None,
+    def __init__(self,
                  load_alias: str | None,
                  dump_alias: str | None,
                  skip: bool,
-                 path: PathType, default, default_factory, init, repr, hash, compare,
+                 path: PathType | None,
+                 default, default_factory, init, repr, hash, compare,
                  metadata):
         ...

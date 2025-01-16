@@ -248,6 +248,7 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
 
         req_field_to_assign = {}
         field_assigns = []
+        # noinspection PyProtectedMember
         optional_fields = set(nt_tp._field_defaults)
         has_optionals = True if optional_fields else False
         only_optionals = has_optionals and len(optional_fields) == len(nt_tp.__annotations__)
@@ -277,7 +278,7 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
                 with fn_gen.if_(f'has_opt'):
                     fn_gen.add_line(f'fields = [{field_assigns.pop(0)}]')
                     for i, string in enumerate(field_assigns, start=opt_start + 1):
-                            fn_gen.add_line(f'if L > {i}: fields.append({string})')
+                        fn_gen.add_line(f'if L > {i}: fields.append({string})')
 
                     if only_optionals:
                         fn_gen.add_line(f'return cls(*fields)')
@@ -457,13 +458,14 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
                     continue
 
                 elif not config.v1_unsafe_parse_dataclass_in_union:
-                    e = ValueError(f'Cannot parse dataclass types in a Union without one of the following `Meta` settings:\n\n'
+                    e = ValueError('Cannot parse dataclass types in a Union without '
+                                   'one of the following `Meta` settings:\n\n'
                                    '  * `auto_assign_tags = True`\n'
-                                  f'    - Set on class `{extras["cls_name"]}`.\n\n'
-                                  f'  * `tag = "{cls_name}"`\n'
-                                  f'    - Set on class `{possible_tp.__qualname__}`.\n\n'
+                                   f'    - Set on class `{extras["cls_name"]}`.\n\n'
+                                   f'  * `tag = "{cls_name}"`\n'
+                                   f'    - Set on class `{possible_tp.__qualname__}`.\n\n'
                                    '  * `v1_unsafe_parse_dataclass_in_union = True`\n'
-                                  f'    - Set on class `{extras["cls_name"]}`\n\n'
+                                   f'    - Set on class `{extras["cls_name"]}`\n\n'
                                    'For more information, refer to:\n'
                                    '  https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/dataclasses_in_union_types.html')
                     raise e from None
@@ -472,7 +474,7 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
 
             try_parse_lines = [
                 'try:',
-               f'  return {string}',
+                f'  return {string}',
                 'except Exception:',
                 '  pass',
             ]
@@ -510,10 +512,10 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
                 fn_gen.add_line(
                     "raise ParseError("
                     "TypeError('Object with tag was not in any of Union types'),"
-                   f"v1,{fields},"
+                    f"v1,{fields},"
                     "input_tag=tag,"
                     "tag_key=tag_key,"
-                   f"valid_tags={list(dataclass_tag_to_lines)})"
+                    f"valid_tags={list(dataclass_tag_to_lines)})"
                 )
 
         fn_gen.add_line('tp = type(v1)')
@@ -836,10 +838,10 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
 
 def setup_default_loader(cls=LoadMixin):
     """
-    Setup the default type hooks to use when converting `str` (json) or a
+    Set up the default type hooks to use when converting `str` (json) or a
     Python `dict` object to a `dataclass` instance.
 
-    Note: `cls` must be :class:`LoadMixIn` or a sub-class of it.
+    Note: `cls` must be :class:`LoadMixIn` or a subclass of it.
     """
     # TODO maybe `dict.update` might be better?
 
@@ -870,11 +872,12 @@ def setup_default_loader(cls=LoadMixin):
 
 
 def check_and_raise_missing_fields(
-    _locals, o, cls,
-    fields: 'Union[tuple[Field, ...], None]'):
+        _locals, o, cls,
+        fields: 'Union[tuple[Field, ...], None]'):
 
     if fields is None:  # named tuple
         nt_tp = cast(NamedTuple, cls)
+        # noinspection PyProtectedMember
         field_to_default = nt_tp._field_defaults
 
         fields = tuple([
@@ -1004,11 +1007,11 @@ def load_func_for_dataclass(
     # See https://github.com/rnag/dataclass-wizard/issues/137
     has_tag_assigned = meta.tag is not None
     if (has_tag_assigned and
-        # Ensure `tag_key` isn't a dataclass field,
-        # to avoid issues with our logic.
-        # See https://github.com/rnag/dataclass-wizard/issues/148
-        meta.tag_key not in cls_init_field_names):
-            expect_tag_as_unknown_key = True
+            # Ensure `tag_key` isn't a dataclass field,
+            # to avoid issues with our logic.
+            # See https://github.com/rnag/dataclass-wizard/issues/148
+            meta.tag_key not in cls_init_field_names):
+        expect_tag_as_unknown_key = True
     else:
         expect_tag_as_unknown_key = False
 
@@ -1043,7 +1046,7 @@ def load_func_for_dataclass(
         if expect_tag_as_unknown_key:
             # add an alias for the tag key, so we don't
             # capture or raise an error when we see it
-            aliases = { meta.tag_key }
+            aliases = {meta.tag_key}
         else:
             aliases = set()
 
@@ -1086,7 +1089,7 @@ def load_func_for_dataclass(
                     val_is_found = _val_is_found
 
                     if (check_aliases
-                        and (_aliases := field_to_aliases.get(name)) is not None):
+                            and (_aliases := field_to_aliases.get(name)) is not None):
 
                         if len(_aliases) == 1:
                             alias = _aliases[0]
@@ -1131,9 +1134,11 @@ def load_func_for_dataclass(
                                     aliases.add(path[0])
 
                                 if k == last_idx:
-                                    condition.append(f'({val} := safe_get(o, {path!r}, {not has_default})) is not MISSING')
+                                    condition.append(
+                                        f'({val} := safe_get(o, {path!r}, {not has_default})) is not MISSING')
                                 else:
-                                    condition.append(f'({val} := safe_get(o, {path!r}, False)) is not MISSING')
+                                    condition.append(
+                                        f'({val} := safe_get(o, {path!r}, False)) is not MISSING')
 
                             val_is_found = '(' + '\n     or '.join(condition) + ')'
 
@@ -1222,7 +1227,9 @@ def load_func_for_dataclass(
                     # Show a warning here
                     new_locals['LOG'] = LOG
                     fn_gen.add_line(r"LOG.warning('Found %d unknown keys %r not mapped to the dataclass schema.\n"
-                                        r"  Class: %r\n  Dataclass fields: %r', len(extra_keys), extra_keys, cls.__qualname__, [f.name for f in fields])")
+                                    r"  Class: %r\n  Dataclass fields: %r', "
+                                    "len(extra_keys), extra_keys, "
+                                    "cls.__qualname__, [f.name for f in fields])")
 
         # Now pass the arguments to the constructor method, and return
         # the new dataclass instance. If there are any missing fields,
@@ -1292,13 +1299,13 @@ def re_raise(e, cls, o, fields, field, value):
     # If the object `o` is None, then raise an error with
     # the relevant info included.
     if o is None:
-      raise MissingData(cls) from None
+        raise MissingData(cls) from None
 
     # Check if the object `o` is some other type than what we expect -
     # for example, we could be passed in a `list` type instead.
     if not isinstance(o, dict):
-      base_err = TypeError('Incorrect type for `from_dict()`')
-      e = ParseError(base_err, o, dict, cls, desired_type=dict)
+        base_err = TypeError('Incorrect type for `from_dict()`')
+        e = ParseError(base_err, o, dict, cls, desired_type=dict)
 
     add_fields = True
     if type(e) is not ParseError:
