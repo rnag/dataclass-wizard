@@ -125,7 +125,8 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         return (f"{o} if (tp := {o}.__class__) is {tn} "
                 f"else {tn}("
                 f"f if '.' in {o} and (f := float({o})).is_integer() else {o}"
-                f") if tp is str else as_int({o},tp,{tn})")
+                ") if tp is str "
+                f"else as_int({o},tp,{tn})")
 
     @staticmethod
     def load_to_float(tp: TypeInfo, extras: Extras):
