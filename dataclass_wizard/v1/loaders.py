@@ -122,6 +122,9 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         o = tp.v()
         tp.ensure_in_locals(extras, as_int=as_int_v1)
 
+        # TODO when `in_union`, we already know `o.__class__`
+        #  is not `tn`, and we already have a variable `tp`.
+
         return (f"{o} if (tp := {o}.__class__) is {tn} "
                 f"else {tn}("
                 f"f if '.' in {o} and (f := float({o})).is_integer() else {o}"
