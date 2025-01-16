@@ -123,17 +123,9 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         tp.ensure_in_locals(extras, as_int=as_int_v1)
 
         return (f"{o} if (tp := {o}.__class__) is {tn} "
-                f"else (({tn}(fv) if (fv := float({o})).is_integer() else as_int({o}, tp, {tn})) "
-                f"if '.' in {o} else {tn}({o})) "
-                f"if tp is str "
-                f"else as_int({o}, tp, {tn})")
-
-        # return f"{o} if (tp := {o}.__class__) is {tn} else ({tn}({o}) if '.' not in {o} else {tn}(fv) if (fv := float({o})).is_integer() else as_int({o}, tp, {tn})) if tp is str else as_int({o}, tp, {tn})"
-
-        # TODO cleanup
-        # alias: as_int
-        # tp.ensure_in_locals(extras, as_int)
-        # return f"as_int({tp.v()}, {tn})"
+                f"else {tn}("
+                f"f if '.' in {o} and (f := float({o})).is_integer() else {o}"
+                f") if tp is str else as_int({o},tp,{tn})")
 
     @staticmethod
     def load_to_float(tp: TypeInfo, extras: Extras):

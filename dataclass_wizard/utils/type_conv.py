@@ -55,6 +55,7 @@ def as_int_v1(o: Union[str, float, bool],
     This assumes the following checks already happen:
         - `tp is base_type`
         - `tp is str and '.' in o and float(o).is_integer()`
+        - `tp is str and '.' in o and not float(o).is_integer()` --> IMPLIED
         - `tp is str and '.' not in o`
 
     If `o` cannot be converted to an int, raise an error.
@@ -62,8 +63,10 @@ def as_int_v1(o: Union[str, float, bool],
     :raises TypeError: If `o` is a `bool` (which is an `int` subclass)
     :raises ValueError: When `o` cannot be converted to an `int`
     """
-    if tp is str:  # The string represents a float value with fractional part, e.g. '2.7'
-        raise ValueError(f"Cannot cast string float with fractional part: {o}") from None
+    # Commenting this out, because `int(o)` already raises an error
+    # for float strings with a fractional part.
+    # if tp is str:  # The string represents a float value with fractional part, e.g. '2.7'
+    #     raise ValueError(f"Cannot cast string float with fractional part: {o}") from None
 
     if tp is float:
         if o.is_integer():
