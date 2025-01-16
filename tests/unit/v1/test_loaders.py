@@ -88,6 +88,7 @@ def test_auto_key_casing():
 
     assert Test.from_dict(d) == Test(my_str='test', my_bool_test=True, my_int=123, my_float=42.0)
 
+
 def test_auto_key_casing_with_optional_fields():
     from dataclass_wizard import JSONWizard
 
@@ -1056,7 +1057,9 @@ def test_from_dict_key_transform_with_json_key():
     [
         ([1, '2', 3], {1, 2, 3}, does_not_raise()),
         ('TrUe', True, pytest.raises(ParseError)),
-        ((3.22, 2.11, 1.22), {3, 2, 1}, does_not_raise()),
+        # Field annotated as `Set[int]`: fractional parts in float raises an error
+        ((3.22, 2.11, 1.22), {3, 2, 1}, pytest.raises(ParseError)),
+        ((3., 2.0, 1.000), {3, 2, 1}, does_not_raise()),
     ]
 )
 def test_set(input, expected, expectation):
@@ -1088,7 +1091,9 @@ def test_set(input, expected, expectation):
     [
         ([1, '2', 3], {1, 2, 3}, does_not_raise()),
         ('TrUe', True, pytest.raises(ParseError)),
-        ((3.22, 2.11, 1.22), {1, 2, 3}, does_not_raise()),
+        # Field annotated as `Set[int]`: fractional parts in float raises an error
+        ((3.22, 2.11, 1.22), {3, 2, 1}, pytest.raises(ParseError)),
+        ((3., 2.0, 1.000), {3, 2, 1}, does_not_raise()),
     ]
 )
 def test_frozenset(input, expected, expectation):
@@ -1532,7 +1537,7 @@ def test_timedelta(input, expectation, base_err):
             # For the `int` parser, only do explicit type checks against
             # `bool` currently (which is a special case) so this is expected
             # to pass.
-            [{}], does_not_raise(), [0]),
+            [{}], pytest.raises(ParseError), None),
         (
             # `bool` is a sub-class of int, so we explicitly check for this
             # type.
@@ -1780,7 +1785,8 @@ def test_tuple_without_type_hinting(input, expectation, expected):
             # Technically this is the wrong type (dict != int) however the
             # conversion to `int` still succeeds. Might need to change this
             # behavior later if needed.
-            [{}], does_not_raise(), (0, )),
+            [{}], pytest.raises(ParseError), None
+        ),
         (
             [], does_not_raise(), tuple()),
         (
@@ -1794,8 +1800,12 @@ def test_tuple_without_type_hinting(input, expectation, expected):
         (
             ['1', 2, '3'], does_not_raise(), (1, 2, 3)),
         (
-            ['1', '2', None, '4', 5, 6, '7'], does_not_raise(),
-            (1, 2, 0, 4, 5, 6, 7)),
+            ['1', '2', None, '4', 5, 6, '7'], pytest.raises(ParseError), None
+        ),
+        (
+            ['1', '2', '3.', '4.0', 5, 6, '7'], does_not_raise(),
+            (1, 2, 3, 4, 5, 6, 7)
+        ),
         (
             'testing', pytest.raises(ParseError), None
         ),

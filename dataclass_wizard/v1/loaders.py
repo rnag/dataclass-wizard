@@ -45,7 +45,7 @@ from ..utils.object_path import v1_safe_get
 from ..utils.string_conv import possible_json_keys
 from ..utils.type_conv import (
     as_datetime_v1, as_date_v1, as_time_v1,
-    as_int, as_timedelta, TRUTHY_VALUES,
+    as_int_v1, as_timedelta, TRUTHY_VALUES,
 )
 from ..utils.typing_compat import (
     is_typed_dict, get_args, is_annotated,
@@ -118,11 +118,22 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
 
     @staticmethod
     def load_to_int(tp: TypeInfo, extras: Extras) -> str:
-        # alias: as_int
         tn = tp.type_name(extras)
-        tp.ensure_in_locals(extras, as_int)
+        o = tp.v()
+        tp.ensure_in_locals(extras, as_int=as_int_v1)
 
-        return f"as_int({tp.v()}, {tn})"
+        return (f"{o} if (tp := {o}.__class__) is {tn} "
+                f"else (({tn}(fv) if (fv := float({o})).is_integer() else as_int({o}, tp, {tn})) "
+                f"if '.' in {o} else {tn}({o})) "
+                f"if tp is str "
+                f"else as_int({o}, tp, {tn})")
+
+        # return f"{o} if (tp := {o}.__class__) is {tn} else ({tn}({o}) if '.' not in {o} else {tn}(fv) if (fv := float({o})).is_integer() else as_int({o}, tp, {tn})) if tp is str else as_int({o}, tp, {tn})"
+
+        # TODO cleanup
+        # alias: as_int
+        # tp.ensure_in_locals(extras, as_int)
+        # return f"as_int({tp.v()}, {tn})"
 
     @staticmethod
     def load_to_float(tp: TypeInfo, extras: Extras):

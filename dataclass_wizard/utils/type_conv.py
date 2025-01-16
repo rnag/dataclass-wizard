@@ -1,5 +1,6 @@
 __all__ = ['as_bool',
            'as_int',
+           'as_int_v1',
            'as_str',
            'as_list',
            'as_dict',
@@ -43,6 +44,40 @@ def as_bool(o: Union[str, bool, N]):
         return o.lower() in TRUTHY_VALUES
 
     return o == 1
+
+
+def as_int_v1(o: Union[str, float, bool],
+              tp: type,
+              base_type=int):
+    """
+    Attempt to convert `o` to an int.
+
+    This assumes the following checks already happen:
+        - `tp is base_type`
+        - `tp is str and '.' in o and float(o).is_integer()`
+        - `tp is str and '.' not in o`
+
+    If `o` cannot be converted to an int, raise an error.
+
+    :raises TypeError: If `o` is a `bool` (which is an `int` subclass)
+    :raises ValueError: When `o` cannot be converted to an `int`
+    """
+    if tp is str:  # The string represents a float value with fractional part, e.g. '2.7'
+        raise ValueError(f"Cannot cast string float with fractional part: {o}") from None
+
+    if tp is float:
+        if o.is_integer():
+            return base_type(o)
+        raise ValueError(f"Cannot cast float with fractional part: {o}") from None
+
+    if tp is bool:
+        raise TypeError(f'as_int: Incorrect type, object={o!r}, type={tp}') from None
+
+    try:
+        return base_type(o)
+
+    except (TypeError, ValueError):
+        raise
 
 
 def as_int(o: Union[str, int, float, bool, None], base_type=int,
