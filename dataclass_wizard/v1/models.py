@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any, TypedDict, cast
 from .decorators import setup_recursive_safe_function
 from ..constants import PY310_OR_ABOVE, PY311_OR_ABOVE
 from ..log import LOG
-from ..type_def import DefFactory, ExplicitNull, PyNotRequired
+from ..type_def import DefFactory, ExplicitNull, PyNotRequired, NoneType
 from ..utils.function_builder import FunctionBuilder
 from ..utils.object_path import split_object_path
 from ..utils.type_conv import as_datetime_v1, as_date_v1, as_time_v1
@@ -167,7 +167,7 @@ class TypeInfo:
             name = self.name
             return_name = force
         else:
-            name = tp.__name__
+            name = 'None' if tp is NoneType else tp.__name__
             return_name = True
 
         # This ensures we don't create a "unique" name

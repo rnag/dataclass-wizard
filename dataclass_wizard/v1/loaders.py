@@ -100,12 +100,12 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
     transform_json_field = None
 
     @staticmethod
-    def default_load_to(tp: TypeInfo, extras: Extras) -> str:
+    def default_load_to(tp: TypeInfo, extras: Extras):
         # identity: o
         return tp.v()
 
     @staticmethod
-    def load_to_str(tp: TypeInfo, extras: Extras) -> str:
+    def load_to_str(tp: TypeInfo, extras: Extras):
         tn = tp.type_name(extras)
         o = tp.v()
 
@@ -117,13 +117,24 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         return f'{default} if {o} is None else {tn}({o})'
 
     @staticmethod
-    def load_to_int(tp: TypeInfo, extras: Extras) -> str:
+    def load_to_int(tp: TypeInfo, extras: Extras):
+        """
+        Generate code to load a value into an integer field.
+
+        Current logic to parse (an annotated) `int` returns:
+          - `v`          -->  `v` is an ``int` or similarly annotated type.
+          - `int(v)`     -->  `v` is a `str` value of either a decimal
+                              integer (e.g. '123') or a non-fractional
+                              float value (e.g. `42.0`).
+          - `as_int(v)`  -->  `v` is a non-fractional `float`, or in case
+                              of "less common" types / scenarios. Note that
+                              empty strings and `None` (e.g. null values)
+                              are not supported.
+
+        """
         tn = tp.type_name(extras)
         o = tp.v()
         tp.ensure_in_locals(extras, as_int=as_int_v1)
-
-        # TODO when `in_union`, we already know `o.__class__`
-        #  is not `tn`, and we already have a variable `tp`.
 
         return (f"{o} if (tp := {o}.__class__) is {tn} "
                 f"else {tn}("
@@ -131,13 +142,16 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
                 ") if tp is str "
                 f"else as_int({o},tp,{tn})")
 
+        # TODO when `in_union`, we already know `o.__class__`
+        #  is not `tn`, and we already have a variable `tp`.
+
     @staticmethod
     def load_to_float(tp: TypeInfo, extras: Extras):
         # alias: float(o)
         return tp.wrap_builtin(float, tp.v(), extras)
 
     @staticmethod
-    def load_to_bool(tp: TypeInfo, extras: Extras) -> str:
+    def load_to_bool(tp: TypeInfo, extras: Extras):
         o = tp.v()
         tp.ensure_in_locals(extras, __TRUTHY=TRUTHY_VALUES)
 
@@ -156,7 +170,7 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         return tp.wrap_builtin(bytearray, as_bytes, extras)
 
     @staticmethod
-    def load_to_none(tp: TypeInfo, extras: Extras) -> str:
+    def load_to_none(tp: TypeInfo, extras: Extras):
         return 'None'
 
     @staticmethod
@@ -183,7 +197,6 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         string = cls.get_string_for_annotation(
             tp.replace(origin=elem_type, i=i_next, index=None), extras)
 
-        # TODO
         if issubclass(gorg, (set, frozenset)):
             start_char = '{'
             end_char = '}'
@@ -334,7 +347,8 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         try:
             kt, vt = tp.args
         except ValueError:
-            # TODO
+            # Annotated without two arguments,
+            # e.g. like `dict[str]` or `dict`
             kt = vt = Any
 
         result = cls._build_dict_comp(
@@ -345,14 +359,16 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
     @classmethod
     def load_to_defaultdict(cls, tp: TypeInfo, extras: Extras):
         v, k_next, v_next, i_next = tp.v_and_next_k_v()
-        default_factory: DefFactory
+        default_factory: 'DefFactory | None'
 
         try:
             kt, vt = tp.args
             default_factory = getattr(vt, '__origin__', vt)
         except ValueError:
-            # TODO
-            kt = vt = default_factory = Any
+            # Annotated without two arguments,
+            # e.g. like `defaultdict[str]` or `defaultdict`
+            kt = vt = Any
+            default_factory = NoneType
 
         result = cls._build_dict_comp(
             tp, v, i_next, k_next, v_next, kt, vt, extras)
@@ -365,7 +381,6 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         fn_gen = extras['fn_gen']
 
         req_keys, opt_keys = get_keys_for_typed_dict(tp.origin)
-        # _locals = extras['locals']
 
         result_list = []
         # TODO set __annotations__?
@@ -692,7 +707,6 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
 
         origin = get_origin_v2(type_ann)
         name = getattr(origin, '__name__', origin)
-
         args = None
 
         if is_annotated(type_ann):
@@ -732,7 +746,6 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
             load_hook = hooks.get(origin)
 
         elif (load_hook := hooks.get(origin)) is not None:
-            # TODO
             try:
                 args = get_args(type_ann)
             except ValueError:
@@ -770,7 +783,6 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
                 # Annotated as a `collections.namedtuple` subtype
                 load_hook = cls.load_to_named_tuple_untyped
 
-        # TODO type(cls)
         elif is_typed_dict(origin):
             load_hook = cls.load_to_typed_dict
 
