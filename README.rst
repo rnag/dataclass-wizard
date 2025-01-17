@@ -1456,100 +1456,98 @@ refer to the `Using Field Properties`_ section in the documentation.
 What's New in v1.0
 ------------------
 
-.. admonition:: v1 Opt-in Now Available
+.. admonition:: Opt-in for v1 Now Available
 
-   Early opt-in for **v1** is now available with enhanced features, including intuitive ``Union`` parsing and optimized performance. To enable this,
+   The early opt-in for **v1** is now available with enhanced features, including intuitive ``Union`` parsing and optimized performance. To enable this,
    set ``v1=True`` in your ``Meta`` settings.
 
    For more details and migration guidance, see the `Field Guide to V1 Opt-in`_.
 
-.. warning::
+.. warning:: *Important Changes in v1.0*
 
-   - **Default Key Transformation Update**
+    - **Default Key Transformation Update**
 
-     Starting with ``v1.0.0``, the default key transformation for JSON serialization
-     will change to keep keys *as-is* instead of converting them to `camelCase`.
+      Starting with **v1.0.0**, the default key transformation for JSON serialization
+      will change to keep keys *as-is* instead of converting them to ``camelCase``.
 
-     **New Default Behavior**: ``key_transform='NONE'`` will be the standard setting.
+      **New Default Behavior**:
+      The default setting for key transformation will be ``key_transform='NONE'``.
 
-     **How to Prepare**: You can enforce this future behavior right now by using the ``JSONPyWizard`` helper:
+      **How to Prepare**:
+      You can enforce this behavior immediately by using the ``JSONPyWizard`` helper, as shown below:
 
-     .. code-block:: python3
+      .. code-block:: python3
 
-        from dataclasses import dataclass
-        from dataclass_wizard import JSONPyWizard
+            from dataclasses import dataclass
+            from dataclass_wizard import JSONPyWizard
 
-        @dataclass
-        class MyModel(JSONPyWizard):
-            my_field: str
+            @dataclass
+            class MyModel(JSONPyWizard):
+                my_field: str
 
-        print(MyModel(my_field="value").to_dict())
-        # Output: {'my_field': 'value'}
+            print(MyModel(my_field="value").to_dict())
+            # Output: {'my_field': 'value'}
 
-   - **Default __str__()**
+    - **Default __str__() Behavior Change**
 
-     Starting with ``v1.0.0``, we no longer pretty-print the serialized JSON value -- by default with keys
-     in `camelCase` -- and instead leverage the ``pprint`` module to handle this.
+      Starting with **v1.0.0**, we no longer pretty-print the serialized JSON value with keys in ``camelCase``.
+      Instead, we now use the ``pprint`` module to handle serialization formatting.
 
-     **New Default Behavior**: The ``JSONWizard.__str__()`` implementation will use ``pprint`` by default.
+      **New Default Behavior**:
+      The ``__str__()`` method in the ``JSONWizard`` class will use ``pprint`` by default.
 
-     **How to Prepare**: You can enforce this future behavior right now by using the ``JSONPyWizard`` helper:
+      **How to Prepare**:
+      You can immediately test this new behavior using the ``JSONPyWizard`` helper, as demonstrated below:
 
-     .. code-block:: python3
+      .. code-block:: python3
 
-        from dataclasses import dataclass
-        from dataclass_wizard import JSONWizard, JSONPyWizard
+            from dataclasses import dataclass
+            from dataclass_wizard import JSONWizard, JSONPyWizard
 
-        @dataclass
-        class CurrentModel(JSONWizard):
-            my_field: str
+            @dataclass
+            class CurrentModel(JSONWizard):
+                my_field: str
 
-        @dataclass
-        class NewModel(JSONPyWizard):
-            my_field: str
+            @dataclass
+            class NewModel(JSONPyWizard):
+                my_field: str
 
-        print(CurrentModel(my_field="value"))
-        #> {
-        #   "myField": "value"
-        # }
+            print(CurrentModel(my_field="value"))
+            #> {
+            #   "myField": "value"
+            # }
 
-        print(NewModel(my_field="value"))
-        #> NewModel(my_field='value')
+            print(NewModel(my_field="value"))
+            #> NewModel(my_field='value')
 
-   - **Float to Int Conversion Change**
+    - **Float to Int Conversion Change**
+      Starting with **v1.0**, floats or float strings with fractional parts (e.g., ``123.4`` or ``"123.4"``) will no longer be silently converted to integers. Instead, they will raise an error. However, floats without fractional parts (e.g., ``3.0`` or ``"3.0"``) will continue to convert to integers as before.
 
-     Starting in ``v1.0``, floats or float strings with fractional
-     parts (e.g., ``123.4`` or ``"123.4"``) will no longer be silently
-     converted to integers. Instead, they will raise an error.
-     However, floats with no fractional parts (e.g., ``3.0``
-     or ``"3.0"``) will still convert to integers as before.
+      **How to Prepare**:
+      You can opt in to **v1** via ``v1=True`` to test this behavior right now. Additionally, to ensure compatibility with the new behavior:
 
-     **How to Prepare**: You can enforce this future behavior right now by opting in to **v1**
-     via ``v1=True`` as shown below.
-     In addition, to ensure compatibility with the new behavior:
+      - Use ``float`` annotations for fields that may include fractional values.
+      - Review your data to avoid passing fractional values (e.g., ``123.4``) to fields annotated as ``int``.
+      - Update tests or logic that depend on the current rounding behavior.
 
-     - Use ``float`` annotations for fields that may include fractional values.
-     - Review your data and avoid passing fractional values (e.g., ``123.4``) to fields annotated as ``int``.
-     - Update tests or logic that rely on the current rounding behavior.
+      .. code-block:: python3
 
-     .. code-block:: python3
+            from dataclasses import dataclass
+            from dataclass_wizard import JSONPyWizard
 
-        from dataclasses import dataclass
-        from dataclass_wizard import JSONPyWizard
+            @dataclass
+            class Test(JSONPyWizard):
+                class _(JSONPyWizard.Meta):
+                    v1 = True
 
-        @dataclass
-        class Test(JSONPyWizard):
-            class _(JSONPyWizard.Meta):
-                v1 = True
+                list_of_int: list[int]
 
-            list_of_int: list[int]
+            input_dict = {'list_of_int': [1, '2.0', '3.', -4, '-5.00', '6', '-7']}
+            t = Test.from_dict(input_dict)
+            print(t)  #> Test(list_of_int=[1, 2, 3, -4, -5, 6, -7])
 
-        input_dict = {'list_of_int': [1, '2.0', '3.', -4, '-5.00', '6', '-7']}
-        t = Test.from_dict(input_dict)
-        print(t)  #> Test(list_of_int=[1, 2, 3, -4, -5, 6, -7])
-
-        # ERROR!
-        _ = Test.from_dict({'list_of_int': [123.4]})
+            # ERROR!
+            _ = Test.from_dict({'list_of_int': [123.4]})
 
 Contributing
 ------------
