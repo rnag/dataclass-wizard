@@ -3,6 +3,11 @@ from dataclasses import MISSING
 from ..log import LOG
 
 
+def is_builtin_class(cls: type) -> bool:
+    """Check if a class is a builtin in Python."""
+    return cls.__module__ == 'builtins'
+
+
 class FunctionBuilder:
     __slots__ = (
         'current_function',
@@ -172,10 +177,6 @@ class FunctionBuilder:
             >>>     ...
 
         """
-        # TODO This is here because `v1.decorators` imports this module,
-        #   and we run into a recursive import issue otherwise.
-        from ..class_helper import is_builtin_class
-
         cls_name = cls.__name__
         statement = f'{cls_name} as {var_name}' if var_name else cls_name
 

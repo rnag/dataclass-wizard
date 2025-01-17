@@ -511,11 +511,6 @@ def dataclass_field_to_default(cls):
     return FIELD_TO_DEFAULT[cls]
 
 
-def is_builtin_class(cls):
-
-    return cls.__module__ == 'builtins'
-
-
 def is_builtin(o):
 
     # Fast path: check if object is a builtin singleton
