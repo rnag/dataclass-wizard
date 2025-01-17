@@ -33,7 +33,6 @@ def safe_get(data, path, default=MISSING, raise_=True):
 
 def v1_safe_get(data, path, raise_):
     current_data = data
-    p = path  # to avoid "unbound local variable" warnings
 
     try:
         for p in path:
@@ -49,13 +48,16 @@ def v1_safe_get(data, path, raise_):
     #   raised when `data` is an invalid type, such as a `None`
     except (IndexError, KeyError, AttributeError) as e:
         if raise_:
+            p = locals().get('p', path)  # to suppress "unbound local variable"
             raise _format_err(e, current_data, path, p) from None
+
         return MISSING
 
     # TypeError -
     #   raised when `data` is a `list`, but we try to use it like a `dict`
     except TypeError:
         e = TypeError('Invalid path')
+        p = locals().get('p', path)  # to suppress "unbound local variable"
         raise _format_err(e, current_data, path, p, True) from None
 
 
