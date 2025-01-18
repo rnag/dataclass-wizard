@@ -1,5 +1,5 @@
 from dataclasses import MISSING, Field as _Field, dataclass
-from datetime import datetime, date, time
+from datetime import datetime, date, time, tzinfo
 from typing import (Collection, Callable,
                     Mapping, Generic, Sequence)
 from typing import TypedDict, overload, Any, NotRequired, Self
@@ -84,7 +84,11 @@ class PatternBase:
     # a sequence of custom (non-ISO format) date string patterns
     patterns: tuple[str, ...]
 
-    def __init__(self, base, patterns=None): ...
+    tz_info: tzinfo | Ellipsis
+
+    def __init__(self, base, patterns=None, tzname=None): ...
+
+    def with_tz(self, tz_info: tzinfo | Ellipsis) -> Self: ...
 
     @overload
     def __getitem__(self, key: type[DT]) -> type[DT]: ...
@@ -92,12 +96,48 @@ class PatternBase:
 
     def load_to_pattern(self, tp: TypeInfo, extras: Extras): ...
 
+Pattern = UTCPattern = AwarePattern = PatternBase(Any)
 
-Pattern = PatternBase(Any)
-class DatePattern(date, Generic[T]): ...
-class TimePattern(time, Generic[T]): ...
-class DateTimePattern(datetime, Generic[T]): ...
+class AwareTimePattern(time, Generic[T]):
+    ...
 
+class AwareDateTimePattern(datetime, Generic[T]):
+    ...
+
+
+class DatePattern(date, Generic[T]):
+    """
+    An annotated type representing a date pattern (i.e. format string). Upon
+    de-serialization, the resolved type will be a :class:`date` instead.
+
+    See the docs on :func:`Pattern` for more info.
+    """
+    ...
+
+class TimePattern(time, Generic[T]):
+    """
+    An annotated type representing a time pattern (i.e. format string). Upon
+    de-serialization, the resolved type will be a :class:`time` instead.
+
+    See the docs on :func:`Pattern` for more info.
+    """
+    ...
+
+class DateTimePattern(datetime, Generic[T]):
+    """
+    An annotated type representing a datetime pattern (i.e. format string). Upon
+    de-serialization, the resolved type will be a :class:`datetime` instead.
+
+    See the docs on :func:`Pattern` for more info.
+    """
+    ...
+
+
+class UTCTimePattern(time, Generic[T]):
+    ...
+
+class UTCDateTimePattern(datetime, Generic[T]):
+    ...
 
 # noinspection PyPep8Naming
 def AliasPath(*all: PathType | str,

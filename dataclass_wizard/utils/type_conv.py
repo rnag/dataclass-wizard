@@ -246,7 +246,7 @@ def as_enum(o: Union[AnyStr, N],
 
 def as_datetime_v1(o: Union[int, float, datetime],
                    __from_timestamp: Callable[[float, tzinfo], datetime],
-                   __utc=timezone.utc):
+                   __tz=None):
     """
     V1: Attempt to convert an object `o` to a :class:`datetime` object using the
     below logic.
@@ -265,7 +265,7 @@ def as_datetime_v1(o: Union[int, float, datetime],
     try:
         # We can assume that `o` is a number, as generally this will be the
         # case.
-        return __from_timestamp(o, __utc)
+        return __from_timestamp(o, __tz)
 
     except Exception:
         # Note: the `__self__` attribute refers to the class bound

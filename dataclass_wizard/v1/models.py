@@ -1,8 +1,9 @@
 import hashlib
 from collections import defaultdict
 from dataclasses import MISSING, Field as _Field
-from datetime import datetime, date, time
-from typing import TYPE_CHECKING, Any, TypedDict, cast
+from datetime import datetime, date, time, tzinfo
+from typing import TYPE_CHECKING, Any, TypedDict, cast, Self
+from zoneinfo import ZoneInfo
 
 from .decorators import setup_recursive_safe_function
 from ..constants import PY310_OR_ABOVE, PY311_OR_ABOVE
@@ -16,6 +17,10 @@ from ..utils.typing_compat import get_origin_v2
 
 if TYPE_CHECKING:
     from ..bases import META
+
+
+# UTC Time Zone
+UTC = ZoneInfo('UTC')
 
 
 _BUILTIN_COLLECTION_TYPES = frozenset({
@@ -221,17 +226,42 @@ class PatternBase:
 
     __slots__ = ('base',
                  'patterns',
+                 'tz_info',
                  '_repr')
 
-    def __init__(self, base, patterns=None):
+    def __init__(self, base, patterns=None, tzname=None):
         self.base = base
         if patterns is not None:
             self.patterns = patterns
+        if tzname is not None:
+            self.tz_info = ZoneInfo(tzname)
+
+    def with_tz(self, tz_info: tzinfo) -> Self:
+        self.tz_info = tz_info
+        return self
 
     def __getitem__(self, patterns):
+        if (tz_info := getattr(self, 'tz_info', None)) is not None:
+            if tz_info is ...:  # expect time zone as first argument
+                tz_info = patterns[0]
+                if isinstance(tz_info, str):
+                    tz_info = ZoneInfo(tz_info)
+
+                pb = PatternBase(
+                    self.base,
+                    patterns[1:],
+                )
+            else:
+                pb = PatternBase(
+                    self.base,
+                    (patterns,) if patterns.__class__ is str else patterns,
+                )
+
+            return pb.with_tz(tz_info)
+
         return PatternBase(
             self.base,
-            (patterns, ) if patterns.__class__ is str else patterns
+            (patterns, ) if patterns.__class__ is str else patterns,
         )
 
     __call__ = __getitem__
@@ -240,7 +270,9 @@ class PatternBase:
     def load_to_pattern(self, tp: TypeInfo, extras: Extras):
         pb = cast(PatternBase, tp.origin)
         patterns = pb.patterns
+        tz_info = getattr(pb, 'tz_info', None)
         __base__ = pb.base
+
         tn = __base__.__name__
 
         fn_gen = extras['fn_gen']
@@ -255,12 +287,21 @@ class PatternBase:
             = is_subclass_time \
             = is_subclass_datetime = False
 
+        if tz_info is not None:
+            _locals['__tz'] = tz_info
+            has_tz = True
+            tz_part = '.replace(tzinfo=__tz)'
+        else:
+            has_tz = False
+            tz_part = ''
+
         if __base__ is datetime:
             is_datetime = True
         elif __base__ is date:
             is_date = True
         elif __base__ is time:
             is_time = True
+            _locals['cls'] = time
         elif issubclass(__base__, datetime):
             is_datetime = is_subclass_datetime = True
         elif issubclass(__base__, date):
@@ -285,27 +326,30 @@ class PatternBase:
 
         if is_datetime:
             _as_func = '__as_datetime'
+            _as_func_args = f'v1, {_fromtimestamp}, __tz' if has_tz else f'v1, {_fromtimestamp}'
             name_to_func[_as_func] = as_datetime_v1
             # `datetime` has a `fromtimestamp` method
             name_to_func[_fromtimestamp] = __base__.fromtimestamp
             end_part = ''
         elif is_date:
             _as_func = '__as_date'
+            _as_func_args = f'v1, {_fromtimestamp}'
             name_to_func[_as_func] = as_date_v1
             # `date` has a `fromtimestamp` method
             name_to_func[_fromtimestamp] = __base__.fromtimestamp
             end_part = '.date()'
         else:
             _as_func = '__as_time'
+            _as_func_args = f'v1, cls'
             name_to_func[_as_func] = as_time_v1
-            end_part = '.time()'
+            end_part = '.timetz()' if has_tz else '.time()'
 
         tp.ensure_in_locals(extras, **name_to_func)
 
         if PY311_OR_ABOVE:
-            _parse_iso_string = f'{_fromisoformat}(v1)'
+            _parse_iso_string = f'{_fromisoformat}(v1){tz_part}'
         else:  # pragma: no cover
-            _parse_iso_string = f"{_fromisoformat}(v1.replace('Z', '+00:00', 1))"
+            _parse_iso_string = f"{_fromisoformat}(v1.replace('Z', '+00:00', 1)){tz_part}"
 
         # temp fix for Python 3.11+, since `time.fromisoformat` is updated
         # to support more formats, such as "-" and "+" in strings.
@@ -316,22 +360,24 @@ class PatternBase:
                 # Try to parse with `datetime.strptime` first
                 with fn_gen.try_():
                     if is_subclass_time:
+                        tz_arg = '__tz, ' if has_tz else ''
+
                         fn_gen.add_line(f'__dt = {_strptime}(v1, {p!r})')
                         fn_gen.add_line('return cls('
                                         '__dt.hour, '
                                         '__dt.minute, '
                                         '__dt.second, '
                                         '__dt.microsecond, '
-                                        'fold=__dt.fold)')
+                                        f'{tz_arg}fold=__dt.fold)')
                     else:
-                        fn_gen.add_line(f'return {_strptime}(v1, {p!r}).time()')
+                        fn_gen.add_line(f'return {_strptime}(v1, {p!r}){tz_part}{end_part}')
                 with fn_gen.except_(Exception):
                     fn_gen.add_line('pass')
             # If that doesn't work, fallback to `time.fromisoformat`
             with fn_gen.try_():
                 fn_gen.add_line(f'return {_parse_iso_string}')
             with fn_gen.except_(TypeError):
-                fn_gen.add_line(f'return {_as_func}(v1, {_fromtimestamp})')
+                fn_gen.add_line(f'return {_as_func}({_as_func_args})')
             with fn_gen.except_(ValueError):
                 fn_gen.add_line('pass')
         # Optimized parsing logic (default)
@@ -340,7 +386,7 @@ class PatternBase:
             with fn_gen.try_():
                 fn_gen.add_line(f'return {_parse_iso_string}')
             with fn_gen.except_(TypeError):
-                fn_gen.add_line(f'return {_as_func}(v1, {_fromtimestamp})')
+                fn_gen.add_line(f'return {_as_func}({_as_func_args})')
             with fn_gen.except_(ValueError):
                 # If that doesn't work, fallback to `datetime.strptime`
                 for p in patterns:
@@ -353,14 +399,16 @@ class PatternBase:
                                             '__dt.day)')
                         elif is_subclass_time:
                             fn_gen.add_line(f'__dt = {_strptime}(v1, {p!r})')
+                            tz_arg = '__tz, ' if has_tz else ''
+
                             fn_gen.add_line('return cls('
                                             '__dt.hour, '
                                             '__dt.minute, '
                                             '__dt.second, '
                                             '__dt.microsecond, '
-                                            'fold=__dt.fold)')
+                                            f'{tz_arg}fold=__dt.fold)')
                         else:
-                            fn_gen.add_line(f'return {_strptime}(v1, {p!r}){end_part}')
+                            fn_gen.add_line(f'return {_strptime}(v1, {p!r}){tz_part}{end_part}')
                     with fn_gen.except_(Exception):
                         fn_gen.add_line('pass')
         # Raise a helpful error if we are unable to parse
@@ -389,6 +437,10 @@ class PatternBase:
 
 Pattern = PatternBase(...)
 
+UTCPattern = PatternBase(...).with_tz(UTC)
+
+AwarePattern = PatternBase(...).with_tz(...)
+
 # noinspection PyTypeChecker
 DatePattern = PatternBase(date)
 
@@ -397,6 +449,18 @@ TimePattern = PatternBase(time)
 
 # noinspection PyTypeChecker
 DateTimePattern = PatternBase(datetime)
+
+# noinspection PyTypeChecker
+UTCTimePattern = PatternBase(time).with_tz(UTC)
+
+# noinspection PyTypeChecker
+UTCDateTimePattern = PatternBase(datetime).with_tz(UTC)
+
+# noinspection PyTypeChecker
+AwareTimePattern = PatternBase(time).with_tz(...)
+
+# noinspection PyTypeChecker
+AwareDateTimePattern = PatternBase(datetime).with_tz(...)
 
 # Instances of Field are only ever created from within this module,
 # and only from the field() function, although Field instances are
