@@ -154,7 +154,7 @@ def split_object_path(_input):
             start_new = False
             in_literal = True
             quote_char = c
-        elif c in {'+', '-'} or c.isdigit() and start_new:
+        elif (c in {'+', '-'} or c.isdigit()) and start_new:
             start_new = False
             possible_number = True
             s += c
