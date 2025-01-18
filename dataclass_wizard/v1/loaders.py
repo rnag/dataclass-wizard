@@ -1,57 +1,61 @@
+from __future__ import annotations
+
 import collections.abc as abc
 import dataclasses
 
 from base64 import b64decode
 from collections import defaultdict, deque
-from dataclasses import is_dataclass, MISSING, Field
-from datetime import datetime, time, date, timedelta
+from dataclasses import is_dataclass, Field, MISSING
+from datetime import date, datetime, time, timedelta
 from decimal import Decimal
 from enum import Enum
 from pathlib import Path
-# noinspection PyUnresolvedReferences,PyProtectedMember
-from typing import (
-    Any, Type, Dict, List, Tuple, Iterable, Sequence, Union,
-    NamedTupleMeta, SupportsFloat, AnyStr, Text, Callable,
-    Optional, Literal, Annotated, NamedTuple, cast,
-)
+from typing import Any, Callable, Literal, NamedTuple, cast
 from uuid import UUID
 
-from .decorators import (setup_recursive_safe_function,
-                         setup_recursive_safe_function_for_generic,
-                         process_patterned_date_time)
+from .decorators import (process_patterned_date_time,
+                         setup_recursive_safe_function,
+                         setup_recursive_safe_function_for_generic)
 from .enums import KeyAction, KeyCase
-from .models import Extras, TypeInfo, PatternBase
+from .models import Extras, PatternBase, TypeInfo
 from ..abstractions import AbstractLoaderGenerator
-from ..bases import BaseLoadHook, AbstractMeta, META
-from ..class_helper import (
-    v1_dataclass_field_to_alias, CLASS_TO_LOAD_FUNC, dataclass_fields, get_meta, is_subclass_safe,
-    DATACLASS_FIELD_TO_ALIAS_PATH_FOR_LOAD,
-    dataclass_init_fields, dataclass_field_to_default, create_meta, dataclass_init_field_names,
-)
+from ..bases import AbstractMeta, BaseLoadHook, META
+from ..class_helper import (create_meta,
+                            dataclass_fields,
+                            dataclass_field_to_default,
+                            dataclass_init_fields,
+                            dataclass_init_field_names,
+                            get_meta,
+                            is_subclass_safe,
+                            v1_dataclass_field_to_alias,
+                            CLASS_TO_LOAD_FUNC,
+                            DATACLASS_FIELD_TO_ALIAS_PATH_FOR_LOAD)
 from ..constants import CATCH_ALL, TAG, PY311_OR_ABOVE, PACKAGE_NAME
-from ..errors import (ParseError, MissingFields, UnknownKeysError,
-                      MissingData, JSONWizardError)
-from ..loader_selection import get_loader, fromdict
+from ..errors import (JSONWizardError,
+                      MissingData,
+                      MissingFields,
+                      ParseError,
+                      UnknownKeysError)
+from ..loader_selection import fromdict, get_loader
 from ..log import LOG
-from ..type_def import (
-    DefFactory, NoneType, JSONObject,
-    PyLiteralString,
-    T,
-)
+from ..type_def import DefFactory, JSONObject, NoneType, PyLiteralString, T
 # noinspection PyProtectedMember
 from ..utils.dataclass_compat import _set_new_attribute
 from ..utils.function_builder import FunctionBuilder
 from ..utils.object_path import v1_safe_get
 from ..utils.string_conv import possible_json_keys
 from ..utils.type_conv import (
-    as_datetime_v1, as_date_v1, as_time_v1,
-    as_int_v1, as_timedelta, TRUTHY_VALUES,
+    as_datetime_v1, as_date_v1, as_int_v1,
+    as_time_v1, as_timedelta, TRUTHY_VALUES,
 )
-from ..utils.typing_compat import (
-    is_typed_dict, get_args, is_annotated,
-    eval_forward_ref_if_needed, get_origin_v2, is_union,
-    get_keys_for_typed_dict, is_typed_dict_type_qualifier,
-)
+from ..utils.typing_compat import (eval_forward_ref_if_needed,
+                                   get_args,
+                                   get_keys_for_typed_dict,
+                                   get_origin_v2,
+                                   is_annotated,
+                                   is_typed_dict,
+                                   is_typed_dict_type_qualifier,
+                                   is_union)
 
 
 # Atomic immutable types which don't require any recursive handling and for which deepcopy
@@ -121,15 +125,15 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         """
         Generate code to load a value into an integer field.
 
-        Current logic to parse (an annotated) `int` returns:
-          - `v`          -->  `v` is an ``int` or similarly annotated type.
-          - `int(v)`     -->  `v` is a `str` value of either a decimal
-                              integer (e.g. '123') or a non-fractional
-                              float value (e.g. `42.0`).
-          - `as_int(v)`  -->  `v` is a non-fractional `float`, or in case
-                              of "less common" types / scenarios. Note that
-                              empty strings and `None` (e.g. null values)
-                              are not supported.
+        Current logic to parse (an annotated) ``int`` returns:
+          - ``v``          -->  ``v`` is an ``int`` or similarly annotated type.
+          - ``int(v)``     -->  ``v`` is a ``str`` value of either a decimal
+                                integer (e.g. ``'123'``) or a non-fractional
+                                float value (e.g. ``42.0``).
+          - ``as_int(v)``  -->  ``v`` is a non-fractional ``float``, or in case
+                                of "less common" types / scenarios. Note that
+                                empty strings and ``None`` (e.g. null values)
+                                are not supported.
 
         """
         tn = tp.type_name(extras)
@@ -359,7 +363,7 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
     @classmethod
     def load_to_defaultdict(cls, tp: TypeInfo, extras: Extras):
         v, k_next, v_next, i_next = tp.v_and_next_k_v()
-        default_factory: 'DefFactory | None'
+        default_factory: DefFactory | None
 
         try:
             kt, vt = tp.args
@@ -384,11 +388,11 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
 
         result_list = []
         # TODO set __annotations__?
-        annotations = tp.origin.__annotations__
+        td_annotations = tp.origin.__annotations__
 
         # Set required keys for the `TypedDict`
         for k in req_keys:
-            field_tp = annotations[k]
+            field_tp = td_annotations[k]
             field_name = repr(k)
             string = cls.get_string_for_annotation(
                 tp.replace(origin=field_tp,
@@ -403,7 +407,7 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
 
             # Set optional keys for the `TypedDict` (if they exist)
             for k in opt_keys:
-                field_tp = annotations[k]
+                field_tp = td_annotations[k]
                 field_name = repr(k)
                 string = cls.get_string_for_annotation(
                     tp.replace(origin=field_tp, i=2, index=None), extras)
@@ -651,7 +655,7 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
 
     @staticmethod
     def _load_to_date(tp: TypeInfo, extras: Extras,
-                      cls: 'Union[type[date], type[datetime]]'):
+                      cls: type[date] | type[datetime]):
         o = tp.v()
         tn = tp.type_name(extras, bound=cls)
         tp_date_or_datetime = cast('type[date]', tp.origin)
@@ -892,7 +896,7 @@ def setup_default_loader(cls=LoadMixin):
 
 def check_and_raise_missing_fields(
         _locals, o, cls,
-        fields: 'Union[tuple[Field, ...], None]'):
+        fields: tuple[Field, ...] | None):
 
     if fields is None:  # named tuple
         nt_tp = cast(NamedTuple, cls)
@@ -932,10 +936,10 @@ def check_and_raise_missing_fields(
 
 def load_func_for_dataclass(
         cls: type,
-        extras: 'Extras | None' = None,
+        extras: Extras | None = None,
         loader_cls=LoadMixin,
         base_meta_cls: type = AbstractMeta,
-) -> Optional[Callable[[JSONObject], T]]:
+) -> Callable[[JSONObject], T] | None:
 
     # Tuple describing the fields of this dataclass.
     fields = dataclass_fields(cls)
@@ -1013,7 +1017,7 @@ def load_func_for_dataclass(
         extras['cls'] = cls
         extras['cls_name'] = cls_name
 
-    key_case: 'V1LetterCase | None' = cls_loader.transform_json_field
+    key_case: KeyCase | None = cls_loader.transform_json_field
     auto_key_case = key_case is KeyCase.AUTO
 
     field_to_aliases = v1_dataclass_field_to_alias(cls)
@@ -1036,7 +1040,7 @@ def load_func_for_dataclass(
 
     on_unknown_key = meta.v1_on_unknown_key
 
-    catch_all_field: 'str | None' = field_to_aliases.pop(CATCH_ALL, None)
+    catch_all_field: str | None = field_to_aliases.pop(CATCH_ALL, None)
     has_catch_all = catch_all_field is not None
 
     if has_catch_all:

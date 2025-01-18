@@ -259,7 +259,7 @@ class Field(_Field):
     Alias to a :class:`dataclasses.Field`, but one which also represents a
     mapping of one or more JSON key names to a dataclass field.
 
-    See the docs on the :func:`json_field` function for more info.
+    See the docs on the :func:`Alias` and :func:`AliasPath` for more info.
     """
     __slots__ = ('load_alias',
                  'dump_alias',

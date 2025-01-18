@@ -29,6 +29,7 @@ class KeyCase(Enum):
     Defines transformations for string keys, commonly used for mapping JSON keys to dataclass fields.
 
     Key transformations:
+
     - `CAMEL`: Converts snake_case to camelCase.
       Example: `my_field_name` -> `myFieldName`
     - `PASCAL`: Converts snake_case to PascalCase (UpperCamelCase).
@@ -42,7 +43,7 @@ class KeyCase(Enum):
       Example: `My-Field-Name` -> `my_field_name` (cached for future lookups)
 
     By default, no transformation is applied:
-    Example: `MY_FIELD_NAME` -> `MY_FIELD_NAME`
+        * Example: `MY_FIELD_NAME` -> `MY_FIELD_NAME`
     """
     # Key casing options
     CAMEL = C = FuncWrapper(to_camel_case)    # Convert to `camelCase`
