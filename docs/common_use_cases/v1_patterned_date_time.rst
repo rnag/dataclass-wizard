@@ -2,25 +2,23 @@ Patterned Date and Time in V1
 =============================
 
 .. tip::
-    The following docs outline recent support in ``v0.35.0`` for patterned date and time
-    within an experimental feature called "V1 Opt-in". You can read more
-    about this feature in the `Field Guide to V1 Opt-in`_.
+    The following documentation introduces support for patterned date and time strings
+    added in ``v0.35.0``. This feature is part of an experimental "V1 Opt-in" mode,
+    detailed in the `Field Guide to V1 Opt-in`_.
 
 .. _`Field Guide to V1 Opt-in`: https://github.com/rnag/dataclass-wizard/wiki/Field-Guide-to-V1-Opt%E2%80%90in
 
+This feature, introduced in version **0.35.0**, enhances flexibility
+by allowing the parsing of non-standard date-time
+formats into Python's built-in :class:`date`, :class:`time`, and :class:`datetime` objects.
+For example, strings such as ``November 2, 2021`` can now be seamlessly parsed and
+converted using customizable patterns.
 
-Loading an `ISO 8601`_ format string into a :class:`date` / :class:`time` /
-:class:`datetime` object is already handled as part of the de-serialization
-process by default. For example, a date string in ISO format such as
-``2022-01-17T21:52:18.000Z`` is correctly parsed to :class:`datetime` as expected.
+**Key Features:**
 
-However, what happens when you have a date string in |another format|_, such
-as ``November 2, 2021``, and you want to load it to a :class:`date`
-or :class:`datetime` object?
-
-As of **v0.35.0**, the accepted solution is to use the builtin support for
-parsing strings with custom date-time patterns; this internally calls
-:meth:`datetime.strptime` to match input strings against a specified pattern.
+- Supports standard, timezone-aware, and UTC-specific date-time patterns.
+- Enables ``Annotated`` option to specify desired formats.
+- Retains `ISO 8601`_ serialization for compatibility.
 
 There are three main approaches that can be used to specify custom patterns
 for date-time strings:
@@ -39,8 +37,8 @@ for date-time strings:
 The simplest approach is to annotate fields as either
 a :class:`DatePattern`, :class:`TimePattern`, or a :class:`DateTimePattern`.
 
-"Naive" Patterns
-~~~~~~~~~~~~~~~~
+Standard Patterns
+~~~~~~~~~~~~~~~~~
 
 There are two approaches (shown below) that can be used to specify custom patterns
 for date-time strings. The simplest approach is to annotate fields as either
