@@ -227,7 +227,7 @@ For more information, see the full `Field Guide to V1 Opt-in`_.
 .. _`Field Guide to V1 Opt-in`: https://github.com/rnag/dataclass-wizard/wiki/Field-Guide-to-V1-Opt%E2%80%90in
 .. _much faster: https://stackoverflow.com/questions/13468126/a-faster-strptime
 .. _`Coordinated Universal Time (UTC)`: https://en.wikipedia.org/wiki/Coordinated_Universal_Time
-.. _Naive datetime: https://en.wikipedia.org/wiki/Naive_and_aware_objects_in_Python
+.. _Naive datetime: https://stackoverflow.com/questions/9999226/timezone-aware-vs-timezone-naive-in-python
 .. _Timezone-aware: https://docs.python.org/3/library/datetime.html#datetime.tzinfo
 .. _UTC: https://en.wikipedia.org/wiki/Coordinated_Universal_Time
 .. _ISO 8601: https://en.wikipedia.org/wiki/ISO_8601
