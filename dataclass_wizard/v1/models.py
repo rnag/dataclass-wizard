@@ -339,9 +339,10 @@ class PatternBase:
 
         if PY311_OR_ABOVE:
             _parse_iso_string = f'{_fromisoformat}(v1){tz_part}'
+            errors_to_except = (TypeError, )
         else:  # pragma: no cover
             _parse_iso_string = f"{_fromisoformat}(v1.replace('Z', '+00:00', 1)){tz_part}"
-
+            errors_to_except = (AttributeError, TypeError)
         # temp fix for Python 3.11+, since `time.fromisoformat` is updated
         # to support more formats, such as "-" and "+" in strings.
         if (is_time and
@@ -367,7 +368,7 @@ class PatternBase:
             # If that doesn't work, fallback to `time.fromisoformat`
             with fn_gen.try_():
                 fn_gen.add_line(f'return {_parse_iso_string}')
-            with fn_gen.except_(TypeError):
+            with fn_gen.except_multi(*errors_to_except):
                 fn_gen.add_line(f'return {_as_func}({_as_func_args})')
             with fn_gen.except_(ValueError):
                 fn_gen.add_line('pass')
@@ -376,7 +377,7 @@ class PatternBase:
             # Try to parse with `{base_type}.fromisoformat` first
             with fn_gen.try_():
                 fn_gen.add_line(f'return {_parse_iso_string}')
-            with fn_gen.except_(TypeError):
+            with fn_gen.except_multi(*errors_to_except):
                 fn_gen.add_line(f'return {_as_func}({_as_func_args})')
             with fn_gen.except_(ValueError):
                 # If that doesn't work, fallback to `datetime.strptime`

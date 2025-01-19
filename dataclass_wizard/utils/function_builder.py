@@ -196,6 +196,28 @@ class FunctionBuilder:
 
         return self._with_new_block('except', statement)
 
+    def except_multi(self, *classes: type[Exception]):
+        """Equivalent to the `except` block in Python.
+
+        Sample Usage:
+
+            >>> with FunctionBuilder().except_multi(AttributeError, TypeError, ValueError):
+            >>>     ...
+
+        Will generate the following code:
+
+            >>> except (AttributeError, TypeError, ValueError):
+            >>>     ...
+
+        """
+        if len(classes) == 1:
+            statement = classes[0].__name__
+        else:
+            class_names = ', '.join([cls.__name__ for cls in classes])
+            statement = f'({class_names})'
+
+        return self._with_new_block('except', statement)
+
     def break_(self):
         """Equivalent to the `break` statement in Python."""
         self.add_line('break')
