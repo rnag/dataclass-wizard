@@ -98,48 +98,281 @@ class PatternBase:
 
     def load_to_pattern(self, tp: TypeInfo, extras: Extras): ...
 
-Pattern = UTCPattern = AwarePattern = PatternBase(Any)
+
+class Pattern(PatternBase):
+    """
+    Base class for custom patterns used in date, time, or datetime parsing.
+
+    Parameters
+    ----------
+    pattern : str
+        The string pattern used for parsing, e.g., '%m-%d-%y'.
+
+    Examples
+    --------
+    Using Pattern with `Annotated` inside a dataclass:
+
+    >>> from typing import Annotated
+    >>> from datetime import date
+    >>> from dataclasses import dataclass
+    >>> from dataclass_wizard.v1 import Pattern
+    >>> @dataclass
+    ... class MyClass:
+    ...     my_date_field: Annotated[date, Pattern('%m-%d-%y')]
+    >>> from dataclass_wizard import LoadMeta
+    >>> LoadMeta(v1=True).bind_to(MyClass)
+    """
+    __getitem__ = __init__
+    # noinspection PyInitNewSignature
+    def __init__(self, pattern): ...
+
+
+class AwarePattern(PatternBase):
+    """
+    Pattern class for timezone-aware parsing of time and datetime objects.
+
+    Parameters
+    ----------
+    timezone : str
+        The timezone to use, e.g., 'US/Eastern'.
+    pattern : str
+        The string pattern used for parsing, e.g., '%H:%M:%S'.
+
+    Examples
+    --------
+    Using AwarePattern with `Annotated` inside a dataclass:
+
+    >>> from typing import Annotated
+    >>> from datetime import time
+    >>> from dataclasses import dataclass
+    >>> from dataclass_wizard import LoadMeta
+    >>> from dataclass_wizard.v1 import AwarePattern
+    >>> @dataclass
+    ... class MyClass:
+    ...     my_time_field: Annotated[list[time], AwarePattern('US/Eastern', '%H:%M:%S')]
+    >>> LoadMeta(v1=True).bind_to(MyClass)
+    """
+    __getitem__ = __init__
+    # noinspection PyInitNewSignature
+    def __init__(self, timezone, pattern): ...
+
+
+class UTCPattern(PatternBase):
+    """
+    Pattern class for UTC parsing of time and datetime objects.
+
+    Parameters
+    ----------
+    pattern : str
+        The string pattern used for parsing, e.g., '%Y-%m-%d %H:%M:%S'.
+
+    Examples
+    --------
+    Using UTCPattern with `Annotated` inside a dataclass:
+
+    >>> from typing import Annotated
+    >>> from datetime import datetime
+    >>> from dataclasses import dataclass
+    >>> from dataclass_wizard import LoadMeta
+    >>> from dataclass_wizard.v1 import UTCPattern
+    >>> @dataclass
+    ... class MyClass:
+    ...     my_utc_field: Annotated[datetime, UTCPattern('%Y-%m-%d %H:%M:%S')]
+    >>> LoadMeta(v1=True).bind_to(MyClass)
+    """
+    __getitem__ = __init__
+    # noinspection PyInitNewSignature
+    def __init__(self, pattern): ...
+
 
 class AwareTimePattern(time, Generic[T]):
-    ...
+    """
+    Pattern class for timezone-aware parsing of time objects.
+
+    Parameters
+    ----------
+    timezone : str
+        The timezone to use, e.g., 'Europe/London'.
+    pattern : str
+        The string pattern used for parsing, e.g., '%H:%M:%Z'.
+
+    Examples
+    --------
+    Using ``AwareTimePattern`` inside a dataclass:
+
+    >>> from dataclasses import dataclass
+    >>> from dataclass_wizard import LoadMeta
+    >>> from dataclass_wizard.v1 import AwareTimePattern
+    >>> @dataclass
+    ... class MyClass:
+    ...     my_aware_dt_field: AwareTimePattern['Europe/London', '%H:%M:%Z']
+    >>> LoadMeta(v1=True).bind_to(MyClass)
+    """
+    __getitem__ = __init__
+    # noinspection PyInitNewSignature
+    def __init__(self, timezone, pattern): ...
+
 
 class AwareDateTimePattern(datetime, Generic[T]):
-    ...
+    """
+    Pattern class for timezone-aware parsing of datetime objects.
+
+    Parameters
+    ----------
+    timezone : str
+        The timezone to use, e.g., 'Asia/Tokyo'.
+    pattern : str
+        The string pattern used for parsing, e.g., '%m-%Y-%H:%M-%Z'.
+
+    Examples
+    --------
+    Using ``AwareDateTimePattern`` inside a dataclass:
+
+    >>> from dataclasses import dataclass
+    >>> from dataclass_wizard import LoadMeta
+    >>> from dataclass_wizard.v1 import AwareDateTimePattern
+    >>> @dataclass
+    ... class MyClass:
+    ...     my_aware_dt_field: AwareDateTimePattern['Asia/Tokyo', '%m-%Y-%H:%M-%Z']
+    >>> LoadMeta(v1=True).bind_to(MyClass)
+    """
+    __getitem__ = __init__
+    # noinspection PyInitNewSignature
+    def __init__(self, timezone, pattern): ...
 
 
 class DatePattern(date, Generic[T]):
     """
     An annotated type representing a date pattern (i.e. format string). Upon
-    de-serialization, the resolved type will be a :class:`date` instead.
+    de-serialization, the resolved type will be a ``date`` instead.
 
-    See the docs on :func:`Pattern` for more info.
+    Parameters
+    ----------
+    pattern : str
+        The string pattern used for parsing, e.g., '%Y/%m/%d'.
+
+    Examples
+    --------
+    Using ``DatePattern`` inside a dataclass:
+
+    >>> from dataclasses import dataclass
+    >>> from dataclass_wizard import LoadMeta
+    >>> from dataclass_wizard.v1 import DatePattern
+    >>> @dataclass
+    ... class MyClass:
+    ...     my_date_field: DatePattern['%Y/%m/%d']
+    >>> LoadMeta(v1=True).bind_to(MyClass)
     """
-    ...
+    __getitem__ = __init__
+    # noinspection PyInitNewSignature
+    def __init__(self, pattern): ...
+
 
 class TimePattern(time, Generic[T]):
     """
     An annotated type representing a time pattern (i.e. format string). Upon
-    de-serialization, the resolved type will be a :class:`time` instead.
+    de-serialization, the resolved type will be a ``time`` instead.
 
-    See the docs on :func:`Pattern` for more info.
+    Parameters
+    ----------
+    pattern : str
+        The string pattern used for parsing, e.g., '%H:%M:%S'.
+
+    Examples
+    --------
+    Using ``TimePattern`` inside a dataclass:
+
+    >>> from dataclasses import dataclass
+    >>> from dataclass_wizard import LoadMeta
+    >>> from dataclass_wizard.v1 import TimePattern
+    >>> @dataclass
+    ... class MyClass:
+    ...     my_time_field: TimePattern['%H:%M:%S']
+    >>> LoadMeta(v1=True).bind_to(MyClass)
     """
-    ...
+    __getitem__ = __init__
+    # noinspection PyInitNewSignature
+    def __init__(self, pattern): ...
+
 
 class DateTimePattern(datetime, Generic[T]):
     """
     An annotated type representing a datetime pattern (i.e. format string). Upon
-    de-serialization, the resolved type will be a :class:`datetime` instead.
+    de-serialization, the resolved type will be a ``datetime`` instead.
 
-    See the docs on :func:`Pattern` for more info.
+    Parameters
+    ----------
+    pattern : str
+        The string pattern used for parsing, e.g., '%d, %b, %Y %I:%M:%S %p'.
+
+    Examples
+    --------
+    Using DateTimePattern with `Annotated` inside a dataclass:
+
+    >>> from dataclasses import dataclass
+    >>> from dataclass_wizard import LoadMeta
+    >>> from dataclass_wizard.v1 import DateTimePattern
+    >>> @dataclass
+    ... class MyClass:
+    ...     my_time_field: DateTimePattern['%d, %b, %Y %I:%M:%S %p']
+    >>> LoadMeta(v1=True).bind_to(MyClass)
     """
-    ...
+    __getitem__ = __init__
+    # noinspection PyInitNewSignature
+    def __init__(self, pattern): ...
 
 
 class UTCTimePattern(time, Generic[T]):
-    ...
+    """
+    Pattern class for UTC parsing of time objects.
+
+    Parameters
+    ----------
+    pattern : str
+        The string pattern used for parsing, e.g., '%H:%M:%S'.
+
+    Examples
+    --------
+    Using ``UTCTimePattern`` inside a dataclass:
+
+    >>> from dataclasses import dataclass
+    >>> from dataclass_wizard import LoadMeta
+    >>> from dataclass_wizard.v1 import UTCTimePattern
+    >>> @dataclass
+    ... class MyClass:
+    ...     my_utc_time_field: UTCTimePattern['%H:%M:%S']
+    >>> LoadMeta(v1=True).bind_to(MyClass)
+    """
+    __getitem__ = __init__
+    # noinspection PyInitNewSignature
+    def __init__(self, pattern): ...
+
 
 class UTCDateTimePattern(datetime, Generic[T]):
-    ...
+    """
+    Pattern class for UTC parsing of datetime objects.
+
+    Parameters
+    ----------
+    pattern : str
+        The string pattern used for parsing, e.g., '%Y-%m-%d %H:%M:%S'.
+
+    Examples
+    --------
+    Using ``UTCDateTimePattern`` inside a dataclass:
+
+    >>> from dataclasses import dataclass
+    >>> from dataclass_wizard import LoadMeta
+    >>> from dataclass_wizard.v1 import UTCDateTimePattern
+    >>> @dataclass
+    ... class MyClass:
+    ...     my_utc_datetime_field: UTCDateTimePattern['%Y-%m-%d %H:%M:%S']
+    >>> LoadMeta(v1=True).bind_to(MyClass)
+    """
+    __getitem__ = __init__
+    # noinspection PyInitNewSignature
+    def __init__(self, pattern): ...
+
 
 # noinspection PyPep8Naming
 def AliasPath(*all: PathType | str,

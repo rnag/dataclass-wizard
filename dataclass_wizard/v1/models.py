@@ -426,32 +426,30 @@ class PatternBase:
         return _repr
 
 
+# noinspection PyTypeChecker
 Pattern = PatternBase(...)
-
-UTCPattern = PatternBase(..., tz_info=UTC)
-
+# noinspection PyTypeChecker
 AwarePattern = PatternBase(..., tz_info=...)
+# noinspection PyTypeChecker
+UTCPattern = PatternBase(..., tz_info=UTC)
 
 # noinspection PyTypeChecker
 DatePattern = PatternBase(date)
-
+# noinspection PyTypeChecker
+DateTimePattern = PatternBase(datetime)
 # noinspection PyTypeChecker
 TimePattern = PatternBase(time)
 
 # noinspection PyTypeChecker
-DateTimePattern = PatternBase(datetime)
-
-# noinspection PyTypeChecker
-UTCTimePattern = PatternBase(time, tz_info=UTC)
-
-# noinspection PyTypeChecker
-UTCDateTimePattern = PatternBase(datetime, tz_info=UTC)
-
+AwareDateTimePattern = PatternBase(datetime, tz_info=...)
 # noinspection PyTypeChecker
 AwareTimePattern = PatternBase(time, tz_info=...)
 
 # noinspection PyTypeChecker
-AwareDateTimePattern = PatternBase(datetime, tz_info=...)
+UTCDateTimePattern = PatternBase(datetime, tz_info=UTC)
+# noinspection PyTypeChecker
+UTCTimePattern = PatternBase(time, tz_info=UTC)
+
 
 # Instances of Field are only ever created from within this module,
 # and only from the field() function, although Field instances are
