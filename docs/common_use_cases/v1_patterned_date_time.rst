@@ -59,7 +59,8 @@ Standard Date-Time Patterns
     Additionally, :class:`date` does not have any *timezone*-related data, nor does its
     counterpart :class:`DatePattern`.
 
-To use, simply annotate fields with ``DatePattern``, ``TimePattern``, or ``DateTimePattern``.
+To use, simply annotate fields with ``DatePattern``, ``TimePattern``, or ``DateTimePattern``
+with a supported `format code`_.
 These patterns support the most common date formats.
 
 .. code:: python3
@@ -206,6 +207,78 @@ you can use ``Annotated`` with one of ``Pattern``,
     c1 = MyClass.from_dict(data)
     print(c1)  #> MyClass(time_field=[MyTime(15, 45), MyTime(1, 20), MyTime(12, 30)])
 
+Multiple Date and Time Patterns
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+In **V1 Opt-in**, you can now use multiple date and time patterns (format codes) to parse and serialize your date and time fields.
+This feature allows for flexibility when handling different formats, making it easier to work with various date and time strings.
+
+Example: Using Multiple Patterns
+---------------------------------
+
+In the example below, the ``DatePattern`` and ``TimePattern`` are configured to support multiple formats. The class ``MyClass`` demonstrates how the fields can accept different formats for both dates and times.
+
+.. code:: python3
+
+    from dataclasses import dataclass
+    from dataclass_wizard import JSONPyWizard
+    from dataclass_wizard.v1 import DatePattern, UTCTimePattern
+
+    @dataclass
+    class MyClass(JSONPyWizard):
+        class _(JSONPyWizard.Meta):
+            v1 = True
+
+        date_field: DatePattern['%b %d, %Y', '%I %p %Y-%m-%d']
+        time_field: UTCTimePattern['%I:%M %p', '(%H)+(%S)']
+
+    # Using the first date pattern format: 'Jan 3, 2022'
+    data = {'date_field': 'Jan 3, 2022', 'time_field': '3:45 PM'}
+    c1 = MyClass.from_dict(data)
+
+    print(c1)
+    print(c1.to_dict())
+    assert c1 == MyClass.from_dict(c1.to_dict())  #> True
+    print()
+
+    # Using the second date pattern format: '3 PM 2025-01-15'
+    data = {'date_field': '3 PM 2025-01-15', 'time_field': '(15)+(45)'}
+    c2 = MyClass.from_dict(data)
+    print(c2)
+    print(c2.to_dict())
+    assert c2 == MyClass.from_dict(c2.to_dict())  #> True
+    print()
+
+    # ERROR! The date is not a valid format for the available patterns.
+    data = {'date_field': '2025-01-15 3 PM', 'time_field': '(15)+(45)'}
+    _ = MyClass.from_dict(data)
+
+How It Works
+^^^^^^^^^^^^
+
+1. **DatePattern and TimePattern:** These are special types that support multiple patterns (format codes). Each pattern is tried in the order specified, and the first one that matches the input string is used for parsing or formatting.
+
+2. **DatePattern Usage:** The ``date_field`` in the example accepts two formats:
+
+   - ``%b %d, %Y`` (e.g., 'Jan 3, 2022')
+   - ``%I %p %Y-%m-%d`` (e.g., '3 PM 2025-01-15')
+
+3. **TimePattern Usage:** The ``time_field`` accepts two formats:
+
+   - ``%I:%M %p`` (e.g., '3:45 PM')
+   - ``(%H)+(%S)`` (e.g., '(15)+(45)')
+
+4. **Error Handling:** If the input string doesn't match any of the available patterns, an error will be raised.
+
+This feature is especially useful for handling date and time formats from various sources, ensuring flexibility in how data is parsed and serialized.
+
+Key Points
+----------
+
+- Multiple patterns are specified as a list of format codes in ``DatePattern`` and ``TimePattern``.
+- The system automatically tries each pattern in the order provided until a match is found.
+- If no match is found, an error is raised, as shown in the example with the invalid date format ``'2025-01-15 3 PM'``.
+
 ---
 
 **Serialization:**
@@ -232,3 +305,4 @@ For more information, see the full `Field Guide to V1 Opt-in`_.
 .. _UTC: https://en.wikipedia.org/wiki/Coordinated_Universal_Time
 .. _ISO 8601: https://en.wikipedia.org/wiki/ISO_8601
 .. _zoneinfo: https://docs.python.org/3/library/zoneinfo.html#using-zoneinfo
+.. _format code: https://docs.python.org/3/library/datetime.html#format-codes
