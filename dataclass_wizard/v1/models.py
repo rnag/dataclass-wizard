@@ -255,7 +255,8 @@ class PatternBase:
             tz_info,
         )
 
-    __call__ = __getitem__
+    def __call__(self, *patterns):
+        return self.__getitem__(patterns)
 
     @setup_recursive_safe_function(add_cls=False)
     def load_to_pattern(self, tp: TypeInfo, extras: Extras):

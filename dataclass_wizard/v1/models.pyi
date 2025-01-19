@@ -92,9 +92,9 @@ class PatternBase:
 
     def with_tz(self, tz_info: tzinfo | Ellipsis) -> Self: ...
 
-    @overload
-    def __getitem__(self, key: type[DT]) -> type[DT]: ...
-    def __getitem__(self, key: tuple[type[DT], *tuple[str, ...]]) -> type[DT]: ...
+    def __getitem__(self, patterns: tuple[str, ...]) -> type[DT]: ...
+
+    def __call__(self, *patterns: str) -> type[DT]: ...
 
     def load_to_pattern(self, tp: TypeInfo, extras: Extras): ...
 
@@ -115,14 +115,14 @@ class Pattern(PatternBase):
     >>> from typing import Annotated
     >>> from datetime import date
     >>> from dataclasses import dataclass
+    >>> from dataclass_wizard import LoadMeta
     >>> from dataclass_wizard.v1 import Pattern
     >>> @dataclass
     ... class MyClass:
     ...     my_date_field: Annotated[date, Pattern('%m-%d-%y')]
-    >>> from dataclass_wizard import LoadMeta
     >>> LoadMeta(v1=True).bind_to(MyClass)
     """
-    __getitem__ = __init__
+    __class_getitem__ = __getitem__ = __init__
     # noinspection PyInitNewSignature
     def __init__(self, pattern): ...
 
@@ -152,7 +152,7 @@ class AwarePattern(PatternBase):
     ...     my_time_field: Annotated[list[time], AwarePattern('US/Eastern', '%H:%M:%S')]
     >>> LoadMeta(v1=True).bind_to(MyClass)
     """
-    __getitem__ = __init__
+    __class_getitem__ = __getitem__ = __init__
     # noinspection PyInitNewSignature
     def __init__(self, timezone, pattern): ...
 
@@ -180,7 +180,7 @@ class UTCPattern(PatternBase):
     ...     my_utc_field: Annotated[datetime, UTCPattern('%Y-%m-%d %H:%M:%S')]
     >>> LoadMeta(v1=True).bind_to(MyClass)
     """
-    __getitem__ = __init__
+    __class_getitem__ = __getitem__ = __init__
     # noinspection PyInitNewSignature
     def __init__(self, pattern): ...
 
