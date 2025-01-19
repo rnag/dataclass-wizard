@@ -17,6 +17,7 @@ from typing import (
     List, Optional, Union, Tuple, Dict, NamedTuple, DefaultDict,
     Set, FrozenSet, Annotated, Literal, Sequence, MutableSequence, Collection
 )
+from zoneinfo import ZoneInfo
 
 import pytest
 
@@ -768,6 +769,69 @@ def test_date_times_with_custom_pattern_when_annotation_is_invalid():
         _ = fromdict(MyClass, data)
 
     log.debug('Error details: %r', e.value)
+
+
+def test_aware_and_utc_date_times_with_custom_pattern():
+    """
+    Time and datetime objects with a custom date string
+    format, where the objects are timezone-aware or in UTC.
+    """
+    class MyTime(time, metaclass=create_strict_eq):
+        def print_hour(self):
+            print(self.hour)
+
+    @dataclass
+    class Example(JSONPyWizard):
+        class _(JSONPyWizard.Meta):
+            v1 = True
+
+        my_dt1: Annotated[AwareDateTimePattern['Asia/Tokyo', '%m-%Y-%H:%M-%Z'], Alias('key')]
+        my_dt2: UTCDateTimePattern['%Y-%m-%d %H']
+        my_time1: UTCTimePattern['%H:%M:%S']
+        my_time2: Annotated[list[MyTime], AwarePattern['US/Hawaii', '%H:%M-%Z']]
+
+    d = {'key': '10-2020-15:30-UTC',
+         'my_dt2': '2010-5-7 8',
+         'my_time1': '17:10:05',
+         'my_time2': ['21:45-UTC']}
+    ex = Example.from_dict(d)
+
+    # noinspection PyTypeChecker
+    expected = Example(
+        my_dt1=datetime(2020, 10, 1, 15, 30, tzinfo=ZoneInfo('Asia/Tokyo')),
+        my_dt2=datetime(2010, 5, 7, 8, 0, tzinfo=ZoneInfo('UTC')),
+        my_time1=time(17, 10, 5, tzinfo=ZoneInfo('UTC')),
+        my_time2=[
+            MyTime(21, 45, tzinfo=ZoneInfo('US/Hawaii')),
+        ])
+
+    assert ex == expected
+
+    assert ex.to_dict() == {
+        'key': '2020-10-01T15:30:00+09:00',
+        'my_dt2': '2010-05-07T08:00:00Z',
+        'my_time1': '17:10:05Z',
+        'my_time2': ['21:45:00']}
+
+    ex = Example.from_dict(ex.to_dict())
+    ex = Example.from_dict(ex.to_dict())
+
+    assert ex == expected
+
+    # De-serializing using `timestamp()`
+
+    d = {'key': expected.my_dt1.timestamp(),
+         'my_dt2': int(expected.my_dt2.timestamp()),
+         'my_time1': '17:10:05',
+         'my_time2': ['21:45-UTC']}
+
+    assert Example.from_dict(d) == expected
+
+    # ParseError: `time` doesn't have `fromtimestamp()`,
+    # so an integer input should raise an error.
+    d['my_time1'] = 123
+    with pytest.raises(ParseError):
+        _ = Example.from_dict(d)
 
 
 def test_tag_field_is_used_in_load_process():

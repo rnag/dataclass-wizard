@@ -15,7 +15,7 @@ from ..utils.type_conv import as_datetime_v1, as_date_v1, as_time_v1
 from ..utils.typing_compat import get_origin_v2
 
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from ..bases import META
 
 
@@ -201,7 +201,7 @@ class TypeInfo:
     def __str__(self):
         return getattr(self, '_wrapped', '')
 
-    def __repr__(self):
+    def __repr__(self):  # pragma: no cover
         items = ', '.join([f'{v}={getattr(self, v)!r}'
                            for v in self.__slots__
                            if not v.startswith('_')])
@@ -229,39 +229,30 @@ class PatternBase:
                  'tz_info',
                  '_repr')
 
-    def __init__(self, base, patterns=None, tzname=None):
+    def __init__(self, base, patterns=None, tz_info=None):
         self.base = base
         if patterns is not None:
             self.patterns = patterns
-        if tzname is not None:
-            self.tz_info = ZoneInfo(tzname)
+        if tz_info is not None:
+            self.tz_info = tz_info
 
-    def with_tz(self, tz_info: tzinfo) -> Self:
+    def with_tz(self, tz_info: tzinfo) -> Self:  # pragma: no cover
         self.tz_info = tz_info
         return self
 
     def __getitem__(self, patterns):
-        if (tz_info := getattr(self, 'tz_info', None)) is not None:
-            if tz_info is ...:  # expect time zone as first argument
-                tz_info = patterns[0]
-                if isinstance(tz_info, str):
-                    tz_info = ZoneInfo(tz_info)
-
-                pb = PatternBase(
-                    self.base,
-                    patterns[1:],
-                )
-            else:
-                pb = PatternBase(
-                    self.base,
-                    (patterns,) if patterns.__class__ is str else patterns,
-                )
-
-            return pb.with_tz(tz_info)
+        if (tz_info := getattr(self, 'tz_info', None)) is ...:
+            # expect time zone as first argument
+            tz_info, *patterns = patterns
+            if isinstance(tz_info, str):
+                tz_info = ZoneInfo(tz_info)
+        else:
+            patterns = (patterns, ) if patterns.__class__ is str else patterns
 
         return PatternBase(
             self.base,
-            (patterns, ) if patterns.__class__ is str else patterns,
+            patterns,
+            tz_info,
         )
 
     __call__ = __getitem__
@@ -437,9 +428,9 @@ class PatternBase:
 
 Pattern = PatternBase(...)
 
-UTCPattern = PatternBase(...).with_tz(UTC)
+UTCPattern = PatternBase(..., tz_info=UTC)
 
-AwarePattern = PatternBase(...).with_tz(...)
+AwarePattern = PatternBase(..., tz_info=...)
 
 # noinspection PyTypeChecker
 DatePattern = PatternBase(date)
@@ -451,16 +442,16 @@ TimePattern = PatternBase(time)
 DateTimePattern = PatternBase(datetime)
 
 # noinspection PyTypeChecker
-UTCTimePattern = PatternBase(time).with_tz(UTC)
+UTCTimePattern = PatternBase(time, tz_info=UTC)
 
 # noinspection PyTypeChecker
-UTCDateTimePattern = PatternBase(datetime).with_tz(UTC)
+UTCDateTimePattern = PatternBase(datetime, tz_info=UTC)
 
 # noinspection PyTypeChecker
-AwareTimePattern = PatternBase(time).with_tz(...)
+AwareTimePattern = PatternBase(time, tz_info=...)
 
 # noinspection PyTypeChecker
-AwareDateTimePattern = PatternBase(datetime).with_tz(...)
+AwareDateTimePattern = PatternBase(datetime, tz_info=...)
 
 # Instances of Field are only ever created from within this module,
 # and only from the field() function, although Field instances are

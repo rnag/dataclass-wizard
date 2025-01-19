@@ -86,7 +86,9 @@ class PatternBase:
 
     tz_info: tzinfo | Ellipsis
 
-    def __init__(self, base, patterns=None, tzname=None): ...
+    def __init__(self, base: type[DT],
+                 patterns: tuple[str, ...] = None,
+                 tz_info: tzinfo | Ellipsis | None = None): ...
 
     def with_tz(self, tz_info: tzinfo | Ellipsis) -> Self: ...
 
