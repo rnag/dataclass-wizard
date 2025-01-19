@@ -2,7 +2,7 @@ import hashlib
 from collections import defaultdict
 from dataclasses import MISSING, Field as _Field
 from datetime import datetime, date, time, tzinfo
-from typing import TYPE_CHECKING, Any, TypedDict, cast, Self
+from typing import TYPE_CHECKING, Any, TypedDict, cast
 from zoneinfo import ZoneInfo
 
 from .decorators import setup_recursive_safe_function
@@ -236,7 +236,7 @@ class PatternBase:
         if tz_info is not None:
             self.tz_info = tz_info
 
-    def with_tz(self, tz_info: tzinfo) -> Self:  # pragma: no cover
+    def with_tz(self, tz_info: tzinfo):  # pragma: no cover
         self.tz_info = tz_info
         return self
 
