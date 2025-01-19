@@ -60,14 +60,20 @@ These patterns support the most common date formats.
     print(c1.to_dict())
     assert c1 == MyClass.from_dict(c1.to_dict())  #> True
 
-Timezone-Aware Patterns
-~~~~~~~~~~~~~~~~~~~~~~~
+Timezone-Aware Date and Time Patterns
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-For timezone-aware ``datetime`` and ``time``,
-use the following:
-    - :class:`AwareDateTimePattern`, :class:`AwareTimePattern`, or :class:`AwarePattern` (with :class:`typing.Annotated`)
+To handle timezone-aware ``datetime`` and ``time`` values, use the following patterns:
 
-**Example Usage:**
+- :class:`AwareDateTimePattern`
+- :class:`AwareTimePattern`
+- :class:`AwarePattern` (with :class:`typing.Annotated`)
+
+These patterns allow you to specify the timezone for the
+date and time, ensuring that the values are interpreted
+correctly relative to the given timezone.
+
+**Example: Using Timezone-Aware Patterns**
 
 .. code:: python3
 
@@ -88,18 +94,26 @@ use the following:
 
     d = {'my_aware_dt': '6:15:45', 'key': '10-2020-15:30-UTC'}
     c = fromdict(MyClass, d)
+
     pprint(c)
     print(asdict(c))
     assert c == fromdict(MyClass, asdict(c))  #> True
 
-UTC Patterns
-~~~~~~~~~~~~
+UTC Date and Time Patterns
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-For UTC-specific ``datetime`` and ``time``,
-use the following:
-    - :class:`UTCDateTimePattern`, :class:`UTCTimePattern`, or :class:`UTCPattern` (with :class:`typing.Annotated`)
+For UTC-specific ``datetime`` and ``time`` values, use the following patterns:
 
-**Example Usage:**
+- :class:`UTCDateTimePattern`
+- :class:`UTCTimePattern`
+- :class:`UTCPattern` (with :class:`typing.Annotated`)
+
+These patterns are used when working with
+date and time in `Coordinated Universal Time (UTC)`_,
+and ensure that *timezone* data -- or :attr:`tzinfo` -- is
+correctly set to ``UTC``.
+
+**Example: Using UTC Patterns**
 
 .. code:: python3
 
@@ -168,6 +182,4 @@ For more information, see the full `Field Guide to V1 Opt-in`_.
 .. _`Field Guide to V1 Opt-in`: https://github.com/rnag/dataclass-wizard/wiki/Field-Guide-to-V1-Opt%E2%80%90in
 .. _ISO 8601: https://en.wikipedia.org/wiki/ISO_8601
 .. _much faster: https://stackoverflow.com/questions/13468126/a-faster-strptime
-.. See: https://stackoverflow.com/a/4836544/10237506
-.. |another format| replace:: *another* format
-.. _another format: https://docs.python.org/3/library/datetime.html#strftime-and-strptime-format-codes
+.. _`Coordinated Universal Time (UTC)`: https://en.wikipedia.org/wiki/Coordinated_Universal_Time
