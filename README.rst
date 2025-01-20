@@ -786,27 +786,27 @@ Date and Time with Custom Patterns
 ----------------------------------
 
 .. tip::
-    As of **v0.35.0** with V1 Opt-in, Dataclass Wizard now supports timezone-aware as well
-    as UTC datetime and time patterns, in addition to multiple pattern strings or `custom formats`_).
-    These features are **not** available in the current ``v0.*`` versions.
+    As of **v0.35.0** with V1 Opt-in, Dataclass Wizard now supports timezone-aware and UTC ``datetime``
+    and ``time`` patterns, as well as multiple pattern strings (i.e. multiple `custom formats`) for greater
+    flexibility in pattern matching. These features are **not** available in the current ``v0.*`` versions.
 
-    The library now supports:
+    The new features include:
 
     - Timezone-aware ``datetime`` and ``time`` patterns.
     - UTC ``datetime`` and ``time`` patterns.
-    - Multiple `custom formats`_ for a single field, allowing for greater flexibility in pattern matching.
+    - Multiple `custom formats`_ for a single field, providing more control over pattern matching.
 
-    To learn more about the new features and how to use them, see the `V1 Opt-in documentation for Patterned Date and Time`_.
+    For more details and examples on how to use these new features, refer to the `V1 Opt-in documentation for Patterned Date and Time`_.
 
 As of **v0.20.0**, date and time strings in `custom formats`_ can be de-serialized using the ``DatePattern``,
-``TimePattern``, and ``DateTimePattern`` type annotations, representing patterned ``date``, ``time``,
-and ``datetime`` objects respectively.
+``TimePattern``, and ``DateTimePattern`` type annotations, which represent patterned ``date``, ``time``, and
+``datetime`` objects, respectively.
 
-This will internally call ``datetime.strptime`` with the format specified in the annotation, and also use the
-``fromisoformat()`` method in case the date string is in ISO-8601 format. All dates and times will continue to be
-serialized as ISO format strings by default. For more info, check out the `Patterned Date and Time`_ section in the docs.
+Internally, these annotations use ``datetime.strptime`` with the specified format and the ``fromisoformat()``
+method for ISO-8601 formatted strings. All date and time values are still serialized to ISO format strings by
+default. For more information, refer to the `Patterned Date and Time`_ section in the documentation.
 
-A brief example of the intended usage is shown below:
+Here is an example demonstrating how to use these annotations:
 
 .. code-block:: python3
 
@@ -819,9 +819,13 @@ A brief example of the intended usage is shown below:
 
     @dataclass
     class MyClass:
+        # Custom format for date (Month-Year)
         date_field: DatePattern['%m-%Y']
+        # Custom format for datetime (Month/Day/Year Hour.Minute.Second)
         dt_field: Annotated[datetime, Pattern('%m/%d/%y %H.%M.%S')]
+        # Custom format for time (Hour:Minute)
         time_field1: TimePattern['%H:%M']
+        # Custom format for a list of times (12-hour format with AM/PM)
         time_field2: Annotated[list[time], Pattern('%I:%M %p')]
 
 
@@ -832,7 +836,7 @@ A brief example of the intended usage is shown below:
 
     class_obj = fromdict(MyClass, data)
 
-    # All annotated fields de-serialize as just date, time, or datetime, as shown.
+    # All annotated fields de-serialize to date, time, or datetime objects, as shown.
     print(class_obj)
     # MyClass(date_field=datetime.date(2022, 12, 1), dt_field=datetime.datetime(2023, 1, 2, 2, 3, 52),
     #         time_field1=datetime.time(15, 20), time_field2=[datetime.time(13, 20), datetime.time(0, 30)])
@@ -842,8 +846,8 @@ A brief example of the intended usage is shown below:
     # {'dateField': '2022-12-01', 'dtField': '2023-01-02T02:03:52',
     #  'timeField1': '15:20:00', 'timeField2': ['13:20:00', '00:30:00']}
 
-    # But, the patterned date/times can still be de-serialized back after
-    # serialization. In fact, it'll be faster than parsing the custom patterns!
+    # The patterned date/times can be de-serialized back after serialization, which will be faster than
+    # re-parsing the custom patterns!
     assert class_obj == fromdict(MyClass, asdict(class_obj))
 
 Recursive Types and Dataclasses with Cyclic References
