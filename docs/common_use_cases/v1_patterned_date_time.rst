@@ -12,7 +12,7 @@ This feature, introduced in **v0.35.0**, allows parsing
 custom date and time formats into Python's :class:`date`,
 :class:`time`, and :class:`datetime` objects.
 For example, strings like ``November 2, 2021`` can now
-be parsed using customizable patterns.
+be parsed using customizable patterns -- specified as `format codes`_.
 
 **Key Features:**
 
@@ -60,7 +60,7 @@ Standard Date-Time Patterns
     counterpart :class:`DatePattern`.
 
 To use, simply annotate fields with ``DatePattern``, ``TimePattern``, or ``DateTimePattern``
-with a supported `format code`_.
+with supported `format codes`_.
 These patterns support the most common date formats.
 
 .. code:: python3
@@ -305,4 +305,4 @@ For more information, see the full `Field Guide to V1 Opt-in`_.
 .. _UTC: https://en.wikipedia.org/wiki/Coordinated_Universal_Time
 .. _ISO 8601: https://en.wikipedia.org/wiki/ISO_8601
 .. _zoneinfo: https://docs.python.org/3/library/zoneinfo.html#using-zoneinfo
-.. _format code: https://docs.python.org/3/library/datetime.html#format-codes
+.. _format codes: https://docs.python.org/3/library/datetime.html#format-codes

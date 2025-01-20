@@ -317,12 +317,12 @@ def test_fromdict_raises_on_unknown_json_fields():
 
     e = exc_info.value
 
-    assert e.json_key == {'my_string'}
+    assert e.unknown_keys == {'my_string'}
     assert e.obj == d
     assert e.fields == ['my_bool']
 
 
-def test_from_dict_raises_on_unknown_json_key_nested():
+def test_from_dict_raises_on_unknown_keys_nested():
 
     @dataclass
     class Sub(JSONWizard):
@@ -381,7 +381,7 @@ def test_from_dict_raises_on_unknown_json_key_nested():
     assert e.fields == ['my_str']
 
 
-def test_from_dict_raises_on_unknown_json_key_with_key_case_auto():
+def test_from_dict_raises_on_unknown_keys_with_key_case_auto():
     """
     Raises on Unknown Key with `key_case='AUTO'`
     """
@@ -979,7 +979,7 @@ def test_bool(input, expected):
     assert result.my_bool == expected
 
 
-def test_from_dict_handles_identical_cased_json_keys():
+def test_from_dict_handles_identical_cased_keys():
     """
     Calling `from_dict` when required JSON keys have the same casing as
     dataclass field names, even when the field names are not "snake-cased".
@@ -1066,7 +1066,7 @@ def test_from_dict_with_missing_fields_with_resolution():
     assert 'Resolution' in e.value.kwargs
 
 
-def test_from_dict_key_transform_with_json_field():
+def test_from_dict_key_transform_with_multiple_alias():
     """
     Specifying a custom mapping of alias key to dataclass field, via the
     `Alias` helper function.
@@ -1091,10 +1091,10 @@ def test_from_dict_key_transform_with_json_field():
     assert result.my_bool is True
 
 
-def test_from_dict_key_transform_with_json_key():
+def test_from_dict_key_transform_with_alias():
     """
-    Specifying a custom mapping of JSON key to dataclass field, via the
-    `json_key` helper function.
+    Specifying a custom mapping of JSON key to dataclass field,
+    via the `Alias` helper function.
     """
 
     @dataclass
@@ -3252,7 +3252,7 @@ def test_from_dict_with_multiple_nested_object_alias_paths():
     assert e.value.kwargs['path'] == "'bears' => 'eat' => 'b33ts'"
 
 
-def test_auto_assign_tags_and_raise_on_unknown_json_key():
+def test_auto_assign_tags_and_raise_on_unknown_keys():
 
     @dataclass
     class A:
