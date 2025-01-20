@@ -7,23 +7,25 @@ History
 
 **Features and Improvements**
 
-* Add support for Patterned Date and Time:
-    * Naive Date/Time/Datetime
-    * Timezone-aware Time/Datetime
-    * UTC Time/Datetime
-* Update :func:`Alias` and :func:`AliasPath` to support multiple aliases and nested path(s)
-* V1 Opt-in: Update the ``KeyCase.AUTO`` setting (specified via ``v1_key_case='AUTO'``) to correctly
-  handle multiple possible keys for the field (e.g., it doesn't latch onto the first encountered key but now
-  tries all valid key case transformations at runtime). This now results in expected or desired behavior (fixes :issue:`175`)
-* **Float to Int Conversion Change**: In V1 Opt-in (via ``Meta`` setting ``v1=True``), floats or float strings
-  with fractional parts (e.g., ``123.4`` or ``"123.4"``) are no longer silently converted to integers.
-  Instead, they now raise an error. However, floats without fractional parts (e.g., ``3.0`` or ``"3.0"``)
-  will continue to convert to integers as before.
+* **V1 Opt-In:**
+    * Add support for Patterned Date and Time:
+        * Naive Date/Time/Datetime
+        * Timezone-aware Time/Datetime
+        * UTC Time/Datetime
+    * Update :func:`Alias` and :func:`AliasPath` to support multiple aliases and nested path(s)
+    * Update the ``KeyCase.AUTO`` setting (specified via ``v1_key_case='AUTO'``) to correctly
+      handle multiple possible keys for the field (e.g., it doesn't latch onto the first encountered key but now
+      tries all valid key case transformations at runtime). This now results in expected or desired behavior (fixes :issue:`175`)
+    * **Float to Int Conversion Change**: In V1 Opt-in (via ``Meta`` setting ``v1=True``), floats or float strings
+      with fractional parts (e.g., ``123.4`` or ``"123.4"``) are no longer silently converted to integers.
+      Instead, they now raise an error. However, floats without fractional parts (e.g., ``3.0`` or ``"3.0"``)
+      will continue to convert to integers as before.
+    * Add documentation:
+        * Patterned Date and Time
+        * Aliases
+    * Add tests for coverage
 * Optimize logic for determining if an annotated type is a ``TypedDict``
-* Add docs for V1 Opt-in on Patterned Date and Time and Aliases
-* Add tests for coverage
-* Update ``requirements-bench.txt`` so that all Benchmark-related dependencies
-  are correctly captured.
+* Update ``requirements-bench.txt`` to correctly capture all Benchmark-related dependencies
 
 **Bugfixes**
 
