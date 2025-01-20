@@ -92,8 +92,6 @@ Early access to **V1** is available! To opt in, simply enable ``v1=True`` in the
 
 For more information, see the `Field Guide to V1 Opt-in`_.
 
-.. _`Field Guide to V1 Opt-in`: https://github.com/rnag/dataclass-wizard/wiki/Field-Guide-to-V1-Opt%E2%80%90in
-
 Performance Improvements
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -482,6 +480,13 @@ Here is an example to demonstrate the usage of these helper functions:
 Custom Key Mappings
 -------------------
 
+.. note::
+    **Important:** The functionality for **custom key mappings** (such as JSON-to-dataclass field mappings) is being re-imagined with the introduction of **V1 Opt-in**. Enhanced support for these features is now available, improving the user experience for working with custom mappings.
+
+    For more details, see the `Field Guide to V1 Opt-in`_ and the `V1 Alias`_ documentation.
+
+    This change is part of the ongoing improvements in version ``v0.35.0+``, and the old functionality will no longer be maintained in future releases.
+
 If you ever find the need to add a `custom mapping`_ of a JSON key to a dataclass
 field (or vice versa), the helper function ``json_field`` -- which can be
 considered an alias to ``dataclasses.field()`` -- is one approach that can
@@ -516,7 +521,14 @@ Example below:
 Mapping Nested JSON Keys
 ------------------------
 
-The ``dataclass-wizard`` library lets you map deeply nested JSON keys to dataclass fields using custom path notation. This is ideal for handling complex or non-standard JSON structures.
+.. note::
+    **Important:** The current "nested path" functionality is being re-imagined.
+    Please refer to the new docs for **V1 Opt-in** features, which introduce enhanced support for these use
+    cases. For more details, see the `Field Guide to V1 Opt-in`_ and the `V1 Alias`_ documentation.
+
+    This change is part of the ongoing improvements in version ``v0.35.0+``, and the old functionality will no longer be maintained in future releases.
+
+The ``dataclass-wizard`` library allows you to map deeply nested JSON keys to dataclass fields using custom path notation. This is ideal for handling complex or non-standard JSON structures.
 
 You can specify paths to JSON keys with the ``KeyPath`` or ``path_field`` helpers. For example, the deeply nested key ``data.items.myJSONKey`` can be mapped to a dataclass field, such as ``my_str``:
 
@@ -536,7 +548,7 @@ You can specify paths to JSON keys with the ``KeyPath`` or ``path_field`` helper
 Custom Paths for Complex JSON
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-You can use `custom paths to access nested keys`_ and map them to specific fields, even when keys contain special characters or follow non-standard conventions.
+You can now use `custom paths to access nested keys`_ and map them to specific fields, even when keys contain special characters or follow non-standard conventions.
 
 Example with nested and complex keys:
 
@@ -1622,3 +1634,5 @@ This package was created with Cookiecutter_ and the `rnag/cookiecutter-pypackage
 .. _typing: https://docs.python.org/3/library/typing.html
 .. _dataclasses: https://docs.python.org/3/library/dataclasses.html
 .. _V1 Opt-in documentation for Patterned Date and Time: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/v1_patterned_date_time.html
+.. _`Field Guide to V1 Opt-in`: https://github.com/rnag/dataclass-wizard/wiki/Field-Guide-to-V1-Opt%E2%80%90in
+.. _V1 Alias: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/v1_alias.html
