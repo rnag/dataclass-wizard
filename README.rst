@@ -785,18 +785,30 @@ undefined keys, the field will default to an empty dictionary.
 Date and Time with Custom Patterns
 ----------------------------------
 
-As of *v0.20.0*, date and time strings in a `custom format`_ can be de-serialized
-using the ``DatePattern``, ``TimePattern``, and ``DateTimePattern`` type annotations,
-representing patterned `date`, `time`, and `datetime` objects respectively.
+.. tip::
+    As of **v0.35.0** with V1 Opt-in, Dataclass Wizard now supports timezone-aware as well
+    as UTC datetime and time patterns, in addition to multiple pattern strings or `custom formats`_).
+    These features are **not** available in the current ``v0.*`` versions.
 
-This will internally call ``datetime.strptime`` with the format specified in the annotation,
-and also use the ``fromisoformat()`` method in case the date string is in ISO-8601 format.
-All dates and times will continue to be serialized as ISO format strings by default. For more
-info, check out the `Patterned Date and Time`_ section in the docs.
+    The library now supports:
+
+    - Timezone-aware ``datetime`` and ``time`` patterns.
+    - UTC ``datetime`` and ``time`` patterns.
+    - Multiple `custom formats`_ for a single field, allowing for greater flexibility in pattern matching.
+
+    To learn more about the new features and how to use them, see the `V1 Opt-in documentation for Patterned Date and Time`_.
+
+As of **v0.20.0**, date and time strings in `custom formats`_ can be de-serialized using the ``DatePattern``,
+``TimePattern``, and ``DateTimePattern`` type annotations, representing patterned ``date``, ``time``,
+and ``datetime`` objects respectively.
+
+This will internally call ``datetime.strptime`` with the format specified in the annotation, and also use the
+``fromisoformat()`` method in case the date string is in ISO-8601 format. All dates and times will continue to be
+serialized as ISO format strings by default. For more info, check out the `Patterned Date and Time`_ section in the docs.
 
 A brief example of the intended usage is shown below:
 
-.. code:: python3
+.. code-block:: python3
 
     from dataclasses import dataclass
     from datetime import time, datetime
@@ -1592,7 +1604,7 @@ This package was created with Cookiecutter_ and the `rnag/cookiecutter-pypackage
 .. _`wiz-cli`: https://dataclass-wizard.readthedocs.io/en/latest/wiz_cli.html
 .. _`key limitations`: https://florimond.dev/en/posts/2018/10/reconciling-dataclasses-and-properties-in-python/
 .. _`more complete example`: https://dataclass-wizard.readthedocs.io/en/latest/examples.html#a-more-complete-example
-.. _custom format: https://docs.python.org/3/library/datetime.html#strftime-and-strptime-format-codes
+.. _custom formats: https://docs.python.org/3/library/datetime.html#strftime-and-strptime-format-codes
 .. _`Patterned Date and Time`: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/patterned_date_time.html
 .. _Union: https://docs.python.org/3/library/typing.html#typing.Union
 .. _`Dataclasses in Union Types`: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/dataclasses_in_union_types.html
@@ -1605,3 +1617,4 @@ This package was created with Cookiecutter_ and the `rnag/cookiecutter-pypackage
 .. _annotations: https://docs.python.org/3/library/typing.html#typing.Annotated
 .. _typing: https://docs.python.org/3/library/typing.html
 .. _dataclasses: https://docs.python.org/3/library/dataclasses.html
+.. _V1 Opt-in documentation for Patterned Date and Time: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/v1_patterned_date_time.html
