@@ -1,6 +1,16 @@
 Map a JSON Key to a Field
 =========================
 
+.. note::
+    **Important:** The current *key transform* and "custom mappings" functionality is being phased out.
+    Please refer to the new docs for **V1 Opt-in** features, which introduces enhanced support for these use
+    cases. For more details, see the `Field Guide to V1 Opt‐in`_ and the `V1 Alias`_ documentation.
+
+    This change is part of the ongoing improvements in version ``v0.35.0+``, and the old functionality will no longer be maintained in future releases.
+
+.. _Field Guide to V1 Opt‐in: https://github.com/rnag/dataclass-wizard/wiki/Field-Guide-to-V1-Opt%E2%80%90in
+.. _V1 Alias: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/v1_alias.html
+
 The ``dataclass-wizard`` library provides a set of built-in *key transform* helper
 functions that automatically transform the casing of keys in a JSON or Python
 ``dict`` object to and from dataclass field names. As mentioned in the

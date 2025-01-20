@@ -53,6 +53,8 @@ Examples of Field Aliases
 Using a Single Alias
 ^^^^^^^^^^^^^^^^^^^^
 
+You can use a single alias for both serialization and deserialization by passing the alias name directly to :func:`Alias`:
+
 .. code-block:: python3
 
     from dataclasses import dataclass
@@ -75,10 +77,10 @@ Using a Single Alias
     print(user.to_dict())
     # > {'username': 'johndoe'}
 
-Separate Aliases for De/serialization
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Using Separate Aliases for Serialization and Deserialization
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-You can define distinct aliases for ``load`` and ``dump``:
+To define distinct aliases for `load` and `dump` operations:
 
 .. code-block:: python3
 
@@ -97,8 +99,10 @@ You can define distinct aliases for ``load`` and ``dump``:
 
 
     user = User.from_dict({'username': 'johndoe'})
+    print(user)
+    # > User(name='johndoe')
     print(user.to_dict())
-    #> {'user_name': 'johndoe'}
+    # > {'user_name': 'johndoe'}
 
 Skipping Fields During Serialization
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -120,8 +124,9 @@ To exclude a field during serialization, use the ``skip`` parameter:
 
         name: str = Alias('username', skip=True)
 
+
     user = User.from_dict({'username': 'johndoe'})
-    print(user.to_dict())  #> {}
+    print(user.to_dict())  # > {}
 
 Advanced Usage
 ^^^^^^^^^^^^^^
@@ -132,15 +137,10 @@ for bulk aliasing:
 .. code-block:: python3
 
     from dataclasses import dataclass
-
-    from dataclass_wizard import JSONPyWizard
-    from dataclass_wizard.v1 import Alias
-
-
-    from dataclasses import dataclass
     from typing import Annotated
     from dataclass_wizard import JSONPyWizard
     from dataclass_wizard.v1 import Alias
+
 
     @dataclass
     class Test(JSONPyWizard):
@@ -157,9 +157,10 @@ for bulk aliasing:
         my_int: int
         other_int: int = Alias(dump='DumpedInt')
 
+
     t = Test.from_dict({'other_str': 'test', 'myBoolTest': 'T', 'myInt': '123', 'otherInt': 321.0})
     print(t.to_dict())
-    #> {'my_str': 'test', 'myDumpedBool': True, 'MyInt': 123, 'DumpedInt': 321}
+    # > {'my_str': 'test', 'myDumpedBool': True, 'MyInt': 123, 'DumpedInt': 321}
 
 AliasPath
 ---------
@@ -181,7 +182,7 @@ Mapping multiple nested paths to a field::
     LoadMeta(v1=True).bind_to(Example)
 
     print(fromdict(Example, {'x': {'y': {'-1': {'z': 'some_value'}}}}))
-    #> Example(my_str='some_value')
+    # > Example(my_str='some_value')
 
 Using :obj:`typing.Annotated` with nested paths::
 
@@ -198,7 +199,7 @@ Using :obj:`typing.Annotated` with nested paths::
         my_str: Annotated[str, AliasPath('my."7".nested.path.-321')]
 
     ex = Example.from_dict({'my': {'7': {'nested': {'path': {-321: 'Test'}}}}})
-    print(ex)  #> Example(my_str='Test')
+    print(ex)  # > Example(my_str='Test')
 
 
 .. _`Enabling V1 Experimental Features`: https://github.com/rnag/dataclass-wizard/wiki/V1:-Enabling-Experimental-Features
