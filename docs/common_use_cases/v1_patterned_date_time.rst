@@ -1,3 +1,5 @@
+.. title:: Patterned Date and Time in V1 (v0.35.0+)
+
 Patterned Date and Time in V1 (``v0.35.0+``)
 ============================================
 

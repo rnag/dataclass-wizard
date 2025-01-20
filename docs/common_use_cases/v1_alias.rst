@@ -1,7 +1,8 @@
 .. currentmodule:: dataclass_wizard.v1
+.. title:: Alias in V1 (v0.35.0+)
 
-Alias
-=====
+Alias in V1 (``v0.35.0+``)
+==========================
 
 .. tip::
 
