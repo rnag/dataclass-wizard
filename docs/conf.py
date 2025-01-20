@@ -35,11 +35,16 @@ from dataclass_wizard import __version__
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
 extensions = [
     'sphinx.ext.autodoc',
+    'sphinx.ext.intersphinx',
     'sphinx.ext.viewcode',
     'sphinx_issues',
     'sphinx_autodoc_typehints',
     'sphinx_copybutton',
 ]
+
+intersphinx_mapping = {
+    'python': ('https://docs.python.org/3', None),
+}
 
 copybutton_exclude = '.linenos, .gp, .go'
 

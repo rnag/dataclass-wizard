@@ -1,7 +1,11 @@
 from dataclasses import MISSING
 
-from ..class_helper import is_builtin_class
 from ..log import LOG
+
+
+def is_builtin_class(cls: type) -> bool:
+    """Check if a class is a builtin in Python."""
+    return cls.__module__ == 'builtins'
 
 
 class FunctionBuilder:
@@ -191,6 +195,32 @@ class FunctionBuilder:
                         self.globals[cls_name] = cls
 
         return self._with_new_block('except', statement)
+
+    def except_multi(self, *classes: type[Exception]):
+        """Equivalent to the `except` block in Python.
+
+        Sample Usage:
+
+            >>> with FunctionBuilder().except_multi(AttributeError, TypeError, ValueError):
+            >>>     ...
+
+        Will generate the following code:
+
+            >>> except (AttributeError, TypeError, ValueError):
+            >>>     ...
+
+        """
+        if len(classes) == 1:
+            statement = classes[0].__name__
+        else:
+            class_names = ', '.join([cls.__name__ for cls in classes])
+            statement = f'({class_names})'
+
+        return self._with_new_block('except', statement)
+
+    def break_(self):
+        """Equivalent to the `break` statement in Python."""
+        self.add_line('break')
 
     def add_line(self, line: str):
         """Add a line to the current function's body with proper indentation."""

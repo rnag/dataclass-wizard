@@ -1,6 +1,16 @@
 Map a Nested JSON Key Path to a Field
 =====================================
 
+.. note::
+    **Important:** The current "nested path" functionality is being re-imagined.
+    Please refer to the new docs for **V1 Opt-in** features, which introduces enhanced support for these use
+    cases. For more details, see the `Field Guide to V1 Opt‐in`_ and the `V1 Alias`_ documentation.
+
+    This change is part of the ongoing improvements in version ``v0.35.0+``, and the old functionality will no longer be maintained in future releases.
+
+.. _Field Guide to V1 Opt‐in: https://github.com/rnag/dataclass-wizard/wiki/Field-Guide-to-V1-Opt%E2%80%90in
+.. _V1 Alias: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/v1_alias.html
+
 The ``dataclass-wizard`` library allows mapping deeply nested JSON paths to individual dataclass fields using a custom object path notation. This feature supports both :type:`Annotated` types and :class:`dataclasses.Field` for flexible and precise JSON deserialization.
 
 .. role:: bc

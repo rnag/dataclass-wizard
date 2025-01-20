@@ -4,6 +4,7 @@ Tests for the `loaders` module, but more importantly for the `parsers` module.
 Note: I might refactor this into a separate `test_parsers.py` as time permits.
 """
 import enum
+import json
 import logging
 from abc import ABC
 from base64 import b64decode
@@ -16,6 +17,7 @@ from typing import (
     List, Optional, Union, Tuple, Dict, NamedTuple, DefaultDict,
     Set, FrozenSet, Annotated, Literal, Sequence, MutableSequence, Collection
 )
+from zoneinfo import ZoneInfo
 
 import pytest
 
@@ -24,7 +26,7 @@ from dataclass_wizard.constants import TAG
 from dataclass_wizard.errors import (
     ParseError, MissingFields, UnknownKeysError, MissingData, InvalidConditionError
 )
-from dataclass_wizard.models import _PatternBase
+from dataclass_wizard.v1.models import PatternBase
 from dataclass_wizard.type_def import NoneType
 from dataclass_wizard.v1 import *
 from ..conftest import MyUUIDSubclass
@@ -33,10 +35,24 @@ from ...conftest import *
 log = logging.getLogger(__name__)
 
 
+def create_strict_eq(name, bases, cls_dict):
+    """Generate a strict "type" equality method for a class."""
+    cls = type(name, bases, cls_dict)
+    __class__ = cls  # provide closure cell for super()
+
+    def __eq__(self, other):
+        if type(other) is not cls:  # explicitly check the type
+            return False
+        return super().__eq__(other)
+
+    cls.__eq__ = __eq__
+    return cls
+
+
 def test_missing_fields_is_raised():
 
     @dataclass
-    class Test(JSONWizard, debug=True):
+    class Test(JSONWizard):
         class _(JSONWizard.Meta):
             v1 = True
 
@@ -72,6 +88,52 @@ def test_auto_key_casing():
     d = {'My-Str': 'test', 'myBoolTest': True, 'MyInt': 123, 'my_float': 42, }
 
     assert Test.from_dict(d) == Test(my_str='test', my_bool_test=True, my_int=123, my_float=42.0)
+
+
+def test_auto_key_casing_with_optional_fields():
+    from dataclass_wizard import JSONWizard
+
+    @dataclass
+    class MyClass(JSONWizard, key_case='AUTO'):
+        my_str: 'str | None'
+        is_active_tuple: tuple[bool, ...]
+        list_of_int: list[int] = field(default_factory=list)
+        other_int: int = 2
+
+    string = """
+    {
+      "my_str": 20,
+      "ListOfInt": ["1", "2", 3],
+      "isActiveTuple": ["true", false, 1]
+    }
+    """
+
+    instance = MyClass.from_json(string)
+    assert instance == MyClass(
+        my_str='20',
+        is_active_tuple=(True, False, True),
+        list_of_int=[1, 2, 3],
+        other_int=2,
+    )
+
+    string = """
+    {
+      "MyStr": 21,
+      "listOfInt": ["3", "2", 1],
+      "IsActiveTuple": ["false", 1, 0],
+      "OtherInt": "1"
+    }
+    """
+
+    instance = MyClass.from_json(string)
+    assert instance == MyClass(
+        my_str='21',
+        is_active_tuple=(False, True, False),
+        list_of_int=[3, 2, 1],
+        other_int=1,
+    )
+
+    assert instance == MyClass.from_dict(instance.to_dict())
 
 
 def test_alias_mapping():
@@ -134,6 +196,81 @@ def test_alias_mapping_with_load_or_dump():
                            'my_float': 42.0}
 
 
+def test_alias_with_multiple_mappings():
+    """Test `Alias(...)` usage with multiple aliases or mappings."""
+
+    @dataclass
+    class MyClass(JSONWizard):
+
+        class _(JSONWizard.Meta):
+            v1 = True
+            v1_key_case = 'CAMEL'
+            key_transform_with_dump = 'PASCAL'
+            v1_on_unknown_key = 'RAISE'
+
+        my_str: 'str | None' = Alias('my_str', 'MyStr')
+        is_active_tuple: tuple[bool, ...]
+        list_of_int: list[int] = Alias(load=('listOfInt', 'LISTY'), dump='myIntList', default_factory=list)
+        other_int: Annotated[int, Alias('other_int')] = 2
+
+    string = """
+    {
+      "MyStr": 20,
+      "listOfInt": ["1", "2", 3],
+      "isActiveTuple": ["true", false, 1]
+    }
+    """
+
+    instance = MyClass.from_json(string)
+    assert instance == MyClass(my_str='20', is_active_tuple=(True, False, True), list_of_int=[1, 2, 3], other_int=2)
+    assert instance.to_dict() == {'my_str': '20', 'IsActiveTuple': (True, False, True), 'myIntList': [1, 2, 3],
+                                  'other_int': 2}
+
+    string = """
+    {
+      "MyStr": 21,
+      "LISTY": ["3", "2", 1],
+      "isActiveTuple": ["false", 1, 0],
+      "other_int": "1"
+    }
+    """
+
+    instance = MyClass.from_json(string)
+    assert instance == MyClass(my_str='21', is_active_tuple=(False, True, False), list_of_int=[3, 2, 1], other_int=1)
+    assert instance.to_dict() == {'my_str': '21', 'IsActiveTuple': (False, True, False), 'myIntList': [3, 2, 1],
+                                  'other_int': 1}
+
+    string = """
+    {
+      "my_str": "14",
+      "isActiveTuple": ["off", 1, "on"]
+    }
+    """
+
+    instance = MyClass.from_json(string)
+    assert instance == MyClass(my_str='14', is_active_tuple=(False, True, True), list_of_int=[], other_int=2)
+    assert instance.to_dict() == {'my_str': '14', 'IsActiveTuple': (False, True, True), 'myIntList': [], 'other_int': 2}
+
+
+    string = """
+    {
+      "myStr": "14",
+      "isActiveTuple": ["off", 1, "on"],
+      "otherInt": "3",
+      "ListOfInt": ["1", "2", 3]
+    }
+    """
+
+    with pytest.raises(UnknownKeysError) as exc_info:
+        _ = MyClass.from_json(string)
+
+    e = exc_info.value
+
+    assert e.unknown_keys == {'otherInt', 'ListOfInt', 'myStr'}
+    assert e.obj == json.loads(string)
+    assert e.fields == ['my_str', 'is_active_tuple', 'list_of_int', 'other_int']
+
+
 def test_fromdict():
     """
     Confirm that Meta settings for `fromdict` are applied as expected.
@@ -180,12 +317,12 @@ def test_fromdict_raises_on_unknown_json_fields():
 
     e = exc_info.value
 
-    assert e.json_key == {'my_string'}
+    assert e.unknown_keys == {'my_string'}
     assert e.obj == d
     assert e.fields == ['my_bool']
 
 
-def test_from_dict_raises_on_unknown_json_key_nested():
+def test_from_dict_raises_on_unknown_keys_nested():
 
     @dataclass
     class Sub(JSONWizard):
@@ -195,7 +332,7 @@ def test_from_dict_raises_on_unknown_json_key_nested():
         my_str: str
 
     @dataclass
-    class Test(JSONWizard, debug=True):
+    class Test(JSONWizard):
         class _(JSONWizard.Meta):
             v1 = True
             v1_on_unknown_key = 'RAISE'
@@ -221,7 +358,6 @@ def test_from_dict_raises_on_unknown_json_key_nested():
 
     e = exc_info.value
 
-    # TODO
     assert e.unknown_keys == {'myBoolTest', 'MyInt', 'my_str'}
     assert e.obj == d
     assert e.fields == ['my_str', 'my_bool', 'my_sub']
@@ -245,10 +381,68 @@ def test_from_dict_raises_on_unknown_json_key_nested():
     assert e.fields == ['my_str']
 
 
-@pytest.mark.xfail(reason='TODO need to support multiple JSON keys for a dataclass field')
-def test_fromdict_with_key_case_auto_expected_failure():
+def test_from_dict_raises_on_unknown_keys_with_key_case_auto():
     """
-    Failure in `fromdict()` because multiple JSON keys are not mapped to single dataclass field.
+    Raises on Unknown Key with `key_case='AUTO'`
+    """
+    @dataclass
+    class Sub(JSONWizard):
+        my_str: str
+
+    @dataclass
+    class Test(JSONWizard):
+        class _(JSONWizard.Meta):
+            v1 = True
+            v1_key_case = 'A'
+            v1_on_unknown_key = 'RAISE'
+
+        my_str: str = Alias('a_str')
+        my_bool: bool
+        my_sub: Sub
+
+
+    d = {'a_str': 'test',
+         'my_bool': True,
+         'my_sub': {'MyStr': 'test'}}
+    t = Test.from_dict(d)
+    log.debug(repr(t))
+
+    d = {'a_str': 'test',
+         'My-Sub': {'MyStr': 'test'},
+         'myBool': 'F',
+         'my_str': 'test2', 'myBoolTest': True, 'MyInt': 123}
+
+    with pytest.raises(UnknownKeysError) as exc_info:
+        _ = Test.from_dict(d)
+
+    e = exc_info.value
+
+    assert e.unknown_keys == {'myBoolTest', 'MyInt', 'my_str'}
+    assert e.obj == d
+    assert e.fields == ['my_str', 'my_bool', 'my_sub']
+
+    d = {'a_str': 'test',
+         'MyBool': True,
+         'my-sub': {'MyStr': 'test', 'myBoolTest': False}}
+
+    # d = {'a_str': 'test',
+    #      'my_bool': True,
+    #      'my_sub': {'MyStr': 'test', 'my_bool': False, 'myBoolTest': False},
+    #      }
+
+    with pytest.raises(UnknownKeysError) as exc_info:
+        _ = Test.from_dict(d)
+
+    e = exc_info.value
+
+    assert e.unknown_keys == {'myBoolTest'}
+    assert e.obj == d['my-sub']
+    assert e.fields == ['my_str']
+
+
+def test_fromdict_with_key_case_auto():
+    """
+    `fromdict()` when multiple JSON keys are (and can be) mapped to single dataclass field.
     """
     @dataclass
     class MyElement:
@@ -265,13 +459,21 @@ def test_fromdict_with_key_case_auto_expected_failure():
              {'orderIndex': 111,
               'statusCode': '200'},
              {'order_index': '222',
-              'status_code': 404}
+              'status_code': 404},
+             {'Order-Index': '333',
+              'StatusCode': '502'},
          ]}
 
     LoadMeta(v1=True, v1_key_case='AUTO').bind_to(Container)
 
-    # Failure!
+    # Success :-)
     c = fromdict(Container, d)
+    assert c == Container(id=123,
+                          my_elements=[MyElement(order_index=111, status_code='200'),
+                                       MyElement(order_index=222, status_code=404),
+                                       MyElement(order_index=333, status_code='502')])
+
+    assert c == fromdict(Container, asdict(c))
 
 
 def test_fromdict_with_nested_dataclass():
@@ -404,7 +606,6 @@ def test_from_dict_called_with_incorrect_type():
     assert (err.ann_type, err.obj_type) == (dict, list)
 
 
-@pytest.mark.xfail(reason='Need to add support in v1')
 def test_date_times_with_custom_pattern():
     """
     Date, time, and datetime objects with a custom date string
@@ -414,19 +615,6 @@ def test_date_times_with_custom_pattern():
     Note that the serialization format for dates and times still use ISO
     format, by default.
     """
-
-    def create_strict_eq(name, bases, cls_dict):
-        """Generate a strict "type" equality method for a class."""
-        cls = type(name, bases, cls_dict)
-        __class__ = cls  # provide closure cell for super()
-
-        def __eq__(self, other):
-            if type(other) is not cls:  # explicitly check the type
-                return False
-            return super().__eq__(other)
-
-        cls.__eq__ = __eq__
-        return cls
 
     class MyDate(date, metaclass=create_strict_eq):
         ...
@@ -444,7 +632,7 @@ def test_date_times_with_custom_pattern():
         date_field1: DatePattern['%m-%y']
         time_field1: TimePattern['%H-%M']
         dt_field1: DateTimePattern['%d, %b, %Y %I::%M::%S.%f %p']
-        date_field2: Annotated[MyDate, Pattern('%Y/%m/%d')]
+        date_field2: Annotated[MyDate, Pattern['%Y/%m/%d']]
         time_field2: Annotated[List[MyTime], Pattern('%I:%M %p')]
         dt_field2: Annotated[MyDT, Pattern('%m/%d/%y %H@%M@%S')]
 
@@ -459,6 +647,7 @@ def test_date_times_with_custom_pattern():
             'other_field': 'testing'}
 
     LoadMeta(v1=True).bind_to(MyClass)
+    DumpMeta(key_transform='NONE').bind_to(MyClass)
 
     class_obj = fromdict(MyClass, data)
 
@@ -477,13 +666,13 @@ def test_date_times_with_custom_pattern():
 
     serialized_dict = asdict(class_obj)
 
-    expected_dict = {'dateField1': '2022-12-01',
+    expected_dict = snake({'dateField1': '2022-12-01',
                      'timeField1': '15:20:00',
                      'dtField1': '2022-01-03T23:30:12.123456',
                      'dateField2': '2021-12-30',
                      'timeField2': ['13:20:00', '00:30:00'],
                      'dtField2': '2023-01-02T02:03:52',
-                     'otherField': 'testing'}
+                     'otherField': 'testing'})
 
     log.debug('Serialized dict object: %s', serialized_dict)
     # Assert that dates / times are correctly serialized as expected.
@@ -494,7 +683,43 @@ def test_date_times_with_custom_pattern():
     assert fromdict(MyClass, serialized_dict) == expected_obj
 
 
-@pytest.mark.xfail(reason='Need to add support in v1')
+def test_date_times_with_subclass_of_time_and_plus_or_minus_in_pattern():
+
+    class MyTime(time, metaclass=create_strict_eq):
+        def print_hour(self):
+            print(self.hour)
+
+    @dataclass
+    class MyClass:
+        my_time_field: Annotated[List[MyTime], Pattern('%I+%M -%p-')]
+
+    data = {'my_time_field': ['11+20 -PM-', '4+52 -am-']}
+
+    LoadMeta(v1=True).bind_to(MyClass)
+    DumpMeta(key_transform='NONE').bind_to(MyClass)
+
+    class_obj = fromdict(MyClass, data)
+
+    # noinspection PyTypeChecker
+    expected_obj = MyClass(my_time_field=[MyTime(23, 20), MyTime(4, 52)])
+
+    log.debug('Deserialized object: %r', class_obj)
+    # Assert that dates / times are correctly de-serialized as expected.
+    assert class_obj == expected_obj
+
+    serialized_dict = asdict(class_obj)
+
+    expected_dict = {'my_time_field': ['23:20:00', '04:52:00']}
+
+    log.debug('Serialized dict object: %s', serialized_dict)
+    # Assert that dates / times are correctly serialized as expected.
+    assert serialized_dict == expected_dict
+
+    # Assert that de-serializing again, using the serialized date strings
+    # in ISO format, still works.
+    assert fromdict(MyClass, serialized_dict) == expected_obj
+
+
 def test_date_times_with_custom_pattern_when_input_is_invalid():
     """
     Date, time, and datetime objects with a custom date string
@@ -513,14 +738,24 @@ def test_date_times_with_custom_pattern_when_input_is_invalid():
         _ = fromdict(MyClass, data)
 
 
-@pytest.mark.skip(reason='Need to add support in v1')
 def test_date_times_with_custom_pattern_when_annotation_is_invalid():
     """
     Date, time, and datetime objects with a custom date string
     format, but the annotated type is not a valid date/time type.
     """
-    class MyCustomPattern(str, _PatternBase):
-        pass
+    class MyCustomPattern(PatternBase):
+        def __init__(self, value: str):
+            super().__init__(str, ('test', ))
+            self._value = value
+
+        def __class_getitem__(cls, item):
+            return MyCustomPattern(item)
+
+        def __str__(self):
+            return self._value.replace('%', '_').replace('-', '_')
+
+        def __repr__(self):
+            return f"MyCustomPattern({self._value!r})"
 
     @dataclass
     class MyClass:
@@ -530,10 +765,73 @@ def test_date_times_with_custom_pattern_when_annotation_is_invalid():
 
     LoadMeta(v1=True).bind_to(MyClass)
 
-    with pytest.raises(TypeError) as e:
+    with pytest.raises(AttributeError) as e:
         _ = fromdict(MyClass, data)
 
     log.debug('Error details: %r', e.value)
+
+
+def test_aware_and_utc_date_times_with_custom_pattern():
+    """
+    Time and datetime objects with a custom date string
+    format, where the objects are timezone-aware or in UTC.
+    """
+    class MyTime(time, metaclass=create_strict_eq):
+        def print_hour(self):
+            print(self.hour)
+
+    @dataclass
+    class Example(JSONPyWizard):
+        class _(JSONPyWizard.Meta):
+            v1 = True
+
+        my_dt1: Annotated[AwareDateTimePattern['Asia/Tokyo', '%m-%Y-%H:%M-%Z'], Alias('key')]
+        my_dt2: UTCDateTimePattern['%Y-%m-%d %H']
+        my_time1: UTCTimePattern['%H:%M:%S']
+        my_time2: Annotated[list[MyTime], AwarePattern['US/Hawaii', '%H:%M-%Z']]
+
+    d = {'key': '10-2020-15:30-UTC',
+         'my_dt2': '2010-5-7 8',
+         'my_time1': '17:10:05',
+         'my_time2': ['21:45-UTC']}
+    ex = Example.from_dict(d)
+
+    # noinspection PyTypeChecker
+    expected = Example(
+        my_dt1=datetime(2020, 10, 1, 15, 30, tzinfo=ZoneInfo('Asia/Tokyo')),
+        my_dt2=datetime(2010, 5, 7, 8, 0, tzinfo=ZoneInfo('UTC')),
+        my_time1=time(17, 10, 5, tzinfo=ZoneInfo('UTC')),
+        my_time2=[
+            MyTime(21, 45, tzinfo=ZoneInfo('US/Hawaii')),
+        ])
+
+    assert ex == expected
+
+    assert ex.to_dict() == {
+        'key': '2020-10-01T15:30:00+09:00',
+        'my_dt2': '2010-05-07T08:00:00Z',
+        'my_time1': '17:10:05Z',
+        'my_time2': ['21:45:00']}
+
+    ex = Example.from_dict(ex.to_dict())
+    ex = Example.from_dict(ex.to_dict())
+
+    assert ex == expected
+
+    # De-serializing using `timestamp()`
+
+    d = {'key': expected.my_dt1.timestamp(),
+         'my_dt2': int(expected.my_dt2.timestamp()),
+         'my_time1': '17:10:05',
+         'my_time2': ['21:45-UTC']}
+
+    assert Example.from_dict(d) == expected
+
+    # ParseError: `time` doesn't have `fromtimestamp()`,
+    # so an integer input should raise an error.
+    d['my_time1'] = 123
+    with pytest.raises(ParseError):
+        _ = Example.from_dict(d)
 
 
 def test_tag_field_is_used_in_load_process():
@@ -681,7 +979,7 @@ def test_bool(input, expected):
     assert result.my_bool == expected
 
 
-def test_from_dict_handles_identical_cased_json_keys():
+def test_from_dict_handles_identical_cased_keys():
     """
     Calling `from_dict` when required JSON keys have the same casing as
     dataclass field names, even when the field names are not "snake-cased".
@@ -768,7 +1066,7 @@ def test_from_dict_with_missing_fields_with_resolution():
     assert 'Resolution' in e.value.kwargs
 
 
-def test_from_dict_key_transform_with_json_field():
+def test_from_dict_key_transform_with_multiple_alias():
     """
     Specifying a custom mapping of alias key to dataclass field, via the
     `Alias` helper function.
@@ -781,10 +1079,7 @@ def test_from_dict_key_transform_with_json_field():
             v1 = True
 
         my_str: str = Alias('myCustomStr')
-        my_bool: bool = Alias('myTestBool')
-
-        # TODO: currently multiple aliases are not supported
-        # my_bool: bool = Alias(('my_json_bool', 'myTestBool'))
+        my_bool: bool = Alias('my_json_bool', 'myTestBool')
 
     value = 'Testing'
     d = {'myCustomStr': value, 'myTestBool': 'true'}
@@ -796,10 +1091,10 @@ def test_from_dict_key_transform_with_json_field():
     assert result.my_bool is True
 
 
-def test_from_dict_key_transform_with_json_key():
+def test_from_dict_key_transform_with_alias():
     """
-    Specifying a custom mapping of JSON key to dataclass field, via the
-    `json_key` helper function.
+    Specifying a custom mapping of JSON key to dataclass field,
+    via the `Alias` helper function.
     """
 
     @dataclass
@@ -826,7 +1121,9 @@ def test_from_dict_key_transform_with_json_key():
     [
         ([1, '2', 3], {1, 2, 3}, does_not_raise()),
         ('TrUe', True, pytest.raises(ParseError)),
-        ((3.22, 2.11, 1.22), {3, 2, 1}, does_not_raise()),
+        # Field annotated as `Set[int]`: fractional parts in float raises an error
+        ((3.22, 2.11, 1.22), {3, 2, 1}, pytest.raises(ParseError)),
+        ((3., 2.0, 1.000), {3, 2, 1}, does_not_raise()),
     ]
 )
 def test_set(input, expected, expectation):
@@ -858,7 +1155,9 @@ def test_set(input, expected, expectation):
     [
         ([1, '2', 3], {1, 2, 3}, does_not_raise()),
         ('TrUe', True, pytest.raises(ParseError)),
-        ((3.22, 2.11, 1.22), {1, 2, 3}, does_not_raise()),
+        # Field annotated as `Set[int]`: fractional parts in float raises an error
+        ((3.22, 2.11, 1.22), {3, 2, 1}, pytest.raises(ParseError)),
+        ((3., 2.0, 1.000), {3, 2, 1}, does_not_raise()),
     ]
 )
 def test_frozenset(input, expected, expectation):
@@ -922,7 +1221,7 @@ def test_literal_recursive():
     L3 = Literal[Literal[Literal[1, 2, 3], "foo"], 5, None]  # Literal[1, 2, 3, "foo", 5, None]
 
     @dataclass
-    class A(JSONWizard, debug=True):
+    class A(JSONWizard):
         class _(JSONWizard.Meta):
             v1 = True
 
@@ -1302,7 +1601,7 @@ def test_timedelta(input, expectation, base_err):
             # For the `int` parser, only do explicit type checks against
             # `bool` currently (which is a special case) so this is expected
             # to pass.
-            [{}], does_not_raise(), [0]),
+            [{}], pytest.raises(ParseError), None),
         (
             # `bool` is a sub-class of int, so we explicitly check for this
             # type.
@@ -1550,7 +1849,8 @@ def test_tuple_without_type_hinting(input, expectation, expected):
             # Technically this is the wrong type (dict != int) however the
             # conversion to `int` still succeeds. Might need to change this
             # behavior later if needed.
-            [{}], does_not_raise(), (0, )),
+            [{}], pytest.raises(ParseError), None
+        ),
         (
             [], does_not_raise(), tuple()),
         (
@@ -1564,8 +1864,12 @@ def test_tuple_without_type_hinting(input, expectation, expected):
         (
             ['1', 2, '3'], does_not_raise(), (1, 2, 3)),
         (
-            ['1', '2', None, '4', 5, 6, '7'], does_not_raise(),
-            (1, 2, 0, 4, 5, 6, 7)),
+            ['1', '2', None, '4', 5, 6, '7'], pytest.raises(ParseError), None
+        ),
+        (
+            ['1', '2', '3.', '4.0', 5, 6, '7'], does_not_raise(),
+            (1, 2, 3, 4, 5, 6, 7)
+        ),
         (
             'testing', pytest.raises(ParseError), None
         ),
@@ -2000,7 +2304,7 @@ def test_typed_dict_recursive():
         key_four: NotRequired[list['TD']]
 
     @dataclass
-    class MyContainer(JSONWizard, debug=True):
+    class MyContainer(JSONWizard):
         class _(JSONWizard.Meta):
             v1 = True
 
@@ -2160,7 +2464,7 @@ def test_named_tuple_recursive():
         field_four: list['NT'] = []
 
     @dataclass
-    class MyContainer(JSONWizard, debug=True):
+    class MyContainer(JSONWizard):
         class _(JSONWizard.Meta):
             v1 = True
 
@@ -2598,18 +2902,23 @@ def test_catch_all_with_auto_key_case():
             v1_key_case = 'Auto'
 
         my_extras: CatchAll
-        email: str
+        the_email: str
 
     opt = Options.from_dict({
-        'Email': 'a@b.org',
+        'The-Email': 'a@b.org',
         'token': '<PASSWORD>',
     })
-    assert opt == Options(my_extras={'token': '<PASSWORD>'}, email='a@b.org')
+    assert opt == Options(my_extras={'token': '<PASSWORD>'}, the_email='a@b.org')
 
     opt = Options.from_dict({
-        'Email': 'x@y.org',
+        'theEmail': 'a@b.org',
     })
-    assert opt == Options(my_extras={}, email='x@y.org')
+    assert opt == Options(my_extras={}, the_email='a@b.org')
+
+    opt = Options.from_dict({
+        'the_email': 'x@y.com',
+    })
+    assert opt == Options(my_extras={}, the_email='x@y.com')
 
 
 def test_from_dict_with_nested_object_alias_path():
@@ -2619,7 +2928,7 @@ def test_from_dict_with_nested_object_alias_path():
     """
 
     @dataclass
-    class A(JSONPyWizard, debug=True):
+    class A(JSONPyWizard):
         class _(JSONPyWizard.Meta):
             v1 = True
 
@@ -2711,7 +3020,7 @@ def test_from_dict_with_nested_object_alias_path_with_skip_defaults():
     """
 
     @dataclass
-    class A(JSONWizard, debug=True):
+    class A(JSONWizard):
         class _(JSONWizard.Meta):
             v1 = True
             skip_defaults = True
@@ -2854,8 +3163,96 @@ def test_from_dict_with_nested_object_alias_path_with_dump_alias_and_skip():
         'a': {'b': {'c': {0: 'test'}}},
     }
 
+def test_from_dict_with_multiple_nested_object_alias_paths():
+    """Confirm `AliasPath` works for multiple nested paths."""
 
-def test_auto_assign_tags_and_raise_on_unknown_json_key():
+    @dataclass
+    class MyClass(JSONWizard):
+
+        class _(JSONWizard.Meta):
+            v1 = True
+            v1_key_case = 'CAMEL'
+            key_transform_with_dump = 'PASCAL'
+            v1_on_unknown_key = 'RAISE'
+
+        my_str: 'str | None' = AliasPath('ace.in.hole.0[1]', 'bears.eat.b33ts')
+        is_active_tuple: tuple[bool, ...]
+        list_of_int: list[int] = AliasPath(load=('the-path.0', ('another-path', 'here', 0)), default_factory=list)
+        other_int: Annotated[int, AliasPath('this.Other."Int 1.23"')] = 2
+        dump_only: int = AliasPath(dump='1.2.3', default=123)
+
+    string = """
+    {
+      "ace": {"in": {"hole": [["test", "value"]]}},
+      "the-path": [["1", "2", 3]],
+      "isActiveTuple": ["true", false, 1]
+    }
+    """
+
+    instance = MyClass.from_json(string)
+    assert instance == MyClass(my_str='value', is_active_tuple=(True, False, True), list_of_int=[1, 2, 3])
+    assert instance.to_dict() == {
+        'ace': {'in': {'hole': {0: {1: 'value'}}}},
+        'this': {'Other': {'Int 1.23': 2}},
+        1: {2: {3: 123}},
+        'IsActiveTuple': (True, False, True),
+        'ListOfInt': [1, 2, 3],
+    }
+
+    string = """
+    {
+      "bears": {"eat": {"b33ts": "Fact!"}},
+      "another-path": {"here": [["3", "2", 1]]},
+      "isActiveTuple": ["false", 1, 0],
+      "this": {"Other": {"Int 1.23": "321"}},
+      "dumpOnly": "789"
+    }
+    """
+
+    instance = MyClass.from_json(string)
+
+    assert instance == MyClass(my_str='Fact!', is_active_tuple=(False, True, False), list_of_int=[3, 2, 1],
+                               other_int=321, dump_only=789)
+    assert instance.to_dict() == {
+        'ace': {'in': {'hole': {0: {1: 'Fact!'}}}},
+        'this': {'Other': {'Int 1.23': 321}},
+        1: {2: {3: 789}},
+        'IsActiveTuple': (False, True, False),
+        'ListOfInt': [3, 2, 1]
+    }
+
+    string = """
+    {
+      "ace": {"in": {"hole": [["test", "14"]]}},
+      "isActiveTuple": ["off", 1, "on"]
+    }
+    """
+
+    instance = MyClass.from_json(string)
+    assert instance == MyClass(my_str='14', is_active_tuple=(False, True, True))
+    assert instance.to_dict() == {
+        'ace': {'in': {'hole': {0: {1: '14'}}}},
+        'this': {'Other': {'Int 1.23': 2}},
+        'IsActiveTuple': (False, True, True),
+        1: {2: {3: 123}},
+        'ListOfInt': []
+    }
+
+    string = """
+    {
+      "my_str": "14",
+      "isActiveTuple": ["off", 1, "on"]
+    }
+    """
+
+    with pytest.raises(ParseError) as e:
+        _ = MyClass.from_json(string)
+
+    assert e.value.kwargs['current_path'] == "'bears'"
+    assert e.value.kwargs['path'] == "'bears' => 'eat' => 'b33ts'"
+
+
+def test_auto_assign_tags_and_raise_on_unknown_keys():
 
     @dataclass
     class A:
@@ -2916,7 +3313,7 @@ def test_auto_assign_tags_and_catch_all():
         extra: CatchAll = None
 
     @dataclass
-    class Container(JSONWizard, debug=False):
+    class Container(JSONWizard):
         obj2: Union[A, B]
         extra: CatchAll = None
 
@@ -2952,7 +3349,7 @@ def test_skip_if():
     skip serializing dataclass fields.
     """
     @dataclass
-    class Example(JSONPyWizard, debug=True):
+    class Example(JSONPyWizard):
         class _(JSONPyWizard.Meta):
             v1 = True
             skip_if = IS_NOT(True)
@@ -3099,7 +3496,7 @@ def test_invalid_condition_annotation_raises_error():
         class Example(JSONWizard):
 
             class _(JSONWizard.Meta):
-                debug_enabled = True
+                debug_enabled = False
 
             my_field: Annotated[int, LT(5)]  # Invalid: LT is not wrapped in SkipIf.
 

@@ -1,57 +1,61 @@
-# TODO cleanup imports
+from __future__ import annotations
 
 import collections.abc as abc
 import dataclasses
+
 from base64 import b64decode
 from collections import defaultdict, deque
-from dataclasses import is_dataclass, MISSING, Field
-from datetime import datetime, time, date, timedelta
+from dataclasses import is_dataclass, Field, MISSING
+from datetime import date, datetime, time, timedelta
 from decimal import Decimal
 from enum import Enum
 from pathlib import Path
-# noinspection PyUnresolvedReferences,PyProtectedMember
-from typing import (
-    Any, Type, Dict, List, Tuple, Iterable, Sequence, Union,
-    NamedTupleMeta,
-    SupportsFloat, AnyStr, Text, Callable, Optional, cast, Literal, Annotated, NamedTuple
-)
+from typing import Any, Callable, Literal, NamedTuple, cast
 from uuid import UUID
 
-from .decorators import (setup_recursive_safe_function,
+from .decorators import (process_patterned_date_time,
+                         setup_recursive_safe_function,
                          setup_recursive_safe_function_for_generic)
 from .enums import KeyAction, KeyCase
-from .models import Extras, TypeInfo
+from .models import Extras, PatternBase, TypeInfo
 from ..abstractions import AbstractLoaderGenerator
-from ..bases import BaseLoadHook, AbstractMeta, META
-from ..class_helper import (
-    v1_dataclass_field_to_alias, CLASS_TO_LOAD_FUNC, dataclass_fields, get_meta, is_subclass_safe,
-    DATACLASS_FIELD_TO_ALIAS_PATH_FOR_LOAD,
-    dataclass_init_fields, dataclass_field_to_default, create_meta, dataclass_init_field_names,
-)
+from ..bases import AbstractMeta, BaseLoadHook, META
+from ..class_helper import (create_meta,
+                            dataclass_fields,
+                            dataclass_field_to_default,
+                            dataclass_init_fields,
+                            dataclass_init_field_names,
+                            get_meta,
+                            is_subclass_safe,
+                            v1_dataclass_field_to_alias,
+                            CLASS_TO_LOAD_FUNC,
+                            DATACLASS_FIELD_TO_ALIAS_PATH_FOR_LOAD)
 from ..constants import CATCH_ALL, TAG, PY311_OR_ABOVE, PACKAGE_NAME
-from ..errors import (ParseError, MissingFields, UnknownKeysError,
-                      MissingData, JSONWizardError)
-from ..loader_selection import get_loader, fromdict
+from ..errors import (JSONWizardError,
+                      MissingData,
+                      MissingFields,
+                      ParseError,
+                      UnknownKeysError)
+from ..loader_selection import fromdict, get_loader
 from ..log import LOG
-from ..type_def import (
-    DefFactory, NoneType, JSONObject,
-    PyLiteralString,
-    T
-)
+from ..type_def import DefFactory, JSONObject, NoneType, PyLiteralString, T
 # noinspection PyProtectedMember
 from ..utils.dataclass_compat import _set_new_attribute
 from ..utils.function_builder import FunctionBuilder
-from ..utils.object_path import safe_get
-from ..utils.string_conv import to_json_key
+from ..utils.object_path import v1_safe_get
+from ..utils.string_conv import possible_json_keys
 from ..utils.type_conv import (
-    as_datetime_v1, as_date_v1, as_time_v1,
-    as_int, as_timedelta, TRUTHY_VALUES,
+    as_datetime_v1, as_date_v1, as_int_v1,
+    as_time_v1, as_timedelta, TRUTHY_VALUES,
 )
-from ..utils.typing_compat import (
-    is_typed_dict, get_args, is_annotated,
-    eval_forward_ref_if_needed, get_origin_v2, is_union,
-    get_keys_for_typed_dict, is_typed_dict_type_qualifier,
-)
+from ..utils.typing_compat import (eval_forward_ref_if_needed,
+                                   get_args,
+                                   get_keys_for_typed_dict,
+                                   get_origin_v2,
+                                   is_annotated,
+                                   is_typed_dict,
+                                   is_typed_dict_type_qualifier,
+                                   is_union)
 
 
 # Atomic immutable types which don't require any recursive handling and for which deepcopy
@@ -100,12 +104,12 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
     transform_json_field = None
 
     @staticmethod
-    def default_load_to(tp: TypeInfo, extras: Extras) -> str:
+    def default_load_to(tp: TypeInfo, extras: Extras):
         # identity: o
         return tp.v()
 
     @staticmethod
-    def load_to_str(tp: TypeInfo, extras: Extras) -> str:
+    def load_to_str(tp: TypeInfo, extras: Extras):
         tn = tp.type_name(extras)
         o = tp.v()
 
@@ -117,12 +121,33 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         return f'{default} if {o} is None else {tn}({o})'
 
     @staticmethod
-    def load_to_int(tp: TypeInfo, extras: Extras) -> str:
-        # alias: as_int
-        tn = tp.type_name(extras)
-        tp.ensure_in_locals(extras, as_int)
+    def load_to_int(tp: TypeInfo, extras: Extras):
+        """
+        Generate code to load a value into an integer field.
 
-        return f"as_int({tp.v()}, {tn})"
+        Current logic to parse (an annotated) ``int`` returns:
+          - ``v``          -->  ``v`` is an ``int`` or similarly annotated type.
+          - ``int(v)``     -->  ``v`` is a ``str`` value of either a decimal
+                                integer (e.g. ``'123'``) or a non-fractional
+                                float value (e.g. ``42.0``).
+          - ``as_int(v)``  -->  ``v`` is a non-fractional ``float``, or in case
+                                of "less common" types / scenarios. Note that
+                                empty strings and ``None`` (e.g. null values)
+                                are not supported.
+
+        """
+        tn = tp.type_name(extras)
+        o = tp.v()
+        tp.ensure_in_locals(extras, as_int=as_int_v1)
+
+        return (f"{o} if (tp := {o}.__class__) is {tn} "
+                f"else {tn}("
+                f"f if '.' in {o} and (f := float({o})).is_integer() else {o}"
+                ") if tp is str "
+                f"else as_int({o},tp,{tn})")
+
+        # TODO when `in_union`, we already know `o.__class__`
+        #  is not `tn`, and we already have a variable `tp`.
 
     @staticmethod
     def load_to_float(tp: TypeInfo, extras: Extras):
@@ -130,7 +155,7 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         return tp.wrap_builtin(float, tp.v(), extras)
 
     @staticmethod
-    def load_to_bool(tp: TypeInfo, extras: Extras) -> str:
+    def load_to_bool(tp: TypeInfo, extras: Extras):
         o = tp.v()
         tp.ensure_in_locals(extras, __TRUTHY=TRUTHY_VALUES)
 
@@ -149,7 +174,7 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         return tp.wrap_builtin(bytearray, as_bytes, extras)
 
     @staticmethod
-    def load_to_none(tp: TypeInfo, extras: Extras) -> str:
+    def load_to_none(tp: TypeInfo, extras: Extras):
         return 'None'
 
     @staticmethod
@@ -176,7 +201,6 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         string = cls.get_string_for_annotation(
             tp.replace(origin=elem_type, i=i_next, index=None), extras)
 
-        # TODO
         if issubclass(gorg, (set, frozenset)):
             start_char = '{'
             end_char = '}'
@@ -248,6 +272,7 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
 
         req_field_to_assign = {}
         field_assigns = []
+        # noinspection PyProtectedMember
         optional_fields = set(nt_tp._field_defaults)
         has_optionals = True if optional_fields else False
         only_optionals = has_optionals and len(optional_fields) == len(nt_tp.__annotations__)
@@ -277,7 +302,7 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
                 with fn_gen.if_(f'has_opt'):
                     fn_gen.add_line(f'fields = [{field_assigns.pop(0)}]')
                     for i, string in enumerate(field_assigns, start=opt_start + 1):
-                            fn_gen.add_line(f'if L > {i}: fields.append({string})')
+                        fn_gen.add_line(f'if L > {i}: fields.append({string})')
 
                     if only_optionals:
                         fn_gen.add_line(f'return cls(*fields)')
@@ -326,7 +351,8 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         try:
             kt, vt = tp.args
         except ValueError:
-            # TODO
+            # Annotated without two arguments,
+            # e.g. like `dict[str]` or `dict`
             kt = vt = Any
 
         result = cls._build_dict_comp(
@@ -337,14 +363,16 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
     @classmethod
     def load_to_defaultdict(cls, tp: TypeInfo, extras: Extras):
         v, k_next, v_next, i_next = tp.v_and_next_k_v()
-        default_factory: DefFactory
+        default_factory: DefFactory | None
 
         try:
             kt, vt = tp.args
             default_factory = getattr(vt, '__origin__', vt)
         except ValueError:
-            # TODO
-            kt = vt = default_factory = Any
+            # Annotated without two arguments,
+            # e.g. like `defaultdict[str]` or `defaultdict`
+            kt = vt = Any
+            default_factory = NoneType
 
         result = cls._build_dict_comp(
             tp, v, i_next, k_next, v_next, kt, vt, extras)
@@ -357,15 +385,14 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         fn_gen = extras['fn_gen']
 
         req_keys, opt_keys = get_keys_for_typed_dict(tp.origin)
-        # _locals = extras['locals']
 
         result_list = []
         # TODO set __annotations__?
-        annotations = tp.origin.__annotations__
+        td_annotations = tp.origin.__annotations__
 
         # Set required keys for the `TypedDict`
         for k in req_keys:
-            field_tp = annotations[k]
+            field_tp = td_annotations[k]
             field_name = repr(k)
             string = cls.get_string_for_annotation(
                 tp.replace(origin=field_tp,
@@ -380,7 +407,7 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
 
             # Set optional keys for the `TypedDict` (if they exist)
             for k in opt_keys:
-                field_tp = annotations[k]
+                field_tp = td_annotations[k]
                 field_name = repr(k)
                 string = cls.get_string_for_annotation(
                     tp.replace(origin=field_tp, i=2, index=None), extras)
@@ -457,13 +484,14 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
                     continue
 
                 elif not config.v1_unsafe_parse_dataclass_in_union:
-                    e = ValueError(f'Cannot parse dataclass types in a Union without one of the following `Meta` settings:\n\n'
+                    e = ValueError('Cannot parse dataclass types in a Union without '
+                                   'one of the following `Meta` settings:\n\n'
                                    '  * `auto_assign_tags = True`\n'
-                                  f'    - Set on class `{extras["cls_name"]}`.\n\n'
-                                  f'  * `tag = "{cls_name}"`\n'
-                                  f'    - Set on class `{possible_tp.__qualname__}`.\n\n'
+                                   f'    - Set on class `{extras["cls_name"]}`.\n\n'
+                                   f'  * `tag = "{cls_name}"`\n'
+                                   f'    - Set on class `{possible_tp.__qualname__}`.\n\n'
                                    '  * `v1_unsafe_parse_dataclass_in_union = True`\n'
-                                  f'    - Set on class `{extras["cls_name"]}`\n\n'
+                                   f'    - Set on class `{extras["cls_name"]}`\n\n'
                                    'For more information, refer to:\n'
                                    '  https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/dataclasses_in_union_types.html')
                     raise e from None
@@ -472,7 +500,7 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
 
             try_parse_lines = [
                 'try:',
-               f'  return {string}',
+                f'  return {string}',
                 'except Exception:',
                 '  pass',
             ]
@@ -510,10 +538,10 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
                 fn_gen.add_line(
                     "raise ParseError("
                     "TypeError('Object with tag was not in any of Union types'),"
-                   f"v1,{fields},"
+                    f"v1,{fields},"
                     "input_tag=tag,"
                     "tag_key=tag_key,"
-                   f"valid_tags={list(dataclass_tag_to_lines)})"
+                    f"valid_tags={list(dataclass_tag_to_lines)})"
                 )
 
         fn_gen.add_line('tp = type(v1)')
@@ -593,14 +621,17 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         return tp.wrap_builtin(Path, tp.v(), extras)
 
     @classmethod
+    @process_patterned_date_time
     def load_to_date(cls, tp: TypeInfo, extras: Extras):
         return cls._load_to_date(tp, extras, date)
 
     @classmethod
+    @process_patterned_date_time
     def load_to_datetime(cls, tp: TypeInfo, extras: Extras):
         return cls._load_to_date(tp, extras, datetime)
 
     @staticmethod
+    @process_patterned_date_time
     def load_to_time(tp: TypeInfo, extras: Extras):
         o = tp.v()
         tn = tp.type_name(extras, bound=time)
@@ -624,7 +655,7 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
 
     @staticmethod
     def _load_to_date(tp: TypeInfo, extras: Extras,
-                      cls: 'Union[type[date], type[datetime]]'):
+                      cls: type[date] | type[datetime]):
         o = tp.v()
         tn = tp.type_name(extras, bound=cls)
         tp_date_or_datetime = cast('type[date]', tp.origin)
@@ -680,16 +711,23 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
 
         origin = get_origin_v2(type_ann)
         name = getattr(origin, '__name__', origin)
-
         args = None
 
-        if is_annotated(type_ann) or is_typed_dict_type_qualifier(origin):
+        if is_annotated(type_ann):
+            # Given `Annotated[T, ...]`, we only need `T`
+            type_ann, *field_extras = get_args(type_ann)
+            origin = get_origin_v2(type_ann)
+            name = getattr(origin, '__name__', origin)
+            # Check for Custom Patterns for date / time / datetime
+            for extra in field_extras:
+                if isinstance(extra, PatternBase):
+                    extras['pattern'] = extra
+
+        elif is_typed_dict_type_qualifier(origin):
             # Given `Required[T]` or `NotRequired[T]`, we only need `T`
-            # noinspection PyUnresolvedReferences
             type_ann = get_args(type_ann)[0]
             origin = get_origin_v2(type_ann)
             name = getattr(origin, '__name__', origin)
-            # origin = type_ann.__args__[0]
 
         # TypeAliasType: Type aliases are created through
         # the `type` statement
@@ -712,7 +750,6 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
             load_hook = hooks.get(origin)
 
         elif (load_hook := hooks.get(origin)) is not None:
-            # TODO
             try:
                 args = get_args(type_ann)
             except ValueError:
@@ -750,7 +787,6 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
                 # Annotated as a `collections.namedtuple` subtype
                 load_hook = cls.load_to_named_tuple_untyped
 
-        # TODO type(cls)
         elif is_typed_dict(origin):
             load_hook = cls.load_to_typed_dict
 
@@ -784,6 +820,9 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
                     args = get_args(type_ann)
                 except ValueError:
                     args = Any,
+
+        elif isinstance(origin, PatternBase):
+            load_hook = origin.load_to_pattern
 
         else:
 
@@ -822,10 +861,10 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
 
 def setup_default_loader(cls=LoadMixin):
     """
-    Setup the default type hooks to use when converting `str` (json) or a
+    Set up the default type hooks to use when converting `str` (json) or a
     Python `dict` object to a `dataclass` instance.
 
-    Note: `cls` must be :class:`LoadMixIn` or a sub-class of it.
+    Note: `cls` must be :class:`LoadMixIn` or a subclass of it.
     """
     # TODO maybe `dict.update` might be better?
 
@@ -856,11 +895,12 @@ def setup_default_loader(cls=LoadMixin):
 
 
 def check_and_raise_missing_fields(
-    _locals, o, cls,
-    fields: 'Union[tuple[Field, ...], None]'):
+        _locals, o, cls,
+        fields: tuple[Field, ...] | None):
 
     if fields is None:  # named tuple
         nt_tp = cast(NamedTuple, cls)
+        # noinspection PyProtectedMember
         field_to_default = nt_tp._field_defaults
 
         fields = tuple([
@@ -885,7 +925,7 @@ def check_and_raise_missing_fields(
                           and (f.default is MISSING
                                and f.default_factory is MISSING)]
 
-        missing_keys = [v1_dataclass_field_to_alias(cls)[field]
+        missing_keys = [v1_dataclass_field_to_alias(cls).get(field, [field])[0]
                         for field in missing_fields]
 
     raise MissingFields(
@@ -896,12 +936,10 @@ def check_and_raise_missing_fields(
 
 def load_func_for_dataclass(
         cls: type,
-        extras: 'Extras | None' = None,
+        extras: Extras | None = None,
         loader_cls=LoadMixin,
         base_meta_cls: type = AbstractMeta,
-) -> Optional[Callable[[JSONObject], T]]:
-
-    # TODO dynamically generate for multiple nested classes at once
+) -> Callable[[JSONObject], T] | None:
 
     # Tuple describing the fields of this dataclass.
     fields = dataclass_fields(cls)
@@ -979,33 +1017,30 @@ def load_func_for_dataclass(
         extras['cls'] = cls
         extras['cls_name'] = cls_name
 
-    key_case: 'V1LetterCase | None' = cls_loader.transform_json_field
+    key_case: KeyCase | None = cls_loader.transform_json_field
+    auto_key_case = key_case is KeyCase.AUTO
 
-    field_to_alias = v1_dataclass_field_to_alias(cls)
-    check_aliases = True if field_to_alias else False
+    field_to_aliases = v1_dataclass_field_to_alias(cls)
+    check_aliases = True if field_to_aliases else False
 
-    field_to_path = DATACLASS_FIELD_TO_ALIAS_PATH_FOR_LOAD[cls]
-    has_alias_paths = True if field_to_path else False
+    field_to_paths = DATACLASS_FIELD_TO_ALIAS_PATH_FOR_LOAD[cls]
+    has_alias_paths = True if field_to_paths else False
 
     # Fix for using `auto_assign_tags` and `raise_on_unknown_json_key` together
     # See https://github.com/rnag/dataclass-wizard/issues/137
     has_tag_assigned = meta.tag is not None
     if (has_tag_assigned and
-        # Ensure `tag_key` isn't a dataclass field,
-        # to avoid issues with our logic.
-        # See https://github.com/rnag/dataclass-wizard/issues/148
-        meta.tag_key not in cls_init_field_names):
-            expect_tag_as_unknown_key = True
+            # Ensure `tag_key` isn't a dataclass field,
+            # to avoid issues with our logic.
+            # See https://github.com/rnag/dataclass-wizard/issues/148
+            meta.tag_key not in cls_init_field_names):
+        expect_tag_as_unknown_key = True
     else:
         expect_tag_as_unknown_key = False
 
-    if key_case is KeyCase.AUTO:
-        new_locals['f2k'] = field_to_alias
-        new_locals['to_key'] = to_json_key
-
     on_unknown_key = meta.v1_on_unknown_key
 
-    catch_all_field = field_to_alias.pop(CATCH_ALL, None)
+    catch_all_field: str | None = field_to_aliases.pop(CATCH_ALL, None)
     has_catch_all = catch_all_field is not None
 
     if has_catch_all:
@@ -1023,11 +1058,27 @@ def load_func_for_dataclass(
         should_warn = on_unknown_key is KeyAction.WARN
         if should_warn or should_raise:
             pre_assign = 'i+=1; '
+            set_aliases = True
+        else:
+            set_aliases = has_catch_all
     else:
         should_raise = should_warn = None
+        set_aliases = has_catch_all
+
+    if set_aliases:
+        if expect_tag_as_unknown_key:
+            # add an alias for the tag key, so we don't
+            # capture or raise an error when we see it
+            aliases = {meta.tag_key}
+        else:
+            aliases = set()
+
+        new_locals['aliases'] = aliases
+    else:
+        aliases = None
 
     if has_alias_paths:
-        new_locals['safe_get'] = safe_get
+        new_locals['safe_get'] = v1_safe_get
 
     with fn_gen.function(fn_name, ['o'], MISSING, new_locals):
 
@@ -1052,51 +1103,122 @@ def load_func_for_dataclass(
                     with fn_gen.if_(f'{meta.tag_key!r} in o'):
                         fn_gen.add_line('i+=1')
 
+                val = 'v1'
+                _val_is_found = f'{val} is not MISSING'
                 for i, f in enumerate(cls_init_fields):
-                    val = 'v1'
                     name = f.name
                     var = f'__{name}'
+                    has_default = name in field_to_default
+                    val_is_found = _val_is_found
 
                     if (check_aliases
-                            and (key := field_to_alias.get(name)) is not None
-                            and name != key):
-                        f_assign = f'field={name!r}; key={key!r}; {val}=o.get(key, MISSING)'
+                            and (_aliases := field_to_aliases.get(name)) is not None):
+
+                        if len(_aliases) == 1:
+                            alias = _aliases[0]
+
+                            if set_aliases:
+                                aliases.add(alias)
+
+                            f_assign = f'field={name!r}; {val}=o.get({alias!r}, MISSING)'
+                        else:
+                            f_assign = None
+
+                            # add possible JSON keys
+                            if set_aliases:
+                                aliases.update(_aliases)
+
+                            fn_gen.add_line(f'field={name!r}')
+                            condition = [f'({val} := o.get({alias!r}, MISSING)) is not MISSING'
+                                         for alias in _aliases]
+
+                            val_is_found = '(' + '\n     or '.join(condition) + ')'
 
                     elif (has_alias_paths
-                            and (path := field_to_path.get(name)) is not None):
+                            and (paths := field_to_paths.get(name)) is not None):
 
-                        if name in field_to_default:
-                            f_assign = f'field={name!r}; {val}=safe_get(o, {path!r}, MISSING, False)'
+                        if len(paths) == 1:
+                            path = paths[0]
+
+                            # add the first part (top-level key) of the path
+                            if set_aliases:
+                                aliases.add(path[0])
+
+                            f_assign = f'field={name!r}; {val}=safe_get(o, {path!r}, {not has_default})'
                         else:
-                            f_assign = f'field={name!r}; {val}=safe_get(o, {path!r})'
+                            f_assign = None
+                            fn_gen.add_line(f'field={name!r}')
+                            condition = []
+                            last_idx = len(paths) - 1
+                            for k, path in enumerate(paths):
+
+                                # add the first part (top-level key) of each path
+                                if set_aliases:
+                                    aliases.add(path[0])
+
+                                if k == last_idx:
+                                    condition.append(
+                                        f'({val} := safe_get(o, {path!r}, {not has_default})) is not MISSING')
+                                else:
+                                    condition.append(
+                                        f'({val} := safe_get(o, {path!r}, False)) is not MISSING')
+
+                            val_is_found = '(' + '\n     or '.join(condition) + ')'
 
                         # TODO raise some useful message like (ex. on IndexError):
                         #       Field "my_str" of type tuple[float, str] in A2 has invalid value ['123']
 
                     elif key_case is None:
-                        field_to_alias[name] = name
+
+                        if set_aliases:
+                            aliases.add(name)
+
                         f_assign = f'field={name!r}; {val}=o.get(field, MISSING)'
-                    elif key_case is KeyCase.AUTO:
-                        f_assign = f'field={name!r}; key=f2k.get(field) or to_key(o,field,f2k); {val}=o.get(key, MISSING)'
+
+                    elif auto_key_case:
+                        f_assign = None
+
+                        _aliases = possible_json_keys(name)
+
+                        if set_aliases:
+                            # add field name itself
+                            aliases.add(name)
+                            # add possible JSON keys
+                            aliases.update(_aliases)
+
+                        fn_gen.add_line(f'field={name!r}')
+                        condition = [f'({val} := o.get(field, MISSING)) is not MISSING']
+                        for alias in _aliases:
+                            condition.append(f'({val} := o.get({alias!r}, MISSING)) is not MISSING')
+
+                        val_is_found = '(' + '\n     or '.join(condition) + ')'
+
                     else:
-                        field_to_alias[name] = key = key_case(name)
-                        f_assign = f'field={name!r}; key={key!r}; {val}=o.get(key, MISSING)'
+                        alias = key_case(name)
+
+                        if set_aliases:
+                            aliases.add(alias)
+
+                        if alias != name:
+                            field_to_aliases[name] = (alias, )
+
+                        f_assign = f'field={name!r}; {val}=o.get({alias!r}, MISSING)'
 
                     string = generate_field_code(cls_loader, extras, f, i)
 
-                    if name in field_to_default:
+                    if f_assign is not None:
                         fn_gen.add_line(f_assign)
 
-                        with fn_gen.if_(f'{val} is not MISSING'):
+                    if has_default:
+                        with fn_gen.if_(val_is_found):
                             fn_gen.add_line(f'{pre_assign}init_kwargs[field] = {string}')
 
                     else:
                         # TODO confirm this is ok
                         # vars_for_fields.append(f'{name}={var}')
                         vars_for_fields.append(var)
-                        fn_gen.add_line(f_assign)
 
-                        with fn_gen.if_(f'{val} is not MISSING'):
+                        with fn_gen.if_(val_is_found):
                             fn_gen.add_line(f'{pre_assign}{var} = {string}')
 
             # create a broad `except Exception` block, as we will be
@@ -1105,20 +1227,7 @@ def load_func_for_dataclass(
                 fn_gen.add_line("re_raise(e, cls, o, fields, field, locals().get('v1'))")
 
         if has_catch_all:
-            if expect_tag_as_unknown_key:
-                # add an alias for the tag key, so we don't capture it
-                field_to_alias['...'] = meta.tag_key
-
-            if 'f2k' in new_locals:
-                # If this is the case, then `AUTO` key transform mode is enabled
-                # line = 'extra_keys = o.keys() - f2k.values()'
-                aliases_var = 'f2k.values()'
-
-            else:
-                aliases_var = 'aliases'
-                new_locals['aliases'] = set(field_to_alias.values())
-
-            catch_all_def = f'{{k: o[k] for k in o if k not in {aliases_var}}}'
+            catch_all_def = f'{{k: o[k] for k in o if k not in aliases}}'
 
             if catch_all_field.endswith('?'):  # Default value
                 with fn_gen.if_('len(o) != i'):
@@ -1128,17 +1237,8 @@ def load_func_for_dataclass(
                 fn_gen.add_line(f'{var} = {{}} if len(o) == i else {catch_all_def}')
                 vars_for_fields.insert(catch_all_idx, var)
 
-        elif should_warn or should_raise:
-            if expect_tag_as_unknown_key:
-                # add an alias for the tag key, so we don't raise an error when we see it
-                field_to_alias['...'] = meta.tag_key
-
-            if 'f2k' in new_locals:
-                # If this is the case, then `AUTO` key transform mode is enabled
-                line = 'extra_keys = o.keys() - f2k.values()'
-            else:
-                new_locals['aliases'] = set(field_to_alias.values())
-                line = 'extra_keys = set(o) - aliases'
+        elif set_aliases:  # warn / raise on unknown key
+            line = 'extra_keys = set(o) - aliases'
 
             with fn_gen.if_('len(o) != i'):
                 fn_gen.add_line(line)
@@ -1150,7 +1250,9 @@ def load_func_for_dataclass(
                     # Show a warning here
                     new_locals['LOG'] = LOG
                     fn_gen.add_line(r"LOG.warning('Found %d unknown keys %r not mapped to the dataclass schema.\n"
-                                        r"  Class: %r\n  Dataclass fields: %r', len(extra_keys), extra_keys, cls.__qualname__, [f.name for f in fields])")
+                                    r"  Class: %r\n  Dataclass fields: %r', "
+                                    "len(extra_keys), extra_keys, "
+                                    "cls.__qualname__, [f.name for f in fields])")
 
         # Now pass the arguments to the constructor method, and return
         # the new dataclass instance. If there are any missing fields,
@@ -1220,13 +1322,13 @@ def re_raise(e, cls, o, fields, field, value):
     # If the object `o` is None, then raise an error with
     # the relevant info included.
     if o is None:
-      raise MissingData(cls) from None
+        raise MissingData(cls) from None
 
     # Check if the object `o` is some other type than what we expect -
     # for example, we could be passed in a `list` type instead.
     if not isinstance(o, dict):
-      base_err = TypeError('Incorrect type for `from_dict()`')
-      e = ParseError(base_err, o, dict, cls, desired_type=dict)
+        base_err = TypeError('Incorrect type for `from_dict()`')
+        e = ParseError(base_err, o, dict, cls, desired_type=dict)
 
     add_fields = True
     if type(e) is not ParseError:

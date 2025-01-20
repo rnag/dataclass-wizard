@@ -338,7 +338,7 @@ def _process_field(name: str,
             if f.load_alias is not ExplicitNull:
                 load_dataclass_field_to_path[name] = f.path
             if not f.skip and f.dump_alias is not ExplicitNull:
-                dump_dataclass_field_to_path[name] = f.path
+                dump_dataclass_field_to_path[name] = f.path[0]
         # TODO I forget why this is needed :o
         if f.skip:
             dump_dataclass_field_to_alias[name] = ExplicitNull
@@ -350,8 +350,8 @@ def _process_field(name: str,
             load_dataclass_field_to_alias[name] = f.load_alias
         if f.skip:
             dump_dataclass_field_to_alias[name] = ExplicitNull
-        elif f.dump_alias is not None:
-            dump_dataclass_field_to_alias[name] = f.dump_alias
+        elif (dump := f.dump_alias) is not None:
+            dump_dataclass_field_to_alias[name] = dump if isinstance(dump, str) else dump[0]
 
 
 def _setup_v1_load_config_for_cls(
@@ -413,8 +413,6 @@ def _setup_v1_load_config_for_cls(
                                    dump_dataclass_field_to_path,
                                    load_dataclass_field_to_alias,
                                    dump_dataclass_field_to_alias)
-                # elif isinstance(extra, PatternedDT):
-                    # field_extras['pattern'] = extra
 
     IS_V1_LOAD_CONFIG_SETUP.add(cls)
 
@@ -511,11 +509,6 @@ def dataclass_field_to_default(cls):
                 defaults[f.name] = f.default_factory()
 
     return FIELD_TO_DEFAULT[cls]
-
-
-def is_builtin_class(cls):
-
-    return cls.__module__ == 'builtins'
 
 
 def is_builtin(o):

@@ -87,13 +87,11 @@ check: dist-local  ## verify release before upload to PyPI
 	twine check dist/*
 
 dist: clean ## builds source and wheel package
-	python setup.py sdist
-	python setup.py bdist_wheel
+	python setup.py sdist bdist_wheel
 	ls -l dist
 
 dist-local: clean replace_version ## builds source and wheel package (for local testing)
-	python setup.py sdist
-	python setup.py bdist_wheel
+	python setup.py sdist bdist_wheel
 	ls -l dist
 	$(MAKE) revert_readme
 

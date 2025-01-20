@@ -4,6 +4,14 @@ dataclass\_wizard.v1 package
 Submodules
 ----------
 
+dataclass\_wizard.v1.decorators module
+--------------------------------------
+
+.. automodule:: dataclass_wizard.v1.decorators
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 dataclass\_wizard.v1.enums module
 ---------------------------------
 

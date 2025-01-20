@@ -1,6 +1,6 @@
 from collections import defaultdict
 from dataclasses import Field
-from typing import Any, Callable, Literal, overload
+from typing import Any, Callable, Literal, Sequence, overload
 
 from .abstractions import W, AbstractLoader, AbstractDumper, AbstractParser, E, AbstractLoaderGenerator
 from .bases import META, AbstractMeta
@@ -55,10 +55,10 @@ JSON_FIELD_TO_DATACLASS_FIELD: dict[type, dict[str, str | ExplicitNullType]] = d
 DATACLASS_FIELD_TO_JSON_PATH: dict[type, dict[str, PathType]] = defaultdict(dict)
 
 # V1: A cached mapping, per dataclass, of instance field name to JSON path
-DATACLASS_FIELD_TO_ALIAS_PATH_FOR_LOAD: dict[type, dict[str, PathType]] = defaultdict(dict)
+DATACLASS_FIELD_TO_ALIAS_PATH_FOR_LOAD: dict[type, dict[str, Sequence[PathType]]] = defaultdict(dict)
 
 # V1: A cached mapping, per dataclass, of instance field name to JSON field
-DATACLASS_FIELD_TO_ALIAS_FOR_LOAD: dict[type, dict[str, str]] = defaultdict(dict)
+DATACLASS_FIELD_TO_ALIAS_FOR_LOAD: dict[type, dict[str, Sequence[str]]] = defaultdict(dict)
 
 # A cached mapping, per dataclass, of instance field name to JSON field
 DATACLASS_FIELD_TO_ALIAS: dict[type, dict[str, str]] = defaultdict(dict)
@@ -192,7 +192,7 @@ def setup_dump_config_for_cls_if_needed(cls: type) -> None:
     """
 
 
-def v1_dataclass_field_to_alias(cls: type) -> dict[str, str]: ...
+def v1_dataclass_field_to_alias(cls: type) -> dict[str, Sequence[str]]: ...
 
 def _setup_v1_load_config_for_cls(cls: type):
     """
@@ -267,10 +267,6 @@ def dataclass_init_field_names(cls: type) -> tuple[str, ...]:
 
 def dataclass_field_to_default(cls: type) -> dict[str, Any]:
     """Get default values for the (optional) dataclass fields."""
-
-
-def is_builtin_class(cls: type) -> bool:
-    """Check if a class is a builtin in Python."""
 
 
 def is_builtin(o: Any) -> bool:

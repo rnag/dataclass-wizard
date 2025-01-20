@@ -4,7 +4,6 @@ __all__ = [
     'PyProtocol',
     'PyDeque',
     'PyTypedDict',
-    'PyTypedDicts',
     'PyRequired',
     'PyNotRequired',
     'PyReadOnly',
@@ -42,12 +41,12 @@ __all__ = [
     'dataclass_transform',
 ]
 
-from collections import deque
+from collections import deque, defaultdict
 from datetime import date, time, datetime
 from enum import Enum
 from os import PathLike
 from typing import (
-    Any, Type, TypeVar, Sequence, Mapping, List, Dict, DefaultDict, FrozenSet,
+    Any, TypeVar, Sequence, Mapping,
     Union, NamedTuple, Callable, AnyStr, TextIO, BinaryIO,
     Deque as PyDeque,
     ForwardRef as PyForwardRef,
@@ -89,7 +88,7 @@ NT = TypeVar('NT', bound=NamedTuple)
 DT = TypeVar('DT', date, time, datetime)
 
 # DefaultDict type
-DD = TypeVar('DD', bound=DefaultDict)
+DD = TypeVar('DD', bound=defaultdict)
 
 # Numeric type
 N = Union[int, float]
@@ -104,26 +103,15 @@ LT = TypeVar('LT', list, tuple)
 LSQ = TypeVar('LSQ', list, set, frozenset, deque)
 
 # A fixed set of key names
-FrozenKeys = FrozenSet[str]
+FrozenKeys = frozenset[str]
 
 # Default factory type, assuming a no-args constructor
 DefFactory = Callable[[], T]
 
-# For Python 3.8+, we need to use both `TypedDict` implementations (from both
-# the `typing` and `typing_extensions` modules). Because it's not clear which
-# version users might choose to use. And they might choose to use either, due
-# to the issues mentioned below (comment taken from `typing_extensions`):
-#
-#   The standard library TypedDict in Python 3.8 does not store runtime information
-#   about which (if any) keys are optional.  See https://bugs.python.org/issue38834
-#   The standard library TypedDict in Python 3.9.0/1 does not honour the "total"
-#   keyword with old-style TypedDict().  See https://bugs.python.org/issue42059
-PyTypedDicts: List[Type['TypedDict']] = []
-
 # Valid collection types in JSON.
-JSONList = List[Any]
-JSONObject = Dict[str, Any]
-ListOfJSONObject = List[JSONObject]
+JSONList = list[Any]
+JSONObject = dict[str, Any]
+ListOfJSONObject = list[JSONObject]
 
 # Valid value types in JSON.
 JSONValue = Union[None, str, bool, int, float, JSONList, JSONObject]
@@ -136,17 +124,6 @@ EnvFileType = Union[bool, FileType, Iterable[FileType], None]
 
 # Type for a string or a collection of strings.
 StrCollection = Union[str, Collection[str]]
-
-
-PyTypedDicts.append(PyTypedDict)
-# Python 3.9+ users might import from either `typing` or
-# `typing_extensions`, so check for both types.
-try:  # pragma: no cover
-    # noinspection PyUnresolvedReferences
-    from typing_extensions import TypedDict as PyTypedDict
-    PyTypedDicts.append(PyTypedDict)
-except ImportError:
-    pass
 
 # Python 3.11 introduced `Required` and `NotRequired` wrappers for
 # `TypedDict` fields (PEP 655). Python 3.9+ users can import the

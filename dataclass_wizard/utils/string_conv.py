@@ -1,5 +1,5 @@
 __all__ = ['normalize',
-           'to_json_key',
+           'possible_json_keys',
            'to_camel_case',
            'to_pascal_case',
            'to_lisp_case',
@@ -20,52 +20,52 @@ def normalize(string: str) -> str:
     return string.replace('-', '').replace('_', '').upper()
 
 
-def to_json_key(o: JSONObject,
-                field: str,
-                f2k: 'dict[str, str]') -> 'str | None':
+def possible_json_keys(field: str) -> list[str]:
     """
-    Maps a dataclass field name to its corresponding key in a JSON object.
+    Maps a dataclass field name to its possible keys in a JSON object.
 
     This function checks multiple naming conventions (e.g., camelCase,
     PascalCase, kebab-case, etc.) to find the matching key in the JSON
     object `o`. It also caches the mapping for future use.
 
     Args:
-        o (dict[str, Any]): The JSON object to search for the key.
         field (str): The dataclass field name to map.
-        f2k (dict[str, str]): A dictionary to cache field-to-key mappings.
 
     Returns:
-        str: The matching JSON key for the given field.
-        None: If no matching key is found in `o`.
+        list[str]: The possible JSON keys for the given field.
     """
-    # Short path: key matching field name exists in `o`
-    if field in o:
-        key = field
-    # `camelCase`
-    elif (key := to_camel_case(field)) in o:
-        ...
-    # `PascalCase`: same as `camelCase` but first letter is capitalized
-    elif (key := key[0].upper() + key[1:]) in o:
-        ...
-    # `kebab-case`
-    elif (key := to_lisp_case(field)) in o:
-        ...
-    # `Upper-Kebab`: same as `kebab-case`, each word is title-cased
-    elif (key := key.title()) in o:
-        ...
-    # `Upper_Snake`
-    elif (key := key.replace('-', '_')) in o:
-        ...
-    # `snake_case`
-    elif (key := key.lower()) in o:
-        ...
-    else:
-        key = None
+    possible_keys = []
 
-    # Cache the result
-    f2k[field] = key
-    return key
+    # `camelCase`
+    _key = to_camel_case(field)
+    possible_keys.append(_key)
+
+    # `PascalCase`: same as `camelCase` but first letter is capitalized
+    _key = _key[0].upper() + _key[1:]
+    possible_keys.append(_key)
+
+    # `kebab-case`
+    _key = to_lisp_case(field)
+    possible_keys.append(_key)
+
+    # `Upper-Kebab`: same as `kebab-case`, each word is title-cased
+    _key = _key.title()
+    possible_keys.append(_key)
+
+    # `Upper_Snake`
+    _key = _key.replace('-', '_')
+    possible_keys.append(_key)
+
+    # `snake_case`
+    _key = _key.lower()
+    possible_keys.append(_key)
+
+    # remove 1:1 field mapping from possible keys,
+    # as that's the first thing we check.
+    if field in possible_keys:
+        possible_keys.remove(field)
+
+    return possible_keys
 
 
 def to_camel_case(string: str) -> str:

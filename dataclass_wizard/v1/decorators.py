@@ -1,9 +1,67 @@
+from __future__ import annotations
+
 from dataclasses import MISSING
 from functools import wraps
-from typing import Callable, Union
+from typing import TYPE_CHECKING, Callable, Union, cast
 
-from .models import Extras, TypeInfo
+from ..type_def import DT
 from ..utils.function_builder import FunctionBuilder
+
+
+if TYPE_CHECKING:  # pragma: no cover
+    from .models import Extras, TypeInfo
+
+
+def process_patterned_date_time(func: Callable) -> Callable:
+    """
+    Decorator for processing patterned date and time data.
+
+    If the 'pattern' key exists in the `extras` dictionary, it updates
+    the base and origin of the type information and processes the
+    pattern before calling the original function.
+
+    Supports both class methods and static methods.
+
+    Args:
+        func (Callable): The function to decorate, either a class method
+        or static method.
+
+    Returns:
+        Callable: The wrapped function with pattern processing applied.
+    """
+
+    # Determine if the function is a class method
+    # noinspection PyUnresolvedReferences
+    is_class_method = func.__code__.co_argcount == 3
+
+    if is_class_method:
+
+        @wraps(func)
+        def class_method_wrapper(cls, tp: TypeInfo, extras: Extras):
+            # Process pattern if it exists in extras
+            if (pb := extras.get('pattern')) is not None:
+                pb.base = cast(type[DT], tp.origin)
+                tp.origin = cast(type, pb)
+                return pb.load_to_pattern(tp, extras)
+
+            # Fallback to the original method
+            return func(cls, tp, extras)
+
+        return class_method_wrapper
+    else:
+
+        @wraps(func)
+        def static_method_wrapper(tp: TypeInfo, extras: Extras):
+            # Process pattern if it exists in extras
+            if (pb := extras.get('pattern')) is not None:
+                pb.base = cast(type[DT], tp.origin)
+                tp.origin = cast(type, pb)
+                return pb.load_to_pattern(tp, extras)
+
+            # Fallback to the original method
+            return func(tp, extras)
+
+        return static_method_wrapper
 
 
 def setup_recursive_safe_function(
@@ -11,6 +69,7 @@ def setup_recursive_safe_function(
     *,
     fn_name: Union[str, None] = None,
     is_generic: bool = False,
+    add_cls: bool = True,
 ) -> Callable:
     """
     A decorator to ensure recursion safety and facilitate dynamic function generation
@@ -27,13 +86,19 @@ def setup_recursive_safe_function(
     :type fn_name: str, optional
     :param is_generic: Whether the function deals with generic types.
     :type is_generic: bool, optional
+    :param add_cls: Whether the class should be added to the function locals
+      for `FunctionBuilder`.
+    :type add_cls: bool, optional
     :return: The decorated function with recursion safety and dynamic function generation.
     :rtype: Callable
     """
 
     if func is None:
         return lambda f: setup_recursive_safe_function(
-            f, fn_name=fn_name, is_generic=is_generic
+            f,
+            fn_name=fn_name,
+            is_generic=is_generic,
+            add_cls=add_cls,
         )
 
     def _wrapper_logic(tp: TypeInfo, extras: Extras, _cls=None) -> str:
@@ -72,7 +137,7 @@ def setup_recursive_safe_function(
 
             # Prepare a new FunctionBuilder for this function
             updated_extras = extras.copy()
-            updated_extras['locals'] = _locals = {'cls': cls}
+            updated_extras['locals'] = _locals = {'cls': cls} if add_cls else {}
             updated_extras['fn_gen'] = new_fn_gen = FunctionBuilder()
 
             # Apply the decorated function logic

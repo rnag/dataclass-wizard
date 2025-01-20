@@ -36,7 +36,7 @@ for complex and *nested dataclass* models!
     >>> from dataclass_wizard import JSONWizard
     ...
     >>> @dataclass
-    ... class MyClass(JSONWizard):
+    ... class MyClass(JSONWizard, key_case='AUTO'):
     ...     my_str: str | None
     ...     is_active_tuple: tuple[bool, ...]
     ...     list_of_int: list[int] = field(default_factory=list)
@@ -91,8 +91,6 @@ Early access to **V1** is available! To opt in, simply enable ``v1=True`` in the
     assert a.to_dict() == {'my_str': 'test', 'version_info': 1.0}
 
 For more information, see the `Field Guide to V1 Opt-in`_.
-
-.. _`Field Guide to V1 Opt-in`: https://github.com/rnag/dataclass-wizard/wiki/Field-Guide-to-V1-Opt%E2%80%90in
 
 Performance Improvements
 ~~~~~~~~~~~~~~~~~~~~~~~~
@@ -482,6 +480,13 @@ Here is an example to demonstrate the usage of these helper functions:
 Custom Key Mappings
 -------------------
 
+.. note::
+    **Important:** The functionality for **custom key mappings** (such as JSON-to-dataclass field mappings) is being re-imagined with the introduction of **V1 Opt-in**. Enhanced support for these features is now available, improving the user experience for working with custom mappings.
+
+    For more details, see the `Field Guide to V1 Opt-in`_ and the `V1 Alias`_ documentation.
+
+    This change is part of the ongoing improvements in version ``v0.35.0+``, and the old functionality will no longer be maintained in future releases.
+
 If you ever find the need to add a `custom mapping`_ of a JSON key to a dataclass
 field (or vice versa), the helper function ``json_field`` -- which can be
 considered an alias to ``dataclasses.field()`` -- is one approach that can
@@ -516,7 +521,14 @@ Example below:
 Mapping Nested JSON Keys
 ------------------------
 
-The ``dataclass-wizard`` library lets you map deeply nested JSON keys to dataclass fields using custom path notation. This is ideal for handling complex or non-standard JSON structures.
+.. note::
+    **Important:** The current "nested path" functionality is being re-imagined.
+    Please refer to the new docs for **V1 Opt-in** features, which introduce enhanced support for these use
+    cases. For more details, see the `Field Guide to V1 Opt-in`_ and the `V1 Alias`_ documentation.
+
+    This change is part of the ongoing improvements in version ``v0.35.0+``, and the old functionality will no longer be maintained in future releases.
+
+The ``dataclass-wizard`` library allows you to map deeply nested JSON keys to dataclass fields using custom path notation. This is ideal for handling complex or non-standard JSON structures.
 
 You can specify paths to JSON keys with the ``KeyPath`` or ``path_field`` helpers. For example, the deeply nested key ``data.items.myJSONKey`` can be mapped to a dataclass field, such as ``my_str``:
 
@@ -536,7 +548,7 @@ You can specify paths to JSON keys with the ``KeyPath`` or ``path_field`` helper
 Custom Paths for Complex JSON
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-You can use `custom paths to access nested keys`_ and map them to specific fields, even when keys contain special characters or follow non-standard conventions.
+You can now use `custom paths to access nested keys`_ and map them to specific fields, even when keys contain special characters or follow non-standard conventions.
 
 Example with nested and complex keys:
 
@@ -785,18 +797,30 @@ undefined keys, the field will default to an empty dictionary.
 Date and Time with Custom Patterns
 ----------------------------------
 
-As of *v0.20.0*, date and time strings in a `custom format`_ can be de-serialized
-using the ``DatePattern``, ``TimePattern``, and ``DateTimePattern`` type annotations,
-representing patterned `date`, `time`, and `datetime` objects respectively.
+.. tip::
+    As of **v0.35.0** with V1 Opt-in, Dataclass Wizard now supports timezone-aware and UTC ``datetime``
+    and ``time`` patterns, as well as multiple pattern strings (i.e. multiple `custom formats`) for greater
+    flexibility in pattern matching. These features are **not** available in the current ``v0.*`` versions.
 
-This will internally call ``datetime.strptime`` with the format specified in the annotation,
-and also use the ``fromisoformat()`` method in case the date string is in ISO-8601 format.
-All dates and times will continue to be serialized as ISO format strings by default. For more
-info, check out the `Patterned Date and Time`_ section in the docs.
+    The new features include:
 
-A brief example of the intended usage is shown below:
+    - Timezone-aware ``datetime`` and ``time`` patterns.
+    - UTC ``datetime`` and ``time`` patterns.
+    - Multiple `custom formats`_ for a single field, providing more control over pattern matching.
 
-.. code:: python3
+    For more details and examples on how to use these new features, refer to the `V1 Opt-in documentation for Patterned Date and Time`_.
+
+As of **v0.20.0**, date and time strings in `custom formats`_ can be de-serialized using the ``DatePattern``,
+``TimePattern``, and ``DateTimePattern`` type annotations, which represent patterned ``date``, ``time``, and
+``datetime`` objects, respectively.
+
+Internally, these annotations use ``datetime.strptime`` with the specified format and the ``fromisoformat()``
+method for ISO-8601 formatted strings. All date and time values are still serialized to ISO format strings by
+default. For more information, refer to the `Patterned Date and Time`_ section in the documentation.
+
+Here is an example demonstrating how to use these annotations:
+
+.. code-block:: python3
 
     from dataclasses import dataclass
     from datetime import time, datetime
@@ -807,9 +831,13 @@ A brief example of the intended usage is shown below:
 
     @dataclass
     class MyClass:
+        # Custom format for date (Month-Year)
         date_field: DatePattern['%m-%Y']
+        # Custom format for datetime (Month/Day/Year Hour.Minute.Second)
         dt_field: Annotated[datetime, Pattern('%m/%d/%y %H.%M.%S')]
+        # Custom format for time (Hour:Minute)
         time_field1: TimePattern['%H:%M']
+        # Custom format for a list of times (12-hour format with AM/PM)
         time_field2: Annotated[list[time], Pattern('%I:%M %p')]
 
 
@@ -820,7 +848,7 @@ A brief example of the intended usage is shown below:
 
     class_obj = fromdict(MyClass, data)
 
-    # All annotated fields de-serialize as just date, time, or datetime, as shown.
+    # All annotated fields de-serialize to date, time, or datetime objects, as shown.
     print(class_obj)
     # MyClass(date_field=datetime.date(2022, 12, 1), dt_field=datetime.datetime(2023, 1, 2, 2, 3, 52),
     #         time_field1=datetime.time(15, 20), time_field2=[datetime.time(13, 20), datetime.time(0, 30)])
@@ -830,8 +858,8 @@ A brief example of the intended usage is shown below:
     # {'dateField': '2022-12-01', 'dtField': '2023-01-02T02:03:52',
     #  'timeField1': '15:20:00', 'timeField2': ['13:20:00', '00:30:00']}
 
-    # But, the patterned date/times can still be de-serialized back after
-    # serialization. In fact, it'll be faster than parsing the custom patterns!
+    # The patterned date/times can be de-serialized back after serialization, which will be faster than
+    # re-parsing the custom patterns!
     assert class_obj == fromdict(MyClass, asdict(class_obj))
 
 Recursive Types and Dataclasses with Cyclic References
@@ -1456,48 +1484,98 @@ refer to the `Using Field Properties`_ section in the documentation.
 What's New in v1.0
 ------------------
 
-.. admonition:: v1 Opt-in Now Available
+.. admonition:: Opt-in for v1 Now Available
 
-   Early opt-in for **v1** is now available with enhanced features, including intuitive ``Union`` parsing and optimized performance. To enable this,
+   The early opt-in for **v1** is now available with enhanced features, including intuitive ``Union`` parsing and optimized performance. To enable this,
    set ``v1=True`` in your ``Meta`` settings.
 
    For more details and migration guidance, see the `Field Guide to V1 Opt-in`_.
 
-.. warning::
+.. warning:: *Important Changes in v1.0*
 
-   - **Default Key Transformation Update**
+    - **Default Key Transformation Update**
 
-     Starting with ``v1.0.0``, the default key transformation for JSON serialization
-     will change to keep keys *as-is* instead of converting them to `camelCase`.
+      Starting with **v1.0.0**, the default key transformation for JSON serialization
+      will change to keep keys *as-is* instead of converting them to ``camelCase``.
 
-     **New Default Behavior**: ``key_transform='NONE'`` will be the standard setting.
+      **New Default Behavior**:
+      The default setting for key transformation will be ``key_transform='NONE'``.
 
-     **How to Prepare**: You can enforce this future behavior right now by using the ``JSONPyWizard`` helper:
+      **How to Prepare**:
+      You can enforce this behavior immediately by using the ``JSONPyWizard`` helper, as shown below:
 
-     .. code-block:: python3
+      .. code-block:: python3
 
-        from dataclasses import dataclass
-        from dataclass_wizard import JSONPyWizard
+            from dataclasses import dataclass
+            from dataclass_wizard import JSONPyWizard
 
-        @dataclass
-        class MyModel(JSONPyWizard):
-            my_field: str
+            @dataclass
+            class MyModel(JSONPyWizard):
+                my_field: str
 
-        print(MyModel(my_field="value").to_dict())
-        # Output: {'my_field': 'value'}
+            print(MyModel(my_field="value").to_dict())
+            # Output: {'my_field': 'value'}
 
-   - **Float to Int Conversion Change**
+    - **Default __str__() Behavior Change**
 
-     Starting in ``v1.0``, floats or float strings with fractional
-     parts (e.g., ``123.4`` or ``"123.4"``) will no longer be silently
-     converted to integers. Instead, they will raise an error.
-     However, floats with no fractional parts (e.g., ``3.0``
-     or ``"3.0"``) will still convert to integers as before.
+      Starting with **v1.0.0**, we no longer pretty-print the serialized JSON value with keys in ``camelCase``.
+      Instead, we now use the ``pprint`` module to handle serialization formatting.
 
-     **How to Prepare**: To ensure compatibility with the new behavior:
-     - Use ``float`` annotations for fields that may include fractional values.
-     - Review your data and avoid passing fractional values (e.g., ``123.4``) to fields annotated as ``int``.
-     - Update tests or logic that rely on the current rounding behavior.
+      **New Default Behavior**:
+      The ``__str__()`` method in the ``JSONWizard`` class will use ``pprint`` by default.
+
+      **How to Prepare**:
+      You can immediately test this new behavior using the ``JSONPyWizard`` helper, as demonstrated below:
+
+      .. code-block:: python3
+
+            from dataclasses import dataclass
+            from dataclass_wizard import JSONWizard, JSONPyWizard
+
+            @dataclass
+            class CurrentModel(JSONWizard):
+                my_field: str
+
+            @dataclass
+            class NewModel(JSONPyWizard):
+                my_field: str
+
+            print(CurrentModel(my_field="value"))
+            #> {
+            #   "myField": "value"
+            # }
+
+            print(NewModel(my_field="value"))
+            #> NewModel(my_field='value')
+
+    - **Float to Int Conversion Change**
+      Starting with **v1.0**, floats or float strings with fractional parts (e.g., ``123.4`` or ``"123.4"``) will no longer be silently converted to integers. Instead, they will raise an error. However, floats without fractional parts (e.g., ``3.0`` or ``"3.0"``) will continue to convert to integers as before.
+
+      **How to Prepare**:
+      You can opt in to **v1** via ``v1=True`` to test this behavior right now. Additionally, to ensure compatibility with the new behavior:
+
+      - Use ``float`` annotations for fields that may include fractional values.
+      - Review your data to avoid passing fractional values (e.g., ``123.4``) to fields annotated as ``int``.
+      - Update tests or logic that depend on the current rounding behavior.
+
+      .. code-block:: python3
+
+            from dataclasses import dataclass
+            from dataclass_wizard import JSONPyWizard
+
+            @dataclass
+            class Test(JSONPyWizard):
+                class _(JSONPyWizard.Meta):
+                    v1 = True
+
+                list_of_int: list[int]
+
+            input_dict = {'list_of_int': [1, '2.0', '3.', -4, '-5.00', '6', '-7']}
+            t = Test.from_dict(input_dict)
+            print(t)  #> Test(list_of_int=[1, 2, 3, -4, -5, 6, -7])
+
+            # ERROR!
+            _ = Test.from_dict({'list_of_int': [123.4]})
 
 Contributing
 ------------
@@ -1542,7 +1620,7 @@ This package was created with Cookiecutter_ and the `rnag/cookiecutter-pypackage
 .. _`wiz-cli`: https://dataclass-wizard.readthedocs.io/en/latest/wiz_cli.html
 .. _`key limitations`: https://florimond.dev/en/posts/2018/10/reconciling-dataclasses-and-properties-in-python/
 .. _`more complete example`: https://dataclass-wizard.readthedocs.io/en/latest/examples.html#a-more-complete-example
-.. _custom format: https://docs.python.org/3/library/datetime.html#strftime-and-strptime-format-codes
+.. _custom formats: https://docs.python.org/3/library/datetime.html#strftime-and-strptime-format-codes
 .. _`Patterned Date and Time`: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/patterned_date_time.html
 .. _Union: https://docs.python.org/3/library/typing.html#typing.Union
 .. _`Dataclasses in Union Types`: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/dataclasses_in_union_types.html
@@ -1555,3 +1633,6 @@ This package was created with Cookiecutter_ and the `rnag/cookiecutter-pypackage
 .. _annotations: https://docs.python.org/3/library/typing.html#typing.Annotated
 .. _typing: https://docs.python.org/3/library/typing.html
 .. _dataclasses: https://docs.python.org/3/library/dataclasses.html
+.. _V1 Opt-in documentation for Patterned Date and Time: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/v1_patterned_date_time.html
+.. _`Field Guide to V1 Opt-in`: https://github.com/rnag/dataclass-wizard/wiki/Field-Guide-to-V1-Opt%E2%80%90in
+.. _V1 Alias: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/v1_alias.html

@@ -91,4 +91,4 @@ if __name__ == "__main__":
         print(f"Benchmark file not found: {benchmark_file}")
 
     # Step 5: Move the generated image to docs folder for easy access
-    shutil.copy("relative_performance.png", "docs/")
+    shutil.copy("catch_all.png", "docs/")
