@@ -163,8 +163,8 @@ for bulk aliasing:
     print(t.to_dict())
     # > {'my_str': 'test', 'myDumpedBool': True, 'MyInt': 123, 'DumpedInt': 321}
 
-AliasPath
----------
+Alias Paths
+-----------
 
 Maps one or more nested JSON paths to a dataclass field. See documentation on :func:`AliasPath` for more details.
 

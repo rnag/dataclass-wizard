@@ -270,8 +270,6 @@ class PatternBase:
         fn_gen = extras['fn_gen']
         _locals = extras['locals']
 
-        assert 'cls' not in _locals
-
         is_datetime \
             = is_date \
             = is_time \

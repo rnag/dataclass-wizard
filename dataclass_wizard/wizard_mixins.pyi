@@ -5,7 +5,7 @@ __all__ = ['JSONListWizard',
 
 import json
 from os import PathLike
-from typing import AnyStr, TextIO, BinaryIO
+from typing import AnyStr, TextIO, BinaryIO, Union, TypeAlias
 
 from .abstractions import W
 from .enums import LetterCase
@@ -17,7 +17,8 @@ from .type_def import (T, ListOfJSONObject,
 
 # A type that can be string or `path.Path`
 # https://stackoverflow.com/a/78070015/10237506
-type FileType = str | bytes | PathLike
+# A type that can be string, bytes, or `PathLike`
+FileType: TypeAlias = Union[str, bytes, PathLike]
 
 
 class JSONListWizard(JSONSerializable, str=False):
