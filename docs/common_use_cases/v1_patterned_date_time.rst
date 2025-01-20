@@ -95,7 +95,7 @@ To handle timezone-aware ``datetime`` and ``time`` values, use the following pat
 
 - :class:`AwareDateTimePattern`
 - :class:`AwareTimePattern`
-- :class:`AwarePattern` (with :class:`typing.Annotated`)
+- :class:`AwarePattern` (with :obj:`typing.Annotated`)
 
 These patterns allow you to specify the timezone for the
 date and time, ensuring that the values are interpreted
@@ -138,7 +138,7 @@ For UTC-specific ``datetime`` and ``time`` values, use the following patterns:
 
 - :class:`UTCDateTimePattern`
 - :class:`UTCTimePattern`
-- :class:`UTCPattern` (with :class:`typing.Annotated`)
+- :class:`UTCPattern` (with :obj:`typing.Annotated`)
 
 These patterns are used when working with
 date and time in Coordinated Universal Time (UTC_),
@@ -172,12 +172,12 @@ Containers of Date and Time
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 For more complex annotations like ``list[date]``,
-you can use ``Annotated`` with one of ``Pattern``,
+you can use :obj:`typing.Annotated` with one of ``Pattern``,
 ``AwarePattern``, or ``UTCPattern`` to specify custom date-time formats.
 
 
 .. tip::
-    The ``Annotated`` type is used to apply additional metadata (like
+    The :obj:`typing.Annotated` type is used to apply additional metadata (like
     timezone information) to a field. When combined with a date-time
     pattern, it tells the library how to interpret the field’s value
     in terms of its format or timezone.

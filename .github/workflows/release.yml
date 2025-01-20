@@ -20,14 +20,11 @@ jobs:
     name: Create Release
     runs-on: ubuntu-latest
 
-    strategy:
-      matrix:
-        python-versions: [3.11]
-
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - uses: actions/checkout@v2
+      - name: Checkout code
+        uses: actions/checkout@v3
 
       # Temporarily disable this - I want it to trigger on merge, but it doesn't
       # work (at least not on a tagged commit too)
@@ -35,14 +32,15 @@ jobs:
 #        if: endsWith(github.ref, 'main') == false
 #        run: exit -1
 
-      - uses: actions/setup-python@v2
+      - name: Set up Python
+        uses: actions/setup-python@v4
         with:
-          python-version: ${{ matrix.python-versions }}
+          python-version: '3.11'
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install tox-gh-actions wheel
+          pip install setuptools wheel
 
       - name: Replace version in README
         run: |
