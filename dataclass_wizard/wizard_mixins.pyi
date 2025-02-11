@@ -17,7 +17,7 @@ from .type_def import (T, ListOfJSONObject,
 
 # A type that can be string or `path.Path`
 # https://stackoverflow.com/a/78070015/10237506
-type FileType = str | bytes | PathLike
+FileType = str | bytes | PathLike
 
 
 class JSONListWizard(JSONSerializable, str=False):

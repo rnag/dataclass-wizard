@@ -5,9 +5,9 @@ from ..decorators import cached_class_property
 from ..type_def import StrCollection, EnvFileType
 
 
-type _MISSING_TYPE = type(MISSING)
-type STR_OR_MISSING = str | _MISSING_TYPE
-type STR_OR_NONE = str | None
+_MISSING_TYPE = type(MISSING)
+STR_OR_MISSING = str | _MISSING_TYPE
+STR_OR_NONE = str | None
 
 # Type of `os.environ` or `DotEnv` dict
 Environ = dict[str, STR_OR_NONE]

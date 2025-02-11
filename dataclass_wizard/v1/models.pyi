@@ -15,7 +15,7 @@ from ..utils.object_path import PathType
 CatchAll = Mapping | None
 
 # Type for a string or a collection of strings.
-type _STR_COLLECTION = str | Collection[str]
+_STR_COLLECTION = str | Collection[str]
 
 
 @dataclass(order=True)
