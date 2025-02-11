@@ -42,6 +42,12 @@ extensions = [
     'sphinx_copybutton',
 ]
 
+# The `sphinx_autodoc_typehints` extension requires Python 3.10;
+# see `docs/requirements.txt`.
+# Documentation without typing hints is better than no docs at all.
+if sys.version_info < (3, 10):
+    extensions.remove('sphinx_autodoc_typehints')
+
 intersphinx_mapping = {
     'python': ('https://docs.python.org/3', None),
 }
