@@ -17,5 +17,5 @@ wheel==0.46.1
 watchdog[watchmedo]==6.0.0
 Sphinx==7.4.7; python_version == "3.9"  # pyup: ignore
 Sphinx==8.3.0; python_version >= "3.10"
-twine==6.0.1
+twine==6.1.0
 dataclass-wizard[toml]  # pyup: ignore
