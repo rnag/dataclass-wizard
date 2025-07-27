@@ -2,6 +2,14 @@
 History
 =======
 
+0.35.1 (2025-07-27)
+-------------------
+
+**Bugfixes**
+
+* Roll back ``type ...`` syntax in ``.pyi`` files to maintain compatibility
+  with older Python versions such as 3.9 (fixes :issue:`176`)
+
 0.35.0 (2025-01-19)
 -------------------
 
