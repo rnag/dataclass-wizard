@@ -1,7 +1,7 @@
 # TODO It seems `pip-upgrader` does not support Python 3.11+
 # pip-upgrader==1.4.15
 flake8>=3  # pyup: ignore
-tox==4.23.2
+tox==4.30.2
 # Extras
 pytimeparse==1.1.8
 python-dotenv>=1,<2
