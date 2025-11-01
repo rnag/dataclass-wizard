@@ -3,7 +3,7 @@ from dataclasses import MISSING, Field
 from datetime import date, datetime, time
 from typing import Generic, Mapping, NewType, Any, TypedDict
 
-from .constants import PY310_OR_ABOVE
+from .constants import PY310_OR_ABOVE, PY314_OR_ABOVE
 from .decorators import cached_property
 from .type_def import T, DT, PyNotRequired
 # noinspection PyProtectedMember
@@ -90,11 +90,51 @@ class JSONField(Field):
 
     __slots__ = ('json', )
 
+    # In Python 3.14, dataclasses adds a new parameter to the :class:`Field`
+    # constructor: `doc`
+    #
+    # Ref: https://docs.python.org/3.14/library/dataclasses.html#dataclasses.field
+    if PY314_OR_ABOVE:  # pragma: no cover
+        # noinspection PyShadowingBuiltins
+        def __init__(
+            self,
+            keys,
+            all: bool,
+            dump: bool,
+            default,
+            default_factory,
+            init,
+            repr,
+            hash,
+            compare,
+            metadata,
+            path: bool = False,
+        ):
+
+            super().__init__(
+                default,
+                default_factory,
+                init,
+                repr,
+                hash,
+                compare,
+                metadata,
+                False,
+                None,
+            )
+
+            if isinstance(keys, str):
+                keys = split_object_path(keys) if path else (keys,)
+            elif keys is ...:
+                keys = ()
+
+            self.json = JSON(*keys, all=all, dump=dump, path=path)
+
     # In Python 3.10, dataclasses adds a new parameter to the :class:`Field`
     # constructor: `kw_only`
     #
     # Ref: https://docs.python.org/3.10/library/dataclasses.html#dataclasses.dataclass
-    if PY310_OR_ABOVE:  # pragma: no cover
+    elif PY310_OR_ABOVE:  # pragma: no cover
         # noinspection PyShadowingBuiltins
         def __init__(self, keys, all: bool, dump: bool,
                      default, default_factory, init, repr, hash, compare,
@@ -312,11 +352,40 @@ def path_field(keys, *,
                     hash, compare, metadata, True)
 
 
+if PY314_OR_ABOVE:
+
+    def skip_if_field(
+        condition,
+        *,
+        default=MISSING,
+        default_factory=MISSING,
+        init=True,
+        repr=True,
+        hash=None,
+        compare=True,
+        metadata=None,
+        kw_only=MISSING,
+        doc=None,
+    ):
+
+        if default is not MISSING and default_factory is not MISSING:
+            raise ValueError("cannot specify both default and default_factory")
+
+        if metadata is None:
+            metadata = {}
+
+        metadata["__skip_if__"] = condition
+
+        return Field(
+            default, default_factory, init, repr, hash, compare, metadata, kw_only, doc
+        )
+
+
 # In Python 3.10, dataclasses adds a new parameter to the :class:`Field`
 # constructor: `kw_only`
 #
 # Ref: https://docs.python.org/3.10/library/dataclasses.html#dataclasses.dataclass
-if PY310_OR_ABOVE:  # pragma: no cover
+elif PY310_OR_ABOVE:  # pragma: no cover
     def skip_if_field(condition, *, default=MISSING, default_factory=MISSING, init=True, repr=True,
                       hash=None, compare=True, metadata=None, kw_only=MISSING):
 

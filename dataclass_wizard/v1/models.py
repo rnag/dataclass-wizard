@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any, TypedDict, cast
 from zoneinfo import ZoneInfo
 
 from .decorators import setup_recursive_safe_function
-from ..constants import PY310_OR_ABOVE, PY311_OR_ABOVE
+from ..constants import PY310_OR_ABOVE, PY311_OR_ABOVE, PY314_OR_ABOVE
 from ..log import LOG
 from ..type_def import DefFactory, ExplicitNull, PyNotRequired, NoneType
 from ..utils.function_builder import FunctionBuilder
@@ -462,11 +462,148 @@ UTCTimePattern = PatternBase(time, tz_info=UTC)
 # When cls._FIELDS is filled in with a list of Field objects, the name
 # and type fields will have been populated.
 
+# In Python 3.14, dataclasses adds a new parameter to the :class:`Field`
+# constructor: `doc`
+#
+# Ref: https://docs.python.org/3.14/library/dataclasses.html#dataclasses.field
+if PY314_OR_ABOVE:
+    # noinspection PyPep8Naming,PyShadowingBuiltins
+    def Alias(
+        *all,
+        load=None,
+        dump=None,
+        skip=False,
+        default=MISSING,
+        default_factory=MISSING,
+        init=True,
+        repr=True,
+        hash=None,
+        compare=True,
+        metadata=None,
+        kw_only=False,
+        doc=None,
+    ):
+
+        if default is not MISSING and default_factory is not MISSING:
+            raise ValueError("cannot specify both default and default_factory")
+
+        if all:
+            load = dump = all
+
+        elif load is not None and isinstance(load, str):
+            load = (load,)
+
+        return Field(
+            load,
+            dump,
+            skip,
+            None,
+            default,
+            default_factory,
+            init,
+            repr,
+            hash,
+            compare,
+            metadata,
+            kw_only,
+            doc,
+        )
+
+    # noinspection PyPep8Naming,PyShadowingBuiltins
+    def AliasPath(
+        *all,
+        load=None,
+        dump=None,
+        skip=False,
+        default=MISSING,
+        default_factory=MISSING,
+        init=True,
+        repr=True,
+        hash=None,
+        compare=True,
+        metadata=None,
+        kw_only=False,
+        doc=None,
+    ):
+
+        if load is not None:
+            all = load
+            load = None
+            dump = ExplicitNull
+
+        elif dump is not None:
+            all = dump
+            dump = None
+            load = ExplicitNull
+
+        if isinstance(all, str):
+            all = (split_object_path(all),)
+        else:
+            all = tuple(
+                [split_object_path(a) if isinstance(a, str) else a for a in all]
+            )
+
+        return Field(
+            load,
+            dump,
+            skip,
+            all,
+            default,
+            default_factory,
+            init,
+            repr,
+            hash,
+            compare,
+            metadata,
+            kw_only,
+            doc,
+        )
+
+    class Field(_Field):
+
+        __slots__ = ("load_alias", "dump_alias", "skip", "path")
+
+        # noinspection PyShadowingBuiltins
+        def __init__(
+            self,
+            load_alias,
+            dump_alias,
+            skip,
+            path,
+            default,
+            default_factory,
+            init,
+            repr,
+            hash,
+            compare,
+            metadata,
+            kw_only,
+            doc=None,
+        ):
+
+            super().__init__(
+                default,
+                default_factory,
+                init,
+                repr,
+                hash,
+                compare,
+                metadata,
+                kw_only,
+                doc,
+            )
+
+            self.load_alias = load_alias
+            self.dump_alias = dump_alias
+            self.skip = skip
+            self.path = path
+
+
 # In Python 3.10, dataclasses adds a new parameter to the :class:`Field`
 # constructor: `kw_only`
 #
 # Ref: https://docs.python.org/3.10/library/dataclasses.html#dataclasses.dataclass
-if PY310_OR_ABOVE:  # pragma: no cover
+elif PY310_OR_ABOVE:  # pragma: no cover
 
     # noinspection PyPep8Naming,PyShadowingBuiltins
     def Alias(*all,
@@ -522,7 +659,6 @@ if PY310_OR_ABOVE:  # pragma: no cover
 
         return Field(load, dump, skip, all, default, default_factory, init, repr,
                      hash, compare, metadata, kw_only)
-
 
     class Field(_Field):
 
@@ -600,7 +736,6 @@ else:  # pragma: no cover
 
         return Field(load, dump, skip, all, default, default_factory, init, repr,
                      hash, compare, metadata)
-
 
     class Field(_Field):
 
