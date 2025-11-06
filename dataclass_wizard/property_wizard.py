@@ -11,6 +11,7 @@ from .utils.typing_compat import (
 if PY314_OR_ABOVE:  # pragma: no cover
     from annotationlib import get_annotations
 else:
+    # https://typing-extensions.readthedocs.io/en/latest/index.html#typing_extensions.get_annotations
     from typing_extensions import get_annotations
 
 
