@@ -2,10 +2,16 @@ from dataclasses import MISSING, Field, field as dataclass_field
 from functools import wraps
 from typing import Dict, Any, Type, Union, Tuple, Optional
 
+from .constants import PY314_OR_ABOVE
 from .type_def import T, NoneType
 from .utils.typing_compat import (
     get_origin, get_args, is_generic, is_literal, is_annotated, eval_forward_ref_if_needed
 )
+
+if PY314_OR_ABOVE:  # pragma: no cover
+    from annotationlib import get_annotations
+else:
+    from typing_extensions import get_annotations
 
 
 AnnotationType = Dict[str, Type[T]]
@@ -26,7 +32,8 @@ def property_wizard(*args, **kwargs):
 
     cls: Type = type(*args, **kwargs)
     cls_dict: Dict[str, Any] = args[2]
-    annotations: AnnotationType = cls_dict.get('__annotations__', {})
+    # https://docs.python.org/3.14/whatsnew/3.14.html#implications-for-readers-of-annotations
+    annotations: AnnotationType = get_annotations(cls)
 
     # For each property, we want to replace the annotation for the underscore-
     # leading field associated with that property with the 'public' field
