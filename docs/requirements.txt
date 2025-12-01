@@ -1,4 +1,4 @@
 sphinx-issues==5.0.1
-sphinx-autodoc-typehints==2.5.0
+sphinx-autodoc-typehints==3.5.2
 sphinx-copybutton==0.5.2
 typing-extensions>=4.9.0
