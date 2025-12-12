@@ -450,6 +450,44 @@ UTCDateTimePattern = PatternBase(datetime, tz_info=UTC)
 UTCTimePattern = PatternBase(time, tz_info=UTC)
 
 
+def _normalize_alias_path_args(all_paths, load, dump):
+    """Normalize `AliasPath` arguments and canonicalize path values."""
+    if load is not None:
+        all_paths = load
+        load = None
+        dump = ExplicitNull
+
+    elif dump is not None:
+        all_paths = dump
+        dump = None
+        load = ExplicitNull
+
+    if isinstance(all_paths, str):
+        all_paths = (split_object_path(all_paths),)
+    else:
+        all_paths = tuple([
+            split_object_path(a) if isinstance(a, str) else a
+            for a in all_paths
+        ])
+
+    return all_paths, load, dump
+
+
+def _normalize_alias_args(default, default_factory, all_aliases, load, dump):
+    """Normalize `Alias` arguments and canonicalize alias values."""
+
+    if default is not MISSING and default_factory is not MISSING:
+        raise ValueError('cannot specify both default and default_factory')
+
+    if all_aliases:
+        load = dump = all_aliases
+
+    elif load is not None and isinstance(load, str):
+        load = (load,)
+
+    return all_aliases, load, dump
+
+
 # Instances of Field are only ever created from within this module,
 # and only from the field() function, although Field instances are
 # exposed externally as (conceptually) read-only objects.
@@ -483,14 +521,7 @@ if PY314_OR_ABOVE:
         doc=None,
     ):
 
-        if default is not MISSING and default_factory is not MISSING:
-            raise ValueError("cannot specify both default and default_factory")
-
-        if all:
-            load = dump = all
-
-        elif load is not None and isinstance(load, str):
-            load = (load,)
+        all, load, dump = _normalize_alias_args(default, default_factory, all, load, dump)
 
         return Field(
             load,
@@ -524,23 +555,7 @@ if PY314_OR_ABOVE:
         kw_only=False,
         doc=None,
     ):
-
-        if load is not None:
-            all = load
-            load = None
-            dump = ExplicitNull
-
-        elif dump is not None:
-            all = dump
-            dump = None
-            load = ExplicitNull
-
-        if isinstance(all, str):
-            all = (split_object_path(all),)
-        else:
-            all = tuple(
-                [split_object_path(a) if isinstance(a, str) else a for a in all]
-            )
+        all, load, dump = _normalize_alias_path_args(all, load, dump)
 
         return Field(
             load,
@@ -615,17 +630,22 @@ elif PY310_OR_ABOVE:  # pragma: no cover
               hash=None, compare=True,
               metadata=None, kw_only=False):
 
-        if default is not MISSING and default_factory is not MISSING:
-            raise ValueError('cannot specify both default and default_factory')
+        all, load, dump = _normalize_alias_args(default, default_factory, all, load, dump)
 
-        if all:
-            load = dump = all
-
-        elif load is not None and isinstance(load, str):
-            load = (load, )
-
-        return Field(load, dump, skip, None, default, default_factory, init, repr,
-                     hash, compare, metadata, kw_only)
+        return Field(
+            load,
+            dump,
+            skip,
+            None,
+            default,
+            default_factory,
+            init,
+            repr,
+            hash,
+            compare,
+            metadata,
+            kw_only,
+        )
 
     # noinspection PyPep8Naming,PyShadowingBuiltins
     def AliasPath(*all,
@@ -637,27 +657,22 @@ elif PY310_OR_ABOVE:  # pragma: no cover
                   init=True, repr=True,
                   hash=None, compare=True,
                   metadata=None, kw_only=False):
+        all, load, dump = _normalize_alias_path_args(all, load, dump)
 
-        if load is not None:
-            all = load
-            load = None
-            dump = ExplicitNull
-
-        elif dump is not None:
-            all = dump
-            dump = None
-            load = ExplicitNull
-
-        if isinstance(all, str):
-            all = (split_object_path(all), )
-        else:
-            all = tuple([
-                split_object_path(a) if isinstance(a, str) else a
-                for a in all
-            ])
-
-        return Field(load, dump, skip, all, default, default_factory, init, repr,
-                     hash, compare, metadata, kw_only)
+        return Field(
+            load,
+            dump,
+            skip,
+            all,
+            default,
+            default_factory,
+            init,
+            repr,
+            hash,
+            compare,
+            metadata,
+            kw_only,
+        )
 
     class Field(_Field):
 
@@ -691,18 +706,21 @@ else:  # pragma: no cover
               init=True, repr=True,
               hash=None, compare=True, metadata=None):
 
-        if default is not MISSING and default_factory is not MISSING:
-            raise ValueError('cannot specify both default and default_factory')
+        all, load, dump = _normalize_alias_args(default, default_factory, all, load, dump)
 
-        if all:
-            load = dump = all
-
-        elif load is not None and isinstance(load, str):
-            load = (load, )
-
-        return Field(load, dump, skip, None,
-                     default, default_factory, init, repr,
-                     hash, compare, metadata)
+        return Field(
+            load,
+            dump,
+            skip,
+            None,
+            default,
+            default_factory,
+            init,
+            repr,
+            hash,
+            compare,
+            metadata,
+        )
 
     # noinspection PyPep8Naming,PyShadowingBuiltins
     def AliasPath(*all,
@@ -714,27 +732,21 @@ else:  # pragma: no cover
                   init=True, repr=True,
                   hash=None, compare=True,
                   metadata=None):
+        all, load, dump = _normalize_alias_path_args(all, load, dump)
 
-        if load is not None:
-            all = load
-            load = None
-            dump = ExplicitNull
-
-        elif dump is not None:
-            all = dump
-            dump = None
-            load = ExplicitNull
-
-        if isinstance(all, str):
-            all = (split_object_path(all), )
-        else:
-            all = tuple([
-                split_object_path(a) if isinstance(a, str) else a
-                for a in all
-            ])
-
-        return Field(load, dump, skip, all, default, default_factory, init, repr,
-                     hash, compare, metadata)
+        return Field(
+            load,
+            dump,
+            skip,
+            all,
+            default,
+            default_factory,
+            init,
+            repr,
+            hash,
+            compare,
+            metadata,
+        )
 
     class Field(_Field):
 
