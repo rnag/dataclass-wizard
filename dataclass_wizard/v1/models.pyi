@@ -16,6 +16,8 @@ CatchAll = Mapping | None
 # Type for a string or a collection of strings.
 _STR_COLLECTION = str | Collection[str]
 
+SIMPLE_TYPES: tuple[type, ...]
+
 
 @dataclass(order=True)
 class TypeInfo:

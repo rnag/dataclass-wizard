@@ -3,7 +3,7 @@ from typing import Any, TypedDict
 
 from ..constants import PY310_OR_ABOVE
 from ..log import LOG
-from ..type_def import DefFactory, ExplicitNull
+from ..type_def import DefFactory, ExplicitNull, NoneType
 # noinspection PyProtectedMember
 from ..utils.object_path import split_object_path
 from ..utils.typing_compat import get_origin_v2, PyNotRequired
@@ -15,6 +15,31 @@ _BUILTIN_COLLECTION_TYPES = frozenset({
     dict,
     tuple
 })
+
+
+# Atomic immutable types which don't require any recursive handling and for which deepcopy
+# returns the same object. We can provide a fast-path for these types in asdict and astuple.
+SIMPLE_TYPES = (
+    # Common JSON Serializable types
+    NoneType,
+    bool,
+    int,
+    float,
+    str,
+    # Other common types
+    complex,
+    bytes,
+    # TODO support
+    # Other types that are also unaffected by deepcopy
+    # types.EllipsisType,
+    # types.NotImplementedType,
+    # types.CodeType,
+    # types.BuiltinFunctionType,
+    # types.FunctionType,
+    # type,
+    # range,
+    # property,
+)
 
 
 class TypeInfo:

@@ -640,3 +640,149 @@ class AbstractLoaderGenerator(ABC):
         `base_cls` is the original class object, useful when the annotated
         type is a :class:`typing.ForwardRef` object.
         """
+
+
+class AbstractDumperGenerator(ABC):
+
+    __slots__ = ()
+
+    @staticmethod
+    @abstractmethod
+    def transform_json_field(string: str) -> str:
+        ...
+
+    @staticmethod
+    @abstractmethod
+    def default_dump_from(tp: TypeInfo, extras: Extras) -> str:
+        ...
+
+    @staticmethod
+    @abstractmethod
+    def dump_after_type_check(tp: TypeInfo, extras: Extras) -> str:
+        ...
+
+    @staticmethod
+    @abstractmethod
+    def dump_from_str(tp: TypeInfo, extras: Extras) -> str:
+        ...
+
+    @staticmethod
+    @abstractmethod
+    def dump_from_int(tp: TypeInfo, extras: Extras) -> str:
+        ...
+
+    @staticmethod
+    @abstractmethod
+    def dump_from_float(tp: TypeInfo, extras: Extras) -> str:
+        ...
+
+    @staticmethod
+    @abstractmethod
+    def dump_from_bool(_: str, extras: Extras) -> str:
+        ...
+
+    @staticmethod
+    @abstractmethod
+    def dump_from_bytes(tp: TypeInfo, extras: Extras) -> str:
+        ...
+
+    @staticmethod
+    @abstractmethod
+    def dump_from_bytearray(tp: TypeInfo, extras: Extras) -> str:
+        ...
+
+    @staticmethod
+    @abstractmethod
+    def dump_from_none(tp: TypeInfo, extras: Extras) -> str:
+        ...
+
+    @staticmethod
+    @abstractmethod
+    def dump_from_literal(tp: TypeInfo, extras: Extras) -> str | TypeInfo:
+        ...
+
+    @classmethod
+    @abstractmethod
+    def dump_from_union(cls, tp: TypeInfo, extras: Extras) -> str | TypeInfo:
+        ...
+
+    @staticmethod
+    @abstractmethod
+    def dump_from_enum(tp: TypeInfo, extras: Extras) -> str:
+        ...
+
+    @staticmethod
+    @abstractmethod
+    def dump_from_uuid(tp: TypeInfo, extras: Extras) -> str | TypeInfo:
+        ...
+
+    @staticmethod
+    @abstractmethod
+    def dump_from_iterable(tp: TypeInfo, extras: Extras) -> str | TypeInfo:
+        ...
+
+    @staticmethod
+    @abstractmethod
+    def dump_from_tuple(tp: TypeInfo, extras: Extras) -> str | TypeInfo:
+        ...
+
+    @classmethod
+    @abstractmethod
+    def dump_from_named_tuple(cls, tp: TypeInfo, extras: Extras) -> str | TypeInfo:
+        ...
+
+    @classmethod
+    @abstractmethod
+    def dump_from_named_tuple_untyped(cls, tp: TypeInfo, extras: Extras) -> str | TypeInfo:
+        ...
+
+    @staticmethod
+    @abstractmethod
+    def dump_from_dict(tp: TypeInfo, extras: Extras) -> str | TypeInfo:
+        ...
+
+    @staticmethod
+    @abstractmethod
+    def dump_from_defaultdict(tp: TypeInfo, extras: Extras) -> str | TypeInfo:
+        ...
+
+    @staticmethod
+    @abstractmethod
+    def dump_from_typed_dict(tp: TypeInfo, extras: Extras) -> str | TypeInfo:
+        ...
+
+    @staticmethod
+    @abstractmethod
+    def dump_from_decimal(tp: TypeInfo, extras: Extras) -> str | TypeInfo:
+        ...
+
+    @staticmethod
+    @abstractmethod
+    def dump_from_datetime(tp: TypeInfo, extras: Extras) -> str | TypeInfo:
+        ...
+
+    @staticmethod
+    @abstractmethod
+    def dump_from_time(tp: TypeInfo, extras: Extras) -> str:
+        ...
+
+    @staticmethod
+    @abstractmethod
+    def dump_from_date(tp: TypeInfo, extras: Extras) -> str | TypeInfo:
+        ...
+
+    @staticmethod
+    @abstractmethod
+    def dump_from_timedelta(tp: TypeInfo, extras: Extras) -> str | TypeInfo:
+        ...
+
+    @staticmethod
+    def dump_from_dataclass(tp: TypeInfo, extras: Extras) -> str | TypeInfo:
+        ...
+
+    @classmethod
+    @abstractmethod
+    def get_string_for_annotation(cls,
+                                  tp: TypeInfo,
+                                  extras: Extras) -> str | TypeInfo:
+        ...
