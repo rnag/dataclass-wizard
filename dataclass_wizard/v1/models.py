@@ -1,7 +1,7 @@
 import hashlib
 from collections import defaultdict
 from dataclasses import MISSING, Field as _Field
-from datetime import datetime, date, time, tzinfo
+from datetime import datetime, date, time, tzinfo, timezone
 from typing import TYPE_CHECKING, Any, TypedDict, cast
 from zoneinfo import ZoneInfo
 
@@ -20,8 +20,7 @@ if TYPE_CHECKING:  # pragma: no cover
 
 
 # UTC Time Zone
-UTC = ZoneInfo('UTC')
-
+UTC = timezone.utc
 
 _BUILTIN_COLLECTION_TYPES = frozenset({
     list,
