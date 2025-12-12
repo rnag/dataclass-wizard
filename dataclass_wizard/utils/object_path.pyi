@@ -1,8 +1,8 @@
 from dataclasses import MISSING
-from typing import Any, Sequence
+from typing import Any, Sequence, TypeAlias, Union
 
-PathPart = str | int | float | bool
-PathType = Sequence[PathPart]
+PathPart: TypeAlias = Union[str, int, float, bool]
+PathType: TypeAlias = Sequence[PathPart]
 
 
 def safe_get(data: dict | list,
