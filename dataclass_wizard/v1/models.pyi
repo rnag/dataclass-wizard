@@ -604,6 +604,19 @@ class Field(_Field):
     skip: bool
     path: PathType | None
 
+    # In Python 3.14, dataclasses adds a new parameter to the :class:`Field`
+    # constructor: `doc`
+    #
+    # Ref: https://docs.python.org/3.14/library/dataclasses.html#dataclasses.field
+    @overload
+    def __init__(self,
+                 load_alias: str | None,
+                 dump_alias: str | None,
+                 skip: bool,
+                 path: PathType | None,
+                 default, default_factory, init, repr, hash, compare,
+                 metadata, kw_only, doc):
+
     # In Python 3.10, dataclasses adds a new parameter to the :class:`Field`
     # constructor: `kw_only`
     #

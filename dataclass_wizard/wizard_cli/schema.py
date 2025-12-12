@@ -757,7 +757,7 @@ class PyDataclassGenerator(metaclass=property_wizard):
 
     data: InitVar[JSONObject]
 
-    _name: str = 'data'
+    _name: str = "data"
     indent: str = ' ' * 4
     is_root: bool = False
 
@@ -912,7 +912,7 @@ class PyListGenerator(metaclass=property_wizard):
     """
 
     # Default name for model class if none is provided.
-    default_name: ClassVar[str] = 'data'
+    default_name: ClassVar[str] = "data"
 
     data: JSONList
 
