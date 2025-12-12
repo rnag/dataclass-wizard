@@ -2,6 +2,15 @@
 History
 =======
 
+0.35.3 (2025-12-12)
+-------------------
+
+**Bugfixes**
+
+* Fix typing stub (``.pyi``) compatibility for older Python/tooling versions
+  by removing Python 3.12-only ``type`` statement syntax and using
+  ``TypeAlias``/``typing``-compatible annotations instead (fixes :issue:`176`).
+
 0.35.2 (2025-12-12)
 -------------------
 
