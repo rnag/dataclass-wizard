@@ -4,22 +4,29 @@ name: CI
 
 # Controls when the action will run.
 on:
+  push:
+    branches: [ main ]
   # Triggers the workflow on pull request events but only for the master branch
   pull_request:
-    branches: [ master, main ]
+    branches: [ main ]
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
   # This workflow contains a single job called "build"
   test:
     # The type of runner that the job will run on
+    timeout-minutes: 30
     strategy:
       matrix:
-        python-versions: [3.9, '3.10', '3.11', '3.12', '3.13']
-        os: [ubuntu-20.04]
+        python-versions: ['3.9', '3.10', '3.11', '3.12', '3.13']
+        os: [ubuntu-latest]
         # Uncomment if I need to run it on other environments too (currently
         # there's not a huge need)
         #   os: [ubuntu-20.04, windows-latest, macos-latest]

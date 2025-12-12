@@ -2,7 +2,7 @@ import json
 from dataclasses import MISSING, Field
 from datetime import date, datetime, time
 from typing import (Collection, Callable,
-                    Generic, Mapping)
+                    Generic, Mapping, TypeAlias)
 from typing import TypedDict, overload, Any, NotRequired
 
 from .bases import META
@@ -13,10 +13,10 @@ from .utils.object_path import PathPart, PathType
 
 
 # Define a simple type (alias) for the `CatchAll` field
-CatchAll = Mapping | None
+CatchAll: TypeAlias = Mapping | None
 
 # Type for a string or a collection of strings.
-_STR_COLLECTION = str | Collection[str]
+_STR_COLLECTION: TypeAlias = str | Collection[str]
 
 
 class Extras(TypedDict):
