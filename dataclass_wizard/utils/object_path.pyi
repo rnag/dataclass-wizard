@@ -1,8 +1,8 @@
 from dataclasses import MISSING
 from typing import Any, Sequence
 
-type PathPart = str | int | float | bool
-type PathType = Sequence[PathPart]
+PathPart = str | int | float | bool
+PathType = Sequence[PathPart]
 
 
 def safe_get(data: dict | list,
