@@ -18,7 +18,7 @@ from .type_def import (T, ListOfJSONObject,
 # A type that can be string or `path.Path`
 # https://stackoverflow.com/a/78070015/10237506
 # A type that can be string, bytes, or `PathLike`
-FileType: TypeAlias = Union[str, bytes, PathLike]
+FileType: TypeAlias = str | bytes | PathLike
 
 
 class JSONListWizard(JSONSerializable, str=False):
