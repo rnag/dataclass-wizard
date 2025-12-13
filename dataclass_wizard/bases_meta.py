@@ -13,7 +13,7 @@ from .class_helper import (
     META_INITIALIZER, _META,
     get_outer_class_name, get_class_name, create_new_class,
     json_field_to_dataclass_field, dataclass_field_to_json_field,
-    field_to_env_var, DATACLASS_FIELD_TO_ALIAS_FOR_LOAD,
+    field_to_env_var, DATACLASS_FIELD_TO_ALIAS_FOR_LOAD, DATACLASS_FIELD_TO_ALIAS_FOR_DUMP,
 )
 from .decorators import try_with_load
 from .enums import DateTimeTo, LetterCase, LetterCasePriority
@@ -193,7 +193,7 @@ class BaseJSONWizardMeta(AbstractMeta):
                 cls, 'v1_dump_case', KeyCase)
 
         if (field_to_alias := cls.v1_field_to_alias) is not None:
-
+            field_to_alias = dict(field_to_alias)
             add_for_load = field_to_alias.pop('__load__', True)
             add_for_dump = field_to_alias.pop('__dump__', True)
 
@@ -207,7 +207,7 @@ class BaseJSONWizardMeta(AbstractMeta):
                 )
 
             if add_for_dump:
-                dataclass_field_to_json_field(dataclass).update(
+                DATACLASS_FIELD_TO_ALIAS_FOR_DUMP[dataclass].update(
                     {k: v[0] for k, v in field_to_aliases.items()}
                 )
 
@@ -328,6 +328,9 @@ def LoadMeta(**kwargs) -> META:
     if 'v1_case' in kwargs:
         base_dict['v1_load_case'] = base_dict.pop('v1_case')
 
+    if 'v1_field_to_alias' in kwargs:
+        kwargs['v1_field_to_alias']['__dump__'] = False
+
     # Create a new subclass of :class:`AbstractMeta`
     # noinspection PyTypeChecker
     return type('Meta', (BaseJSONWizardMeta, ), base_dict)
@@ -360,6 +363,9 @@ def DumpMeta(**kwargs) -> META:
 
     if 'v1_case' in kwargs:
         base_dict['v1_dump_case'] = base_dict.pop('v1_case')
+
+    if 'v1_field_to_alias' in kwargs:
+        kwargs['v1_field_to_alias']['__load__'] = False
 
     # Create a new subclass of :class:`AbstractMeta`
     # noinspection PyTypeChecker

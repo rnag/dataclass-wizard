@@ -27,7 +27,7 @@ from ..class_helper import (create_meta,
                             dataclass_init_field_names,
                             get_meta,
                             is_subclass_safe,
-                            v1_dataclass_field_to_alias,
+                            v1_dataclass_field_to_alias_for_load,
                             CLASS_TO_LOAD_FUNC,
                             DATACLASS_FIELD_TO_ALIAS_PATH_FOR_LOAD)
 from ..constants import CATCH_ALL, TAG, PY311_OR_ABOVE, PACKAGE_NAME
@@ -900,7 +900,7 @@ def check_and_raise_missing_fields(
                           and (f.default is MISSING
                                and f.default_factory is MISSING)]
 
-        missing_keys = [v1_dataclass_field_to_alias(cls).get(field, [field])[0]
+        missing_keys = [v1_dataclass_field_to_alias_for_load(cls).get(field, [field])[0]
                         for field in missing_fields]
 
     raise MissingFields(
@@ -995,7 +995,7 @@ def load_func_for_dataclass(
     key_case: KeyCase | None = cls_loader.transform_json_field
     auto_key_case = key_case is KeyCase.AUTO
 
-    field_to_aliases = v1_dataclass_field_to_alias(cls)
+    field_to_aliases = v1_dataclass_field_to_alias_for_load(cls)
     check_aliases = True if field_to_aliases else False
 
     field_to_paths = DATACLASS_FIELD_TO_ALIAS_PATH_FOR_LOAD[cls]

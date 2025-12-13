@@ -32,7 +32,7 @@ def test_asdict_and_fromdict():
         my_bool: Optional[bool]
         myStrOrInt: Union[str, int]
 
-    d = {'myBoolean': 'tRuE', 'my_str_or_int': 123}
+    d = {'myBoolean': 'tRuE', 'myStrOrInt': 123}
 
     # v1 opt-in + v1 config
     LoadMeta(
@@ -46,7 +46,7 @@ def test_asdict_and_fromdict():
     DumpMeta(
         v1=True,
         v1_case='SNAKE',
-        v1_field_to_alias={'myStrOrInt': 'my_str_or_int'},
+        v1_field_to_alias={'myStrOrInt': 'My String-Or-Num'},
     ).bind_to(MyClass)
 
     meta = get_meta(MyClass)
@@ -58,7 +58,7 @@ def test_asdict_and_fromdict():
     assert str(meta.v1_load_case).upper() in ('CAMEL', 'C')
     assert str(meta.v1_dump_case).upper() in ('SNAKE', 'S')
     assert meta.v1_on_unknown_key is KeyAction.RAISE
-    assert meta.v1_field_to_alias == {'myStrOrInt': 'my_str_or_int'}
+    assert meta.v1_field_to_alias == {'__load__': False, 'myStrOrInt': 'My String-Or-Num'}
 
     c = fromdict(MyClass, d)
 
@@ -67,7 +67,7 @@ def test_asdict_and_fromdict():
     assert c.myStrOrInt == 123
 
     new_dict = asdict(c)
-    assert new_dict == {'my_bool': True, 'my_str_or_int': 123}
+    assert new_dict == {'my_bool': True, 'My String-Or-Num': 123}
 
 
 def test_asdict_with_nested_dataclass():

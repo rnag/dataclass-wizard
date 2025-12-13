@@ -1,5 +1,5 @@
 from abc import ABCMeta, abstractmethod
-from typing import Callable, Type, Dict, Optional, ClassVar, Union, TypeVar
+from typing import Callable, Type, Dict, Optional, ClassVar, Union, TypeVar, Mapping, Sequence
 
 from .constants import TAG
 from .decorators import cached_class_property
@@ -295,7 +295,7 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
     #
     # By default, the reverse mapping (JSON alias to field) is applied during
     # serialization, unless explicitly overridden.
-    v1_field_to_alias: ClassVar[Dict[str, str]] = None
+    v1_field_to_alias: ClassVar[Mapping[str, Union[str, Sequence[str], None]]] = None
 
     # Defines the action to take when an unknown JSON key is encountered during
     # `from_dict` or `from_json` calls. An unknown key is one that does not map

@@ -22,7 +22,7 @@ from .models import Extras, TypeInfo, SIMPLE_TYPES, PatternBase
 from ..abstractions import AbstractDumperGenerator
 from ..bases import BaseLoadHook, AbstractMeta, BaseDumpHook, META
 from ..class_helper import (
-    v1_dataclass_field_to_alias, json_field_to_dataclass_field,
+    v1_dataclass_field_to_alias_for_dump, json_field_to_dataclass_field,
     CLASS_TO_LOAD_FUNC, dataclass_fields, get_meta, is_subclass_safe, DATACLASS_FIELD_TO_ALIAS_PATH_FOR_LOAD,
     dataclass_init_fields, dataclass_field_to_default, create_meta, dataclass_init_field_names, CLASS_TO_DUMP_FUNC,
     dataclass_field_names,
@@ -747,7 +747,7 @@ def check_and_raise_missing_fields(
                       and (f.default is MISSING
                            and f.default_factory is MISSING)]
 
-    missing_keys = [v1_dataclass_field_to_alias(cls)[field]
+    missing_keys = [v1_dataclass_field_to_alias_for_dump(cls)[field]
                     for field in missing_fields]
 
     raise MissingFields(
@@ -848,8 +848,8 @@ def dump_func_for_dataclass(
     if key_case is KeyCase.AUTO:
         key_case = None
 
-    field_to_aliases = v1_dataclass_field_to_alias(cls)
-    check_aliases = True if field_to_aliases else False
+    field_to_alias = v1_dataclass_field_to_alias_for_dump(cls)
+    check_aliases = True if field_to_alias else False
 
     field_to_path = DATACLASS_FIELD_TO_ALIAS_PATH_FOR_LOAD[cls]
     has_alias_paths = True if field_to_path else False
@@ -868,7 +868,7 @@ def dump_func_for_dataclass(
 
     skip_defaults = True if meta.skip_defaults or meta.skip_defaults_if else False
 
-    catch_all_field = field_to_aliases.pop(CATCH_ALL, None)
+    catch_all_field = field_to_alias.pop(CATCH_ALL, None)
     has_catch_all = catch_all_field is not None
 
     if has_catch_all:
@@ -919,7 +919,13 @@ def dump_func_for_dataclass(
 
                 for i, f in enumerate(cls_fields):
                     name = f.name
-                    key = name if key_case is None else key_case(name)
+                    if check_aliases and (key := field_to_alias.get(name)) is not None:
+                        ...
+                    elif key_case is not None:
+                        key = key_case(name)
+                    else:
+                        key = name
+
                     has_default = name in field_to_default
                     # skip_field = f'_skip_{i}'
                     # skip_if_field = f'_skip_if_{i}'

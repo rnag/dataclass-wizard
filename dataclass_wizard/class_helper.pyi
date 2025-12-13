@@ -63,6 +63,9 @@ DATACLASS_FIELD_TO_ALIAS_PATH_FOR_LOAD: dict[type, dict[str, Sequence[PathType]]
 # V1: A cached mapping, per dataclass, of instance field name to JSON field
 DATACLASS_FIELD_TO_ALIAS_FOR_LOAD: dict[type, dict[str, Sequence[str]]] = defaultdict(dict)
 
+# V1: A cached mapping, per dataclass, of instance field name to JSON field
+DATACLASS_FIELD_TO_ALIAS_FOR_DUMP: dict[type, dict[str, str]] = defaultdict(dict)
+
 # A cached mapping, per dataclass, of instance field name to JSON field
 DATACLASS_FIELD_TO_ALIAS: dict[type, dict[str, str]] = defaultdict(dict)
 
@@ -194,8 +197,8 @@ def setup_dump_config_for_cls_if_needed(cls: type) -> None:
           attribute.
     """
 
-
-def v1_dataclass_field_to_alias(cls: type) -> dict[str, Sequence[str]]: ...
+def v1_dataclass_field_to_alias_for_dump(cls: type) -> dict[str, Sequence[str]]: ...
+def v1_dataclass_field_to_alias_for_load(cls: type) -> dict[str, Sequence[str]]: ...
 
 def _setup_v1_load_config_for_cls(cls: type):
     """
