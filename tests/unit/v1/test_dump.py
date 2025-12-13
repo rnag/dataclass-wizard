@@ -259,6 +259,7 @@ def test_to_dict_with_skip_defaults():
     class MyClass(JSONWizard):
         class _(JSONWizard.Meta):
             v1 = True
+            v1_dump_case = 'C'
             skip_defaults = True
 
         my_str: str
@@ -288,11 +289,11 @@ def test_to_dict_with_excluded_fields():
 
         my_str: str
         # v1: map load alias + disable dump
-        other_str: Annotated[str, Alias(load='AnotherStr', dump=False)]
-        my_bool: bool = Alias(load='TestBool', dump=False)
+        other_str: Annotated[str, Alias(load='AnotherStr', skip=True)]
+        my_bool: bool = Alias(load='TestBool', skip=True)
         my_int: int = 3
 
-    data = {'MyStr': 'my string',
+    data = {'my_str': 'my string',
             'AnotherStr': 'testing 123',
             'TestBool': True}
 
@@ -302,7 +303,7 @@ def test_to_dict_with_excluded_fields():
     additional_exclude = ('my_int', )
 
     out_dict = c.to_dict(exclude=additional_exclude)
-    assert out_dict == {'myStr': 'my string'}
+    assert out_dict == {'my_str': 'my string'}
 
 
 @pytest.mark.parametrize(

@@ -165,9 +165,8 @@ def test_alias_mapping_with_load_or_dump():
             v1 = True
             v1_case = 'C'
             key_transform_with_dump = 'NONE'
-            v1_field_to_alias = {
+            v1_field_to_alias_dump = {
                 'my_int': 'MyInt',
-                '__load__': False,
             }
 
         my_str: str = Alias(load='a_str')

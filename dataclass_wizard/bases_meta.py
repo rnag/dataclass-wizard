@@ -202,7 +202,8 @@ class BaseJSONWizardMeta(AbstractMeta):
 
         if (field_to_alias := cls.v1_field_to_alias) is not None:
             cls.v1_field_to_alias_dump = {
-                k: v[0] for k, v in field_to_alias.items()
+                k: v if isinstance(v, str) else v[0]
+                for k, v in field_to_alias.items()
             }
             cls.v1_field_to_alias_load = field_to_alias
 

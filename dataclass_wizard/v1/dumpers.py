@@ -38,7 +38,7 @@ from ..log import LOG
 from ..type_def import (
     DefFactory, NoneType, JSONObject,
     PyLiteralString,
-    T
+    T, ExplicitNull
 )
 # noinspection PyProtectedMember
 from ..utils.dataclass_compat import _set_new_attribute
@@ -491,11 +491,11 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
 
     @staticmethod
     def dump_from_decimal(tp: TypeInfo, extras: Extras):
-        return f'str({tp.v()}'
+        return f'str({tp.v()})'
 
     @staticmethod
     def dump_from_path(tp: TypeInfo, extras: Extras):
-        return f'str({tp.v()}'
+        return f'str({tp.v()})'
 
     @classmethod
     def dump_from_date(cls, tp: TypeInfo, extras: Extras):
@@ -528,11 +528,14 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
                 tp.ensure_in_locals(extras, datetime_to_timestamp, assume_naive_tz=naive_tz)
                 return f'datetime_to_timestamp({o}, assume_naive_tz)'
 
+        # Safe: source is datetime.isoformat(); '+00:00' only appears for UTC
         return f"{o}.isoformat().replace('+00:00', 'Z', 1)"
 
     @staticmethod
     def dump_from_time(tp: TypeInfo, _extras: Extras):
-        return f'{tp.v()}.isoformat()'
+        o = tp.v()
+        # Safe: source is time.isoformat(); '+00:00' only appears for UTC
+        return f"{o}.isoformat().replace('+00:00', 'Z', 1)"
 
     @staticmethod
     def dump_from_timedelta(tp: TypeInfo, extras: Extras):
@@ -947,10 +950,15 @@ def dump_func_for_dataclass(
 
                 for i, f in enumerate(cls_fields):
                     name = f.name
+
                     if check_aliases and (key := field_to_alias.get(name)) is not None:
-                        ...
+                        # special case: skip serialization for field, e.g. `Alias(..., skip=True)`
+                        if key is ExplicitNull:
+                            continue
+
                     elif key_case is not None:
                         key = key_case(name)
+
                     else:
                         key = name
 
@@ -1138,6 +1146,10 @@ def dump_func_for_dataclass(
 
         # if has_defaults:
         #     vars_for_fields.append('**init_kwargs')
+
+        with fn_gen.if_('exclude is not None'):
+            with fn_gen.for_('to_remove in exclude'):
+                fn_gen.add_line('del result[to_remove]')
 
         fn_gen.add_line(f'return result if dict_factory is dict else dict_factory(result)')
 
