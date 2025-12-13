@@ -189,7 +189,7 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
         return tp.wrap(result, extras, force=force_wrap)
 
     @classmethod
-    @setup_recursive_safe_function
+    @setup_recursive_safe_function(prefix='dump')
     def dump_from_named_tuple(cls, tp: TypeInfo, extras: Extras):
         fn_gen = extras['fn_gen']
         nt_tp = cast(NamedTuple, tp.origin)
@@ -308,7 +308,7 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
         return tp.wrap_dd(default_factory, result, extras)
 
     @classmethod
-    @setup_recursive_safe_function
+    @setup_recursive_safe_function(prefix='dump')
     def dump_from_typed_dict(cls, tp: TypeInfo, extras: Extras):
         fn_gen = extras['fn_gen']
 
@@ -352,7 +352,7 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
             fn_gen.add_line('raise ParseError(e, v1, {}) from None')
 
     @classmethod
-    @setup_recursive_safe_function_for_generic
+    @setup_recursive_safe_function_for_generic(None, prefix='dump')
     def dump_from_union(cls, tp: TypeInfo, extras: Extras):
         fn_gen = extras['fn_gen']
         config = extras['config']
@@ -371,16 +371,16 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
         _locals[fields] = args
         _locals['tag_key'] = tag_key
 
-        dataclass_tag_to_lines: dict[str, list] = {}
-
         type_checks = []
         try_parse_at_end = []
+        dataclass_and_line = []
+        has_dataclass = False
 
         for possible_tp in args:
 
             possible_tp = eval_forward_ref_if_needed(possible_tp, actual_cls)
 
-            tp_new = TypeInfo(possible_tp, field_i=i, val_name=tp.val_name)
+            tp_new = TypeInfo(possible_tp, field_i=i)
             tp_new.in_optional = in_optional
 
             if possible_tp is NoneType:
@@ -389,12 +389,13 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
                 continue
 
             if is_dataclass(possible_tp):
+                has_dataclass = True
                 # we see a dataclass in `Union` declaration
                 meta = get_meta(possible_tp)
-                tag = meta.tag
-                assign_tags_to_cls = auto_assign_tags or meta.auto_assign_tags
                 cls_name = possible_tp.__name__
 
+                tag = meta.tag
+                assign_tags_to_cls = auto_assign_tags or meta.auto_assign_tags
                 if assign_tags_to_cls and not tag:
                     tag = cls_name
                     # We don't want to mutate the base Meta class here
@@ -405,25 +406,23 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
 
                 if tag:
                     string = cls.get_string_for_annotation(tp_new, extras)
-
-                    dataclass_tag_to_lines[tag] = [
-                        f'if tag == {tag!r}:',
-                        f'  return {string}'
-                    ]
+                    dataclass_and_line.append(
+                        (possible_tp, cls_name, tag,
+                         f'result = {string}; result[tag_key] = {tag!r}; return result'))
                     continue
 
-                elif not config.v1_unsafe_parse_dataclass_in_union:
-                    e = ValueError('Cannot parse dataclass types in a Union without '
-                                   'one of the following `Meta` settings:\n\n'
-                                   '  * `auto_assign_tags = True`\n'
-                                   f'    - Set on class `{extras["cls_name"]}`.\n\n'
-                                   f'  * `tag = "{cls_name}"`\n'
-                                   f'    - Set on class `{possible_tp.__qualname__}`.\n\n'
-                                   '  * `v1_unsafe_parse_dataclass_in_union = True`\n'
-                                   f'    - Set on class `{extras["cls_name"]}`\n\n'
-                                   'For more information, refer to:\n'
-                                   '  https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/dataclasses_in_union_types.html')
-                    raise e from None
+                # elif not config.v1_unsafe_parse_dataclass_in_union:
+                #     e = ValueError('Cannot parse dataclass types in a Union without '
+                #                    'one of the following `Meta` settings:\n\n'
+                #                    '  * `auto_assign_tags = True`\n'
+                #                    f'    - Set on class `{extras["cls_name"]}`.\n\n'
+                #                    f'  * `tag = "{cls_name}"`\n'
+                #                    f'    - Set on class `{possible_tp.__qualname__}`.\n\n'
+                #                    '  * `v1_unsafe_parse_dataclass_in_union = True`\n'
+                #                    f'    - Set on class `{extras["cls_name"]}`\n\n'
+                #                    'For more information, refer to:\n'
+                #                    '  https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/dataclasses_in_union_types.html')
+                #     raise e from None
 
             string = cls.get_string_for_annotation(tp_new, extras)
 
@@ -451,29 +450,27 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
 
             list_to_add.extend(try_parse_lines)
 
-        if dataclass_tag_to_lines:
-
-            with fn_gen.try_():
-                fn_gen.add_line(f'tag = v1[tag_key]')
-
-            with fn_gen.except_(Exception):
-                fn_gen.add_line('pass')
-
-            with fn_gen.else_():
-
-                for lines in dataclass_tag_to_lines.values():
-                    fn_gen.add_lines(*lines)
-
-                fn_gen.add_line(
-                    "raise ParseError("
-                    "TypeError('Object with tag was not in any of Union types'),"
-                    f"v1,{fields},"
-                    "input_tag=tag,"
-                    "tag_key=tag_key,"
-                    f"valid_tags={list(dataclass_tag_to_lines)})"
-                )
-
         fn_gen.add_line('tp = type(v1)')
+
+        if has_dataclass:
+            var_to_dataclass = {}
+
+            for i, (dataclass, name, tag, line) in enumerate(dataclass_and_line, start=1):
+                cls_name = f'C{i}'
+                var_to_dataclass[cls_name] = dataclass
+                with fn_gen.if_(f'tp is {cls_name}', comment=f'{name} -> {tag!r}'):
+                    fn_gen.add_line(line)
+
+            tp.ensure_in_locals(extras, **var_to_dataclass)
+
+            # fn_gen.add_line(
+            #     "raise ParseError("
+            #     "TypeError('Object with tag was not in any of Union types'),"
+            #     f"v1,{fields},"
+            #     "input_tag=tag,"
+            #     "tag_key=tag_key,"
+            #     f"valid_tags={list(dataclass_tag_to_lines)})"
+            # )
 
         if type_checks:
             fn_gen.add_lines(*type_checks)
@@ -489,7 +486,6 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
                         ")")
 
     @staticmethod
-    @setup_recursive_safe_function_for_generic
     def dump_from_literal(tp: TypeInfo, extras: Extras):
         return tp.v()
 
@@ -611,12 +607,18 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
 
             # Special case for Optional[x], which is actually Union[x, None]
             if len(args) == 2 and NoneType in args:
-                new_tp = tp.replace(origin=args[0], args=None, name=None)
+                if tp.val_name:
+                    val_name = 'v0'
+                    o = f'(v0 := {tp.v()})'
+                else:
+                    val_name = None
+                    o = tp.v()
+                new_tp = tp.replace(origin=args[0], args=None, name=None, val_name=val_name)
                 new_tp.in_optional = True
 
                 string = cls.get_string_for_annotation(new_tp, extras)
 
-                return f'None if {tp.v()} is None else {string}'
+                return f'None if {o} is None else {string}'
 
         # -> Literal[X, Y, ...]
         elif origin is Literal:
@@ -890,6 +892,9 @@ def dump_func_for_dataclass(
         expect_tag_as_unknown_key = False
 
     skip_defaults = True if meta.skip_defaults or meta.skip_defaults_if else False
+
+    # Tag key to populate when a dataclass is in a `Union` with other types.
+    # tag_key = meta.tag_key or TAG
 
     catch_all_field = field_to_alias.pop(CATCH_ALL, None)
     has_catch_all = catch_all_field is not None
@@ -1213,8 +1218,8 @@ def re_raise(e, cls, o, fields, field, value):
     # debug the cause. Note that this should already be
     # handled by the `setter` methods.
     if add_fields:
-        e.class_name, e.fields, e.field_name, e.json_object = cls, fields, field, str(o)
+        e.class_name, e.fields, e.field_name, e.json_object = cls, fields, field, repr(o)
     else:
-        e.class_name, e.field_name, e.json_object = cls, field, str(o)
+        e.class_name, e.field_name, e.json_object = cls, field, repr(o)
 
     raise e from None

@@ -70,6 +70,7 @@ def setup_recursive_safe_function(
     fn_name: Union[str, None] = None,
     is_generic: bool = False,
     add_cls: bool = True,
+    prefix: str = 'load',
 ) -> Callable:
     """
     A decorator to ensure recursion safety and facilitate dynamic function generation
@@ -99,6 +100,7 @@ def setup_recursive_safe_function(
             fn_name=fn_name,
             is_generic=is_generic,
             add_cls=add_cls,
+            prefix=prefix,
         )
 
     def _wrapper_logic(tp: TypeInfo, extras: Extras, _cls=None) -> str:
@@ -126,8 +128,8 @@ def setup_recursive_safe_function(
                 _fn_name = fn_name.format(cls_name=tp.name)
             else:
                 _fn_name = (
-                    f'_load_{cls_name}_{tp_name}_{tp.field_i}' if is_generic
-                    else f'_load_{cls_name}_{tp_name}_{tp.name}'
+                    f'_{prefix}_{cls_name}_{tp_name}_{tp.field_i}' if is_generic
+                    else f'_{prefix}_{cls_name}_{tp_name}_{tp.name}'
                 )
 
             recursion_guard[cls] = _fn_name
@@ -179,7 +181,7 @@ def setup_recursive_safe_function(
     return wrapper
 
 
-def setup_recursive_safe_function_for_generic(func: Callable) -> Callable:
+def setup_recursive_safe_function_for_generic(func: Callable, prefix='load') -> Callable:
     """
     A helper decorator to handle generic types using
     `setup_recursive_safe_function`.
@@ -195,4 +197,4 @@ def setup_recursive_safe_function_for_generic(func: Callable) -> Callable:
     Callable
         A wrapped function ensuring recursion safety for generic types.
     """
-    return setup_recursive_safe_function(func, is_generic=True)
+    return setup_recursive_safe_function(func, is_generic=True, prefix=prefix)

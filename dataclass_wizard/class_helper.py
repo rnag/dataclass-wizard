@@ -324,7 +324,7 @@ def setup_dump_config_for_cls_if_needed(cls):
 def v1_dataclass_field_to_alias_for_dump(cls):
 
     if cls not in IS_V1_LOAD_CONFIG_SETUP:
-        return _setup_v1_load_config_for_cls(cls)
+        _setup_v1_load_config_for_cls(cls)
 
     return DATACLASS_FIELD_TO_ALIAS_FOR_DUMP[cls]
 
