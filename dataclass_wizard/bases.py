@@ -241,12 +241,24 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
     # Note: Enabling Debug mode may have a minor performance impact.
     v1_debug: ClassVar['bool | int | str'] = False
 
-    # Specifies the letter case used to match JSON keys when mapping them
-    # to dataclass fields.
+    # Specifies the letter case to use for JSON keys when both loading and dumping.
     #
-    # This setting determines how dataclass fields are transformed to match
-    # the expected case of JSON keys during lookup. It does not affect keys
-    # in `TypedDict` or `NamedTuple` subclasses.
+    # This is a convenience setting that applies the same key casing rule to
+    # both deserialization (load) and serialization (dump).
+    #
+    # If set, it is used as the default for both `v1_load_case` and
+    # `v1_dump_case`, unless either is explicitly specified.
+    #
+    # The setting is case-insensitive and supports shorthand assignment,
+    # such as using the string 'C' instead of 'CAMEL'.
+    v1_case: ClassVar[Union[KeyCase, str, None]] = None
+
+    # Specifies the letter case used to match JSON keys when mapping them
+    # to dataclass fields during deserialization.
+    #
+    # This setting determines how dataclass field names are transformed
+    # when looking up corresponding keys in the input JSON object. It does
+    # not affect keys in `TypedDict` or `NamedTuple` subclasses.
     #
     # By default, JSON keys are assumed to be in `snake_case`, and fields
     # are matched directly without transformation.
@@ -254,9 +266,25 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
     # The setting is case-insensitive and supports shorthand assignment,
     # such as using the string 'C' instead of 'CAMEL'.
     #
-    # If set to `A` or `AUTO`, all valid key casing transforms are attempted
-    # at runtime, and the result is cached for subsequent lookups.
-    v1_key_case: ClassVar[Union[KeyCase, str]] = None
+    # If set to `A` or `AUTO`, all supported key casing transforms are
+    # attempted at runtime, and the resolved transform is cached for
+    # subsequent lookups.
+    #
+    # If unset, this value defaults to `v1_case` when provided.
+    v1_load_case: ClassVar[Union[KeyCase, str, None]] = None
+
+    # Specifies the letter case used for JSON keys during serialization.
+    #
+    # This setting determines how dataclass field names are transformed
+    # when generating keys in the output JSON object.
+    #
+    # By default, field names are emitted in `snake_case`.
+    #
+    # The setting is case-insensitive and supports shorthand assignment,
+    # such as using the string 'P' instead of 'PASCAL'.
+    #
+    # If unset, this value defaults to `v1_case` when provided.
+    v1_dump_case: ClassVar[Union[KeyCase, str, None]] = None
 
     # A custom mapping of dataclass fields to their JSON aliases (keys) used
     # during deserialization (`from_dict` or `from_json`) and serialization

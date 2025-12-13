@@ -121,11 +121,13 @@ class BaseJSONWizardMeta(AbstractMeta):
 
     @classmethod
     def bind_to(cls, dataclass: type, create=True, is_default=True,
-                base_loader=None):
+                base_loader=None,
+                base_dumper=None):
 
         cls_loader = get_loader(dataclass, create=create,
                                 base_cls=base_loader, v1=cls.v1)
-        cls_dumper = get_dumper(dataclass, create=create)
+        cls_dumper = get_dumper(dataclass, create=create,
+                                base_cls=base_dumper, v1=cls.v1)
 
         if cls.v1_debug:
             _enable_debug_mode_if_needed(cls_loader, cls.v1_debug)
@@ -178,9 +180,17 @@ class BaseJSONWizardMeta(AbstractMeta):
             cls_loader.transform_json_field = _as_enum_safe(
                 cls, 'key_transform_with_load', LetterCase)
 
-        if cls.v1_key_case is not None:
+        if (key_case := cls.v1_case) is not None:
+            cls.v1_load_case = cls.v1_dump_case = key_case
+            cls.v1_case = None
+
+        if cls.v1_load_case is not None:
             cls_loader.transform_json_field = _as_enum_safe(
-                cls, 'v1_key_case', KeyCase)
+                cls, 'v1_load_case', KeyCase)
+
+        if cls.v1_dump_case is not None:
+            cls_dumper.transform_dataclass_field = _as_enum_safe(
+                cls, 'v1_dump_case', KeyCase)
 
         if (field_to_alias := cls.v1_field_to_alias) is not None:
 
@@ -315,6 +325,9 @@ def LoadMeta(**kwargs) -> META:
     if 'key_transform' in kwargs:
         base_dict['key_transform_with_load'] = base_dict.pop('key_transform')
 
+    if 'v1_case' in kwargs:
+        base_dict['v1_load_case'] = base_dict.pop('v1_case')
+
     # Create a new subclass of :class:`AbstractMeta`
     # noinspection PyTypeChecker
     return type('Meta', (BaseJSONWizardMeta, ), base_dict)
@@ -344,6 +357,9 @@ def DumpMeta(**kwargs) -> META:
 
     if 'key_transform' in kwargs:
         base_dict['key_transform_with_dump'] = base_dict.pop('key_transform')
+
+    if 'v1_case' in kwargs:
+        base_dict['v1_dump_case'] = base_dict.pop('v1_case')
 
     # Create a new subclass of :class:`AbstractMeta`
     # noinspection PyTypeChecker

@@ -2,6 +2,13 @@
 History
 =======
 
+
+0.36.0 (2025-12-??)
+-------------------
+**Features and Improvements**
+
+* Rename `v1_key_case` to `v1_case`
+
 0.35.4 (2025-12-12)
 -------------------
 

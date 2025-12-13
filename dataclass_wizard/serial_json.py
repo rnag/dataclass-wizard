@@ -75,7 +75,7 @@ class JSONSerializable(AbstractJSONWizard):
 
         if key_case is not None:
             load_meta_kwargs['v1'] = True
-            load_meta_kwargs['v1_key_case'] = key_case
+            load_meta_kwargs['v1_case'] = key_case
 
         if _key_transform is not None:
             DumpMeta(key_transform=_key_transform).bind_to(cls)

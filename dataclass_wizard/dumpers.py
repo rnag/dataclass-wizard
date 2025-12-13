@@ -33,7 +33,7 @@ from .class_helper import (
 from .constants import _DUMP_HOOKS, TAG, CATCH_ALL
 from .decorators import _alias
 from .errors import show_deprecation_warning
-from .loader_selection import _get_load_fn_for_dataclass
+from .loader_selection import _get_load_fn_for_dataclass, get_dumper, asdict
 from .log import LOG
 from .models import get_skip_if_condition, finalize_skip_if
 from .type_def import (

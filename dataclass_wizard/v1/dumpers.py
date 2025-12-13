@@ -844,6 +844,10 @@ def dump_func_for_dataclass(
 
     key_case: KeyCase | None = cls_dumper.transform_dataclass_field
 
+    # TODO decide if different logic is needed for `AUTO` case
+    if key_case is KeyCase.AUTO:
+        key_case = None
+
     field_to_aliases = v1_dataclass_field_to_alias(cls)
     check_aliases = True if field_to_aliases else False
 
@@ -862,7 +866,7 @@ def dump_func_for_dataclass(
     else:
         expect_tag_as_unknown_key = False
 
-    on_unknown_key = meta.v1_on_unknown_key
+    skip_defaults = True if meta.skip_defaults or meta.skip_defaults_if else False
 
     catch_all_field = field_to_aliases.pop(CATCH_ALL, None)
     has_catch_all = catch_all_field is not None
@@ -889,7 +893,8 @@ def dump_func_for_dataclass(
             fn_name, [
             'o',
             'dict_factory=dict',
-            'exclude=None',
+            "exclude:'list[str]|None'=None",
+            f'skip_defaults:bool={skip_defaults}',
         ], MISSING, new_locals):
 
         if (_pre_to_dict := getattr(cls, '_pre_to_dict', None)) is not None:
@@ -899,9 +904,10 @@ def dump_func_for_dataclass(
         # Need to create a separate dictionary to copy over the constructor
         # args, as we don't want to mutate the original dictionary object.
         if has_defaults:
-            fn_gen.add_line('init_kwargs = {}')
+            fn_gen.add_line('add_defaults = not skip_defaults')
 
-        required_field_assigns = {}
+        required_field_assigns = []
+        default_assigns = []
 
         if cls_fields:
 
@@ -913,8 +919,11 @@ def dump_func_for_dataclass(
 
                 for i, f in enumerate(cls_fields):
                     name = f.name
-                    # var = f'__{name}'
+                    key = name if key_case is None else key_case(name)
                     has_default = name in field_to_default
+                    # skip_field = f'_skip_{i}'
+                    # skip_if_field = f'_skip_if_{i}'
+                    default_value = f'_default_{i}'
 
                     # if (check_aliases
                     #         and (_aliases := field_to_aliases.get(name)) is not None):
@@ -1009,7 +1018,6 @@ def dump_func_for_dataclass(
                     #
                     #     f_assign = f'field={name!r}; {val}=o.get({alias!r}, MISSING)'
 
-                    string = generate_field_code(cls_dumper, extras, f, i, f'o.{name}')
 
                     # if f_assign is not None:
                     #     fn_gen.add_line(f_assign)
@@ -1017,18 +1025,25 @@ def dump_func_for_dataclass(
                     if has_default:
                         # with fn_gen.if_(val_is_found):
                         # with fn_gen.if_(f'{val} is not MISSING'):
-
-                        fn_gen.add_line(f'init_kwargs[field] = {string}')
-
+                        string = generate_field_code(cls_dumper, extras, f, i)
+                        new_locals[default_value] = field_to_default[name]
+                        default_assigns.append((name, key, default_value, string))
                     else:
                         # TODO confirm this is ok
                         # vars_for_fields.append(f'{name}={var}')
-                        required_field_assigns[name] = string
+                        string = generate_field_code(cls_dumper, extras, f, i, f'o.{name}')
+                        required_field_assigns.append((name, key, string))
+
 
                 fn_gen.add_line('result = {')
-                for name, string in required_field_assigns.items():
-                    fn_gen.add_line(f'  {name!r}: {string},')
+                for (_, key, string) in required_field_assigns:
+                    fn_gen.add_line(f'  {key!r}: {string},')
                 fn_gen.add_line('}')
+
+                for (name, key, default_name, string) in default_assigns:
+                    fn_gen.add_line(f'v1 = o.{name}')
+                    with fn_gen.if_(f'add_defaults or v1 != {default_name}'):
+                        fn_gen.add_line(f'result[{key!r}] = {string}')
 
             # create a broad `except Exception` block, as we will be
             # re-raising all exception(s) as a custom `ParseError`.

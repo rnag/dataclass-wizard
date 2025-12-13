@@ -78,7 +78,7 @@ def test_auto_key_casing():
     class Test(JSONWizard):
         class _(JSONWizard.Meta):
             v1 = True
-            v1_key_case = 'AUTO'
+            v1_case = 'AUTO'
 
         my_str: str
         my_bool_test: bool
@@ -163,7 +163,7 @@ def test_alias_mapping_with_load_or_dump():
     class Test(JSONWizard):
         class _(JSONWizard.Meta):
             v1 = True
-            v1_key_case = 'C'
+            v1_case = 'C'
             key_transform_with_dump = 'NONE'
             v1_field_to_alias = {
                 'my_int': 'MyInt',
@@ -204,7 +204,7 @@ def test_alias_with_multiple_mappings():
 
         class _(JSONWizard.Meta):
             v1 = True
-            v1_key_case = 'CAMEL'
+            v1_case = 'CAMEL'
             key_transform_with_dump = 'PASCAL'
             v1_on_unknown_key = 'RAISE'
 
@@ -327,7 +327,7 @@ def test_from_dict_raises_on_unknown_keys_nested():
     @dataclass
     class Sub(JSONWizard):
         class _(JSONWizard.Meta):
-            v1_key_case = 'P'
+            v1_case = 'P'
 
         my_str: str
 
@@ -393,7 +393,7 @@ def test_from_dict_raises_on_unknown_keys_with_key_case_auto():
     class Test(JSONWizard):
         class _(JSONWizard.Meta):
             v1 = True
-            v1_key_case = 'A'
+            v1_case = 'A'
             v1_on_unknown_key = 'RAISE'
 
         my_str: str = Alias('a_str')
@@ -464,7 +464,7 @@ def test_fromdict_with_key_case_auto():
               'StatusCode': '502'},
          ]}
 
-    LoadMeta(v1=True, v1_key_case='AUTO').bind_to(Container)
+    LoadMeta(v1=True, v1_case='AUTO').bind_to(Container)
 
     # Success :-)
     c = fromdict(Container, d)
@@ -507,7 +507,7 @@ def test_fromdict_with_nested_dataclass():
         v1=True,
         recursive=False).bind_to(Container)
 
-    LoadMeta(v1=True, v1_key_case='AUTO').bind_to(MyElement)
+    LoadMeta(v1=True, v1_case='AUTO').bind_to(MyElement)
 
     c = fromdict(Container, d)
 
@@ -536,7 +536,7 @@ def test_invalid_types_with_debug_mode_enabled():
     class MyClass(JSONWizard):
         class _(JSONWizard.Meta):
             v1 = True
-            v1_key_case = 'CAMEL'
+            v1_case = 'CAMEL'
             debug_enabled = True
 
         my_int: int
@@ -929,7 +929,7 @@ def test_e2e_process_with_init_only_fields():
 
         class _(JSONWizard.Meta):
             v1 = True
-            v1_key_case = 'C'
+            v1_case = 'C'
 
         my_str: str
         my_float: float = field(default=0.123, init=False)
@@ -967,7 +967,7 @@ def test_bool(input, expected):
 
         class _(JSONWizard.Meta):
             v1 = True
-            v1_key_case = 'P'
+            v1_case = 'P'
 
         my_bool: bool
 
@@ -1200,7 +1200,7 @@ def test_literal(input, expectation):
     class MyClass(JSONWizard):
 
         class _(JSONWizard.Meta):
-            v1_key_case = 'P'
+            v1_case = 'P'
             v1 = True
 
         my_lit: Literal['e1', 'e2', 0]
@@ -1327,7 +1327,7 @@ def test_annotated(input, expected):
 
         class _(JSONWizard.Meta):
             v1 = True
-            v1_key_case = 'Auto'
+            v1_case = 'Auto'
 
         bool_or_none: Annotated[Optional[bool], MaxLen(23), "testing", 123]
 
@@ -1385,7 +1385,7 @@ def test_optional(input, expectation, expected):
 
         class _(JSONWizard.Meta):
             v1 = True
-            v1_key_case = 'P'
+            v1_case = 'P'
 
         my_str: str
         my_opt_str: Optional[str]
@@ -1424,7 +1424,7 @@ def test_union(input, expectation, expected):
 
         class _(JSONWizard.Meta):
             v1 = True
-            v1_key_case = 'C'
+            v1_case = 'C'
 
         my_opt_str_int_or_bool: Union[str, int, bool, None]
 
@@ -1886,7 +1886,7 @@ def test_tuple_with_variadic_args(input, expectation, expected):
 
         class _(JSONWizard.Meta):
             v1 = True
-            v1_key_case = 'P'
+            v1_case = 'P'
 
         my_tuple: Tuple[int, ...]
 
@@ -1932,7 +1932,7 @@ def test_dict(input, expectation, expected):
 
         class _(JSONWizard.Meta):
             v1 = True
-            v1_key_case = 'C'
+            v1_case = 'C'
 
         my_dict: Dict[int, bool]
 
@@ -1983,7 +1983,7 @@ def test_default_dict(input, expectation, expected):
 
         class _(JSONWizard.Meta):
             v1 = True
-            v1_key_case = 'C'
+            v1_case = 'C'
 
         my_def_dict: DefaultDict[int, list]
 
@@ -2033,7 +2033,7 @@ def test_dict_without_type_hinting(input, expectation, expected):
 
         class _(JSONWizard.Meta):
             v1 = True
-            v1_key_case = 'C'
+            v1_case = 'C'
 
         my_dict: dict
 
@@ -2091,7 +2091,7 @@ def test_typed_dict(input, expectation, expected):
 
         class _(JSONWizard.Meta):
             v1 = True
-            v1_key_case = 'C'
+            v1_case = 'C'
 
         my_typed_dict: MyDict
 
@@ -2149,7 +2149,7 @@ def test_typed_dict_with_all_fields_optional(input, expectation, expected):
 
         class _(JSONWizard.Meta):
             v1 = True
-            v1_key_case = 'C'
+            v1_case = 'C'
 
         my_typed_dict: MyDict
 
@@ -2216,7 +2216,7 @@ def test_typed_dict_with_one_field_not_required(input, expectation, expected):
 
         class _(JSONWizard.Meta):
             v1 = True
-            v1_key_case = 'C'
+            v1_case = 'C'
 
         my_typed_dict: MyDict
 
@@ -2281,7 +2281,7 @@ def test_typed_dict_with_one_field_required(input, expectation, expected):
 
         class _(JSONWizard.Meta):
             v1 = True
-            v1_key_case = 'C'
+            v1_case = 'C'
 
         my_typed_dict: MyDict
 
@@ -2616,7 +2616,7 @@ def test_load_with_inner_model_when_data_is_wrong_type():
 
         class _(JSONWizard.Meta):
             v1 = True
-            v1_key_case = 'AUTO'
+            v1_case = 'AUTO'
 
         my_str: str
         inner: Inner
@@ -2899,7 +2899,7 @@ def test_catch_all_with_auto_key_case():
     class Options(JSONWizard):
         class _(JSONWizard.Meta):
             v1 = True
-            v1_key_case = 'Auto'
+            v1_case = 'Auto'
 
         my_extras: CatchAll
         the_email: str
@@ -3171,7 +3171,7 @@ def test_from_dict_with_multiple_nested_object_alias_paths():
 
         class _(JSONWizard.Meta):
             v1 = True
-            v1_key_case = 'CAMEL'
+            v1_case = 'CAMEL'
             key_transform_with_dump = 'PASCAL'
             v1_on_unknown_key = 'RAISE'
 

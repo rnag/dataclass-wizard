@@ -14,6 +14,7 @@ from dataclass_wizard import *
 from dataclass_wizard.class_helper import get_meta
 from dataclass_wizard.constants import TAG
 from dataclass_wizard.errors import ParseError
+from dataclass_wizard.v1.enums import KeyAction
 from ..conftest import *
 
 
@@ -33,20 +34,31 @@ def test_asdict_and_fromdict():
 
     d = {'myBoolean': 'tRuE', 'my_str_or_int': 123}
 
+    # v1 opt-in + v1 config
     LoadMeta(
-        key_transform='CAMEL',
-        raise_on_unknown_json_key=True,
-        json_key_to_field={'myBoolean': 'my_bool', '__all__': True}
+        v1=True,
+        v1_case='CAMEL',
+        v1_on_unknown_key='RAISE',
+        v1_field_to_alias={'my_bool': 'myBoolean'},
     ).bind_to(MyClass)
 
-    DumpMeta(key_transform='SNAKE').bind_to(MyClass)
+    # Keep same dump output as before: `myBoolean` for my_bool + snake for the rest.
+    DumpMeta(
+        v1=True,
+        v1_case='SNAKE',
+        v1_field_to_alias={'myStrOrInt': 'my_str_or_int'},
+    ).bind_to(MyClass)
 
-    # Assert that meta is properly merged as expected
     meta = get_meta(MyClass)
-    assert 'CAMEL' == meta.key_transform_with_load
-    assert 'SNAKE' == meta.key_transform_with_dump
-    assert True is meta.raise_on_unknown_json_key
-    assert {'myBoolean': 'my_bool'} == meta.json_key_to_field
+
+    assert meta.v1 is True
+    # The library normalizes these internally; accept common representations.
+    assert meta.v1_case is None
+
+    assert str(meta.v1_load_case).upper() in ('CAMEL', 'C')
+    assert str(meta.v1_dump_case).upper() in ('SNAKE', 'S')
+    assert meta.v1_on_unknown_key is KeyAction.RAISE
+    assert meta.v1_field_to_alias == {'myStrOrInt': 'my_str_or_int'}
 
     c = fromdict(MyClass, d)
 
@@ -55,8 +67,7 @@ def test_asdict_and_fromdict():
     assert c.myStrOrInt == 123
 
     new_dict = asdict(c)
-
-    assert new_dict == {'myBoolean': True, 'my_str_or_int': 123}
+    assert new_dict == {'my_bool': True, 'my_str_or_int': 123}
 
 
 def test_asdict_with_nested_dataclass():
@@ -78,8 +89,11 @@ def test_asdict_with_nested_dataclass():
 
     c = Container(123, submitted_dt, myElements=elements)
 
-    DumpMeta(key_transform='SNAKE',
-             marshal_date_time_as='TIMESTAMP').bind_to(Container)
+    DumpMeta(
+        v1=True,
+        key_transform='SNAKE',
+        marshal_date_time_as='TIMESTAMP'
+    ).bind_to(Container)
 
     d = asdict(c)
 
@@ -87,8 +101,6 @@ def test_asdict_with_nested_dataclass():
         'id': 123,
         'submitted_dt': round(submitted_dt.timestamp()),
         'my_elements': [
-            # Key transform now applies recursively to all nested dataclasses
-            # by default! :-)
             {'order_index': 111, 'status_code': '200'},
             {'order_index': 222, 'status_code': 404}
         ]
@@ -116,6 +128,7 @@ def test_tag_field_is_used_in_dump_process():
     class DataB(Data, JSONWizard):
         """ Another type of Data """
         class _(JSONWizard.Meta):
+            v1 = True
             """
             This defines a custom tag that shows up in de-serialized
             dictionary object.
@@ -126,6 +139,7 @@ def test_tag_field_is_used_in_dump_process():
     class Container(JSONWizard):
         """ container holds a subclass of Data """
         class _(JSONWizard.Meta):
+            v1 = True
             tag = 'CONTAINER'
 
         data: Union[DataA, DataB]
@@ -133,23 +147,16 @@ def test_tag_field_is_used_in_dump_process():
     data_a = DataA(number=1.0)
     data_b = DataB(number=1.0)
 
-    # initialize container with DataA
     container = Container(data=data_a)
-
-    # export container to string and load new container from string
     d1 = container.to_dict()
 
     expected = {
         TAG: 'CONTAINER',
         'data': {'number': 1.0}
     }
-
     assert d1 == expected
 
-    # initialize container with DataB
     container = Container(data=data_b)
-
-    # export container to string and load new container from string
     d2 = container.to_dict()
 
     expected = {
@@ -159,20 +166,23 @@ def test_tag_field_is_used_in_dump_process():
             'number': 1.0
         }
     }
-
     assert d2 == expected
 
 
 def test_to_dict_key_transform_with_json_field():
     """
-    Specifying a custom mapping of JSON key to dataclass field, via the
-    `json_field` helper function.
+    Specifying a custom mapping of JSON key to dataclass field.
+
+    v1: use Alias(...) instead of json_field/json_key.
     """
 
     @dataclass
     class MyClass(JSONSerializable):
-        my_str: str = json_field('myCustomStr', all=True)
-        my_bool: bool = json_field(('my_json_bool', 'myTestBool'), all=True)
+        class _(JSONSerializable.Meta):
+            v1 = True
+
+        my_str: str = Alias('myCustomStr')
+        my_bool: bool = Alias('my_json_bool', 'myTestBool')
 
     value = 'Testing'
     expected = {'myCustomStr': value, 'my_json_bool': True}
@@ -187,15 +197,18 @@ def test_to_dict_key_transform_with_json_field():
 
 def test_to_dict_key_transform_with_json_key():
     """
-    Specifying a custom mapping of JSON key to dataclass field, via the
-    `json_key` helper function.
+    Specifying a custom mapping of JSON key to dataclass field.
+
+    v1: use Annotated[..., Alias(...)].
     """
 
     @dataclass
     class MyClass(JSONSerializable):
-        my_str: Annotated[str, json_key('myCustomStr', all=True)]
-        my_bool: Annotated[bool, json_key(
-            'my_json_bool', 'myTestBool', all=True)]
+        class _(JSONSerializable.Meta):
+            v1 = True
+
+        my_str: Annotated[str, Alias('myCustomStr')]
+        my_bool: Annotated[bool, Alias('my_json_bool', 'myTestBool')]
 
     value = 'Testing'
     expected = {'myCustomStr': value, 'my_json_bool': True}
@@ -220,6 +233,7 @@ def test_to_dict_with_skip_defaults():
     @dataclass
     class MyClass(JSONWizard):
         class _(JSONWizard.Meta):
+            v1 = True
             skip_defaults = True
 
         my_str: str
@@ -244,10 +258,13 @@ def test_to_dict_with_excluded_fields():
 
     @dataclass
     class MyClass(JSONWizard):
+        class _(JSONWizard.Meta):
+            v1 = True
 
         my_str: str
-        other_str: Annotated[str, json_key('AnotherStr', dump=False)]
-        my_bool: bool = json_field('TestBool', dump=False)
+        # v1: map load alias + disable dump
+        other_str: Annotated[str, Alias(load='AnotherStr', dump=False)]
+        my_bool: bool = Alias(load='TestBool', dump=False)
         my_int: int = 3
 
     data = {'MyStr': 'my string',
@@ -257,7 +274,6 @@ def test_to_dict_with_excluded_fields():
     c = MyClass.from_dict(data)
     log.debug('Instance: %r', c)
 
-    # dynamically exclude the `my_int` field from serialization
     additional_exclude = ('my_int', )
 
     out_dict = c.to_dict(exclude=additional_exclude)
@@ -275,10 +291,12 @@ def test_set(input, expected, expectation):
 
     @dataclass
     class MyClass(JSONSerializable):
+        class _(JSONSerializable.Meta):
+            v1 = True
+
         num_set: Set[int]
         any_set: set
 
-    # Sort expected so the assertions succeed
     expected = sorted(expected)
 
     input_set = set(input)
@@ -289,9 +307,6 @@ def test_set(input, expected, expectation):
         log.debug('Parsed object: %r', result)
 
         assert all(key in result for key in ('numSet', 'anySet'))
-
-        # Set should be converted to list or tuple, as only those are JSON
-        # serializable.
         assert isinstance(result['numSet'], (list, tuple))
         assert isinstance(result['anySet'], (list, tuple))
 
@@ -310,10 +325,12 @@ def test_frozenset(input, expected, expectation):
 
     @dataclass
     class MyClass(JSONSerializable):
+        class _(JSONSerializable.Meta):
+            v1 = True
+
         num_set: FrozenSet[int]
         any_set: frozenset
 
-    # Sort expected so the assertions succeed
     expected = sorted(expected)
 
     input_set = frozenset(input)
@@ -324,9 +341,6 @@ def test_frozenset(input, expected, expectation):
         log.debug('Parsed object: %r', result)
 
         assert all(key in result for key in ('numSet', 'anySet'))
-
-        # Set should be converted to list or tuple, as only those are JSON
-        # serializable.
         assert isinstance(result['numSet'], (list, tuple))
         assert isinstance(result['anySet'], (list, tuple))
 
@@ -345,6 +359,9 @@ def test_deque(input, expected, expectation):
 
     @dataclass
     class MyQClass(JSONSerializable):
+        class _(JSONSerializable.Meta):
+            v1 = True
+
         num_deque: deque[int]
         any_deque: deque
 
@@ -356,9 +373,6 @@ def test_deque(input, expected, expectation):
         log.debug('Parsed object: %r', result)
 
         assert all(key in result for key in ('numDeque', 'anyDeque'))
-
-        # Set should be converted to list or tuple, as only those are JSON
-        # serializable.
         assert isinstance(result['numDeque'], list)
         assert isinstance(result['anyDeque'], list)
 
@@ -380,7 +394,8 @@ def test_literal(input, expectation):
 
     @dataclass
     class MyClass(JSONSerializable):
-        class Meta(JSONSerializable.Meta):
+        class _(JSONSerializable.Meta):
+            v1 = True
             key_transform_with_dump = 'PASCAL'
 
         my_lit: Literal['e1', 'e2', 0]
@@ -390,7 +405,6 @@ def test_literal(input, expectation):
 
     with expectation:
         actual = c.to_dict()
-
         assert actual == expected
         log.debug('Parsed object: %r', actual)
 
@@ -408,7 +422,8 @@ def test_uuid(input, expectation):
 
     @dataclass
     class MyClass(JSONSerializable):
-        class Meta(JSONSerializable.Meta):
+        class _(JSONSerializable.Meta):
+            v1 = True
             key_transform_with_dump = 'Snake'
 
         my_id: UUID
@@ -418,7 +433,6 @@ def test_uuid(input, expectation):
 
     with expectation:
         actual = c.to_dict()
-
         assert actual == expected
         log.debug('Parsed object: %r', actual)
 
@@ -435,8 +449,10 @@ def test_timedelta(input, expectation):
 
     @dataclass
     class MyClass(JSONSerializable):
-        class Meta(JSONSerializable.Meta):
+        class _(JSONSerializable.Meta):
+            v1 = True
             key_transform_with_dump = 'Snake'
+
         my_td: timedelta
 
     c = MyClass(my_td=input)
@@ -444,7 +460,6 @@ def test_timedelta(input, expectation):
 
     with expectation:
         actual = c.to_dict()
-
         assert actual == expected
         log.debug('Parsed object: %r', actual)
 
@@ -452,22 +467,13 @@ def test_timedelta(input, expectation):
 @pytest.mark.parametrize(
     'input,expectation',
     [
-        (
-            {}, pytest.raises(ParseError)),
-        (
-            {'key': 'value'}, pytest.raises(ParseError)),
-        (
-            {'my_str': 'test', 'my_int': 2,
-             'my_bool': True, 'other_key': 'testing'}, does_not_raise()),
-        (
-            {'my_str': 3}, pytest.raises(ParseError)),
-        (
-            {'my_str': 'test', 'my_int': 'test', 'my_bool': True},
-            pytest.raises(ValueError)),
-        (
-            {'my_str': 'test', 'my_int': 2, 'my_bool': True},
-            does_not_raise(),
-        )
+        ({}, pytest.raises(ParseError)),
+        ({'key': 'value'}, pytest.raises(ParseError)),
+        ({'my_str': 'test', 'my_int': 2,
+          'my_bool': True, 'other_key': 'testing'}, does_not_raise()),
+        ({'my_str': 3}, pytest.raises(ParseError)),
+        ({'my_str': 'test', 'my_int': 'test', 'my_bool': True}, pytest.raises(ValueError)),
+        ({'my_str': 'test', 'my_int': 2, 'my_bool': True}, does_not_raise()),
     ]
 )
 @pytest.mark.xfail(reason='still need to add the dump hook for this type')
@@ -480,6 +486,9 @@ def test_typed_dict(input, expectation):
 
     @dataclass
     class MyClass(JSONSerializable):
+        class _(JSONSerializable.Meta):
+            v1 = True
+
         my_typed_dict: MyDict
 
     c = MyClass(my_typed_dict=input)
@@ -506,6 +515,10 @@ def test_using_dataclass_in_dict():
 
     config = {"tests": {"test_a": {"field": "a"}, "test_b": {"field": "b"}}}
 
+    # v1 opt-in for plain dataclasses used with fromdict/asdict
+    LoadMeta(v1=True).bind_to(Config)
+    LoadMeta(v1=True).bind_to(Test)
+
     assert fromdict(Config, config) == Config(
         tests={'test_a': Test(field='a'),
                'test_b': Test(field='b')})
@@ -515,17 +528,18 @@ def test_bytes_and_bytes_array_are_supported():
     """Confirm dump with `bytes` and `bytesarray` is supported."""
 
     @dataclass
-    class Foo(JSONWizard):
+    class Foo(JSONWizard, debug=True):
+        class _(JSONWizard.Meta):
+            v1 = True
+
         b: bytes = None
         barray: bytearray = None
         s: str = None
 
     data = {'b': 'AAAA', 'barray': 'SGVsbG8sIFdvcmxkIQ==', 's': 'foobar'}
 
-    # noinspection PyTypeChecker
     foo = Foo(b=b64decode('AAAA'),
               barray=bytearray(b'Hello, World!'),
               s='foobar')
 
-    # noinspection PyTypeChecker
     assert foo.to_dict() == data

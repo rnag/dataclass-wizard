@@ -147,7 +147,7 @@ for bulk aliasing:
     class Test(JSONPyWizard):
         class _(JSONPyWizard.Meta):
             v1 = True
-            v1_key_case = 'CAMEL'
+            v1_case = 'CAMEL'
             v1_field_to_alias = {
                 'my_int': 'MyInt',
                 '__load__': False,
