@@ -85,7 +85,7 @@ def DumpMeta(*, debug_enabled: 'bool | int | str' = MISSING,
              v1: bool = MISSING,
              v1_debug: bool | int | str = False,
              v1_case: KeyCase | str | None = MISSING,
-             # v1_field_to_alias: dict[str, str | Sequence[str]] = MISSING,
+             v1_field_to_alias: dict[str, str | Sequence[str]] = MISSING,
     ) -> META:
     ...
 

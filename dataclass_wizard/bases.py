@@ -112,6 +112,8 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
         'recursive',
         'json_key_to_field',
         'v1_field_to_alias',
+        'v1_field_to_alias_dump',
+        'v1_field_to_alias_load',
         'tag',
     })
 
@@ -286,16 +288,46 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
     # If unset, this value defaults to `v1_case` when provided.
     v1_dump_case: ClassVar[Union[KeyCase, str, None]] = None
 
+    # A custom mapping of dataclass fields to their JSON aliases (keys).
+    #
+    # Values may be a single alias string or a sequence of alias strings.
+    #
+    # - During deserialization (load), any listed alias for a field is accepted.
+    # - During serialization (dump), the first alias is used by default.
+    #
+    # This mapping overrides default key casing and implicit field-to-key
+    # transformations (e.g., "my_field" → "myField") for the affected fields.
+    #
+    # This setting applies to both load and dump unless explicitly overridden
+    # by `v1_field_to_alias_load` or `v1_field_to_alias_dump`.
+    v1_field_to_alias: ClassVar[
+        Mapping[str, Union[str, Sequence[str]]]
+    ] = None
+
     # A custom mapping of dataclass fields to their JSON aliases (keys) used
-    # during deserialization (`from_dict` or `from_json`) and serialization
-    # (`to_dict` or `to_json`).
+    # during deserialization only.
     #
-    # This mapping overrides default behavior, including implicit field-to-key
-    # transformations (e.g., "my_field" -> "myField").
+    # Values may be a single alias string or a sequence of alias strings.
+    # Any listed alias is accepted when mapping input JSON keys to
+    # dataclass fields.
     #
-    # By default, the reverse mapping (JSON alias to field) is applied during
-    # serialization, unless explicitly overridden.
-    v1_field_to_alias: ClassVar[Mapping[str, Union[str, Sequence[str], None]]] = None
+    # When set, this mapping overrides `v1_field_to_alias` for load behavior
+    # only.
+    v1_field_to_alias_load: ClassVar[
+        Mapping[str, Union[str, Sequence[str]]]
+    ] = None
+
+    # A custom mapping of dataclass fields to their JSON aliases (keys) used
+    # during serialization only.
+    #
+    # Values may be a single alias string or a sequence of alias strings.
+    # When a sequence is provided, the first alias is used as the output key.
+    #
+    # When set, this mapping overrides `v1_field_to_alias` for dump behavior
+    # only.
+    v1_field_to_alias_dump: ClassVar[
+        Mapping[str, Union[str, Sequence[str]]]
+    ] = None
 
     # Defines the action to take when an unknown JSON key is encountered during
     # `from_dict` or `from_json` calls. An unknown key is one that does not map

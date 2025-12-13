@@ -58,7 +58,8 @@ def test_asdict_and_fromdict():
     assert str(meta.v1_load_case).upper() in ('CAMEL', 'C')
     assert str(meta.v1_dump_case).upper() in ('SNAKE', 'S')
     assert meta.v1_on_unknown_key is KeyAction.RAISE
-    assert meta.v1_field_to_alias == {'__load__': False, 'myStrOrInt': 'My String-Or-Num'}
+    assert meta.v1_field_to_alias_load == {'my_bool': 'myBoolean'}
+    assert meta.v1_field_to_alias_dump == {'myStrOrInt': 'My String-Or-Num'}
 
     c = fromdict(MyClass, d)
 
