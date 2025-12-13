@@ -25,7 +25,7 @@ jobs:
     timeout-minutes: 30
     strategy:
       matrix:
-        python-versions: ['3.9', '3.10', '3.11', '3.12', '3.13', "3.14"]
+        python-versions: ['3.9', '3.10', '3.11', '3.12', '3.13', '3.14']
         os: [ubuntu-latest]
         # Uncomment if I need to run it on other environments too (currently
         # there's not a huge need)
