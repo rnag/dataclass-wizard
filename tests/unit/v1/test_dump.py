@@ -3,7 +3,7 @@ from abc import ABC
 from base64 import b64decode
 from collections import deque, defaultdict
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone, date
 from typing import (Set, FrozenSet, Optional, Union, List,
                     DefaultDict, Annotated, Literal)
 from uuid import UUID
@@ -77,6 +77,7 @@ def test_asdict_with_nested_dataclass():
     @dataclass
     class Container:
         id: int
+        submittedDate: date
         submittedDt: datetime
         myElements: List['MyElement']
 
@@ -85,29 +86,46 @@ def test_asdict_with_nested_dataclass():
         order_index: Optional[int]
         status_code: Union[int, str]
 
-    submitted_dt = datetime(2021, 1, 1, 5)
+    submitted_date = date(2019, 11, 30)
+    naive_dt = datetime(2021, 1, 1, 5)
     elements = [MyElement(111, '200'), MyElement(222, 404)]
 
-    c = Container(123, submitted_dt, myElements=elements)
+    # Fix so the forward reference works (since the class definition is inside
+    # the test case)
+    globals().update(locals())
 
     DumpMeta(
         v1=True,
-        key_transform='SNAKE',
-        marshal_date_time_as='TIMESTAMP'
+        v1_case='SNAKE',
+        v1_dump_date_time_as='TIMESTAMP',
+        v1_assume_naive_datetime_tz=timezone.utc,
     ).bind_to(Container)
 
-    d = asdict(c)
+    # Case 1: naive dt -> assumed UTC -> timestamp
+    c1 = Container(123, submitted_date, naive_dt, myElements=elements)
+    d1 = asdict(c1)
 
-    expected = {
-        'id': 123,
-        'submitted_dt': round(submitted_dt.timestamp()),
-        'my_elements': [
-            {'order_index': 111, 'status_code': '200'},
-            {'order_index': 222, 'status_code': 404}
-        ]
+    expected1 = {
+        "id": 123,
+        "submitted_date": round(datetime(2019, 11, 30, tzinfo=timezone.utc).timestamp()),
+        "submitted_dt": round(naive_dt.replace(tzinfo=timezone.utc).timestamp()),
+        "my_elements": [
+            {"order_index": 111, "status_code": "200"},
+            {"order_index": 222, "status_code": 404},
+        ],
     }
+    assert d1 == expected1
 
-    assert d == expected
+    # Case 2: aware dt (fixed offset "EST") -> convert to UTC -> timestamp
+    est_fixed = timezone(timedelta(hours=-5))
+    aware_dt = naive_dt.replace(tzinfo=est_fixed)
+
+    c2 = Container(123, submitted_date, aware_dt, myElements=elements)
+    d2 = asdict(c2)
+
+    expected2 = dict(expected1)
+    expected2["submitted_dt"] = round(aware_dt.timestamp())
+    assert d2 == expected2
 
 
 def test_tag_field_is_used_in_dump_process():

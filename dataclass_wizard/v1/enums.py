@@ -56,3 +56,8 @@ class KeyCase(Enum):
     def __call__(self, *args):
         """Apply the key transformation."""
         return self.value.f(*args)
+
+
+class DateTimeTo(Enum):
+    ISO = 0          # ISO 8601 string (default)
+    TIMESTAMP = 1    # Unix timestamp (seconds)

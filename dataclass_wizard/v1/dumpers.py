@@ -17,7 +17,7 @@ from typing import (
 from uuid import UUID
 
 from .decorators import setup_recursive_safe_function, setup_recursive_safe_function_for_generic
-from .models import Extras, TypeInfo, SIMPLE_TYPES, PatternBase
+from .models import Extras, TypeInfo, SIMPLE_TYPES, PatternBase, UTC, ZERO
 
 from ..abstractions import AbstractDumperGenerator
 from ..bases import BaseLoadHook, AbstractMeta, BaseDumpHook, META
@@ -29,7 +29,7 @@ from ..class_helper import (
 )
 from ..constants import CATCH_ALL, TAG, PACKAGE_NAME
 from ..decorators import _identity
-from .enums import KeyAction, KeyCase
+from .enums import KeyAction, KeyCase, DateTimeTo
 from ..errors import (ParseError, MissingFields, UnknownKeysError,
                       MissingData, JSONWizardError)
 from ..loader_selection import get_dumper, asdict
@@ -44,9 +44,7 @@ from ..type_def import (
 from ..utils.dataclass_compat import _set_new_attribute
 from ..utils.function_builder import FunctionBuilder
 from ..utils.object_path import safe_get
-from ..utils.type_conv import (
-    as_bool, as_datetime, as_date, as_time, as_int, as_timedelta,
-)
+from .type_conv import datetime_to_timestamp
 from ..utils.typing_compat import (
     is_typed_dict, get_args, is_annotated,
     eval_forward_ref_if_needed, get_origin_v2, is_union,
@@ -129,7 +127,7 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
             elem_type = Any
 
         string = cls.get_string_for_annotation(
-            tp.replace(origin=elem_type, i=i_next, index=None), extras)
+            tp.replace(origin=elem_type, i=i_next, index=None, val_name=None), extras)
 
         if issubclass(gorg, (set, frozenset)):
             start_char = '{'
@@ -171,7 +169,7 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
 
             # Given `Tuple[T, ...]`, we only need the generated string for `T`
             string = cls.get_string_for_annotation(
-                tp.replace(origin=args[0], i=i_next, index=None), extras)
+                tp.replace(origin=args[0], i=i_next, index=None, val_name=None), extras)
 
             result = f'[{string} for {v_next} in {v}]'
 
@@ -180,7 +178,7 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
         else:
             string = ', '.join([
                 cls.get_string_for_annotation(
-                    tp.replace(origin=arg, index=k),
+                    tp.replace(origin=arg, index=k, val_name=None),
                     extras)
                 for k, arg in enumerate(args)])
 
@@ -210,7 +208,7 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
 
         for field, field_tp in nt_tp.__annotations__.items():
             string = cls.get_string_for_annotation(
-                tp.replace(origin=field_tp, index=num_fields), extras)
+                tp.replace(origin=field_tp, index=num_fields, val_name=None), extras)
 
             if has_optionals and field in optional_fields:
                 field_assigns.append(string)
@@ -266,10 +264,10 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
 
     @classmethod
     def _build_dict_comp(cls, tp, v, i_next, k_next, v_next, kt, vt, extras):
-        tp_k_next = tp.replace(origin=kt, i=i_next, prefix='k', index=None)
+        tp_k_next = tp.replace(origin=kt, i=i_next, prefix='k', index=None, val_name=None)
         string_k = cls.get_string_for_annotation(tp_k_next, extras)
 
-        tp_v_next = tp.replace(origin=vt, i=i_next, prefix='v', index=None)
+        tp_v_next = tp.replace(origin=vt, i=i_next, prefix='v', index=None, val_name=None)
         string_v = cls.get_string_for_annotation(tp_v_next, extras)
 
         return f'{{{string_k}: {string_v} for {k_next}, {v_next} in {v}.items()}}'
@@ -326,7 +324,8 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
             field_name = repr(k)
             string = cls.get_string_for_annotation(
                 tp.replace(origin=field_tp,
-                           index=field_name), extras)
+                           index=field_name,
+                           val_name=None), extras)
 
             result_list.append(f'{field_name}: {string}')
 
@@ -340,7 +339,7 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
                 field_tp = td_annotations[k]
                 field_name = repr(k)
                 string = cls.get_string_for_annotation(
-                    tp.replace(origin=field_tp, i=2, index=None), extras)
+                    tp.replace(origin=field_tp, i=2, index=None, val_name=None), extras)
                 with fn_gen.if_(f'(v2 := v1.get({field_name}, MISSING)) is not MISSING'):
                     fn_gen.add_line(f'result[{field_name}] = {string}')
             fn_gen.add_line('return result')
@@ -503,12 +502,36 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
         return f'str({tp.v()}'
 
     @classmethod
-    def dump_from_date(cls, tp: TypeInfo, _extras: Extras):
-        return f'{tp.v()}.isoformat()'
+    def dump_from_date(cls, tp: TypeInfo, extras: Extras):
+        o = tp.v()
+
+        if extras['config'].v1_dump_date_time_as is DateTimeTo.TIMESTAMP:
+            tp.ensure_in_locals(extras, datetime, UTC=UTC)
+            return f'int(datetime((v0 := {o}).year, v0.month, v0.day, tzinfo=UTC).timestamp())'
+
+        return f'{o}.isoformat()'
 
     @classmethod
     def dump_from_datetime(cls, tp: TypeInfo, extras: Extras):
         o = tp.v()
+        config = extras['config']
+
+        if config.v1_dump_date_time_as is DateTimeTo.TIMESTAMP:
+            naive_tz = config.v1_assume_naive_datetime_tz
+
+            if naive_tz is None:
+                def raise_naive():
+                    raise ValueError('Naive datetime has no timezone; '
+                                     'set v1_assume_naive_datetime_tz to '
+                                     'define how it should be interpreted.')
+
+                tp.ensure_in_locals(extras, raise_naive, ZERO=ZERO)
+                return f'raise_naive() if (v0 := {o}).tzinfo is None else int(v0.timestamp()) if v0.utcoffset() == ZERO else int(v0.astimezone(UTC).timestamp())'
+
+            else:
+                tp.ensure_in_locals(extras, datetime_to_timestamp, assume_naive_tz=naive_tz)
+                return f'datetime_to_timestamp({o}, assume_naive_tz)'
+
         return f"{o}.isoformat().replace('+00:00', 'Z', 1)"
 
     @staticmethod
@@ -1054,7 +1077,7 @@ def dump_func_for_dataclass(
             # create a broad `except Exception` block, as we will be
             # re-raising all exception(s) as a custom `ParseError`.
             with fn_gen.except_(Exception, 'e', ParseError):
-                fn_gen.add_line("re_raise(e, cls, o, fields, field, locals().get('v1'))")
+                fn_gen.add_line("re_raise(e, cls, o, fields, 'UNKNOWN', locals().get('v0'))")
 
         # TODO
         # if has_catch_all:
@@ -1174,12 +1197,6 @@ def re_raise(e, cls, o, fields, field, value):
     if o is None:
       raise MissingData(cls) from None
 
-    # Check if the object `o` is some other type than what we expect -
-    # for example, we could be passed in a `list` type instead.
-    if not isinstance(o, dict):
-      base_err = TypeError('Incorrect type for `to_dict()`')
-      e = ParseError(base_err, o, dict, cls, desired_type=dict)
-
     add_fields = True
     if type(e) is not ParseError:
         if isinstance(e, JSONWizardError):
@@ -1196,8 +1213,8 @@ def re_raise(e, cls, o, fields, field, value):
     # debug the cause. Note that this should already be
     # handled by the `setter` methods.
     if add_fields:
-        e.class_name, e.fields, e.field_name, e.json_object = cls, fields, field, o
+        e.class_name, e.fields, e.field_name, e.json_object = cls, fields, field, str(o)
     else:
-        e.class_name, e.field_name, e.json_object = cls, field, o
+        e.class_name, e.field_name, e.json_object = cls, field, str(o)
 
     raise e from None

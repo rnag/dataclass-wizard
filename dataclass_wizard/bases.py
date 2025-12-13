@@ -1,4 +1,7 @@
+from __future__ import annotations
+
 from abc import ABCMeta, abstractmethod
+from datetime import tzinfo
 from typing import Callable, Type, Dict, Optional, ClassVar, Union, TypeVar, Mapping, Sequence
 
 from .constants import TAG
@@ -6,7 +9,7 @@ from .decorators import cached_class_property
 from .enums import DateTimeTo, LetterCase, LetterCasePriority
 from .models import Condition
 from .type_def import FrozenKeys, EnvFileType
-from .v1.enums import KeyAction, KeyCase
+from .v1.enums import KeyAction, KeyCase, DateTimeTo as V1DateTimeTo
 
 
 # Create a generic variable that can be 'AbstractMeta', or any subclass.
@@ -344,6 +347,35 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
     # the presence of a `tag_key`, i.e., a dictionary key identifying the
     # tag field in the input. Defaults to False.
     v1_unsafe_parse_dataclass_in_union: ClassVar[bool] = False
+
+    # Specifies how :class:`datetime` (and :class:`time`, where applicable)
+    # objects are serialized during output.
+    #
+    # This setting controls how temporal values are emitted when converting
+    # a dataclass to a Python dictionary (`to_dict`) or a JSON string
+    # (`to_json`). It applies to serialization only and does not affect
+    # deserialization.
+    #
+    # By default, values are serialized using ISO 8601 string format.
+    #
+    # Supported values are defined by :class:`DateTimeTo`.
+    v1_dump_date_time_as: ClassVar[Union[V1DateTimeTo, str]] = None
+
+    # Specifies the timezone to assume for naive :class:`datetime` values
+    # during serialization.
+    #
+    # By default, naive datetimes are rejected to avoid ambiguous or
+    # environment-dependent behavior.
+    #
+    # When set, naive datetimes are interpreted as being in the specified
+    # timezone before conversion to a UTC epoch timestamp.
+    #
+    # Common usage:
+    #     v1_assume_naive_datetime_tz = timezone.utc
+    #
+    # This setting applies to serialization only and does not affect
+    # deserialization.
+    v1_assume_naive_datetime_tz: ClassVar[tzinfo | None] = None
 
     # noinspection PyMethodParameters
     @cached_class_property

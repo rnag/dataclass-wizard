@@ -17,7 +17,7 @@ from .class_helper import (
 )
 from .decorators import try_with_load
 from .enums import DateTimeTo, LetterCase, LetterCasePriority
-from .v1.enums import KeyAction, KeyCase
+from .v1.enums import KeyAction, KeyCase, DateTimeTo as V1DateTimeTo
 from .environ.loaders import EnvLoader
 from .errors import ParseError, show_deprecation_warning
 from .loader_selection import get_dumper, get_loader
@@ -162,6 +162,10 @@ class BaseJSONWizardMeta(AbstractMeta):
                 for json_key, field in cls.json_key_to_field.items():
                     if field not in dataclass_to_json_field:
                         dataclass_to_json_field[field] = json_key
+
+
+        if cls.v1_dump_date_time_as is not None:
+            cls.v1_dump_date_time_as = _as_enum_safe(cls, 'v1_dump_date_time_as', V1DateTimeTo)
 
         if cls.marshal_date_time_as is not None:
             enum_val = _as_enum_safe(cls, 'marshal_date_time_as', DateTimeTo)

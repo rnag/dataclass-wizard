@@ -1,7 +1,7 @@
 import hashlib
 from collections import defaultdict
 from dataclasses import MISSING, Field as _Field
-from datetime import datetime, date, time, tzinfo, timezone
+from datetime import datetime, date, time, tzinfo, timezone, timedelta
 from typing import TYPE_CHECKING, Any, TypedDict, cast
 from zoneinfo import ZoneInfo
 
@@ -11,7 +11,6 @@ from ..log import LOG
 from ..type_def import DefFactory, ExplicitNull, PyNotRequired, NoneType
 from ..utils.function_builder import FunctionBuilder
 from ..utils.object_path import split_object_path
-from ..utils.type_conv import as_datetime_v1, as_date_v1, as_time_v1
 from ..utils.typing_compat import get_origin_v2
 
 
@@ -20,7 +19,10 @@ if TYPE_CHECKING:  # pragma: no cover
 
 
 # UTC Time Zone
-UTC = timezone.utc
+UTC: timezone = timezone.utc
+
+# UTC time zone (no offset)
+ZERO: timedelta = timedelta(0)
 
 _BUILTIN_COLLECTION_TYPES = frozenset({
     list,
@@ -294,6 +296,8 @@ class PatternBase:
 
     @setup_recursive_safe_function(add_cls=False)
     def load_to_pattern(self, tp: TypeInfo, extras: Extras):
+        from .type_conv import as_datetime_v1, as_date_v1, as_time_v1
+
         pb = cast(PatternBase, tp.origin)
         patterns = pb.patterns
         tz_info = getattr(pb, 'tz_info', None)

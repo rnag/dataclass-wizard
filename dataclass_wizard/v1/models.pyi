@@ -1,5 +1,5 @@
 from dataclasses import MISSING, Field as _Field, dataclass
-from datetime import datetime, date, time, tzinfo
+from datetime import datetime, date, time, tzinfo, timezone, timedelta
 from typing import (Collection, Callable,
                     Generic, Sequence, TypeAlias)
 from typing import TypedDict, overload, Any, NotRequired, Self
@@ -15,6 +15,12 @@ from ..utils.object_path import PathType
 _STR_COLLECTION: TypeAlias = str | Collection[str]
 
 SIMPLE_TYPES: tuple[type, ...]
+
+# UTC Time Zone
+UTC: timezone
+
+# UTC time zone (no offset)
+ZERO: timedelta
 
 
 @dataclass(order=True)
