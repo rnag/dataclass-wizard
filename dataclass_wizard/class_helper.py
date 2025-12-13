@@ -61,10 +61,13 @@ DATACLASS_FIELD_TO_JSON_PATH = defaultdict(dict)
 # V1 Load: A cached mapping, per dataclass, of instance field name to alias path
 DATACLASS_FIELD_TO_ALIAS_PATH_FOR_LOAD = defaultdict(dict)
 
+# V1 Dump: A cached mapping, per dataclass, of instance field name to alias path
+DATACLASS_FIELD_TO_ALIAS_PATH_FOR_DUMP = defaultdict(dict)
+
 # V1 Load: A cached mapping, per dataclass, of instance field name to alias
 DATACLASS_FIELD_TO_ALIAS_FOR_LOAD = defaultdict(dict)
 
-# V1: A cached mapping, per dataclass, of instance field name to JSON field
+# V1 Dump: A cached mapping, per dataclass, of instance field name to alias
 DATACLASS_FIELD_TO_ALIAS_FOR_DUMP: dict[type, dict[str, str]] = defaultdict(dict)
 
 # A cached mapping, per dataclass, of instance field name to JSON field
@@ -382,7 +385,7 @@ def _setup_v1_load_config_for_cls(
     dump_dataclass_field_to_alias = DATACLASS_FIELD_TO_ALIAS_FOR_DUMP[cls]
 
     dataclass_field_to_path = DATACLASS_FIELD_TO_ALIAS_PATH_FOR_LOAD[cls]
-    dump_dataclass_field_to_path = DATACLASS_FIELD_TO_JSON_PATH[cls]
+    dump_dataclass_field_to_path = DATACLASS_FIELD_TO_ALIAS_PATH_FOR_DUMP[cls]
 
     set_paths = False if dataclass_field_to_path else True
 

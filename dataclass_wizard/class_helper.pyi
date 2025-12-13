@@ -60,13 +60,16 @@ DATACLASS_FIELD_TO_JSON_PATH: dict[type, dict[str, PathType]] = defaultdict(dict
 # V1: A cached mapping, per dataclass, of instance field name to JSON path
 DATACLASS_FIELD_TO_ALIAS_PATH_FOR_LOAD: dict[type, dict[str, Sequence[PathType]]] = defaultdict(dict)
 
-# V1: A cached mapping, per dataclass, of instance field name to JSON field
+# V1 Dump: A cached mapping, per dataclass, of instance field name to alias path
+DATACLASS_FIELD_TO_ALIAS_PATH_FOR_DUMP = defaultdict(dict)
+
+# V1: A cached mapping, per dataclass, of instance field name to alias
 DATACLASS_FIELD_TO_ALIAS_FOR_LOAD: dict[type, dict[str, Sequence[str]]] = defaultdict(dict)
 
-# V1: A cached mapping, per dataclass, of instance field name to JSON field
+# V1: A cached mapping, per dataclass, of instance field name to alias
 DATACLASS_FIELD_TO_ALIAS_FOR_DUMP: dict[type, dict[str, str]] = defaultdict(dict)
 
-# A cached mapping, per dataclass, of instance field name to JSON field
+# A cached mapping, per dataclass, of instance field name to alias
 DATACLASS_FIELD_TO_ALIAS: dict[type, dict[str, str]] = defaultdict(dict)
 
 # A cached mapping, per dataclass, of instance field name to `SkipIf` condition

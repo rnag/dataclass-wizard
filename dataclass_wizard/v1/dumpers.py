@@ -3,7 +3,7 @@
 import collections.abc as abc
 from base64 import b64encode
 from collections import defaultdict, deque
-from dataclasses import is_dataclass, MISSING, Field
+from dataclasses import _asdict_inner as __dataclasses_asdict_inner__, is_dataclass, MISSING, Field
 from datetime import datetime, time, date, timedelta
 from decimal import Decimal
 from enum import Enum
@@ -23,7 +23,7 @@ from ..abstractions import AbstractDumperGenerator
 from ..bases import BaseLoadHook, AbstractMeta, BaseDumpHook, META
 from ..class_helper import (
     v1_dataclass_field_to_alias_for_dump, json_field_to_dataclass_field,
-    CLASS_TO_LOAD_FUNC, dataclass_fields, get_meta, is_subclass_safe, DATACLASS_FIELD_TO_ALIAS_PATH_FOR_LOAD,
+    CLASS_TO_LOAD_FUNC, dataclass_fields, get_meta, is_subclass_safe, DATACLASS_FIELD_TO_ALIAS_PATH_FOR_DUMP,
     dataclass_init_fields, dataclass_field_to_default, create_meta, dataclass_init_field_names, CLASS_TO_DUMP_FUNC,
     dataclass_field_names,
 )
@@ -42,6 +42,7 @@ from ..type_def import (
 )
 # noinspection PyProtectedMember
 from ..utils.dataclass_compat import _set_new_attribute
+from ..utils.dict_helper import NestedDict
 from ..utils.function_builder import FunctionBuilder
 from ..utils.object_path import safe_get
 from .type_conv import datetime_to_timestamp
@@ -797,7 +798,7 @@ def dump_func_for_dataclass(
 
     # cls_init_fields = dataclass_init_fields(cls, True)
 
-    cls_fields = dataclass_fields(cls)
+    cls_fields = list(dataclass_fields(cls))
     cls_field_names = dataclass_field_names(cls)
 
     field_to_default = dataclass_field_to_default(cls)
@@ -879,7 +880,7 @@ def dump_func_for_dataclass(
     field_to_alias = v1_dataclass_field_to_alias_for_dump(cls)
     check_aliases = True if field_to_alias else False
 
-    field_to_path = DATACLASS_FIELD_TO_ALIAS_PATH_FOR_LOAD[cls]
+    field_to_path = DATACLASS_FIELD_TO_ALIAS_PATH_FOR_DUMP[cls]
     has_alias_paths = True if field_to_path else False
 
     # Fix for using `auto_assign_tags` and `raise_on_unknown_json_key` together
@@ -899,16 +900,16 @@ def dump_func_for_dataclass(
     # Tag key to populate when a dataclass is in a `Union` with other types.
     # tag_key = meta.tag_key or TAG
 
-    catch_all_field = field_to_alias.pop(CATCH_ALL, None)
-    has_catch_all = catch_all_field is not None
+    catch_all_name: 'str | None' = field_to_alias.pop(CATCH_ALL, None)
+    has_catch_all = catch_all_name is not None
 
     if has_catch_all:
-        catch_all_field_stripped = catch_all_field.rstrip('?')
-        catch_all_idx = cls_field_names.index(catch_all_field_stripped)
+        catch_all_name_stripped = catch_all_name.rstrip('?')
+        catch_all_idx = cls_field_names.index(catch_all_name_stripped)
         # remove catch all field from list, so we don't iterate over it
-        del cls_fields[catch_all_idx]
+        catch_all_field = cls_fields.pop(catch_all_idx)
     else:
-        catch_all_field_stripped = catch_all_idx = None
+        catch_all_name_stripped = catch_all_idx = catch_all_field = None
 
     # if on_unknown_key is not None:
     #     should_raise = on_unknown_key is KeyAction.RAISE
@@ -937,6 +938,10 @@ def dump_func_for_dataclass(
         if has_defaults:
             fn_gen.add_line('add_defaults = not skip_defaults')
 
+        if has_alias_paths:
+            new_locals['NestedDict'] = NestedDict
+            fn_gen.add_line('paths = NestedDict()')
+
         required_field_assigns = []
         default_assigns = []
 
@@ -950,49 +955,41 @@ def dump_func_for_dataclass(
 
                 for i, f in enumerate(cls_fields):
                     name = f.name
+                    default = field_to_default.get(name, ExplicitNull)
+                    has_default = default is not ExplicitNull
+                    # skip_field = f'_skip_{i}'
+                    # skip_if_field = f'_skip_if_{i}'
+                    default_value = f'_default_{i}'
 
                     if check_aliases and (key := field_to_alias.get(name)) is not None:
                         # special case: skip serialization for field, e.g. `Alias(..., skip=True)`
                         if key is ExplicitNull:
                             continue
+                        elif not key:
+                            # Empty string, will be the case for a dataclass
+                            # field which specifies a "JSON Path".
+                            path = field_to_path[name]
+
+                            if has_default:
+                                # with fn_gen.if_(val_is_found):
+                                # with fn_gen.if_(f'{val} is not MISSING'):
+                                new_locals[default_value] = default
+                                string = generate_field_code(cls_dumper, extras, f, i)
+                                key_part = ''.join(f'[{p!r}]' for p in path)
+                                line = f'paths{key_part} = {string}'
+                                default_assigns.append((name, key, default_value, line))
+                            else:
+                                key_part = ''.join(f'[{p!r}]' for p in path)
+                                string = generate_field_code(cls_dumper, extras, f, i, f'o.{name}')
+                                fn_gen.add_line(f'paths{key_part} = {string}')
+                            continue
+
+                            # required_field_assigns.append((name, key, string))
+
 
                     elif key_case is not None:
                         key = key_case(name)
 
-                    else:
-                        key = name
-
-                    has_default = name in field_to_default
-                    # skip_field = f'_skip_{i}'
-                    # skip_if_field = f'_skip_if_{i}'
-                    default_value = f'_default_{i}'
-
-                    # if (check_aliases
-                    #         and (_aliases := field_to_aliases.get(name)) is not None):
-                    #
-                    #     if len(_aliases) == 1:
-                    #         alias = _aliases[0]
-                    #
-                    #         if set_aliases:
-                    #             aliases.add(alias)
-                    #
-                    #         f_assign = f'field={name!r}; {val}=o.get({alias!r}, MISSING)'
-                    #     else:
-                    #         f_assign = None
-                    #
-                    #         # add possible JSON keys
-                    #         if set_aliases:
-                    #             aliases.update(_aliases)
-                    #
-                    #         fn_gen.add_line(f'field={name!r}')
-                    #         condition = [f'({val} := o.get({alias!r}, MISSING)) is not MISSING'
-                    #                      for alias in _aliases]
-                    #
-                    #         val_is_found = '(' + '\n     or '.join(condition) + ')'
-                    #
-                    # elif (has_alias_paths
-                    #         and (paths := field_to_paths.get(name)) is not None):
-                    #
                     #     if len(paths) == 1:
                     #         path = paths[0]
                     #
@@ -1023,6 +1020,33 @@ def dump_func_for_dataclass(
                     #
                     #     # TODO raise some useful message like (ex. on IndexError):
                     #     #       Field "my_str" of type tuple[float, str] in A2 has invalid value ['123']
+
+                    else:
+                        key = name
+
+                    # if (check_aliases
+                    #         and (_aliases := field_to_aliases.get(name)) is not None):
+                    #
+                    #     if len(_aliases) == 1:
+                    #         alias = _aliases[0]
+                    #
+                    #         if set_aliases:
+                    #             aliases.add(alias)
+                    #
+                    #         f_assign = f'field={name!r}; {val}=o.get({alias!r}, MISSING)'
+                    #     else:
+                    #         f_assign = None
+                    #
+                    #         # add possible JSON keys
+                    #         if set_aliases:
+                    #             aliases.update(_aliases)
+                    #
+                    #         fn_gen.add_line(f'field={name!r}')
+                    #         condition = [f'({val} := o.get({alias!r}, MISSING)) is not MISSING'
+                    #                      for alias in _aliases]
+                    #
+                    #         val_is_found = '(' + '\n     or '.join(condition) + ')'
+                    #
                     #
                     # elif key_case is None:
                     #
@@ -1067,9 +1091,10 @@ def dump_func_for_dataclass(
                     if has_default:
                         # with fn_gen.if_(val_is_found):
                         # with fn_gen.if_(f'{val} is not MISSING'):
+                        new_locals[default_value] = default
                         string = generate_field_code(cls_dumper, extras, f, i)
-                        new_locals[default_value] = field_to_default[name]
-                        default_assigns.append((name, key, default_value, string))
+                        line = f'result[{key!r}] = {string}'
+                        default_assigns.append((name, key, default_value, line))
                     else:
                         # TODO confirm this is ok
                         # vars_for_fields.append(f'{name}={var}')
@@ -1082,15 +1107,15 @@ def dump_func_for_dataclass(
                     fn_gen.add_line(f'  {key!r}: {string},')
                 fn_gen.add_line('}')
 
-                for (name, key, default_name, string) in default_assigns:
+                for (name, key, default_name, line) in default_assigns:
                     fn_gen.add_line(f'v1 = o.{name}')
                     with fn_gen.if_(f'add_defaults or v1 != {default_name}'):
-                        fn_gen.add_line(f'result[{key!r}] = {string}')
+                        fn_gen.add_line(line)
 
             # create a broad `except Exception` block, as we will be
             # re-raising all exception(s) as a custom `ParseError`.
             with fn_gen.except_(Exception, 'e', ParseError):
-                fn_gen.add_line("re_raise(e, cls, o, fields, 'UNKNOWN', locals().get('v0'))")
+                fn_gen.add_line("re_raise(e, cls, o, fields, '<UNK>', locals().get('v0'))")
 
         # TODO
         # if has_catch_all:
@@ -1147,9 +1172,27 @@ def dump_func_for_dataclass(
         # if has_defaults:
         #     vars_for_fields.append('**init_kwargs')
 
+        if has_catch_all:
+            if (default := field_to_default.get(catch_all_name_stripped, ExplicitNull)) is not ExplicitNull:
+                default_value = f'_default_{len(cls_fields)}'
+                new_locals[default_value] = default
+                condition = f"(v0 := o.{catch_all_name_stripped}) != {default_value}"
+
+            else:
+                condition = f'v0 := o.{catch_all_name_stripped}'
+                # f"if not {skip_field}:")
+
+            with fn_gen.if_(condition):
+                with fn_gen.for_(f"k, v in v0.items()"):
+                    fn_gen.globals['__asdict_inner__'] = __dataclasses_asdict_inner__
+                    fn_gen.add_line('result[k] = __asdict_inner__(v,dict_factory)')
+
         with fn_gen.if_('exclude is not None'):
-            with fn_gen.for_('to_remove in exclude'):
-                fn_gen.add_line('del result[to_remove]')
+            with fn_gen.for_('k in exclude'):
+                fn_gen.add_line('del result[k]')
+
+        if has_alias_paths:
+            fn_gen.add_line('result.update(paths)')
 
         fn_gen.add_line(f'return result if dict_factory is dict else dict_factory(result)')
 
@@ -1160,7 +1203,7 @@ def dump_func_for_dataclass(
         #     # are not present in the input object `o`.
         #     fn_gen.add_line("raise_missing_fields(locals(), o, cls, fields)")
 
-    # Save the load function for the main dataclass, so we don't need to run
+    # Save the dump function for the main dataclass, so we don't need to run
     # this logic each time.
     if is_main_class:
         # noinspection PyUnboundLocalVariable
@@ -1222,7 +1265,7 @@ def re_raise(e, cls, o, fields, field, value):
             tp = getattr(next((f for f in fields if f.name == field), None), 'type', Any)
             e = ParseError(e, value, tp)
 
-    # We run into a parsing error while loading the field value;
+    # We run into a parsing error while dumping the field value;
     # Add additional info on the Exception object before re-raising it.
     #
     # First confirm these values are not already set by an

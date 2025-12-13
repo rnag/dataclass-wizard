@@ -2767,6 +2767,7 @@ def test_catch_all_with_default():
 
         class _(JSONWizard.Meta):
             v1 = True
+            v1_dump_case = 'CAMEL'
 
         my_str: str
         my_float: float
@@ -2832,6 +2833,7 @@ def test_catch_all_with_skip_defaults():
     class MyData(JSONWizard):
         class _(JSONWizard.Meta):
             v1 = True
+            v1_dump_case = 'P'
             skip_defaults = True
 
         my_str: str
@@ -2856,8 +2858,8 @@ def test_catch_all_with_skip_defaults():
     output_dict = data.to_dict()
 
     assert output_dict == {
-        "myStr": "test",
-        "myFloat": 3.14,
+        "MyStr": "test",
+        "MyFloat": 3.14,
         "my_other_str": "test!",
         "my_bool": True
     }
@@ -2882,8 +2884,8 @@ def test_catch_all_with_skip_defaults():
     output_dict = data.to_dict()
 
     assert output_dict == {
-        "myStr": "test",
-        "myFloat": 3.14,
+        "MyStr": "test",
+        "MyFloat": 3.14,
     }
 
     new_data = MyData.from_dict(snake(output_dict))
@@ -3022,6 +3024,7 @@ def test_from_dict_with_nested_object_alias_path_with_skip_defaults():
     class A(JSONWizard):
         class _(JSONWizard.Meta):
             v1 = True
+            v1_dump_case = 'C'
             skip_defaults = True
 
         an_int: Annotated[int, AliasPath('my."test value"[here!][0]')]
