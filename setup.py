@@ -12,9 +12,7 @@ package_name = 'dataclass_wizard'
 
 packages = find_packages(include=[package_name, f'{package_name}.*'])
 
-requires = [
-    'typing-extensions>=4.9.0; python_version <= "3.12"'
-]
+requires = ['typing-extensions>=4.13.0; python_version <= "3.13"']
 
 if (requires_dev_file := here / 'requirements-dev.txt').exists():
     with requires_dev_file.open() as requires_dev_txt:
@@ -50,8 +48,8 @@ else:   # Running on CI
 about = {}
 exec((here / package_name / '__version__.py').read_text(), about)
 
-readme = (here / 'README.rst').read_text()
-history = (here / 'HISTORY.rst').read_text()
+readme = (here / 'README.rst').read_text(encoding='utf-8')
+history = (here / 'HISTORY.rst').read_text(encoding='utf-8')
 
 setup(
     name=about['__title__'],
@@ -101,6 +99,7 @@ setup(
         'Programming Language :: Python :: 3.11',
         'Programming Language :: Python :: 3.12',
         'Programming Language :: Python :: 3.13',
+        'Programming Language :: Python :: 3.14',
         'Programming Language :: Python'
     ],
     test_suite='tests',

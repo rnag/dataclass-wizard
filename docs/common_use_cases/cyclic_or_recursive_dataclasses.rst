@@ -1,6 +1,16 @@
 Cyclic or "Recursive" Dataclasses
 =================================
 
+.. note::
+    **Important:** The current functionality for cyclic or "recursive" dataclasses is being re-imagined.
+    Please refer to the new docs for **V1 Opt-in** features, which introduces enhanced support for these use
+    cases. For more details, see the `Field Guide to V1 Opt‐in`_ and the `Recursive Types and Dataclasses with Cyclic References in V1`_ documentation.
+
+    This change is part of the ongoing improvements in version ``v0.34.0+``, and the old functionality will no longer be maintained in future releases.
+
+.. _Field Guide to V1 Opt‐in: https://github.com/rnag/dataclass-wizard/wiki/Field-Guide-to-V1-Opt%E2%80%90in
+.. _Recursive Types and Dataclasses with Cyclic References in V1: https://github.com/rnag/dataclass-wizard/wiki/V1:-Recursive-Types-and-Dataclasses-with-Cyclic-References
+
 Prior to version ``v0.27.0``, dataclasses with cyclic references
 or self-referential structures were not supported. This
 limitation is shown in the following toy example:

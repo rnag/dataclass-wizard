@@ -12,6 +12,10 @@ exclude_lines =
     # Conditional code which is dependent on the OS, or `os.name`
     if name == 'nt':
 
+    # This will exclude all lines starting with something like
+    # if PY311_OR_ABOVE: or if PY310_BETA:.
+    if PY\d+_\w+:
+
     # Don't complain if tests don't hit defensive assertion code:
     raise AssertionError
     raise NotImplementedError

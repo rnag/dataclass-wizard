@@ -4,6 +4,7 @@ Utility module for checking generic types provided by the `typing` library.
 
 __all__ = [
     'is_literal',
+    'is_union',
     'get_origin',
     'get_origin_v2',
     'is_typed_dict_type_qualifier',
@@ -28,24 +29,12 @@ from ..type_def import (FREF,
                         PyRequired,
                         PyNotRequired,
                         PyReadOnly,
-                        PyTypedDicts,
                         PyForwardRef)
 
 
 _TYPED_DICT_TYPE_QUALIFIERS = frozenset(
     {PyRequired, PyNotRequired, PyReadOnly}
 )
-
-# TODO maybe move this to `type_def` if it makes sense
-TypedDictTypes = []
-
-for PyTypedDict in PyTypedDicts:
-    class RealPyTypedDict(PyTypedDict):
-        pass  # create a real class, because `PyTypedDict` is a helper function
-
-    TypedDictTypes.append(type(RealPyTypedDict))
-
-    del RealPyTypedDict
 
 
 def get_keys_for_typed_dict(cls):
@@ -149,11 +138,19 @@ else:  # pragma: no cover
             return cls
 
 
-def is_typed_dict(cls: type) -> bool:
-    """
-    Checks if `cls` is a sub-class of ``TypedDict``
-    """
-    return type(cls) in TypedDictTypes
+try:
+    # noinspection PyProtectedMember,PyUnresolvedReferences
+    from typing_extensions import _TYPEDDICT_TYPES
+
+except ImportError:
+    from typing import is_typeddict as is_typed_dict
+
+else:
+    def is_typed_dict(cls: type) -> bool:
+        """
+        Checks if `cls` is a sub-class of ``TypedDict``
+        """
+        return isinstance(cls, _TYPEDDICT_TYPES)
 
 
 def is_generic(cls):

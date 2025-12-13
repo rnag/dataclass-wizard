@@ -12,14 +12,6 @@ dataclass\_wizard.environ.dumpers module
    :undoc-members:
    :show-inheritance:
 
-dataclass\_wizard.environ.env\_wizard module
---------------------------------------------
-
-.. automodule:: dataclass_wizard.environ.env_wizard
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 dataclass\_wizard.environ.loaders module
 ----------------------------------------
 
@@ -32,6 +24,14 @@ dataclass\_wizard.environ.lookups module
 ----------------------------------------
 
 .. automodule:: dataclass_wizard.environ.lookups
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+dataclass\_wizard.environ.wizard module
+---------------------------------------
+
+.. automodule:: dataclass_wizard.environ.wizard
    :members:
    :undoc-members:
    :show-inheritance:

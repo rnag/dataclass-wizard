@@ -1,13 +1,13 @@
 from dataclasses import MISSING
-from typing import ClassVar
+from typing import ClassVar, TypeAlias, Union
 
 from ..decorators import cached_class_property
 from ..type_def import StrCollection, EnvFileType
 
 
-type _MISSING_TYPE = type(MISSING)
-type STR_OR_MISSING = str | _MISSING_TYPE
-type STR_OR_NONE = str | None
+_MISSING_TYPE: TypeAlias = type(MISSING)
+STR_OR_MISSING: TypeAlias = Union[str, _MISSING_TYPE]
+STR_OR_NONE: TypeAlias = Union[str, None]
 
 # Type of `os.environ` or `DotEnv` dict
 Environ = dict[str, STR_OR_NONE]

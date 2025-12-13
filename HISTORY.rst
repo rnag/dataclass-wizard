@@ -2,6 +2,100 @@
 History
 =======
 
+0.35.4 (2025-12-12)
+-------------------
+
+**Features and Improvements**
+
+* Add compatability and support for **Python 3.14**. Thanks to :user:`rexzhang` in :pr:`204`!
+
+0.35.3 (2025-12-12)
+-------------------
+
+**Bugfixes**
+
+* Fix typing stub (``.pyi``) compatibility for older Python/tooling versions
+  by removing Python 3.12-only ``type`` statement syntax and using
+  ``TypeAlias``/``typing``-compatible annotations instead (fixes :issue:`176`).
+
+0.35.2 (2025-12-12)
+-------------------
+
+**Bugfixes**
+
+* Replace ``ZoneInfo("UTC")`` with ``datetime.timezone.utc`` to avoid
+  import-time failures on platforms without an IANA time zone database
+  (notably Windows), removing the implicit dependency on ``tzdata`` (fixes :issue:`180`).
+
+0.35.1 (2025-07-27)
+-------------------
+
+**Bugfixes**
+
+* Roll back ``type ...`` syntax in ``.pyi`` files to maintain compatibility
+  with older Python versions such as 3.9 (fixes :issue:`176`)
+
+0.35.0 (2025-01-19)
+-------------------
+
+**Features and Improvements**
+
+* **V1 Opt-In:**
+    * Add support for Patterned Date and Time:
+        * Naive Date/Time/Datetime
+        * Timezone-aware Time/Datetime
+        * UTC Time/Datetime
+    * Update :func:`Alias` and :func:`AliasPath` to support multiple aliases and nested path(s)
+    * Update the ``KeyCase.AUTO`` setting (specified via ``v1_key_case='AUTO'``) to correctly
+      handle multiple possible keys for the field (e.g., it doesn't latch onto the first encountered key but now
+      tries all valid key case transformations at runtime). This now results in expected or desired behavior (fixes :issue:`175`)
+    * **Float to Int Conversion Change**: In V1 Opt-in (via ``Meta`` setting ``v1=True``), floats or float strings
+      with fractional parts (e.g., ``123.4`` or ``"123.4"``) are no longer silently converted to integers.
+      Instead, they now raise an error. However, floats without fractional parts (e.g., ``3.0`` or ``"3.0"``)
+      will continue to convert to integers as before.
+    * Add documentation:
+        * Patterned Date and Time
+        * Aliases
+    * Add tests for coverage
+* Optimize logic for determining if an annotated type is a ``TypedDict``
+* Update ``requirements-bench.txt`` to correctly capture all Benchmark-related dependencies
+
+**Bugfixes**
+
+* Ensure the ``py.typed`` marker is included in the source distribution (fixes :issue:`173`)
+* Address a minor bug in object path parsing that did not correctly interpret quoted literal values
+  within blocks such as braces ``[]``
+
+0.34.0 (2024-12-30)
+-------------------
+
+**Features and Improvements**
+
+- **V1 Opt-in**
+    - Support for recursive types OOTB for the following Python types:
+        - ``NamedTuple``
+        - ``TypedDict``
+        - ``Union``
+        - ``Literal``
+        - Nested `dataclasses`
+        - `Type aliases`_ (introduced in Python 3.12+)
+    - Full support for ``bytes`` and ``bytearray`` in the de/serialization process (fixes :issue:`140`).
+    - Performance improvements: Optimized Load functions for ``bool``, ``NamedTuple``, ``datetime``, ``date``, and ``time``.
+    - Added support for `Type aliases`_ (via ``type`` statement in Python 3.12+).
+    - Improved logic in ``load_to_str`` to better check if it's within an ``Optional[...]`` type.
+    - Enhanced handling of sub-types in de/serialization (**TODO**: add test cases).
+    - Show deprecation warning for Meta setting ``debug_enabled`` (replaced by ``v1_debug``).
+
+- Updated benchmarks for improved accuracy.
+
+**Bugfixes**
+
+- Fixed issue where code generation failed to correctly account for indexes, especially when nested collection types like ``dict`` were used within a ``NamedTuple``.
+- ``make check`` now works out-of-the-box for validating ``README.rst`` and other RST files for PyPI deployment.
+- :pr:`169`: Explicitly added ``utf-8`` encoding for ``setup.py`` to enable installation from source on Windows (shoutout to :user:`birkholz-cubert`!).
+
+.. _Type aliases: https://docs.python.org/3/library/typing.html#type-aliases
+
 0.33.0 (2024-12-17)
 -------------------
 

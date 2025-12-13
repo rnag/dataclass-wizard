@@ -1,10 +1,19 @@
+.. currentmodule:: dataclass_wizard
+
 Serialization Options
 =====================
 
 .. note::
 
-   **Future Behavior Change**: Starting in ``v1.0.0``, keys will no longer be converted to `camelCase` by default.
-   To enforce this behavior now, consider using :class:`JSONPyWizard`.
+    **Future Behavior Change**: Starting in ``v1.0.0``, keys will no longer be automatically converted to `camelCase`.
+    Instead, the default behavior will match the field names defined in the dataclass.
+
+    To preserve the current `camelCase` conversion, you can explicitly enable it using :class:`JSONPyWizard`.
+
+    For a deeper dive into upcoming changes and new features introduced in **V1 Opt-in**, refer to the
+    `Field Guide to V1 Opt‐in`_.
+
+.. _Field Guide to V1 Opt‐in: https://github.com/rnag/dataclass-wizard/wiki/Field-Guide-to-V1-Opt%E2%80%90in
 
 The following parameters can be used to fine-tune and control how the serialization of a
 dataclass instance to a Python ``dict`` object or JSON string is handled.

@@ -35,11 +35,22 @@ from dataclass_wizard import __version__
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
 extensions = [
     'sphinx.ext.autodoc',
+    'sphinx.ext.intersphinx',
     'sphinx.ext.viewcode',
     'sphinx_issues',
     'sphinx_autodoc_typehints',
     'sphinx_copybutton',
 ]
+
+# The `sphinx_autodoc_typehints` extension requires Python 3.10;
+# see `docs/requirements.txt`.
+# Documentation without typing hints is better than no docs at all.
+if sys.version_info < (3, 10):
+    extensions.remove('sphinx_autodoc_typehints')
+
+intersphinx_mapping = {
+    'python': ('https://docs.python.org/3', None),
+}
 
 copybutton_exclude = '.linenos, .gp, .go'
 

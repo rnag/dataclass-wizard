@@ -1,7 +1,11 @@
 from dataclasses import MISSING
 
-from ..class_helper import is_builtin_class
 from ..log import LOG
+
+
+def is_builtin_class(cls: type) -> bool:
+    """Check if a class is a builtin in Python."""
+    return cls.__module__ == 'builtins'
 
 
 class FunctionBuilder:
@@ -61,14 +65,18 @@ class FunctionBuilder:
 
     def _with_new_block(self,
                         name: str,
-                        condition: 'str | None' = None) -> 'FunctionBuilder':
+                        condition: 'str | None' = None,
+                        comment: str = '') -> 'FunctionBuilder':
         """Creates a new block. Used with a context manager (with)."""
         indent = '  ' * self.indent_level
 
+        if comment:
+            comment = f'  # {comment}'
+
         if condition is not None:
-            self.current_function["body"].append(f"{indent}{name} {condition}:")
+            self.current_function["body"].append(f"{indent}{name} {condition}:{comment}")
         else:
-            self.current_function["body"].append(f"{indent}{name}:")
+            self.current_function["body"].append(f"{indent}{name}:{comment}")
 
         return self
 
@@ -88,7 +96,7 @@ class FunctionBuilder:
         """
         return self._with_new_block('for', condition)
 
-    def if_(self, condition: str) -> 'FunctionBuilder':
+    def if_(self, condition: str, comment: str = '') -> 'FunctionBuilder':
         """Equivalent to the `if` statement in Python.
 
         Sample Usage:
@@ -102,7 +110,7 @@ class FunctionBuilder:
             >>>     ...
 
         """
-        return self._with_new_block('if', condition)
+        return self._with_new_block('if', condition, comment)
 
     def elif_(self, condition: str) -> 'FunctionBuilder':
         """Equivalent to the `elif` statement in Python.
@@ -187,6 +195,32 @@ class FunctionBuilder:
                         self.globals[cls_name] = cls
 
         return self._with_new_block('except', statement)
+
+    def except_multi(self, *classes: type[Exception]):
+        """Equivalent to the `except` block in Python.
+
+        Sample Usage:
+
+            >>> with FunctionBuilder().except_multi(AttributeError, TypeError, ValueError):
+            >>>     ...
+
+        Will generate the following code:
+
+            >>> except (AttributeError, TypeError, ValueError):
+            >>>     ...
+
+        """
+        if len(classes) == 1:
+            statement = classes[0].__name__
+        else:
+            class_names = ', '.join([cls.__name__ for cls in classes])
+            statement = f'({class_names})'
+
+        return self._with_new_block('except', statement)
+
+    def break_(self):
+        """Equivalent to the `break` statement in Python."""
+        self.add_line('break')
 
     def add_line(self, line: str):
         """Add a line to the current function's body with proper indentation."""

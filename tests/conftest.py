@@ -4,10 +4,12 @@ __all__ = [
     'data_file_path',
     'PY310_OR_ABOVE',
     'PY311_OR_ABOVE',
+    'PY312_OR_ABOVE',
     'TypedDict',
     # For compatibility with Python 3.9 and 3.10
     'Required',
-    'NotRequired'
+    'NotRequired',
+    'LiteralString',
 ]
 
 import sys
@@ -27,6 +29,9 @@ PY310_OR_ABOVE = sys.version_info[:2] >= (3, 10)
 # Check if we are running Python 3.11+
 PY311_OR_ABOVE = sys.version_info[:2] >= (3, 11)
 
+# Check if we are running Python 3.12+
+PY312_OR_ABOVE = sys.version_info[:2] >= (3, 12)
+
 # Check if we are running Python 3.9 or 3.10
 PY310_OR_EARLIER = not PY311_OR_ABOVE
 
@@ -41,10 +46,19 @@ else:
 if PY311_OR_ABOVE:
     from typing import Required
     from typing import NotRequired
+    from typing import LiteralString
 else:
     from typing_extensions import Required
     from typing_extensions import NotRequired
+    from typing_extensions import LiteralString
 
+
+# Ignore test files if the Python version is below 3.12
+if not PY312_OR_ABOVE:
+    print("Python version is below 3.12. Ignoring test files.")
+    collect_ignore = [
+        Path('unit', 'v1', 'test_union_as_type_alias_recursive.py').as_posix(),
+    ]
 
 def data_file_path(name: str) -> str:
     """Returns the full path to a test file."""

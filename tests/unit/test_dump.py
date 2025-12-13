@@ -1,5 +1,6 @@
 import logging
 from abc import ABC
+from base64 import b64decode
 from collections import deque, defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
@@ -508,3 +509,23 @@ def test_using_dataclass_in_dict():
     assert fromdict(Config, config) == Config(
         tests={'test_a': Test(field='a'),
                'test_b': Test(field='b')})
+
+
+def test_bytes_and_bytes_array_are_supported():
+    """Confirm dump with `bytes` and `bytesarray` is supported."""
+
+    @dataclass
+    class Foo(JSONWizard):
+        b: bytes = None
+        barray: bytearray = None
+        s: str = None
+
+    data = {'b': 'AAAA', 'barray': 'SGVsbG8sIFdvcmxkIQ==', 's': 'foobar'}
+
+    # noinspection PyTypeChecker
+    foo = Foo(b=b64decode('AAAA'),
+              barray=bytearray(b'Hello, World!'),
+              s='foobar')
+
+    # noinspection PyTypeChecker
+    assert foo.to_dict() == data

@@ -13,7 +13,7 @@ def type_name(obj: type) -> str:
 
 
 def show_deprecation_warning(
-    fn: Callable,
+    fn: Callable | str,
     reason: str,
     fmt: str = "Deprecated function {name} ({reason})."
 ) -> None:
@@ -132,14 +132,15 @@ class MissingFields(JSONWizardError):
 
     obj: JSONObject
     fields: list[str]
+    all_fields: tuple[Field, ...]
     missing_fields: Collection[str]
-    base_error: Exception
+    base_error: Exception | None
     missing_keys: Collection[str] | None
     kwargs: dict[str, Any]
     class_name: str
     parent_cls: type
 
-    def __init__(self, base_err: Exception,
+    def __init__(self, base_err: Exception | None,
                  obj: JSONObject,
                  cls: type,
                  cls_fields: tuple[Field, ...],

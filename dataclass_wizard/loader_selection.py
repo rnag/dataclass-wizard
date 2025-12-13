@@ -95,8 +95,9 @@ def fromlist(cls: type[T], list_of_dict: list[JSONObject]) -> list[T]:
 
 
 def _get_load_fn_for_dataclass(cls: type[T], v1=None) -> Callable[[JSONObject], T]:
+    meta = get_meta(cls)
     if v1 is None:
-        v1 = getattr(get_meta(cls), 'v1', False)
+        v1 = getattr(meta, 'v1', False)
 
     if v1:
         from .v1.loaders import load_func_for_dataclass as V1_load_func_for_dataclass

@@ -2,6 +2,7 @@ include CONTRIBUTING.rst
 include HISTORY.rst
 include LICENSE
 include README.rst
+include dataclass_wizard/py.typed
 
 recursive-include tests *.py
 recursive-exclude tests/integration *

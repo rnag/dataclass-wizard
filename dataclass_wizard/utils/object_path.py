@@ -31,6 +31,36 @@ def safe_get(data, path, default=MISSING, raise_=True):
         raise _format_err(e, current_data, path, p, True) from None
 
 
+def v1_safe_get(data, path, raise_):
+    current_data = data
+
+    try:
+        for p in path:
+            current_data = current_data[p]
+
+        return current_data
+
+    # IndexError -
+    #   raised when `data` is a `list`, and we access an index that is "out of bounds"
+    # KeyError -
+    #   raised when `data` is a `dict`, and we access a key that is not present
+    # AttributeError -
+    #   raised when `data` is an invalid type, such as a `None`
+    except (IndexError, KeyError, AttributeError) as e:
+        if raise_:
+            p = locals().get('p', path)  # to suppress "unbound local variable"
+            raise _format_err(e, current_data, path, p, True) from None
+
+        return MISSING
+
+    # TypeError -
+    #   raised when `data` is a `list`, but we try to use it like a `dict`
+    except TypeError:
+        e = TypeError('Invalid path')
+        p = locals().get('p', path)  # to suppress "unbound local variable"
+        raise _format_err(e, current_data, path, p, True) from None
+
+
 def _format_err(e, current_data, path, current_path, invalid_path=False):
     return ParseError(
         e, current_data, dict if invalid_path else None,
@@ -124,7 +154,7 @@ def split_object_path(_input):
             start_new = False
             in_literal = True
             quote_char = c
-        elif c in {'+', '-'} or c.isdigit() and start_new:
+        elif (c in {'+', '-'} or c.isdigit()) and start_new:
             start_new = False
             possible_number = True
             s += c

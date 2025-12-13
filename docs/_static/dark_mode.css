@@ -42,3 +42,97 @@ body.dark-mode code {
     background-color: #2d333b;
     color: #f0f0f0;
 }
+
+/* General REPL Python output */
+body.dark-mode pre.highlight,
+body.dark-mode code.highlight {
+    background-color: #2d333b;
+    color: #f0f0f0; /* Ensures all text in REPL blocks is visible */
+}
+
+/* Handle the '>>>', '...' prompts */
+body.dark-mode .highlight .gp {
+    color: #79b8ff; /* Color for REPL prompts like '>>>' */
+}
+
+/* Handle REPL output */
+body.dark-mode .highlight .go {
+    color: #d5a476; /* Distinct color for REPL outputs */
+}
+
+/* Decorators (e.g., @dataclass) */
+body.dark-mode .highlight .nd {
+    color: rgba(192, 144, 2, 0.87); /* Dark, burnished gold for decorators */
+}
+
+/* Operators (e.g., ==, +, -, etc.) */
+body.dark-mode .highlight .o {
+    color: #d5a476; /* Match your REPL output lighter gold */
+}
+
+/* Punctuation (e.g., . , ( )) */
+body.dark-mode .highlight .p {
+    color: #cfcfcf; /* Neutral light gray for punctuation */
+}
+
+/* Built-in types and constants (e.g., str, int, True, False) */
+body.dark-mode .highlight .nb {
+    color: #4ec9b0; /* Teal for built-in types/constants */
+}
+
+/* Function and variable names */
+body.dark-mode .highlight .nf,
+body.dark-mode .highlight .n {
+    color: #9cdcfe; /* Light blue for function/variable names */
+}
+
+/* General admonition block */
+body.dark-mode .admonition {
+    background-color: #2e3b4e; /* Neutral dark background */
+    color: #b0b0b0; /* Softer silver text */
+    border-left: 4px solid #79b8ff; /* Default blue accent */
+    padding: 10px;
+    border-radius: 6px; /* Rounded corners */
+}
+
+/* Title of admonition blocks */
+body.dark-mode .admonition .admonition-title {
+    color: #79b8ff; /* Bright title text for clarity */
+    font-weight: bold;
+}
+
+/* Specific styles for ..warning:: */
+body.dark-mode .admonition.warning {
+    background-color: #4a3224; /* Warm dark terracotta */
+    border-left-color: #d8845e; /* Subdued orange for less vibrancy */
+    color: #d3b8a6; /* Soft beige text for a smoother contrast */
+}
+
+/* Specific styles for ..note:: */
+body.dark-mode .admonition.note {
+    background-color: #4b4430; /* Subdued dark olive-brown background */
+    border-left-color: #bfa45e; /* Muted goldenrod border */
+    color: #d4c8a8; /* Softer light tan text to reduce glare */
+}
+
+/* Specific styles for ..tip:: */
+body.dark-mode .admonition.tip {
+    background-color: #2b4e4e; /* Teal background */
+    border-left-color: #56b6c2; /* Cyan border for tips */
+    color: #d8e0e0; /* Softer light teal text */
+}
+
+/* Specific styles for ..important:: */
+body.dark-mode .admonition.important {
+    background-color: #4e3b2b; /* Brownish background */
+    border-left-color: #d19a66; /* Amber border for important */
+    color: #e0d6d1; /* Softer light beige text */
+}
+
+/* Highlighting inline code within admonitions */
+body.dark-mode .admonition code {
+    background-color: #2d333b;
+    color: #f0f0f0;
+    padding: 2px 4px;
+    border-radius: 4px;
+}
