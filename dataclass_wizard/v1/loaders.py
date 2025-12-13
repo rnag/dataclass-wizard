@@ -17,7 +17,7 @@ from .decorators import (process_patterned_date_time,
                          setup_recursive_safe_function,
                          setup_recursive_safe_function_for_generic)
 from .enums import KeyAction, KeyCase
-from .models import Extras, PatternBase, TypeInfo
+from .models import Extras, PatternBase, TypeInfo, SIMPLE_TYPES
 from ..abstractions import AbstractLoaderGenerator
 from ..bases import AbstractMeta, BaseLoadHook, META
 from ..class_helper import (create_meta,
@@ -56,31 +56,6 @@ from ..utils.typing_compat import (eval_forward_ref_if_needed,
                                    is_typed_dict,
                                    is_typed_dict_type_qualifier,
                                    is_union)
-
-
-# Atomic immutable types which don't require any recursive handling and for which deepcopy
-# returns the same object. We can provide a fast-path for these types in asdict and astuple.
-_SIMPLE_TYPES = (
-    # Common JSON Serializable types
-    NoneType,
-    bool,
-    int,
-    float,
-    str,
-    # Other common types
-    complex,
-    bytes,
-    # TODO support
-    # Other types that are also unaffected by deepcopy
-    # types.EllipsisType,
-    # types.NotImplementedType,
-    # types.CodeType,
-    # types.BuiltinFunctionType,
-    # types.FunctionType,
-    # type,
-    # range,
-    # property,
-)
 
 
 class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
@@ -507,9 +482,9 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
 
             # TODO disable for dataclasses
 
-            if (possible_tp in _SIMPLE_TYPES
+            if (possible_tp in SIMPLE_TYPES
                 or is_subclass_safe(
-                    get_origin_v2(possible_tp), _SIMPLE_TYPES)):
+                    get_origin_v2(possible_tp), SIMPLE_TYPES)):
 
                 tn = tp_new.type_name(extras)
                 type_checks.extend([
@@ -746,7 +721,7 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
 
         # -> Atomic, immutable types which don't require
         #    any iterative / recursive handling.
-        elif origin in _SIMPLE_TYPES or is_subclass_safe(origin, _SIMPLE_TYPES):
+        elif origin in SIMPLE_TYPES or is_subclass_safe(origin, SIMPLE_TYPES):
             load_hook = hooks.get(origin)
 
         elif (load_hook := hooks.get(origin)) is not None:

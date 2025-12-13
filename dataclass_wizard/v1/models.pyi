@@ -14,6 +14,8 @@ from ..utils.object_path import PathType
 # Type for a string or a collection of strings.
 _STR_COLLECTION: TypeAlias = str | Collection[str]
 
+SIMPLE_TYPES: tuple[type, ...]
+
 
 @dataclass(order=True)
 class TypeInfo:

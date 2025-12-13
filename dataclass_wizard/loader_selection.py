@@ -119,7 +119,7 @@ def _get_dump_fn_for_dataclass(cls: type[T], v1=None) -> Callable[[JSONObject], 
     if v1:
         from .v1.dumpers import dump_func_for_dataclass as V1_dump_func_for_dataclass
         # noinspection PyTypeChecker
-        dump = V1_dump_func_for_dataclass(cls, {})
+        dump = V1_dump_func_for_dataclass(cls)
     else:
         from .dumpers import dump_func_for_dataclass
         dump = dump_func_for_dataclass(cls)
@@ -167,7 +167,7 @@ def get_dumper(class_or_instance=None, create=True,
                 cls_to_dumper, class_or_instance, class_or_instance)
 
         elif create:
-            cls_loader = create_new_class(class_or_instance, (DumpMixin, ))
+            cls_loader = create_new_class(class_or_instance, (base_cls, ))
             return set_class_dumper(
                 cls_to_dumper, class_or_instance, cls_loader)
 
