@@ -11,7 +11,10 @@ from ..class_helper import (
     dataclass_field_to_skip_if, is_builtin, setup_dump_config_for_cls_if_needed, get_meta,
 )
 from ..constants import CATCH_ALL, TAG
-from ..dumpers import get_dumper, _asdict_inner
+# TODO
+#from ..dumpers import get_dumper, _asdict_inner
+from ..dumpers import _asdict_inner
+from ..loader_selection import get_dumper
 from ..enums import LetterCase
 from ..errors import show_deprecation_warning
 from ..models import Condition, get_skip_if_condition, finalize_skip_if

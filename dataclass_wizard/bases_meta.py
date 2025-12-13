@@ -16,12 +16,11 @@ from .class_helper import (
     field_to_env_var, DATACLASS_FIELD_TO_ALIAS_FOR_LOAD,
 )
 from .decorators import try_with_load
-from .dumpers import get_dumper
 from .enums import DateTimeTo, LetterCase, LetterCasePriority
 from .v1.enums import KeyAction, KeyCase
 from .environ.loaders import EnvLoader
 from .errors import ParseError, show_deprecation_warning
-from .loader_selection import get_loader
+from .loader_selection import get_dumper, get_loader
 from .log import LOG
 from .type_def import E
 from .utils.type_conv import date_to_timestamp, as_enum

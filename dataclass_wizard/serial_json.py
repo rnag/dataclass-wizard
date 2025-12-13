@@ -5,8 +5,6 @@ from dataclasses import is_dataclass, dataclass
 from .abstractions import AbstractJSONWizard
 from .bases_meta import BaseJSONWizardMeta, LoadMeta, DumpMeta
 from .class_helper import call_meta_initializer_if_needed
-from .dumpers import asdict
-from .loader_selection import fromdict, fromlist
 from .type_def import dataclass_transform
 from .loader_selection import asdict, fromdict, fromlist
 # noinspection PyProtectedMember

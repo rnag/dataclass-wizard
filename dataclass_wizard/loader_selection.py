@@ -2,8 +2,9 @@ from typing import Callable, Collection, Optional
 
 from .class_helper import (get_meta, CLASS_TO_LOAD_FUNC,
                            CLASS_TO_LOADER, CLASS_TO_V1_LOADER,
-                           set_class_loader, create_new_class, CLASS_TO_DUMP_FUNC)
-from .constants import _LOAD_HOOKS
+                           set_class_loader, create_new_class, CLASS_TO_DUMP_FUNC, CLASS_TO_V1_DUMPER, set_class_dumper,
+                           CLASS_TO_DUMPER)
+from .constants import _LOAD_HOOKS, _DUMP_HOOKS
 from .type_def import T, JSONObject
 
 
@@ -102,7 +103,7 @@ def _get_load_fn_for_dataclass(cls: type[T], v1=None) -> Callable[[JSONObject], 
     if v1:
         from .v1.loaders import load_func_for_dataclass as V1_load_func_for_dataclass
         # noinspection PyTypeChecker
-        load = V1_load_func_for_dataclass(cls, {})
+        load = V1_load_func_for_dataclass(cls)
     else:
         from .loaders import load_func_for_dataclass
         load = load_func_for_dataclass(cls)
@@ -127,7 +128,9 @@ def _get_dump_fn_for_dataclass(cls: type[T], v1=None) -> Callable[[JSONObject], 
     return dump
 
 
-def get_dumper(cls=None, create=True) -> Type[DumpMixin]:
+def get_dumper(class_or_instance=None, create=True,
+               base_cls: T = None,
+               v1: Optional[bool] = None) -> type[T]:
     """
     Get the dumper for the class, using the following logic:
 
@@ -135,23 +138,41 @@ def get_dumper(cls=None, create=True) -> Type[DumpMixin]:
         * If `create` is enabled (which is the default), a new sub-class of
           :class:`DumpMixin` for the class will be generated and cached on the
           initial run.
-        * Otherwise, we will return the base dumper, :class:`DumpMixin`, which
+        * Otherwise, we will return the base loader, :class:`DumpMixin`, which
           can potentially be shared by more than one dataclass.
 
     """
+    if v1 is None:
+        v1 = getattr(get_meta(class_or_instance), 'v1', False)
+
+    if v1:
+        cls_to_dumper = CLASS_TO_V1_DUMPER
+        if base_cls is None:
+            from .v1.dumpers import DumpMixin as V1_DumpMixin
+            base_cls = V1_DumpMixin
+    else:
+        cls_to_dumper = CLASS_TO_DUMPER
+        if base_cls is None:
+            from .dumpers import DumpMixin
+            base_cls = DumpMixin
+
     try:
-        return dataclass_to_dumper(cls)
+        return cls_to_dumper[class_or_instance]
 
     except KeyError:
+        # TODO figure out type errors
 
-        if hasattr(cls, _DUMP_HOOKS):
-            return set_class_dumper(cls, cls)
+        if hasattr(class_or_instance, _DUMP_HOOKS):
+            return set_class_dumper(
+                cls_to_dumper, class_or_instance, class_or_instance)
 
         elif create:
-            cls_dumper = create_new_class(cls, (DumpMixin, ))
-            return set_class_dumper(cls, cls_dumper)
+            cls_loader = create_new_class(class_or_instance, (DumpMixin, ))
+            return set_class_dumper(
+                cls_to_dumper, class_or_instance, cls_loader)
 
-        return set_class_dumper(cls, DumpMixin)
+        return set_class_dumper(
+            cls_to_dumper, class_or_instance, base_cls)
 
 
 def get_loader(class_or_instance=None, create=True,

@@ -467,3 +467,216 @@ class AbstractLoaderGenerator(ABC):
         `base_cls` is the original class object, useful when the annotated
         type is a :class:`typing.ForwardRef` object.
         """
+
+
+class AbstractDumperGenerator(ABC):
+    """
+    Abstract code generator which defines helper methods to generate the
+    code for deserializing an object `o` of a given annotated type into
+    the corresponding dataclass field during dynamic function construction.
+    """
+    __slots__ = ()
+
+    @staticmethod
+    @abstractmethod
+    def transform_dataclass_field(string: str) -> str:
+        """
+        Transform a dataclass field name (which will ideally be snake-cased)
+        into the conventional format for a JSON field name.
+        """
+
+    @staticmethod
+    @abstractmethod
+    def default_dump(tp: TypeInfo, extras: V1Extras) -> str:
+        """
+        Generate code for the default dump function if no other types match.
+        Generally, this will be a stub dump method.
+        """
+
+    # @staticmethod
+    # @abstractmethod
+    # def load_to_str(tp: TypeInfo, extras: V1Extras) -> str:
+    #     """
+    #     Generate code to load a value into a string field.
+    #     """
+    #
+    # @staticmethod
+    # @abstractmethod
+    # def load_to_int(tp: TypeInfo, extras: V1Extras) -> str:
+    #     """
+    #     Generate code to load a value into an integer field.
+    #     """
+    #
+    # @staticmethod
+    # @abstractmethod
+    # def load_to_float(tp: TypeInfo, extras: V1Extras) -> 'str | TypeInfo':
+    #     """
+    #     Generate code to load a value into a float field.
+    #     """
+    #
+    # @staticmethod
+    # @abstractmethod
+    # def load_to_bool(_: str, extras: V1Extras) -> str:
+    #     """
+    #     Generate code to load a value into a boolean field.
+    #     Adds a helper function `as_bool` to the local context.
+    #     """
+    #
+    # @staticmethod
+    # @abstractmethod
+    # def load_to_bytes(tp: TypeInfo, extras: V1Extras) -> 'str | TypeInfo':
+    #     """
+    #     Generate code to load a value into a bytes field.
+    #     """
+    #
+    # @staticmethod
+    # @abstractmethod
+    # def load_to_bytearray(tp: TypeInfo, extras: V1Extras) -> 'str | TypeInfo':
+    #     """
+    #     Generate code to load a value into a bytearray field.
+    #     """
+    #
+    # @staticmethod
+    # @abstractmethod
+    # def load_to_none(tp: TypeInfo, extras: V1Extras) -> str:
+    #     """
+    #     Generate code to load a value into a None.
+    #     """
+    #
+    # @staticmethod
+    # @abstractmethod
+    # def load_to_literal(tp: TypeInfo, extras: V1Extras) -> 'str | TypeInfo':
+    #     """
+    #     Generate code to confirm a value is equivalent to one
+    #     of the provided literals.
+    #     """
+    #
+    # @classmethod
+    # @abstractmethod
+    # def load_to_union(cls, tp: TypeInfo, extras: V1Extras) -> 'str | TypeInfo':
+    #     """
+    #     Generate code to load a value into a `Union[X, Y, ...]` (one of [X, Y, ...] possible types)
+    #     """
+    #
+    # @staticmethod
+    # @abstractmethod
+    # def load_to_enum(tp: TypeInfo, extras: V1Extras) -> 'str | TypeInfo':
+    #     """
+    #     Generate code to load a value into an Enum field.
+    #     """
+    #
+    # @staticmethod
+    # @abstractmethod
+    # def load_to_uuid(tp: TypeInfo, extras: V1Extras) -> 'str | TypeInfo':
+    #     """
+    #     Generate code to load a value into a UUID field.
+    #     """
+    #
+    # @staticmethod
+    # @abstractmethod
+    # def load_to_iterable(tp: TypeInfo, extras: V1Extras) -> 'str | TypeInfo':
+    #     """
+    #     Generate code to load a value into an iterable field (list, set, etc.).
+    #     """
+    #
+    # @staticmethod
+    # @abstractmethod
+    # def load_to_tuple(tp: TypeInfo, extras: V1Extras) -> 'str | TypeInfo':
+    #     """
+    #     Generate code to load a value into a tuple field.
+    #     """
+    #
+    # @staticmethod
+    # @abstractmethod
+    # def load_to_named_tuple(tp: TypeInfo, extras: V1Extras) -> 'str | TypeInfo':
+    #     """
+    #     Generate code to load a value into a named tuple field.
+    #     """
+    #
+    # @classmethod
+    # @abstractmethod
+    # def load_to_named_tuple_untyped(cls, tp: TypeInfo, extras: V1Extras) -> 'str | TypeInfo':
+    #     """
+    #     Generate code to load a value into an untyped named tuple.
+    #     """
+    #
+    # @staticmethod
+    # @abstractmethod
+    # def load_to_dict(tp: TypeInfo, extras: V1Extras) -> 'str | TypeInfo':
+    #     """
+    #     Generate code to load a value into a dictionary field.
+    #     """
+    #
+    # @staticmethod
+    # @abstractmethod
+    # def load_to_defaultdict(tp: TypeInfo, extras: V1Extras) -> 'str | TypeInfo':
+    #     """
+    #     Generate code to load a value into a defaultdict field.
+    #     """
+    #
+    # @staticmethod
+    # @abstractmethod
+    # def load_to_typed_dict(tp: TypeInfo, extras: V1Extras) -> 'str | TypeInfo':
+    #     """
+    #     Generate code to load a value into a typed dictionary field.
+    #     """
+    #
+    # @staticmethod
+    # @abstractmethod
+    # def load_to_decimal(tp: TypeInfo, extras: V1Extras) -> 'str | TypeInfo':
+    #     """
+    #     Generate code to load a value into a Decimal field.
+    #     """
+    #
+    # @staticmethod
+    # @abstractmethod
+    # def load_to_path(tp: TypeInfo, extras: V1Extras) -> 'str | TypeInfo':
+    #     """
+    #     Generate code to load a value into a Decimal field.
+    #     """
+    #
+    # @staticmethod
+    # @abstractmethod
+    # def load_to_datetime(tp: TypeInfo, extras: V1Extras) -> str:
+    #     """
+    #     Generate code to load a value into a datetime field.
+    #     """
+    #
+    # @staticmethod
+    # @abstractmethod
+    # def load_to_time(tp: TypeInfo, extras: V1Extras) -> str:
+    #     """
+    #     Generate code to load a value into a time field.
+    #     """
+    #
+    # @staticmethod
+    # @abstractmethod
+    # def load_to_date(tp: TypeInfo, extras: V1Extras) -> 'str | TypeInfo':
+    #     """
+    #     Generate code to load a value into a date field.
+    #     """
+    #
+    # @staticmethod
+    # @abstractmethod
+    # def load_to_timedelta(tp: TypeInfo, extras: V1Extras) -> 'str | TypeInfo':
+    #     """
+    #     Generate code to load a value into a timedelta field.
+    #     """
+    #
+    # @staticmethod
+    # def load_to_dataclass(tp: TypeInfo, extras: V1Extras) -> 'str | TypeInfo':
+    #     """
+    #     Generate code to load a value into a `dataclass` type field.
+    #     """
+
+    @classmethod
+    @abstractmethod
+    def get_string_for_annotation(cls,
+                                  tp: TypeInfo,
+                                  extras: V1Extras) -> 'str | TypeInfo':
+        """
+        Generate code to get the parser (dispatcher) for a given annotation type.
+
+        `base_cls` is the original class object, useful when the annotated
+        type is a :class:`typing.ForwardRef` object.
+        """

@@ -35,6 +35,9 @@ CLASS_TO_V1_LOADER = {}
 # A mapping of dataclass to its dumper.
 CLASS_TO_DUMPER = {}
 
+# V1: A mapping of dataclass to its dumper.
+CLASS_TO_V1_DUMPER = {}
+
 # A cached mapping of a dataclass to each of its case-insensitive field names
 # and load hook.
 FIELD_NAME_TO_LOAD_PARSER = {}
@@ -96,11 +99,14 @@ def set_class_loader(cls_to_loader, class_or_instance, loader):
     return loader_cls
 
 
-def set_class_dumper(cls, dumper):
+def set_class_dumper(cls_to_dumper, class_or_instance, dumper):
 
-    CLASS_TO_DUMPER[cls] = get_class(dumper)
+    cls = get_class(class_or_instance)
+    dumper_cls = get_class(dumper)
 
-    return CLASS_TO_DUMPER[cls]
+    cls_to_dumper[cls] = dumper_cls
+
+    return dumper_cls
 
 
 def json_field_to_dataclass_field(cls):

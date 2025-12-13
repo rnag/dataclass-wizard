@@ -2,7 +2,7 @@ from collections import defaultdict
 from dataclasses import Field
 from typing import Any, Callable, Literal, Sequence, overload
 
-from .abstractions import W, AbstractLoader, AbstractDumper, AbstractParser, E, AbstractLoaderGenerator
+from .abstractions import W, AbstractLoader, AbstractDumper, AbstractParser, E, AbstractLoaderGenerator, AbstractDumperGenerator
 from .bases import META, AbstractMeta
 from .constants import PACKAGE_NAME
 from .models import Condition
@@ -33,6 +33,9 @@ CLASS_TO_V1_LOADER: dict[type, type[AbstractLoaderGenerator]] = {}
 
 # A mapping of dataclass to its dumper.
 CLASS_TO_DUMPER: dict[type, type[AbstractDumper]] = {}
+
+# V1: A mapping of dataclass to its dumper.
+CLASS_TO_V1_DUMPER: dict[type, type[AbstractDumperGenerator]] = {}
 
 # A cached mapping of a dataclass to each of its case-insensitive field names
 # and load hook.
