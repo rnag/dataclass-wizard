@@ -1,7 +1,7 @@
 # TODO cleanup imports
 
 import collections.abc as abc
-from base64 import decodebytes
+from base64 import b64encode
 from collections import defaultdict, deque
 from dataclasses import is_dataclass, MISSING, Field
 from datetime import datetime, time, date, timedelta
@@ -16,6 +16,7 @@ from typing import (
 )
 from uuid import UUID
 
+from .decorators import setup_recursive_safe_function, setup_recursive_safe_function_for_generic
 from .models import Extras, TypeInfo, SIMPLE_TYPES, PatternBase
 
 from ..abstractions import AbstractDumperGenerator
@@ -24,6 +25,7 @@ from ..class_helper import (
     v1_dataclass_field_to_alias, json_field_to_dataclass_field,
     CLASS_TO_LOAD_FUNC, dataclass_fields, get_meta, is_subclass_safe, DATACLASS_FIELD_TO_ALIAS_PATH_FOR_LOAD,
     dataclass_init_fields, dataclass_field_to_default, create_meta, dataclass_init_field_names, CLASS_TO_DUMP_FUNC,
+    dataclass_field_names,
 )
 from ..constants import CATCH_ALL, TAG, PACKAGE_NAME
 from ..decorators import _identity
@@ -71,88 +73,64 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
     transform_dataclass_field = None
 
     @staticmethod
-    @_identity
-    def default_load_to(tp: TypeInfo, extras: Extras) -> str:
+    def default_dump_from(tp: TypeInfo, extras: Extras):
         # identity: o
         return tp.v()
 
     @staticmethod
-    def load_after_type_check(tp: TypeInfo, extras: Extras) -> str:
-        ...
-        # return f'{tp.v()} if instance({tp.v()}, {tp.t()}'
-
-        # if isinstance(o, base_type):
-        #     return o
-        #
-        # e = ValueError(f'data type is not a {base_type!s}')
-        # raise ParseError(e, o, base_type)
+    def dump_from_str(tp: TypeInfo, extras: Extras):
+        return tp.v()
 
     @staticmethod
-    def dump_from_str(tp: TypeInfo, extras: Extras) -> str:
-        # TODO skip None check if in Optional
-        # return f'{tp.name}({tp.v()})'
-        return f"'' if {(v := tp.v())} is None else {tp.name}({v})"
+    def dump_from_int(tp: TypeInfo, extras: Extras):
+        return tp.v()
 
     @staticmethod
-    def dump_from_int(tp: TypeInfo, extras: Extras) -> str:
-        # TODO
-        extras['locals'].setdefault('as_int', as_int)
-
-        # TODO
-        return f"as_int({tp.v()}, {tp.name})"
+    def dump_from_float(tp: TypeInfo, extras: Extras):
+        return tp.v()
 
     @staticmethod
-    def dump_from_float(tp: TypeInfo, extras: Extras) -> str:
-        # alias: base_type(o)
-        return f'{tp.name}({tp.v()})'
+    def dump_from_bool(tp: TypeInfo, extras: Extras):
+        return tp.v()
 
     @staticmethod
-    def dump_from_bool(tp: TypeInfo, extras: Extras) -> str:
-        extras['locals'].setdefault('as_bool', as_bool)
-        return f"as_bool({tp.v()})"
-        # Uncomment for efficiency!
-        # extras['locals']['_T'] = _TRUTHY_VALUES
-        # return f'{tp.v()} if (t := type({tp.v()})) is bool else ({tp.v()}.lower() in _T if t is str else {tp.v()} == 1)'
+    def dump_from_bytes(tp: TypeInfo, extras: Extras):
+        tp.ensure_in_locals(extras, b64encode)
+        return f"b64encode({tp.v()}).decode('ascii')"
+
+    @classmethod
+    def dump_from_bytearray(cls, tp: TypeInfo, extras: Extras):
+        tp.ensure_in_locals(extras, b64encode)
+        return f"b64encode(bytes({tp.v()})).decode('ascii')"
 
     @staticmethod
-    def dump_from_bytes(tp: TypeInfo, extras: Extras) -> str:
-        extras['locals'].setdefault('decodebytes', decodebytes)
-        return f'decodebytes({tp.v()}.encode())'
-
-    @staticmethod
-    def dump_from_bytearray(tp: TypeInfo, extras: Extras) -> str:
-        extras['locals'].setdefault('decodebytes', decodebytes)
-        return f'{tp.name}(decodebytes({tp.v()}.encode()))'
-
-    @staticmethod
-    def dump_from_none(tp: TypeInfo, extras: Extras) -> str:
+    def dump_from_none(tp: TypeInfo, extras: Extras):
         return 'None'
 
     @staticmethod
-    def dump_from_enum(tp: TypeInfo, extras: Extras) -> str:
-        # alias: base_type(o)
-        return tp.v()
+    def dump_from_enum(tp: TypeInfo, extras: Extras):
+        # alias: o.value
+        return f'{tp.v()}.value'
 
-    # dump_from_uuid = dump_from_enum
     @staticmethod
     def dump_from_uuid(tp: TypeInfo, extras: Extras):
-        # alias: base_type(o)
-        return tp.wrap_builtin(tp.v(), extras)
+        # alias: o.hex
+        return f'{tp.v()}.hex'
 
     @classmethod
     def dump_from_iterable(cls, tp: TypeInfo, extras: Extras):
         v, v_next, i_next = tp.v_and_next()
         gorg = tp.origin
 
+        # noinspection PyBroadException
         try:
             elem_type = tp.args[0]
         except:
             elem_type = Any
 
         string = cls.get_string_for_annotation(
-            tp.replace(origin=elem_type, i=i_next), extras)
+            tp.replace(origin=elem_type, i=i_next, index=None), extras)
 
-        # TODO
         if issubclass(gorg, (set, frozenset)):
             start_char = '{'
             end_char = '}'
@@ -175,37 +153,30 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
         if args:
             is_variadic = args[-1] is ...
         else:
+            # Annotated without args, as simply `tuple`
             args = (Any, ...)
             is_variadic = True
 
         if is_variadic:
-            #     Parser that handles the variadic form of :class:`Tuple`'s,
-            #     i.e. ``Tuple[str, ...]``
+            # Logic that handles the variadic form of :class:`Tuple`'s,
+            # i.e. ``Tuple[str, ...]``
             #
-            #     Per `PEP 484`_, only **one** required type is allowed before the
-            #     ``Ellipsis``. That is, ``Tuple[int, ...]`` is valid whereas
-            #     ``Tuple[int, str, ...]`` would be invalid. `See here`_ for more info.
+            # Per `PEP 484`_, only **one** required type is allowed before the
+            # ``Ellipsis``. That is, ``Tuple[int, ...]`` is valid whereas
+            # ``Tuple[int, str, ...]`` would be invalid. `See here`_ for more info.
             #
-            #     .. _PEP 484: https://www.python.org/dev/peps/pep-0484/
-            #     .. _See here: https://github.com/python/typing/issues/180
+            # .. _PEP 484: https://www.python.org/dev/peps/pep-0484/
+            # .. _See here: https://github.com/python/typing/issues/180
             v, v_next, i_next = tp.v_and_next()
 
+            # Given `Tuple[T, ...]`, we only need the generated string for `T`
             string = cls.get_string_for_annotation(
-                tp.replace(origin=args[0], i=i_next), extras)
-
-            # A one-element tuple containing the parser for the first type
-            # argument.
-            # Given `Tuple[T, ...]`, we only need a parser for `T`
-            # self.first_elem_parser = get_parser(elem_types[0], cls, extras),
-            # Total count should be `Infinity` here, since the variadic form
-            # accepts any number of possible arguments.
-            # self.total_count: N = float('inf')
-            # self.required_count = 0
+                tp.replace(origin=args[0], i=i_next, index=None), extras)
 
             result = f'[{string} for {v_next} in {v}]'
+
             # Wrap because we need to create a tuple from list comprehension
             force_wrap = True
-
         else:
             string = ', '.join([
                 cls.get_string_for_annotation(
@@ -214,48 +185,73 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
                 for k, arg in enumerate(args)])
 
             result = f'({string}, )'
+
             force_wrap = False
 
         return tp.wrap(result, extras, force=force_wrap)
 
     @classmethod
+    @setup_recursive_safe_function
     def dump_from_named_tuple(cls, tp: TypeInfo, extras: Extras):
+        fn_gen = extras['fn_gen']
+        nt_tp = cast(NamedTuple, tp.origin)
 
-        fn_gen = FunctionBuilder()
+        _locals = extras['locals']
+        _locals['cls'] = nt_tp
+        _locals['msg'] = "`dict` input is not supported for NamedTuple, use a dataclass instead."
 
-        extras_cp: Extras = extras.copy()
-        extras_cp['locals'] = _locals = {
-            'msg': "`dict` input is not supported for NamedTuple, use a dataclass instead."
-        }
-
-        fn_name = f'_load_{extras["cls_name"]}_nt_typed_{tp.name}'
-
-        field_names = []
-        result_list = []
+        req_field_to_assign = {}
+        field_assigns = []
+        # noinspection PyProtectedMember
+        optional_fields = set(nt_tp._field_defaults)
+        has_optionals = True if optional_fields else False
+        only_optionals = has_optionals and len(optional_fields) == len(nt_tp.__annotations__)
         num_fields = 0
-        # TODO set __annotations__?
-        for x, y in tp.origin.__annotations__.items():
-            result_list.append(cls.get_string_for_annotation(
-                tp.replace(origin=y, index=num_fields), extras_cp))
-            field_names.append(x)
+
+        for field, field_tp in nt_tp.__annotations__.items():
+            string = cls.get_string_for_annotation(
+                tp.replace(origin=field_tp, index=num_fields), extras)
+
+            if has_optionals and field in optional_fields:
+                field_assigns.append(string)
+            else:
+                req_field_to_assign[f'__{field}'] = string
+
             num_fields += 1
 
-        with fn_gen.function(fn_name, ['v1'], None, _locals):
-            fn_gen.add_line('fields = []')
-            with fn_gen.try_():
-                for i, string in enumerate(result_list):
-                    fn_gen.add_line(f'fields.append({string})')
-            with fn_gen.except_(IndexError):
-                fn_gen.add_line('pass')
-            with fn_gen.except_(KeyError):
+        params = ', '.join(req_field_to_assign)
+
+        with fn_gen.try_():
+
+            for field, string in req_field_to_assign.items():
+                fn_gen.add_line(f'{field} = {string}')
+
+            if has_optionals:
+                opt_start = len(req_field_to_assign)
+                fn_gen.add_line(f'L = len(v1); has_opt = L > {opt_start}')
+                with fn_gen.if_(f'has_opt'):
+                    fn_gen.add_line(f'fields = [{field_assigns.pop(0)}]')
+                    for i, string in enumerate(field_assigns, start=opt_start + 1):
+                        fn_gen.add_line(f'if L > {i}: fields.append({string})')
+
+                    if only_optionals:
+                        fn_gen.add_line(f'return cls(*fields)')
+                    else:
+                        fn_gen.add_line(f'return cls({params}, *fields)')
+
+            fn_gen.add_line(f'return cls({params})')
+
+        with fn_gen.except_(Exception, 'e'):
+            with fn_gen.if_('(e_cls := e.__class__) is IndexError'):
+                # raise `MissingFields`, as required NamedTuple fields
+                # are not present in the input object `o`.
+                fn_gen.add_line("raise_missing_fields(locals(), v1, cls, None)")
+            with fn_gen.if_('e_cls is KeyError and type(v1) is dict'):
                 # Input object is a `dict`
                 # TODO should we support dict for namedtuple?
                 fn_gen.add_line('raise TypeError(msg) from None')
-            fn_gen.add_line(f'return {tp.wrap("*fields", extras_cp, prefix="nt_")}')
-
-        extras['fn_gen'] |= fn_gen
-
-        return f'{fn_name}({tp.v()})'
+            # re-raise
+            fn_gen.add_line('raise e from None')
 
     @classmethod
     def dump_from_named_tuple_untyped(cls, tp: TypeInfo, extras: Extras):
@@ -270,10 +266,10 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
 
     @classmethod
     def _build_dict_comp(cls, tp, v, i_next, k_next, v_next, kt, vt, extras):
-        tp_k_next = tp.replace(origin=kt, i=i_next, prefix='k')
+        tp_k_next = tp.replace(origin=kt, i=i_next, prefix='k', index=None)
         string_k = cls.get_string_for_annotation(tp_k_next, extras)
 
-        tp_v_next = tp.replace(origin=vt, i=i_next, prefix='v')
+        tp_v_next = tp.replace(origin=vt, i=i_next, prefix='v', index=None)
         string_v = cls.get_string_for_annotation(tp_v_next, extras)
 
         return f'{{{string_k}: {string_v} for {k_next}, {v_next} in {v}.items()}}'
@@ -285,26 +281,28 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
         try:
             kt, vt = tp.args
         except ValueError:
-            # TODO
+            # Annotated without two arguments,
+            # e.g. like `dict[str]` or `dict`
             kt = vt = Any
 
         result = cls._build_dict_comp(
             tp, v, i_next, k_next, v_next, kt, vt, extras)
 
-        # TODO
         return tp.wrap(result, extras)
 
     @classmethod
     def dump_from_defaultdict(cls, tp: TypeInfo, extras: Extras):
         v, k_next, v_next, i_next = tp.v_and_next_k_v()
-        default_factory: DefFactory
+        default_factory: DefFactory | None
 
         try:
             kt, vt = tp.args
             default_factory = getattr(vt, '__origin__', vt)
         except ValueError:
-            # TODO
-            kt = vt = default_factory = Any
+            # Annotated without two arguments,
+            # e.g. like `defaultdict[str]` or `defaultdict`
+            kt = vt = Any
+            default_factory = NoneType
 
         result = cls._build_dict_comp(
             tp, v, i_next, k_next, v_next, kt, vt, extras)
@@ -312,293 +310,220 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
         return tp.wrap_dd(default_factory, result, extras)
 
     @classmethod
+    @setup_recursive_safe_function
     def dump_from_typed_dict(cls, tp: TypeInfo, extras: Extras):
-        fn_gen = FunctionBuilder()
+        fn_gen = extras['fn_gen']
 
         req_keys, opt_keys = get_keys_for_typed_dict(tp.origin)
 
-        extras_cp: Extras = extras.copy()
-        extras_cp['locals'] = _locals = {}
-
-        fn_name = f'_load_{extras["cls_name"]}_typeddict_{tp.name}'
-
         result_list = []
         # TODO set __annotations__?
-        annotations = tp.origin.__annotations__
+        td_annotations = tp.origin.__annotations__
 
         # Set required keys for the `TypedDict`
         for k in req_keys:
-            field_tp = annotations[k]
+            field_tp = td_annotations[k]
             field_name = repr(k)
             string = cls.get_string_for_annotation(
                 tp.replace(origin=field_tp,
-                           index=field_name), extras_cp)
+                           index=field_name), extras)
 
             result_list.append(f'{field_name}: {string}')
 
-        with fn_gen.function(fn_name, ['v1'], None, _locals):
-            with fn_gen.try_():
-                fn_gen.add_lines('result = {',
-                                 *(f'  {r},' for r in result_list),
-                                 '}')
+        with fn_gen.try_():
+            fn_gen.add_lines('result = {',
+                             *(f'  {r},' for r in result_list),
+                             '}')
 
-                # Set optional keys for the `TypedDict` (if they exist)
-                for k in opt_keys:
-                    field_tp = annotations[k]
-                    field_name = repr(k)
-                    string = cls.get_string_for_annotation(
-                        tp.replace(origin=field_tp,
-                                   i=2), extras_cp)
-                    with fn_gen.if_(f'(v2 := v1.get({field_name}, MISSING)) is not MISSING'):
-                        fn_gen.add_line(f'result[{field_name}] = {string}')
-                fn_gen.add_line('return result')
-            with fn_gen.except_(Exception, 'e'):
-                with fn_gen.if_('type(e) is KeyError'):
-                    fn_gen.add_line('name = e.args[0]; e = KeyError(f"Missing required key: {name!r}")')
-                with fn_gen.elif_('not isinstance(v1, dict)'):
-                    fn_gen.add_line('e = TypeError("Incorrect type for object")')
-                fn_gen.add_line('raise ParseError(e, v1, {}) from None')
+            # Set optional keys for the `TypedDict` (if they exist)
+            for k in opt_keys:
+                field_tp = td_annotations[k]
+                field_name = repr(k)
+                string = cls.get_string_for_annotation(
+                    tp.replace(origin=field_tp, i=2, index=None), extras)
+                with fn_gen.if_(f'(v2 := v1.get({field_name}, MISSING)) is not MISSING'):
+                    fn_gen.add_line(f'result[{field_name}] = {string}')
+            fn_gen.add_line('return result')
 
-        extras['fn_gen'] |= fn_gen
-
-        return f'{fn_name}({tp.v()})'
+        with fn_gen.except_(Exception, 'e'):
+            with fn_gen.if_('type(e) is KeyError'):
+                fn_gen.add_line('name = e.args[0]; e = KeyError(f"Missing required key: {name!r}")')
+            with fn_gen.elif_('not isinstance(v1, dict)'):
+                fn_gen.add_line('e = TypeError("Incorrect type for object")')
+            fn_gen.add_line('raise ParseError(e, v1, {}) from None')
 
     @classmethod
+    @setup_recursive_safe_function_for_generic
     def dump_from_union(cls, tp: TypeInfo, extras: Extras):
-        fn_gen = FunctionBuilder()
+        fn_gen = extras['fn_gen']
         config = extras['config']
+        actual_cls = extras['cls']
 
         tag_key = config.tag_key or TAG
         auto_assign_tags = config.auto_assign_tags
 
-        fields = f'fields_{tp.field_i}'
+        i = tp.field_i
+        fields = f'fields_{i}'
 
-        extras_cp: Extras = extras.copy()
-        extras_cp['locals'] = _locals = {
-            fields: tp.args,
-            'tag_key': tag_key,
-        }
+        args = tp.args
+        in_optional = NoneType in args
 
-        actual_cls = extras['cls']
+        _locals = extras['locals']
+        _locals[fields] = args
+        _locals['tag_key'] = tag_key
 
-        fn_name = f'dump_from_{extras["cls_name"]}_union_{tp.field_i}'
+        dataclass_tag_to_lines: dict[str, list] = {}
 
-        # TODO handle dataclasses in union (tag)
+        type_checks = []
+        try_parse_at_end = []
 
-        with fn_gen.function(fn_name, ['v1'], None, _locals):
+        for possible_tp in args:
 
-            dataclass_tag_to_lines: dict[str, list] = {}
+            possible_tp = eval_forward_ref_if_needed(possible_tp, actual_cls)
 
-            type_checks = []
-            try_parse_at_end = []
+            tp_new = TypeInfo(possible_tp, field_i=i, val_name=tp.val_name)
+            tp_new.in_optional = in_optional
 
-            for possible_tp in tp.args:
+            if possible_tp is NoneType:
+                with fn_gen.if_('v1 is None'):
+                    fn_gen.add_line('return None')
+                continue
 
-                possible_tp = eval_forward_ref_if_needed(possible_tp, actual_cls)
+            if is_dataclass(possible_tp):
+                # we see a dataclass in `Union` declaration
+                meta = get_meta(possible_tp)
+                tag = meta.tag
+                assign_tags_to_cls = auto_assign_tags or meta.auto_assign_tags
+                cls_name = possible_tp.__name__
 
-                tp_new = TypeInfo(possible_tp, field_i=tp.field_i)
+                if assign_tags_to_cls and not tag:
+                    tag = cls_name
+                    # We don't want to mutate the base Meta class here
+                    if meta is AbstractMeta:
+                        create_meta(possible_tp, cls_name, tag=tag)
+                    else:
+                        meta.tag = cls_name
 
-                if possible_tp is NoneType:
-                    with fn_gen.if_('v1 is None'):
-                        fn_gen.add_line('return None')
+                if tag:
+                    string = cls.get_string_for_annotation(tp_new, extras)
+
+                    dataclass_tag_to_lines[tag] = [
+                        f'if tag == {tag!r}:',
+                        f'  return {string}'
+                    ]
                     continue
 
-                if is_dataclass(possible_tp):
-                    # we see a dataclass in `Union` declaration
-                    meta = get_meta(possible_tp)
-                    tag = meta.tag
-                    assign_tags_to_cls = auto_assign_tags or meta.auto_assign_tags
-                    cls_name = possible_tp.__name__
+                elif not config.v1_unsafe_parse_dataclass_in_union:
+                    e = ValueError('Cannot parse dataclass types in a Union without '
+                                   'one of the following `Meta` settings:\n\n'
+                                   '  * `auto_assign_tags = True`\n'
+                                   f'    - Set on class `{extras["cls_name"]}`.\n\n'
+                                   f'  * `tag = "{cls_name}"`\n'
+                                   f'    - Set on class `{possible_tp.__qualname__}`.\n\n'
+                                   '  * `v1_unsafe_parse_dataclass_in_union = True`\n'
+                                   f'    - Set on class `{extras["cls_name"]}`\n\n'
+                                   'For more information, refer to:\n'
+                                   '  https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/dataclasses_in_union_types.html')
+                    raise e from None
 
-                    if assign_tags_to_cls and not tag:
-                        tag = cls_name
-                        # We don't want to mutate the base Meta class here
-                        if meta is AbstractMeta:
-                            create_meta(possible_tp, cls_name, tag=tag)
-                        else:
-                            meta.tag = cls_name
+            string = cls.get_string_for_annotation(tp_new, extras)
 
-                    if tag:
-                        string = cls.get_string_for_annotation(tp_new, extras_cp)
+            try_parse_lines = [
+                'try:',
+                f'  return {string}',
+                'except Exception:',
+                '  pass',
+            ]
 
-                        dataclass_tag_to_lines[tag] = [
-                            f'if tag == {tag!r}:',
-                            f'  return {string}'
-                        ]
-                        continue
+            # TODO disable for dataclasses
 
-                    elif not config.v1_unsafe_parse_dataclass_in_union:
-                        e = ValueError(f'Cannot parse dataclass types in a Union without one of the following `Meta` settings:\n\n'
-                                       '  * `auto_assign_tags = True`\n'
-                                      f'    - Set on class `{extras["cls_name"]}`.\n\n'
-                                      f'  * `tag = "{cls_name}"`\n'
-                                      f'    - Set on class `{possible_tp.__qualname__}`.\n\n'
-                                       '  * `v1_unsafe_parse_dataclass_in_union = True`\n'
-                                      f'    - Set on class `{extras["cls_name"]}`\n\n'
-                                       'For more information, refer to:\n'
-                                       '  https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/dataclasses_in_union_types.html')
-                        raise e from None
+            if (possible_tp in SIMPLE_TYPES
+                or is_subclass_safe(
+                    get_origin_v2(possible_tp), SIMPLE_TYPES)):
 
-                string = cls.get_string_for_annotation(tp_new, extras_cp)
+                tn = tp_new.type_name(extras)
+                type_checks.extend([
+                    f'if tp is {tn}:',
+                    '  return v1'
+                ])
+                list_to_add = try_parse_at_end
+            else:
+                list_to_add = type_checks
 
-                try_parse_lines = [
-                    'try:',
-                   f'  return {string}',
-                    'except Exception:',
-                    '  pass',
-                ]
+            list_to_add.extend(try_parse_lines)
 
-                # TODO disable for dataclasses
+        if dataclass_tag_to_lines:
 
-                if possible_tp in SIMPLE_TYPES or is_subclass_safe(get_origin_v2(possible_tp), SIMPLE_TYPES):
-                    tn = tp_new.type_name(extras_cp)
-                    type_checks.extend([
-                        f'if tp is {tn}:',
-                        '  return v1'
-                    ])
-                    list_to_add = try_parse_at_end
-                else:
-                    list_to_add = type_checks
+            with fn_gen.try_():
+                fn_gen.add_line(f'tag = v1[tag_key]')
 
-                list_to_add.extend(try_parse_lines)
+            with fn_gen.except_(Exception):
+                fn_gen.add_line('pass')
 
-            if dataclass_tag_to_lines:
+            with fn_gen.else_():
 
-                with fn_gen.try_():
-                    fn_gen.add_line(f'tag = v1[tag_key]')
+                for lines in dataclass_tag_to_lines.values():
+                    fn_gen.add_lines(*lines)
 
-                with fn_gen.except_(Exception):
-                    fn_gen.add_line('pass')
+                fn_gen.add_line(
+                    "raise ParseError("
+                    "TypeError('Object with tag was not in any of Union types'),"
+                    f"v1,{fields},"
+                    "input_tag=tag,"
+                    "tag_key=tag_key,"
+                    f"valid_tags={list(dataclass_tag_to_lines)})"
+                )
 
-                with fn_gen.else_():
+        fn_gen.add_line('tp = type(v1)')
 
-                    for lines in dataclass_tag_to_lines.values():
-                        fn_gen.add_lines(*lines)
+        if type_checks:
+            fn_gen.add_lines(*type_checks)
 
-                    fn_gen.add_line(
-                        "raise ParseError("
-                        "TypeError('Object with tag was not in any of Union types'),"
-                       f"v1,{fields},"
-                        "input_tag=tag,"
-                        "tag_key=tag_key,"
-                       f"valid_tags={list(dataclass_tag_to_lines)})"
-                    )
+        if try_parse_at_end:
+            fn_gen.add_lines(*try_parse_at_end)
 
-            fn_gen.add_line('tp = type(v1)')
-
-            if type_checks:
-                fn_gen.add_lines(*type_checks)
-
-            if try_parse_at_end:
-                fn_gen.add_lines(*try_parse_at_end)
-
-            # Invalid type for Union
-            fn_gen.add_line("raise ParseError("
-                            "TypeError('Object was not in any of Union types'),"
-                            f"v1,{fields},"
-                            "tag_key=tag_key"
-                            ")")
-
-        extras['fn_gen'] |= fn_gen
-
-        return f'{fn_name}({tp.v()})'
+        # Invalid type for Union
+        fn_gen.add_line("raise ParseError("
+                        "TypeError('Object was not in any of Union types'),"
+                        f"v1,{fields},"
+                        "tag_key=tag_key"
+                        ")")
 
     @staticmethod
+    @setup_recursive_safe_function_for_generic
     def dump_from_literal(tp: TypeInfo, extras: Extras):
-        fn_gen = FunctionBuilder()
-
-        fields = f'fields_{tp.field_i}'
-
-        extras_cp: Extras = extras.copy()
-        extras_cp['locals'] = _locals = {
-            fields: frozenset(tp.args),
-        }
-
-        fn_name = f'dump_from_{extras["cls_name"]}_literal_{tp.field_i}'
-
-        with fn_gen.function(fn_name, ['v1'], None, _locals):
-
-            with fn_gen.if_(f'{tp.v()} in {fields}'):
-                fn_gen.add_line('return v1')
-
-            # No such Literal with the value of `o`
-            fn_gen.add_line("e = ValueError('Value not in expected Literal values')")
-            fn_gen.add_line(f'raise ParseError(e, v1, {fields}, '
-                            f'allowed_values=list({fields}))')
-
-        # TODO Checks for Literal equivalence, as mentioned here:
-        #   https://www.python.org/dev/peps/pep-0586/#equivalence-of-two-literals
-
-        # extras_cp['locals'][fields] = {
-        #     a: type(a) for a in tp.args
-        # }
-        #
-        # with fn_gen.function(fn_name, ['v1'], None, _locals):
-        #
-        #     with fn_gen.try_():
-        #         with fn_gen.if_(f'type({tp.v()}) is {fields}[{tp.v()}]'):
-        #             fn_gen.add_line('return v1')
-        #
-        #         # The value of `o` is in the ones defined for the Literal, but
-        #         # also confirm the type matches the one defined for the Literal.
-        #         fn_gen.add_line("e = TypeError('Value did not match expected type for the Literal')")
-        #
-        #         fn_gen.add_line('raise ParseError('
-        #                         f'e, v1, {fields}, '
-        #                         'have_type=type(v1), '
-        #                         f'desired_type={fields}[v1], '
-        #                         f'desired_value=next(v for v in {fields} if v == v1), '
-        #                         f'allowed_values=list({fields})'
-        #                         ')')
-        #     with fn_gen.except_(KeyError):
-        #         # No such Literal with the value of `o`
-        #         fn_gen.add_line("e = ValueError('Value not in expected Literal values')")
-        #         fn_gen.add_line('raise ParseError('
-        #                         f'e, v1, {fields}, allowed_values=list({fields})'
-        #                         f')')
-
-        extras['fn_gen'] |= fn_gen
-
-        return f'{fn_name}({tp.v()})'
+        return tp.v()
 
     @staticmethod
     def dump_from_decimal(tp: TypeInfo, extras: Extras):
-        s = f'str({tp.v()}) if isinstance({tp.v()}, float) else {tp.v()}'
-        return tp.wrap_builtin(s, extras)
-
-    # alias: base_type(o)
-    dump_from_path = dump_from_uuid
+        return f'str({tp.v()}'
 
     @staticmethod
-    def dump_from_datetime(tp: TypeInfo, extras: Extras):
-        # alias: as_datetime
-        tp.ensure_in_locals(extras, as_datetime, datetime)
-        return f'as_datetime({tp.v()}, {tp.name})'
+    def dump_from_path(tp: TypeInfo, extras: Extras):
+        return f'str({tp.v()}'
+
+    @classmethod
+    def dump_from_date(cls, tp: TypeInfo, _extras: Extras):
+        return f'{tp.v()}.isoformat()'
+
+    @classmethod
+    def dump_from_datetime(cls, tp: TypeInfo, extras: Extras):
+        o = tp.v()
+        return f"{o}.isoformat().replace('+00:00', 'Z', 1)"
 
     @staticmethod
-    def dump_from_time(tp: TypeInfo, extras: Extras):
-        # alias: as_time
-        tp.ensure_in_locals(extras, as_time, time)
-        return f'as_time({tp.v()}, {tp.name})'
-
-    @staticmethod
-    def dump_from_date(tp: TypeInfo, extras: Extras):
-        # alias: as_date
-        tp.ensure_in_locals(extras, as_date, date)
-        return f'as_date({tp.v()}, {tp.name})'
+    def dump_from_time(tp: TypeInfo, _extras: Extras):
+        return f'{tp.v()}.isoformat()'
 
     @staticmethod
     def dump_from_timedelta(tp: TypeInfo, extras: Extras):
-        # alias: as_timedelta
-        tp.ensure_in_locals(extras, as_timedelta, timedelta)
-        return f'as_timedelta({tp.v()}, {tp.name})'
+        return f'str({tp.v()})'
 
     @staticmethod
+    @setup_recursive_safe_function(
+        fn_name=f'__{PACKAGE_NAME}_to_dict_{{cls_name}}__')
     def dump_from_dataclass(tp: TypeInfo, extras: Extras):
-        fn_name = dump_func_for_dataclass(
-            tp.origin, extras, False)
-
-        return f'{fn_name}({tp.v()})'
+        dump_func_for_dataclass(tp.origin, extras)
 
     @classmethod
     def get_string_for_annotation(cls,
@@ -641,16 +566,16 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
         # type-checking but behaves like `str` at runtime.
         # TODO maybe add `load_to_literal_string`
         if origin is PyLiteralString:
-            load_hook = cls.load_to_str
+            dump_hook = cls.dump_from_str
             origin = str
             name = 'str'
 
         # -> Atomic, immutable types which don't require
         #    any iterative / recursive handling.
         elif origin in SIMPLE_TYPES or is_subclass_safe(origin, SIMPLE_TYPES):
-            load_hook = hooks.get(origin)
+            dump_hook = hooks.get(origin)
 
-        elif (load_hook := hooks.get(origin)) is not None:
+        elif (dump_hook := hooks.get(origin)) is not None:
             try:
                 args = get_args(type_ann)
             except ValueError:
@@ -658,7 +583,7 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
 
         # -> Union[x]
         elif is_union(origin):
-            load_hook = cls.load_to_union
+            dump_hook = cls.dump_from_union
             args = get_args(type_ann)
 
             # Special case for Optional[x], which is actually Union[x, None]
@@ -672,36 +597,36 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
 
         # -> Literal[X, Y, ...]
         elif origin is Literal:
-            load_hook = cls.load_to_literal
+            dump_hook = cls.dump_from_literal
             args = get_args(type_ann)
 
         # https://stackoverflow.com/questions/76520264/dataclasswizard-after-upgrading-to-python3-11-is-not-working-as-expected
         elif origin is Any:
-            load_hook = cls.default_load_to
+            dump_hook = cls.default_dump_from
 
         elif is_subclass_safe(origin, tuple) and hasattr(origin, '_fields'):
 
             if getattr(origin, '__annotations__', None):
                 # Annotated as a `typing.NamedTuple` subtype
-                load_hook = cls.load_to_named_tuple
+                dump_hook = cls.dump_from_named_tuple
             else:
                 # Annotated as a `collections.namedtuple` subtype
-                load_hook = cls.load_to_named_tuple_untyped
+                dump_hook = cls.dump_from_named_tuple_untyped
 
         elif is_typed_dict(origin):
-            load_hook = cls.load_to_typed_dict
+            dump_hook = cls.dump_from_typed_dict
 
         elif is_dataclass(origin):
-            # return a dynamically generated `fromdict`
+            # return a dynamically generated `asdict`
             # for the `cls` (base_type)
-            load_hook = cls.load_to_dataclass
+            dump_hook = cls.dump_from_dataclass
 
         elif is_subclass_safe(origin, Enum):
-            load_hook = cls.load_to_enum
+            dump_hook = cls.dump_from_enum
 
         elif origin in (abc.Sequence, abc.MutableSequence, abc.Collection):
             if origin is abc.Sequence:
-                load_hook = cls.load_to_tuple
+                dump_hook = cls.dump_from_tuple
                 # desired (non-generic) origin type
                 name = 'tuple'
                 origin = tuple
@@ -712,7 +637,7 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
                 except (IndexError, ValueError):
                     args = Any,
             else:
-                load_hook = cls.load_to_iterable
+                dump_hook = cls.dump_from_iterable
                 # desired (non-generic) origin type
                 name = 'list'
                 origin = list
@@ -723,7 +648,17 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
                     args = Any,
 
         elif isinstance(origin, PatternBase):
-            load_hook = origin.load_to_pattern
+            __base__ = origin.base
+
+            if issubclass(__base__, datetime):
+                dump_hook = cls.dump_from_datetime
+                origin = datetime
+            elif issubclass(__base__, date):
+                dump_hook = cls.dump_from_date
+                origin = date
+            elif issubclass(__base__, time):
+                dump_hook = cls.dump_from_time
+                origin = time
 
         else:
 
@@ -733,19 +668,19 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
             except ValueError:
                 args = Any,
 
-        if load_hook is None:
+        if dump_hook is None:
             # TODO END
             for t in hooks:
                 if issubclass(origin, (t,)):
-                    load_hook = hooks[t]
+                    dump_hook = hooks[t]
                     break
 
         tp.origin = origin
         tp.args = args
         tp.name = name
 
-        if load_hook is not None:
-            result = load_hook(tp, extras)
+        if dump_hook is not None:
+            result = dump_hook(tp, extras)
             return result
 
         # No matching hook is found for the type.
@@ -832,8 +767,10 @@ def dump_func_for_dataclass(
     # Tuple describing the fields of this dataclass.
     fields = dataclass_fields(cls)
 
-    cls_init_fields = dataclass_init_fields(cls, True)
-    cls_init_field_names = dataclass_init_field_names(cls)
+    # cls_init_fields = dataclass_init_fields(cls, True)
+
+    cls_fields = dataclass_fields(cls)
+    cls_field_names = dataclass_field_names(cls)
 
     field_to_default = dataclass_field_to_default(cls)
 
@@ -920,7 +857,7 @@ def dump_func_for_dataclass(
         # Ensure `tag_key` isn't a dataclass field,
         # to avoid issues with our logic.
         # See https://github.com/rnag/dataclass-wizard/issues/148
-        meta.tag_key not in cls_init_field_names):
+        meta.tag_key not in cls_field_names):
             expect_tag_as_unknown_key = True
     else:
         expect_tag_as_unknown_key = False
@@ -931,22 +868,20 @@ def dump_func_for_dataclass(
     has_catch_all = catch_all_field is not None
 
     if has_catch_all:
-        pre_assign = 'i+=1; '
         catch_all_field_stripped = catch_all_field.rstrip('?')
-        catch_all_idx = cls_init_field_names.index(catch_all_field_stripped)
+        catch_all_idx = cls_field_names.index(catch_all_field_stripped)
         # remove catch all field from list, so we don't iterate over it
-        del cls_init_fields[catch_all_idx]
+        del cls_fields[catch_all_idx]
     else:
-        pre_assign = ''
         catch_all_field_stripped = catch_all_idx = None
 
-    if on_unknown_key is not None:
-        should_raise = on_unknown_key is KeyAction.RAISE
-        should_warn = on_unknown_key is KeyAction.WARN
-        if should_warn or should_raise:
-            pre_assign = 'i+=1; '
-    else:
-        should_raise = should_warn = None
+    # if on_unknown_key is not None:
+    #     should_raise = on_unknown_key is KeyAction.RAISE
+    #     should_warn = on_unknown_key is KeyAction.WARN
+    #     if should_warn or should_raise:
+    #         pre_assign = 'i+=1; '
+    # else:
+    #     should_raise = should_warn = None
 
     cls_name = cls.__name__
 
@@ -965,12 +900,10 @@ def dump_func_for_dataclass(
         # args, as we don't want to mutate the original dictionary object.
         if has_defaults:
             fn_gen.add_line('init_kwargs = {}')
-        if pre_assign:
-            fn_gen.add_line('i = 0')
 
-        vars_for_fields = []
+        required_field_assigns = {}
 
-        if cls_init_fields:
+        if cls_fields:
 
             with fn_gen.try_():
 
@@ -978,52 +911,124 @@ def dump_func_for_dataclass(
                 #     with fn_gen.if_(f'{meta.tag_key!r} in o'):
                 #         fn_gen.add_line('i+=1')
 
-                for i, f in enumerate(cls_init_fields):
-                    val = 'v1'
+                for i, f in enumerate(cls_fields):
                     name = f.name
-                    var = f'__{name}'
+                    # var = f'__{name}'
+                    has_default = name in field_to_default
 
-                    if (check_aliases
-                            and (key := field_to_aliases.get(name)) is not None
-                            and name != key):
-                        f_assign = f'field={name!r}; key={key!r}; {val}=o.{name}'
+                    # if (check_aliases
+                    #         and (_aliases := field_to_aliases.get(name)) is not None):
+                    #
+                    #     if len(_aliases) == 1:
+                    #         alias = _aliases[0]
+                    #
+                    #         if set_aliases:
+                    #             aliases.add(alias)
+                    #
+                    #         f_assign = f'field={name!r}; {val}=o.get({alias!r}, MISSING)'
+                    #     else:
+                    #         f_assign = None
+                    #
+                    #         # add possible JSON keys
+                    #         if set_aliases:
+                    #             aliases.update(_aliases)
+                    #
+                    #         fn_gen.add_line(f'field={name!r}')
+                    #         condition = [f'({val} := o.get({alias!r}, MISSING)) is not MISSING'
+                    #                      for alias in _aliases]
+                    #
+                    #         val_is_found = '(' + '\n     or '.join(condition) + ')'
+                    #
+                    # elif (has_alias_paths
+                    #         and (paths := field_to_paths.get(name)) is not None):
+                    #
+                    #     if len(paths) == 1:
+                    #         path = paths[0]
+                    #
+                    #         # add the first part (top-level key) of the path
+                    #         if set_aliases:
+                    #             aliases.add(path[0])
+                    #
+                    #         f_assign = f'field={name!r}; {val}=safe_get(o, {path!r}, {not has_default})'
+                    #     else:
+                    #         f_assign = None
+                    #         fn_gen.add_line(f'field={name!r}')
+                    #         condition = []
+                    #         last_idx = len(paths) - 1
+                    #         for k, path in enumerate(paths):
+                    #
+                    #             # add the first part (top-level key) of each path
+                    #             if set_aliases:
+                    #                 aliases.add(path[0])
+                    #
+                    #             if k == last_idx:
+                    #                 condition.append(
+                    #                     f'({val} := safe_get(o, {path!r}, {not has_default})) is not MISSING')
+                    #             else:
+                    #                 condition.append(
+                    #                     f'({val} := safe_get(o, {path!r}, False)) is not MISSING')
+                    #
+                    #         val_is_found = '(' + '\n     or '.join(condition) + ')'
+                    #
+                    #     # TODO raise some useful message like (ex. on IndexError):
+                    #     #       Field "my_str" of type tuple[float, str] in A2 has invalid value ['123']
+                    #
+                    # elif key_case is None:
+                    #
+                    #     if set_aliases:
+                    #         aliases.add(name)
+                    #
+                    #     f_assign = f'field={name!r}; {val}=o.get(field, MISSING)'
+                    #
+                    # elif auto_key_case:
+                    #     f_assign = None
+                    #
+                    #     _aliases = possible_json_keys(name)
+                    #
+                    #     if set_aliases:
+                    #         # add field name itself
+                    #         aliases.add(name)
+                    #         # add possible JSON keys
+                    #         aliases.update(_aliases)
+                    #
+                    #     fn_gen.add_line(f'field={name!r}')
+                    #     condition = [f'({val} := o.get(field, MISSING)) is not MISSING']
+                    #     for alias in _aliases:
+                    #         condition.append(f'({val} := o.get({alias!r}, MISSING)) is not MISSING')
+                    #
+                    #     val_is_found = '(' + '\n     or '.join(condition) + ')'
+                    #
+                    # else:
+                    #     alias = key_case(name)
+                    #
+                    #     if set_aliases:
+                    #         aliases.add(alias)
+                    #
+                    #     if alias != name:
+                    #         field_to_aliases[name] = (alias, )
+                    #
+                    #     f_assign = f'field={name!r}; {val}=o.get({alias!r}, MISSING)'
 
-                    elif (has_alias_paths
-                            and (path := field_to_path.get(name)) is not None):
+                    string = generate_field_code(cls_dumper, extras, f, i, f'o.{name}')
 
-                        if name in field_to_default:
-                            f_assign = f'field={name!r}; {val}=safe_get(o, {path!r}, MISSING, False)'
-                        else:
-                            f_assign = f'field={name!r}; {val}=safe_get(o, {path!r})'
+                    # if f_assign is not None:
+                    #     fn_gen.add_line(f_assign)
 
-                        # TODO raise some useful message like (ex. on IndexError):
-                        #       Field "my_str" of type tuple[float, str] in A2 has invalid value ['123']
+                    if has_default:
+                        # with fn_gen.if_(val_is_found):
+                        # with fn_gen.if_(f'{val} is not MISSING'):
 
-                    elif key_case is None:
-                        field_to_aliases[name] = name
-                        f_assign = f'field={name!r}; {val}=o.{name}'
-                    elif key_case is KeyCase.AUTO:
-                        f_assign = f'field={name!r}; key=f2k.get(field); {val}=o.{name}'
-                    else:
-                        field_to_aliases[name] = key = key_case(name)
-                        f_assign = f'field={name!r}; key={key!r}; {val}=o.{name}'
-
-                    string = generate_field_code(cls_dumper, extras, f, i)
-
-                    if name in field_to_default:
-                        fn_gen.add_line(f_assign)
-
-                        #with fn_gen.if_(f'{val} is not MISSING'):
-                        fn_gen.add_line(f'{pre_assign}init_kwargs[field] = {string}')
+                        fn_gen.add_line(f'init_kwargs[field] = {string}')
 
                     else:
                         # TODO confirm this is ok
                         # vars_for_fields.append(f'{name}={var}')
-                        vars_for_fields.append(var)
-                        fn_gen.add_line(f_assign)
+                        required_field_assigns[name] = string
 
-                        with fn_gen.if_(f'{val} is not MISSING'):
-                            fn_gen.add_line(f'{pre_assign}{var} = {string}')
+                fn_gen.add_line('result = {')
+                for name, string in required_field_assigns.items():
+                    fn_gen.add_line(f'  {name!r}: {string},')
+                fn_gen.add_line('}')
 
             # create a broad `except Exception` block, as we will be
             # re-raising all exception(s) as a custom `ParseError`.
@@ -1082,11 +1087,10 @@ def dump_func_for_dataclass(
         # Now pass the arguments to the dict_factory method, and return
         # the new dict_factory instance.
 
-        if has_defaults:
-            vars_for_fields.append('**init_kwargs')
+        # if has_defaults:
+        #     vars_for_fields.append('**init_kwargs')
 
-        init_parts = ', '.join(vars_for_fields)
-        fn_gen.add_line(f"return dict_factory({init_parts})")
+        fn_gen.add_line(f'return result if dict_factory is dict else dict_factory(result)')
 
         # with fn_gen.try_():
         #     fn_gen.add_line(f"return cls({init_parts})")
@@ -1126,14 +1130,15 @@ def dump_func_for_dataclass(
 def generate_field_code(cls_dumper: DumpMixin,
                         extras: Extras,
                         field: Field,
-                        field_i: int) -> 'str | TypeInfo':
+                        field_i: int,
+                        var_name=None) -> 'str | TypeInfo':
 
     cls = extras['cls']
     field_type = field.type = eval_forward_ref_if_needed(field.type, cls)
 
     try:
         return cls_dumper.get_string_for_annotation(
-            TypeInfo(field_type, field_i=field_i), extras
+            TypeInfo(field_type, field_i=field_i, val_name=var_name), extras
         )
 
     except ParseError as pe:

@@ -35,6 +35,8 @@ class TypeInfo:
     prefix: str = 'v'
     # index of assignment (ex. `2 -> v1[2]`, *or* a string `"key" -> v4["key"]`)
     index: int | None = None
+    # explicit value name (overrides prefix + index)
+    val_name: str | None = None
     # indicates if we are currently in Optional,
     # e.g. `typing.Optional[...]` *or* `typing.Union[T, ...*T2, None]`
     in_optional: bool = False

@@ -73,6 +73,8 @@ class TypeInfo:
         'prefix',
         # index of assignment (ex. `2 -> v1[2]`, *or* a string `"key" -> v4["key"]`)
         'index',
+        # explicit value name (overrides prefix + index)
+        'val_name',
         # optional attribute, that indicates if we should wrap the
         # assignment with `name` -- ex. `(1, 2)` -> `deque((1, 2))`
         '_wrapped',
@@ -87,6 +89,7 @@ class TypeInfo:
                  i=1,
                  field_i=1,
                  prefix='v',
+                 val_name=None,
                  index=None):
 
         self.name = name
@@ -95,6 +98,7 @@ class TypeInfo:
         self.i = i
         self.field_i = field_i
         self.prefix = prefix
+        self.val_name = val_name
         self.index = index
 
     def replace(self, **changes):
@@ -143,8 +147,11 @@ class TypeInfo:
             extras, force=True, bound=bound)
 
     def v(self):
-        return (f'{self.prefix}{self.i}' if (idx := self.index) is None
-                else f'{self.prefix}{self.i}[{idx}]')
+        val_name = self.val_name
+        if val_name is None:
+            val_name = f'{self.prefix}{self.i}'
+        return (val_name if (idx := self.index) is None
+                else f'{val_name}[{idx}]')
 
     def v_and_next(self):
         next_i = self.i + 1
@@ -216,6 +223,7 @@ class TypeInfo:
             elif mod == 'builtins':
                 tn = name
             else:
+                # TODO might need to handle `var_name`
                 tn = f'{prefix}{name}_{self.field_i}'
                 LOG.debug(f'Adding %s=%s', tn, name)
                 extras['locals'][tn] = tp

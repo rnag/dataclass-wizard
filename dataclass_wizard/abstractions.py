@@ -487,187 +487,185 @@ class AbstractDumperGenerator(ABC):
 
     @staticmethod
     @abstractmethod
-    def default_dump(tp: TypeInfo, extras: V1Extras) -> str:
+    def default_dump_from(tp: TypeInfo, extras: V1Extras) -> str:
         """
         Generate code for the default dump function if no other types match.
         Generally, this will be a stub dump method.
         """
 
-    # @staticmethod
-    # @abstractmethod
-    # def load_to_str(tp: TypeInfo, extras: V1Extras) -> str:
-    #     """
-    #     Generate code to load a value into a string field.
-    #     """
-    #
-    # @staticmethod
-    # @abstractmethod
-    # def load_to_int(tp: TypeInfo, extras: V1Extras) -> str:
-    #     """
-    #     Generate code to load a value into an integer field.
-    #     """
-    #
-    # @staticmethod
-    # @abstractmethod
-    # def load_to_float(tp: TypeInfo, extras: V1Extras) -> 'str | TypeInfo':
-    #     """
-    #     Generate code to load a value into a float field.
-    #     """
-    #
-    # @staticmethod
-    # @abstractmethod
-    # def load_to_bool(_: str, extras: V1Extras) -> str:
-    #     """
-    #     Generate code to load a value into a boolean field.
-    #     Adds a helper function `as_bool` to the local context.
-    #     """
-    #
-    # @staticmethod
-    # @abstractmethod
-    # def load_to_bytes(tp: TypeInfo, extras: V1Extras) -> 'str | TypeInfo':
-    #     """
-    #     Generate code to load a value into a bytes field.
-    #     """
-    #
-    # @staticmethod
-    # @abstractmethod
-    # def load_to_bytearray(tp: TypeInfo, extras: V1Extras) -> 'str | TypeInfo':
-    #     """
-    #     Generate code to load a value into a bytearray field.
-    #     """
-    #
-    # @staticmethod
-    # @abstractmethod
-    # def load_to_none(tp: TypeInfo, extras: V1Extras) -> str:
-    #     """
-    #     Generate code to load a value into a None.
-    #     """
-    #
-    # @staticmethod
-    # @abstractmethod
-    # def load_to_literal(tp: TypeInfo, extras: V1Extras) -> 'str | TypeInfo':
-    #     """
-    #     Generate code to confirm a value is equivalent to one
-    #     of the provided literals.
-    #     """
-    #
-    # @classmethod
-    # @abstractmethod
-    # def load_to_union(cls, tp: TypeInfo, extras: V1Extras) -> 'str | TypeInfo':
-    #     """
-    #     Generate code to load a value into a `Union[X, Y, ...]` (one of [X, Y, ...] possible types)
-    #     """
-    #
-    # @staticmethod
-    # @abstractmethod
-    # def load_to_enum(tp: TypeInfo, extras: V1Extras) -> 'str | TypeInfo':
-    #     """
-    #     Generate code to load a value into an Enum field.
-    #     """
-    #
-    # @staticmethod
-    # @abstractmethod
-    # def load_to_uuid(tp: TypeInfo, extras: V1Extras) -> 'str | TypeInfo':
-    #     """
-    #     Generate code to load a value into a UUID field.
-    #     """
-    #
-    # @staticmethod
-    # @abstractmethod
-    # def load_to_iterable(tp: TypeInfo, extras: V1Extras) -> 'str | TypeInfo':
-    #     """
-    #     Generate code to load a value into an iterable field (list, set, etc.).
-    #     """
-    #
-    # @staticmethod
-    # @abstractmethod
-    # def load_to_tuple(tp: TypeInfo, extras: V1Extras) -> 'str | TypeInfo':
-    #     """
-    #     Generate code to load a value into a tuple field.
-    #     """
-    #
-    # @staticmethod
-    # @abstractmethod
-    # def load_to_named_tuple(tp: TypeInfo, extras: V1Extras) -> 'str | TypeInfo':
-    #     """
-    #     Generate code to load a value into a named tuple field.
-    #     """
-    #
-    # @classmethod
-    # @abstractmethod
-    # def load_to_named_tuple_untyped(cls, tp: TypeInfo, extras: V1Extras) -> 'str | TypeInfo':
-    #     """
-    #     Generate code to load a value into an untyped named tuple.
-    #     """
-    #
-    # @staticmethod
-    # @abstractmethod
-    # def load_to_dict(tp: TypeInfo, extras: V1Extras) -> 'str | TypeInfo':
-    #     """
-    #     Generate code to load a value into a dictionary field.
-    #     """
-    #
-    # @staticmethod
-    # @abstractmethod
-    # def load_to_defaultdict(tp: TypeInfo, extras: V1Extras) -> 'str | TypeInfo':
-    #     """
-    #     Generate code to load a value into a defaultdict field.
-    #     """
-    #
-    # @staticmethod
-    # @abstractmethod
-    # def load_to_typed_dict(tp: TypeInfo, extras: V1Extras) -> 'str | TypeInfo':
-    #     """
-    #     Generate code to load a value into a typed dictionary field.
-    #     """
-    #
-    # @staticmethod
-    # @abstractmethod
-    # def load_to_decimal(tp: TypeInfo, extras: V1Extras) -> 'str | TypeInfo':
-    #     """
-    #     Generate code to load a value into a Decimal field.
-    #     """
-    #
-    # @staticmethod
-    # @abstractmethod
-    # def load_to_path(tp: TypeInfo, extras: V1Extras) -> 'str | TypeInfo':
-    #     """
-    #     Generate code to load a value into a Decimal field.
-    #     """
-    #
-    # @staticmethod
-    # @abstractmethod
-    # def load_to_datetime(tp: TypeInfo, extras: V1Extras) -> str:
-    #     """
-    #     Generate code to load a value into a datetime field.
-    #     """
-    #
-    # @staticmethod
-    # @abstractmethod
-    # def load_to_time(tp: TypeInfo, extras: V1Extras) -> str:
-    #     """
-    #     Generate code to load a value into a time field.
-    #     """
-    #
-    # @staticmethod
-    # @abstractmethod
-    # def load_to_date(tp: TypeInfo, extras: V1Extras) -> 'str | TypeInfo':
-    #     """
-    #     Generate code to load a value into a date field.
-    #     """
-    #
-    # @staticmethod
-    # @abstractmethod
-    # def load_to_timedelta(tp: TypeInfo, extras: V1Extras) -> 'str | TypeInfo':
-    #     """
-    #     Generate code to load a value into a timedelta field.
-    #     """
-    #
-    # @staticmethod
-    # def load_to_dataclass(tp: TypeInfo, extras: V1Extras) -> 'str | TypeInfo':
-    #     """
-    #     Generate code to load a value into a `dataclass` type field.
-    #     """
+    @staticmethod
+    @abstractmethod
+    def dump_from_str(tp: TypeInfo, extras: V1Extras) -> str:
+        """
+        Generate code to dump a value from a string field.
+        """
+
+    @staticmethod
+    @abstractmethod
+    def dump_from_int(tp: TypeInfo, extras: V1Extras) -> str:
+        """
+        Generate code to dump a value from an integer field.
+        """
+
+    @staticmethod
+    @abstractmethod
+    def dump_from_float(tp: TypeInfo, extras: V1Extras) -> 'str | TypeInfo':
+        """
+        Generate code to dump a value from a float field.
+        """
+
+    @staticmethod
+    @abstractmethod
+    def dump_from_bool(_: str, extras: V1Extras) -> str:
+        """
+        Generate code to dump a value from a boolean field.
+        """
+
+    @staticmethod
+    @abstractmethod
+    def dump_from_bytes(tp: TypeInfo, extras: V1Extras) -> 'str | TypeInfo':
+        """
+        Generate code to dump a value from a bytes field.
+        """
+
+    @staticmethod
+    @abstractmethod
+    def dump_from_bytearray(tp: TypeInfo, extras: V1Extras) -> 'str | TypeInfo':
+        """
+        Generate code to dump a value from a bytearray field.
+        """
+
+    @staticmethod
+    @abstractmethod
+    def dump_from_none(tp: TypeInfo, extras: V1Extras) -> str:
+        """
+        Generate code to dump a value from a None.
+        """
+
+    @staticmethod
+    @abstractmethod
+    def dump_from_literal(tp: TypeInfo, extras: V1Extras) -> 'str | TypeInfo':
+        """
+        Generate code to dump a literal.
+        """
+
+    @classmethod
+    @abstractmethod
+    def dump_from_union(cls, tp: TypeInfo, extras: V1Extras) -> 'str | TypeInfo':
+        """
+        Generate code to dump a value from a `Union[X, Y, ...]` (one of [X, Y, ...] possible types)
+        """
+
+    @staticmethod
+    @abstractmethod
+    def dump_from_enum(tp: TypeInfo, extras: V1Extras) -> 'str | TypeInfo':
+        """
+        Generate code to dump a value from an Enum field.
+        """
+
+    @staticmethod
+    @abstractmethod
+    def dump_from_uuid(tp: TypeInfo, extras: V1Extras) -> 'str | TypeInfo':
+        """
+        Generate code to dump a value from a UUID field.
+        """
+
+    @staticmethod
+    @abstractmethod
+    def dump_from_iterable(tp: TypeInfo, extras: V1Extras) -> 'str | TypeInfo':
+        """
+        Generate code to dump a value from an iterable field (list, set, etc.).
+        """
+
+    @staticmethod
+    @abstractmethod
+    def dump_from_tuple(tp: TypeInfo, extras: V1Extras) -> 'str | TypeInfo':
+        """
+        Generate code to dump a value from a tuple field.
+        """
+
+    @staticmethod
+    @abstractmethod
+    def dump_from_named_tuple(tp: TypeInfo, extras: V1Extras) -> 'str | TypeInfo':
+        """
+        Generate code to dump a value from a named tuple field.
+        """
+
+    @classmethod
+    @abstractmethod
+    def dump_from_named_tuple_untyped(cls, tp: TypeInfo, extras: V1Extras) -> 'str | TypeInfo':
+        """
+        Generate code to dump a value from an untyped named tuple.
+        """
+
+    @staticmethod
+    @abstractmethod
+    def dump_from_dict(tp: TypeInfo, extras: V1Extras) -> 'str | TypeInfo':
+        """
+        Generate code to dump a value from a dictionary field.
+        """
+
+    @staticmethod
+    @abstractmethod
+    def dump_from_defaultdict(tp: TypeInfo, extras: V1Extras) -> 'str | TypeInfo':
+        """
+        Generate code to dump a value from a defaultdict field.
+        """
+
+    @staticmethod
+    @abstractmethod
+    def dump_from_typed_dict(tp: TypeInfo, extras: V1Extras) -> 'str | TypeInfo':
+        """
+        Generate code to dump a value from a typed dictionary field.
+        """
+
+    @staticmethod
+    @abstractmethod
+    def dump_from_decimal(tp: TypeInfo, extras: V1Extras) -> 'str | TypeInfo':
+        """
+        Generate code to dump a value from a Decimal field.
+        """
+
+    @staticmethod
+    @abstractmethod
+    def dump_from_path(tp: TypeInfo, extras: V1Extras) -> 'str | TypeInfo':
+        """
+        Generate code to dump a value from a Decimal field.
+        """
+
+    @staticmethod
+    @abstractmethod
+    def dump_from_datetime(tp: TypeInfo, extras: V1Extras) -> str:
+        """
+        Generate code to dump a value from a datetime field.
+        """
+
+    @staticmethod
+    @abstractmethod
+    def dump_from_time(tp: TypeInfo, extras: V1Extras) -> str:
+        """
+        Generate code to dump a value from a time field.
+        """
+
+    @staticmethod
+    @abstractmethod
+    def dump_from_date(tp: TypeInfo, extras: V1Extras) -> 'str | TypeInfo':
+        """
+        Generate code to dump a value from a date field.
+        """
+
+    @staticmethod
+    @abstractmethod
+    def dump_from_timedelta(tp: TypeInfo, extras: V1Extras) -> 'str | TypeInfo':
+        """
+        Generate code to dump a value from a timedelta field.
+        """
+
+    @staticmethod
+    def dump_from_dataclass(tp: TypeInfo, extras: V1Extras) -> 'str | TypeInfo':
+        """
+        Generate code to dump a value from a `dataclass` type field.
+        """
 
     @classmethod
     @abstractmethod
