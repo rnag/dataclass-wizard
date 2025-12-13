@@ -2,6 +2,13 @@
 History
 =======
 
+0.35.4 (2025-12-12)
+-------------------
+
+**Features and Improvements**
+
+* Add compatability and support for **Python 3.14**. Thanks to :user:`rexzhang` in :pr:`204`!
+
 0.35.3 (2025-12-12)
 -------------------
 
