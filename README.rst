@@ -32,11 +32,11 @@ for complex and *nested dataclass* models!
 **Behold, the power of the Dataclass Wizard**::
 
     >>> from __future__ import annotations
-    >>> from dataclasses import dataclass, field
-    >>> from dataclass_wizard import JSONWizard
+    >>> from dataclasses import field
+    >>> from dataclass_wizard import DataclassWizard
     ...
-    >>> @dataclass
-    ... class MyClass(JSONWizard):
+    >>> # DataclassWizard auto-applies @dataclass to subclasses
+    ... class MyClass(DataclassWizard, load_case='AUTO', dump_case='CAMEL'):
     ...     my_str: str | None
     ...     is_active_tuple: tuple[bool, ...]
     ...     list_of_int: list[int] = field(default_factory=list)
@@ -1516,7 +1516,7 @@ What's New in v1.0
             print(MyModel(my_field="value").to_dict())
             # Output: {'my_field': 'value'}
 
-    - **Default __str__() Behavior Change**
+- **Default __str__() Behavior Change**
 
       Starting with **v1.0.0**, we no longer pretty-print the serialized JSON value with keys in ``camelCase``.
       Instead, we now use the ``pprint`` module to handle serialization formatting.

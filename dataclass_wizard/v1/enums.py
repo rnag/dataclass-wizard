@@ -22,6 +22,7 @@ class KeyAction(Enum):
     IGNORE = 0  # Silently skip unknown keys.
     RAISE = 1   # Raise an exception for the first unknown key.
     WARN = 2    # Log a warning for each unknown key.
+    # INCLUDE = 3
 
 
 class KeyCase(Enum):
@@ -55,3 +56,8 @@ class KeyCase(Enum):
     def __call__(self, *args):
         """Apply the key transformation."""
         return self.value.f(*args)
+
+
+class DateTimeTo(Enum):
+    ISO = 0          # ISO 8601 string (default)
+    TIMESTAMP = 1    # Unix timestamp (seconds)

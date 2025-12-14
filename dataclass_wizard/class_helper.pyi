@@ -2,7 +2,7 @@ from collections import defaultdict
 from dataclasses import Field
 from typing import Any, Callable, Literal, Sequence, overload
 
-from .abstractions import W, AbstractLoader, AbstractDumper, AbstractParser, E, AbstractLoaderGenerator
+from .abstractions import W, AbstractLoader, AbstractDumper, AbstractParser, E, AbstractLoaderGenerator, AbstractDumperGenerator
 from .bases import META, AbstractMeta
 from .constants import PACKAGE_NAME
 from .models import Condition
@@ -34,6 +34,9 @@ CLASS_TO_V1_LOADER: dict[type, type[AbstractLoaderGenerator]] = {}
 # A mapping of dataclass to its dumper.
 CLASS_TO_DUMPER: dict[type, type[AbstractDumper]] = {}
 
+# V1: A mapping of dataclass to its dumper.
+CLASS_TO_V1_DUMPER: dict[type, type[AbstractDumperGenerator]] = {}
+
 # A cached mapping of a dataclass to each of its case-insensitive field names
 # and load hook.
 FIELD_NAME_TO_LOAD_PARSER: dict[type, DictWithLowerStore[str, AbstractParser]] = {}
@@ -41,7 +44,7 @@ FIELD_NAME_TO_LOAD_PARSER: dict[type, DictWithLowerStore[str, AbstractParser]] =
 # Since the load process in V1 doesn't use Parsers currently, we use a sentinel
 # mapping to confirm if we need to setup the load config for a dataclass
 # on an initial run.
-IS_V1_LOAD_CONFIG_SETUP: set[type] = set()
+IS_V1_CONFIG_SETUP: set[type] = set()
 
 # Since the dump process doesn't use Parsers currently, we use a sentinel
 # mapping to confirm if we need to setup the dump config for a dataclass
@@ -57,10 +60,16 @@ DATACLASS_FIELD_TO_JSON_PATH: dict[type, dict[str, PathType]] = defaultdict(dict
 # V1: A cached mapping, per dataclass, of instance field name to JSON path
 DATACLASS_FIELD_TO_ALIAS_PATH_FOR_LOAD: dict[type, dict[str, Sequence[PathType]]] = defaultdict(dict)
 
-# V1: A cached mapping, per dataclass, of instance field name to JSON field
+# V1 Dump: A cached mapping, per dataclass, of instance field name to alias path
+DATACLASS_FIELD_TO_ALIAS_PATH_FOR_DUMP = defaultdict(dict)
+
+# V1: A cached mapping, per dataclass, of instance field name to alias
 DATACLASS_FIELD_TO_ALIAS_FOR_LOAD: dict[type, dict[str, Sequence[str]]] = defaultdict(dict)
 
-# A cached mapping, per dataclass, of instance field name to JSON field
+# V1: A cached mapping, per dataclass, of instance field name to alias
+DATACLASS_FIELD_TO_ALIAS_FOR_DUMP: dict[type, dict[str, str]] = defaultdict(dict)
+
+# A cached mapping, per dataclass, of instance field name to alias
 DATACLASS_FIELD_TO_ALIAS: dict[type, dict[str, str]] = defaultdict(dict)
 
 # A cached mapping, per dataclass, of instance field name to `SkipIf` condition
@@ -191,8 +200,8 @@ def setup_dump_config_for_cls_if_needed(cls: type) -> None:
           attribute.
     """
 
-
-def v1_dataclass_field_to_alias(cls: type) -> dict[str, Sequence[str]]: ...
+def v1_dataclass_field_to_alias_for_dump(cls: type) -> dict[str, Sequence[str]]: ...
+def v1_dataclass_field_to_alias_for_load(cls: type) -> dict[str, Sequence[str]]: ...
 
 def _setup_v1_load_config_for_cls(cls: type):
     """

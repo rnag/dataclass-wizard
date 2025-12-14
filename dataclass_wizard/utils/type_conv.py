@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 __all__ = ['as_bool',
            'as_int',
            'as_int_v1',

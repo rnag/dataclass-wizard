@@ -18,7 +18,7 @@ from json import dumps, JSONEncoder
 from typing import Any
 from uuid import UUID
 
-from ..dumpers import asdict
+from ..loader_selection import asdict
 
 
 class SafeEncoder(JSONEncoder):

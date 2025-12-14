@@ -17,7 +17,11 @@ from .decorators import (process_patterned_date_time,
                          setup_recursive_safe_function,
                          setup_recursive_safe_function_for_generic)
 from .enums import KeyAction, KeyCase
-from .models import Extras, PatternBase, TypeInfo
+from .models import Extras, PatternBase, TypeInfo, SIMPLE_TYPES
+from .type_conv import (
+    as_datetime_v1, as_date_v1, as_int_v1,
+    as_time_v1, as_timedelta, TRUTHY_VALUES,
+)
 from ..abstractions import AbstractLoaderGenerator
 from ..bases import AbstractMeta, BaseLoadHook, META
 from ..class_helper import (create_meta,
@@ -27,7 +31,7 @@ from ..class_helper import (create_meta,
                             dataclass_init_field_names,
                             get_meta,
                             is_subclass_safe,
-                            v1_dataclass_field_to_alias,
+                            v1_dataclass_field_to_alias_for_load,
                             CLASS_TO_LOAD_FUNC,
                             DATACLASS_FIELD_TO_ALIAS_PATH_FOR_LOAD)
 from ..constants import CATCH_ALL, TAG, PY311_OR_ABOVE, PACKAGE_NAME
@@ -44,10 +48,6 @@ from ..utils.dataclass_compat import _set_new_attribute
 from ..utils.function_builder import FunctionBuilder
 from ..utils.object_path import v1_safe_get
 from ..utils.string_conv import possible_json_keys
-from ..utils.type_conv import (
-    as_datetime_v1, as_date_v1, as_int_v1,
-    as_time_v1, as_timedelta, TRUTHY_VALUES,
-)
 from ..utils.typing_compat import (eval_forward_ref_if_needed,
                                    get_args,
                                    get_keys_for_typed_dict,
@@ -56,31 +56,6 @@ from ..utils.typing_compat import (eval_forward_ref_if_needed,
                                    is_typed_dict,
                                    is_typed_dict_type_qualifier,
                                    is_union)
-
-
-# Atomic immutable types which don't require any recursive handling and for which deepcopy
-# returns the same object. We can provide a fast-path for these types in asdict and astuple.
-_SIMPLE_TYPES = (
-    # Common JSON Serializable types
-    NoneType,
-    bool,
-    int,
-    float,
-    str,
-    # Other common types
-    complex,
-    bytes,
-    # TODO support
-    # Other types that are also unaffected by deepcopy
-    # types.EllipsisType,
-    # types.NotImplementedType,
-    # types.CodeType,
-    # types.BuiltinFunctionType,
-    # types.FunctionType,
-    # type,
-    # range,
-    # property,
-)
 
 
 class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
@@ -507,9 +482,9 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
 
             # TODO disable for dataclasses
 
-            if (possible_tp in _SIMPLE_TYPES
+            if (possible_tp in SIMPLE_TYPES
                 or is_subclass_safe(
-                    get_origin_v2(possible_tp), _SIMPLE_TYPES)):
+                    get_origin_v2(possible_tp), SIMPLE_TYPES)):
 
                 tn = tp_new.type_name(extras)
                 type_checks.extend([
@@ -716,8 +691,10 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         if is_annotated(type_ann):
             # Given `Annotated[T, ...]`, we only need `T`
             type_ann, *field_extras = get_args(type_ann)
+            type_ann = eval_forward_ref_if_needed(type_ann, extras['cls'])
             origin = get_origin_v2(type_ann)
             name = getattr(origin, '__name__', origin)
+
             # Check for Custom Patterns for date / time / datetime
             for extra in field_extras:
                 if isinstance(extra, PatternBase):
@@ -746,7 +723,7 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
 
         # -> Atomic, immutable types which don't require
         #    any iterative / recursive handling.
-        elif origin in _SIMPLE_TYPES or is_subclass_safe(origin, _SIMPLE_TYPES):
+        elif origin in SIMPLE_TYPES or is_subclass_safe(origin, SIMPLE_TYPES):
             load_hook = hooks.get(origin)
 
         elif (load_hook := hooks.get(origin)) is not None:
@@ -925,7 +902,7 @@ def check_and_raise_missing_fields(
                           and (f.default is MISSING
                                and f.default_factory is MISSING)]
 
-        missing_keys = [v1_dataclass_field_to_alias(cls).get(field, [field])[0]
+        missing_keys = [v1_dataclass_field_to_alias_for_load(cls).get(field, [field])[0]
                         for field in missing_fields]
 
     raise MissingFields(
@@ -1020,7 +997,7 @@ def load_func_for_dataclass(
     key_case: KeyCase | None = cls_loader.transform_json_field
     auto_key_case = key_case is KeyCase.AUTO
 
-    field_to_aliases = v1_dataclass_field_to_alias(cls)
+    field_to_aliases = v1_dataclass_field_to_alias_for_load(cls)
     check_aliases = True if field_to_aliases else False
 
     field_to_paths = DATACLASS_FIELD_TO_ALIAS_PATH_FOR_LOAD[cls]

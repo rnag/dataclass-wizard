@@ -1,5 +1,5 @@
 from dataclasses import MISSING, Field as _Field, dataclass
-from datetime import datetime, date, time, tzinfo
+from datetime import datetime, date, time, tzinfo, timezone, timedelta
 from typing import (Collection, Callable,
                     Generic, Sequence, TypeAlias)
 from typing import TypedDict, overload, Any, NotRequired, Self
@@ -13,6 +13,15 @@ from ..utils.object_path import PathType
 
 # Type for a string or a collection of strings.
 _STR_COLLECTION: TypeAlias = str | Collection[str]
+
+SIMPLE_TYPES: tuple[type, ...]
+SCALAR_TYPES: tuple[type, ...]
+
+# UTC Time Zone
+UTC: timezone
+
+# UTC time zone (no offset)
+ZERO: timedelta
 
 
 @dataclass(order=True)
@@ -33,6 +42,8 @@ class TypeInfo:
     prefix: str = 'v'
     # index of assignment (ex. `2 -> v1[2]`, *or* a string `"key" -> v4["key"]`)
     index: int | None = None
+    # explicit value name (overrides prefix + index)
+    val_name: str | None = None
     # indicates if we are currently in Optional,
     # e.g. `typing.Optional[...]` *or* `typing.Union[T, ...*T2, None]`
     in_optional: bool = False
@@ -616,6 +627,7 @@ class Field(_Field):
                  path: PathType | None,
                  default, default_factory, init, repr, hash, compare,
                  metadata, kw_only, doc):
+        ...
 
     # In Python 3.10, dataclasses adds a new parameter to the :class:`Field`
     # constructor: `kw_only`

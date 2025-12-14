@@ -7,6 +7,10 @@ from uuid import UUID
 import pytest
 
 
+# Ref: https://docs.pytest.org/en/6.2.x/example/parametrize.html#parametrizing-conditional-raising
+from contextlib import nullcontext as does_not_raise
+
+
 @dataclass
 class SampleClass:
     """Sample dataclass model for various test scenarios."""

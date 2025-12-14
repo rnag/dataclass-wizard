@@ -317,7 +317,7 @@ class Container(list[T]):
     def to_json(self, encoder=json.dumps,
                 **encoder_kwargs):
 
-        from .dumpers import asdict
+        from .loader_selection import asdict
 
         cls = self.__model__
         list_of_dict = [asdict(o, cls=cls) for o in self]
@@ -328,7 +328,7 @@ class Container(list[T]):
                      encoder=json.dump,
                      **encoder_kwargs):
 
-        from .dumpers import asdict
+        from .loader_selection import asdict
 
         cls = self.__model__
         list_of_dict = [asdict(o, cls=cls) for o in self]
@@ -510,7 +510,7 @@ def finalize_skip_if(skip_if, operand_1, conditional):
     return f'{operand_1} {conditional}'
 
 
-def get_skip_if_condition(skip_if, _locals, operand_2):
+def get_skip_if_condition(skip_if, _locals, operand_2=None, condition_i=None, condition_var='_skip_if_'):
     """
     Retrieves the skip condition based on the provided `Condition` object.
 
@@ -518,6 +518,8 @@ def get_skip_if_condition(skip_if, _locals, operand_2):
         skip_if (Condition): The condition to evaluate.
         _locals (dict[str, Any]): A dictionary of local variables for condition evaluation.
         operand_2 (str): The secondary operand (e.g., a variable or value).
+        condition_i (Condition): The condition var index.
+        condition_var (str): The variable name to evaluate.
 
     Returns:
         Any: The result of the evaluated condition or a string representation for custom values.
@@ -541,5 +543,8 @@ def get_skip_if_condition(skip_if, _locals, operand_2):
         return str(skip_if)
 
     # Update locals (as `val` is not a builtin)
+    if operand_2 is None:
+        operand_2 = f'{condition_var}{condition_i}'
+
     _locals[operand_2] = skip_if.val
     return f'{skip_if.op} {operand_2}'

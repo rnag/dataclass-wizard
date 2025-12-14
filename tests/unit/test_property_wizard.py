@@ -103,6 +103,16 @@ def test_property_wizard_does_not_error_when_forward_refs_are_declared():
 
     """
     @dataclass
+    class Car:
+        tires: int
+
+    @dataclass
+    class Truck:
+        color: str
+
+    globals().update(locals())
+
+    @dataclass
     class Vehicle(metaclass=property_wizard):
 
         fire_truck: 'Truck'
@@ -117,14 +127,6 @@ def test_property_wizard_does_not_error_when_forward_refs_are_declared():
         @wheels.setter
         def wheels(self, wheels: Union[int, str]):
             self._wheels = int(wheels)
-
-    @dataclass
-    class Car:
-        tires: int
-
-    @dataclass
-    class Truck:
-        color: str
 
     truck = Truck('red')
 
