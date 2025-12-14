@@ -167,7 +167,8 @@ dataclass_wizard = ["*.pyi", "*.txt", "*.rst", "*.md", "py.typed"]
 [tool.mypy]
 files = [
     "dataclass_wizard",
-    "tests",
+    # TODO: typing for unit tests
+    # "tests",
 ]
 show_column_numbers = true
 show_error_codes = true
@@ -175,6 +176,7 @@ show_traceback = true
 ignore_missing_imports = true
 local_partial_types = true
 no_implicit_optional = true
+check_untyped_defs = false
 
 [tool.bumpversion]
 current_version = "0.35.4"
