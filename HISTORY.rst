@@ -3,11 +3,31 @@ History
 =======
 
 
-0.36.0 (2025-12-??)
--------------------
+0.36.0 (2025-12-14)
+------------------
+
 **Features and Improvements**
 
-* Rename `v1_key_case` to `v1_case`
+* Introduce ``DataclassWizard`` as the preferred base class for the v1 API.
+  This class auto-applies the ``@dataclass`` decorator to subclasses, reducing
+  boilerplate and clarifying the recommended usage going forward.
+* Add explicit v1 dump support via a new ``v1/dumpers.py`` implementation.
+  This refactor improves separation of concerns and results in better
+  serialization performance when v1 is enabled.
+* Update default usage examples and documentation to reflect the new
+  ``DataclassWizard`` API and explicit ``load_case`` / ``dump_case`` configuration.
+* Fix annotation resolution for older Python versions by routing
+  through ``get_resolved_annotations()``.
+
+**API Changes**
+
+* Rename ``v1_key_case`` to ``v1_case`` for clarity and consistency with related
+  v1 configuration options.
+
+**Internal Changes**
+
+* Refactor v1 load/dump selection logic to route through the new v1 loader and
+  dumper pipeline when enabled.
 
 0.35.4 (2025-12-12)
 -------------------
