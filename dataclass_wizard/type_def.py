@@ -166,7 +166,7 @@ class ExplicitNullType:
     __slots__ = ()  # Saves memory by preventing the creation of instance dictionaries
 
     # Class-level instance variable for singleton control
-    _instance: ExplicitNullType | None = None
+    _instance: "ExplicitNullType | None" = None
 
     def __new__(cls):
         if cls._instance is None:
