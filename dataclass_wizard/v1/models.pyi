@@ -15,6 +15,7 @@ from ..utils.object_path import PathType
 _STR_COLLECTION: TypeAlias = str | Collection[str]
 
 SIMPLE_TYPES: tuple[type, ...]
+SCALAR_TYPES: tuple[type, ...]
 
 # UTC Time Zone
 UTC: timezone

@@ -31,7 +31,6 @@ _BUILTIN_COLLECTION_TYPES = frozenset({
     tuple
 })
 
-
 # Atomic immutable types which don't require any recursive handling and for which deepcopy
 # returns the same object. We can provide a fast-path for these types in asdict and astuple.
 SIMPLE_TYPES = (
@@ -54,6 +53,13 @@ SIMPLE_TYPES = (
     # type,
     # range,
     # property,
+)
+
+SCALAR_TYPES = (
+    str,
+    int,
+    float,
+    bool,
 )
 
 

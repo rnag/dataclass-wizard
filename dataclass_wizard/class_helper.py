@@ -45,7 +45,7 @@ FIELD_NAME_TO_LOAD_PARSER = {}
 # Since the load process in V1 doesn't use Parsers currently, we use a sentinel
 # mapping to confirm if we need to setup the load config for a dataclass
 # on an initial run.
-IS_V1_LOAD_CONFIG_SETUP = set()
+IS_V1_CONFIG_SETUP = set()
 
 # Since the dump process doesn't use Parsers currently, we use a sentinel
 # mapping to confirm if we need to setup the dump config for a dataclass
@@ -326,8 +326,8 @@ def setup_dump_config_for_cls_if_needed(cls):
 
 def v1_dataclass_field_to_alias_for_dump(cls):
 
-    if cls not in IS_V1_LOAD_CONFIG_SETUP:
-        _setup_v1_load_config_for_cls(cls)
+    if cls not in IS_V1_CONFIG_SETUP:
+        _setup_v1_config_for_cls(cls)
 
     return DATACLASS_FIELD_TO_ALIAS_FOR_DUMP[cls]
 
@@ -339,14 +339,15 @@ def v1_dataclass_field_to_alias_for_load(
     # save=True
 ):
 
-    if cls not in IS_V1_LOAD_CONFIG_SETUP:
-        return _setup_v1_load_config_for_cls(cls)
+    if cls not in IS_V1_CONFIG_SETUP:
+        _setup_v1_config_for_cls(cls)
 
     return DATACLASS_FIELD_TO_ALIAS_FOR_LOAD[cls]
 
 def _process_field(name: str,
                    f: Field,
                    set_paths: bool,
+                   init: bool,
                    load_dataclass_field_to_path,
                    dump_dataclass_field_to_path,
                    load_dataclass_field_to_alias,
@@ -355,7 +356,7 @@ def _process_field(name: str,
 
     if f.path is not None:
         if set_paths:
-            if f.load_alias is not ExplicitNull:
+            if init and f.load_alias is not ExplicitNull:
                 load_dataclass_field_to_path[name] = f.path
             if not f.skip and f.dump_alias is not ExplicitNull:
                 dump_dataclass_field_to_path[name] = f.path[0]
@@ -366,7 +367,7 @@ def _process_field(name: str,
             dump_dataclass_field_to_alias[name] = ''
 
     else:
-        if f.load_alias is not None:
+        if init and f.load_alias is not None:
             load_dataclass_field_to_alias[name] = f.load_alias
         if f.skip:
             dump_dataclass_field_to_alias[name] = ExplicitNull
@@ -374,12 +375,9 @@ def _process_field(name: str,
             dump_dataclass_field_to_alias[name] = dump if isinstance(dump, str) else dump[0]
 
 
-def _setup_v1_load_config_for_cls(
-    cls,
-    # cls_loader,
-    # config,
-    # save=True
-):
+
+# Set up load and dump config for dataclass
+def _setup_v1_config_for_cls(cls):
 
     load_dataclass_field_to_alias = DATACLASS_FIELD_TO_ALIAS_FOR_LOAD[cls]
     dump_dataclass_field_to_alias = DATACLASS_FIELD_TO_ALIAS_FOR_DUMP[cls]
@@ -388,10 +386,10 @@ def _setup_v1_load_config_for_cls(
     dump_dataclass_field_to_path = DATACLASS_FIELD_TO_ALIAS_PATH_FOR_DUMP[cls]
 
     set_paths = False if dataclass_field_to_path else True
+    dataclass_field_to_skip_if = DATACLASS_FIELD_TO_SKIP_IF[cls]
 
-    for f in  dataclass_init_fields(cls):
-        # field_extras: Extras = {'config': config}
-
+    for f in dataclass_fields(cls):
+        init = f.init
         field_type = f.type = eval_forward_ref_if_needed(f.type, cls)
 
         # isinstance(f, Field) == True
@@ -399,7 +397,7 @@ def _setup_v1_load_config_for_cls(
         # Check if the field is a known `Field` subclass. If so, update
         # the class-specific mapping of JSON key to dataclass field name.
         if isinstance(f, Field):
-            _process_field(f.name, f, set_paths,
+            _process_field(f.name, f, set_paths, init,
                            dataclass_field_to_path,
                            dump_dataclass_field_to_path,
                            load_dataclass_field_to_alias,
@@ -408,11 +406,14 @@ def _setup_v1_load_config_for_cls(
         elif f.metadata:
             if value := f.metadata.get('__remapping__'):
                 if isinstance(value, Field):
-                    _process_field(f.name, value, set_paths,
+                    _process_field(f.name, value, set_paths, init,
                                    dataclass_field_to_path,
                                    dump_dataclass_field_to_path,
                                    load_dataclass_field_to_alias,
                                    dump_dataclass_field_to_alias)
+            elif value := f.metadata.get('__skip_if__'):
+                if isinstance(value, Condition):
+                    dataclass_field_to_skip_if[f.name] = value
 
         # Check for a "Catch All" field
         if field_type is CatchAll:
@@ -425,18 +426,19 @@ def _setup_v1_load_config_for_cls(
         # update the class-specific mapping of JSON key to dataclass field
         # name.
         elif is_annotated(field_type):
-            ann_type, *extras = get_args(field_type)
-            for extra in extras:
+            for extra in get_args(field_type)[1:]:
                 if isinstance(extra, Field):
-                    _process_field(f.name, extra, set_paths,
+                    _process_field(f.name, extra, set_paths, init,
                                    dataclass_field_to_path,
                                    dump_dataclass_field_to_path,
                                    load_dataclass_field_to_alias,
                                    dump_dataclass_field_to_alias)
+                elif isinstance(extra, Condition):
+                    dataclass_field_to_skip_if[f.name] = extra
+                    if not getattr(extra, '_wrapped', False):
+                        raise InvalidConditionError(cls, f.name) from None
 
-    IS_V1_LOAD_CONFIG_SETUP.add(cls)
-
-    return load_dataclass_field_to_alias
+    IS_V1_CONFIG_SETUP.add(cls)
 
 
 def call_meta_initializer_if_needed(cls, package_name=PACKAGE_NAME):

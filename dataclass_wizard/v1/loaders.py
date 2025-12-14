@@ -691,8 +691,10 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         if is_annotated(type_ann):
             # Given `Annotated[T, ...]`, we only need `T`
             type_ann, *field_extras = get_args(type_ann)
+            type_ann = eval_forward_ref_if_needed(type_ann, extras['cls'])
             origin = get_origin_v2(type_ann)
             name = getattr(origin, '__name__', origin)
+
             # Check for Custom Patterns for date / time / datetime
             for extra in field_extras:
                 if isinstance(extra, PatternBase):

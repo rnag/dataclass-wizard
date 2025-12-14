@@ -44,7 +44,7 @@ FIELD_NAME_TO_LOAD_PARSER: dict[type, DictWithLowerStore[str, AbstractParser]] =
 # Since the load process in V1 doesn't use Parsers currently, we use a sentinel
 # mapping to confirm if we need to setup the load config for a dataclass
 # on an initial run.
-IS_V1_LOAD_CONFIG_SETUP: set[type] = set()
+IS_V1_CONFIG_SETUP: set[type] = set()
 
 # Since the dump process doesn't use Parsers currently, we use a sentinel
 # mapping to confirm if we need to setup the dump config for a dataclass

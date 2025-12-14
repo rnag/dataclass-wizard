@@ -18,7 +18,7 @@ from uuid import UUID
 
 from .decorators import setup_recursive_safe_function, setup_recursive_safe_function_for_generic
 from .enums import KeyCase, DateTimeTo
-from .models import Extras, TypeInfo, SIMPLE_TYPES, PatternBase, UTC, ZERO
+from .models import Extras, TypeInfo, SIMPLE_TYPES, PatternBase, UTC, ZERO, SCALAR_TYPES
 from .type_conv import datetime_to_timestamp
 from ..abstractions import AbstractDumperGenerator
 from ..bases import AbstractMeta, BaseDumpHook, META
@@ -32,7 +32,7 @@ from ..constants import CATCH_ALL, TAG, PACKAGE_NAME
 from ..errors import (ParseError, MissingFields, MissingData, JSONWizardError)
 from ..loader_selection import get_dumper, asdict
 from ..log import LOG
-from ..models import get_skip_if_condition
+from ..models import get_skip_if_condition, finalize_skip_if
 from ..type_def import (
     DefFactory, NoneType, JSONObject,
     PyLiteralString,
@@ -561,6 +561,7 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
         if is_annotated(type_ann):
             # Given `Annotated[T, ...]`, we only need `T`
             type_ann, *field_extras = get_args(type_ann)
+            type_ann = eval_forward_ref_if_needed(type_ann, extras['cls'])
             origin = get_origin_v2(type_ann)
             name = getattr(origin, '__name__', origin)
             # Check for Custom Patterns for date / time / datetime
@@ -607,18 +608,25 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
 
             # Special case for Optional[x], which is actually Union[x, None]
             if len(args) == 2 and NoneType in args:
-                if tp.val_name:
+                origin = args[0]
+                # optional simple type: (str, int, float, bool, Literal, Any)
+                is_simple_type = origin in SCALAR_TYPES or origin is Any or origin is Literal
+
+                val_name = None
+                o = tp.v()
+
+                if is_simple_type:
+                    val_name = tp.val_name or 'v1'
+                    o = tp.v()
+                elif tp.val_name:
                     val_name = 'v0'
                     o = f'(v0 := {tp.v()})'
-                else:
-                    val_name = None
-                    o = tp.v()
-                new_tp = tp.replace(origin=args[0], args=None, name=None, val_name=val_name)
+                new_tp = tp.replace(origin=origin, args=None, name=None, val_name=val_name)
                 new_tp.in_optional = True
 
                 string = cls.get_string_for_annotation(new_tp, extras)
 
-                return f'None if {o} is None else {string}'
+                return string if is_simple_type else f'None if {o} is None else {string}'
 
         # -> Literal[X, Y, ...]
         elif origin is Literal:
@@ -889,7 +897,7 @@ def dump_func_for_dataclass(
     skip_defaults_if_condition = get_skip_if_condition(
         meta.skip_defaults_if, new_locals, '_skip_defaults_value')
 
-    skip_defaults = True if meta.skip_defaults or meta.skip_defaults_if else False
+    skip_defaults = True if meta.skip_defaults else False
     skip_if = True if field_to_skip_if or skip_if_condition else False
     skip_any = True if skip_if or skip_defaults else False
 
@@ -954,6 +962,7 @@ def dump_func_for_dataclass(
         required_field_assigns = []
         default_assigns = []
         path_assigns = []
+        name_to_skip_condition = {}
 
         if cls_fields_list:
 
@@ -963,7 +972,10 @@ def dump_func_for_dataclass(
                     name = f.name
                     default = field_to_default.get(name, ExplicitNull)
                     has_default = default is not ExplicitNull
-                    skip_field = f'_skip_{i}'
+                    has_skip_if = False
+                    # TODO: This is if we want to check if field is in `exclude`
+                    #  (not huge performance gain)
+                    # skip_field = f'_skip_{i}'
                     default_value = f'_default_{i}'
 
                     # Check for Field Aliases + Paths
@@ -973,31 +985,52 @@ def dump_func_for_dataclass(
                         if key is ExplicitNull:
                             continue
 
-                        # A dataclass field which specifies a "JSON Path".
-                        elif has_paths and (
-                            path := field_to_path.get(name)
-                        ) is not None:  # AliasPath(...)
-
-                            if has_default:
-                                # with fn_gen.if_(val_is_found):
-                                # with fn_gen.if_(f'{val} is not MISSING'):
-                                new_locals[default_value] = default
-                                string = generate_field_code(cls_dumper, extras, f, i)
-                                key_part = ''.join(f'[{p!r}]' for p in path)
-                                line = f'paths{key_part} = {string}'
-                                default_assigns.append((name, key, default_value, line))
-                            else:
-                                key_part = ''.join(f'[{p!r}]' for p in path)
-                                string = generate_field_code(cls_dumper, extras, f, i, f'o.{name}')
-                                path_assigns.append(f'paths{key_part} = {string}')
-
-                            continue
-
                     elif key_case is None:
                         key = name
 
                     else:
                         key = key_case(name)
+
+                    # If field has an explicit `SkipIf` condition
+                    if skip_if:
+                        has_skip_if = True
+                        if (_skip_condition := field_to_skip_if.get(name)) is not None:
+                            _skip_if = get_skip_if_condition(
+                                _skip_condition, new_locals, condition_i=i)
+                            _final_skip_if = finalize_skip_if(_skip_condition, 'v1', _skip_if)
+                            name_to_skip_condition[name] = f'not ({_final_skip_if})'
+
+                        # If Meta `skip_if` has a value
+                        elif skip_if_condition:
+                            _final_skip_if = finalize_skip_if(
+                                meta.skip_if, 'v1', skip_if_condition)
+                            name_to_skip_condition[name] = f'not ({_final_skip_if})'
+
+                        # # Else, proceed as normal
+                        # else:
+                        #     field_assignments.append(f"if not {skip_field}:")
+
+
+                    # A dataclass field which specifies a "JSON Path".
+                    if has_paths and (
+                        path := field_to_path.get(name)
+                    ) is not None:  # AliasPath(...)
+
+                        if has_default:
+                            # with fn_gen.if_(val_is_found):
+                            # with fn_gen.if_(f'{val} is not MISSING'):
+                            new_locals[default_value] = default
+                            string = generate_field_code(cls_dumper, extras, f, i)
+                            key_part = ''.join(f'[{p!r}]' for p in path)
+                            line = f'paths{key_part} = {string}'
+                            default_assigns.append((name, key, default_value, line))
+                        else:
+                            key_part = ''.join(f'[{p!r}]' for p in path)
+                            var_name = 'v1' if has_skip_if else f'o.{name}'
+                            string = generate_field_code(cls_dumper, extras, f, i, var_name)
+                            path_assigns.append((name, f'paths{key_part} = {string}'))
+
+                        continue
 
                     if has_default:
                         # with fn_gen.if_(val_is_found):
@@ -1009,12 +1042,22 @@ def dump_func_for_dataclass(
                     else:
                         # TODO confirm this is ok
                         # vars_for_fields.append(f'{name}={var}')
-                        string = generate_field_code(cls_dumper, extras, f, i, f'o.{name}')
-                        required_field_assigns.append((name, key, string))
+                        if has_skip_if:
+                            string = generate_field_code(cls_dumper, extras, f, i, 'v1')
+                            line = f'result[{key!r}] = {string}'
+                            default_assigns.append((name, ExplicitNull, ExplicitNull, line))
+                        else:
+                            string = generate_field_code(cls_dumper, extras, f, i, f'o.{name}')
+                            required_field_assigns.append((name, key, string))
 
                 # Add assignments for `AliasPath(...)`
-                for line in path_assigns:
-                    fn_gen.add_line(line)
+                for (name, line) in path_assigns:
+                    if (condition := name_to_skip_condition.get(name)) is not None:
+                        fn_gen.add_line(f'v1 = o.{name}')
+                        with fn_gen.if_(condition):
+                            fn_gen.add_line(line)
+                    else:
+                        fn_gen.add_line(line)
 
                 # Add required dataclass field assignments
                 fn_gen.add_line('result = {')
@@ -1025,8 +1068,26 @@ def dump_func_for_dataclass(
                 # Add default (optional) dataclass field assignments
                 for (name, key, default_name, line) in default_assigns:
                     fn_gen.add_line(f'v1 = o.{name}')
-                    with fn_gen.if_(f'add_defaults or v1 != {default_name}'):
-                        fn_gen.add_line(line)
+                    def_condition = f'add_defaults or v1 != {default_name}'
+
+                    if skip_defaults_if_condition:
+                        _final_skip_if = finalize_skip_if(
+                            meta.skip_defaults_if, 'v1', skip_defaults_if_condition)
+                        # TODO missing skip individual condition!!
+                        with fn_gen.if_(f'(add_defaults or v1 != {default_name}) and not ({_final_skip_if})'):
+                            fn_gen.add_line(line)
+
+                    elif (condition := name_to_skip_condition.get(name)) is not None:
+                        if default_name is ExplicitNull:  # Required field with skip condition
+                            with fn_gen.if_(condition):
+                                fn_gen.add_line(line)
+                        else:
+                            with fn_gen.if_(f'(add_defaults or v1 != {default_name}) and {condition}'):
+                                fn_gen.add_line(line)
+
+                    else:
+                        with fn_gen.if_(def_condition):
+                            fn_gen.add_line(line)
 
             # create a broad `except Exception` block, as we will be
             # re-raising all exception(s) as a custom `ParseError`.
@@ -1096,7 +1157,6 @@ def dump_func_for_dataclass(
 
             else:
                 condition = f'v0 := o.{catch_all_name_stripped}'
-                # f"if not {skip_field}:")
 
             with fn_gen.if_(condition):
                 with fn_gen.for_(f"k, v in v0.items()"):
