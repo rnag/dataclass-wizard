@@ -874,7 +874,7 @@ def dump_func_for_dataclass(
     check_aliases = True if field_to_alias else False
 
     field_to_path = DATACLASS_FIELD_TO_ALIAS_PATH_FOR_DUMP[cls]
-    has_alias_paths = True if field_to_path else False
+    has_paths = True if field_to_path else False
 
     # A cached mapping of dataclass field name to its default value, either
     # via a `default` or `default_factory` argument.
@@ -883,12 +883,15 @@ def dump_func_for_dataclass(
 
     # A cached mapping of dataclass field name to its SkipIf condition.
     field_to_skip_if = dataclass_field_to_skip_if(cls)
+
     skip_if_condition = get_skip_if_condition(
         meta.skip_if, new_locals, '_skip_value')
     skip_defaults_if_condition = get_skip_if_condition(
         meta.skip_defaults_if, new_locals, '_skip_defaults_value')
+
     skip_defaults = True if meta.skip_defaults or meta.skip_defaults_if else False
-    has_skip_any = True if field_to_skip_if or skip_defaults or skip_if_condition else False
+    skip_if = True if field_to_skip_if or skip_if_condition else False
+    skip_any = True if skip_if or skip_defaults else False
 
     # Fix for using `auto_assign_tags` and `raise_on_unknown_json_key` together
     # See https://github.com/rnag/dataclass-wizard/issues/137
@@ -944,38 +947,36 @@ def dump_func_for_dataclass(
         if has_defaults:
             fn_gen.add_line('add_defaults = not skip_defaults')
 
-        if has_alias_paths:
+        if has_paths:
             new_locals['NestedDict'] = NestedDict
             fn_gen.add_line('paths = NestedDict()')
 
         required_field_assigns = []
         default_assigns = []
+        path_assigns = []
 
         if cls_fields_list:
 
             with fn_gen.try_():
-
-                # if expect_tag_as_unknown_key and pre_assign:
-                #     with fn_gen.if_(f'{meta.tag_key!r} in o'):
-                #         fn_gen.add_line('i+=1')
 
                 for i, f in enumerate(cls_fields_list):
                     name = f.name
                     default = field_to_default.get(name, ExplicitNull)
                     has_default = default is not ExplicitNull
                     skip_field = f'_skip_{i}'
-                    # skip_field = f'_skip_{i}'
-                    # skip_if_field = f'_skip_if_{i}'
                     default_value = f'_default_{i}'
 
+                    # Check for Field Aliases + Paths
+                    # NOTE: `key` is used later, so we need to capture it.
                     if check_aliases and (key := field_to_alias.get(name)) is not None:
                         # special case: skip serialization for field, e.g. `Alias(..., skip=True)`
                         if key is ExplicitNull:
                             continue
-                        elif not key:
-                            # Empty string, will be the case for a dataclass
-                            # field which specifies a "JSON Path".
-                            path = field_to_path[name]
+
+                        # A dataclass field which specifies a "JSON Path".
+                        elif has_paths and (
+                            path := field_to_path.get(name)
+                        ) is not None:  # AliasPath(...)
 
                             if has_default:
                                 # with fn_gen.if_(val_is_found):
@@ -988,112 +989,15 @@ def dump_func_for_dataclass(
                             else:
                                 key_part = ''.join(f'[{p!r}]' for p in path)
                                 string = generate_field_code(cls_dumper, extras, f, i, f'o.{name}')
-                                fn_gen.add_line(f'paths{key_part} = {string}')
+                                path_assigns.append(f'paths{key_part} = {string}')
+
                             continue
 
-                            # required_field_assigns.append((name, key, string))
-
-
-                    elif key_case is not None:
-                        key = key_case(name)
-
-                    #     if len(paths) == 1:
-                    #         path = paths[0]
-                    #
-                    #         # add the first part (top-level key) of the path
-                    #         if set_aliases:
-                    #             aliases.add(path[0])
-                    #
-                    #         f_assign = f'field={name!r}; {val}=safe_get(o, {path!r}, {not has_default})'
-                    #     else:
-                    #         f_assign = None
-                    #         fn_gen.add_line(f'field={name!r}')
-                    #         condition = []
-                    #         last_idx = len(paths) - 1
-                    #         for k, path in enumerate(paths):
-                    #
-                    #             # add the first part (top-level key) of each path
-                    #             if set_aliases:
-                    #                 aliases.add(path[0])
-                    #
-                    #             if k == last_idx:
-                    #                 condition.append(
-                    #                     f'({val} := safe_get(o, {path!r}, {not has_default})) is not MISSING')
-                    #             else:
-                    #                 condition.append(
-                    #                     f'({val} := safe_get(o, {path!r}, False)) is not MISSING')
-                    #
-                    #         val_is_found = '(' + '\n     or '.join(condition) + ')'
-                    #
-                    #     # TODO raise some useful message like (ex. on IndexError):
-                    #     #       Field "my_str" of type tuple[float, str] in A2 has invalid value ['123']
-
-                    else:
+                    elif key_case is None:
                         key = name
 
-                    # if (check_aliases
-                    #         and (_aliases := field_to_aliases.get(name)) is not None):
-                    #
-                    #     if len(_aliases) == 1:
-                    #         alias = _aliases[0]
-                    #
-                    #         if set_aliases:
-                    #             aliases.add(alias)
-                    #
-                    #         f_assign = f'field={name!r}; {val}=o.get({alias!r}, MISSING)'
-                    #     else:
-                    #         f_assign = None
-                    #
-                    #         # add possible JSON keys
-                    #         if set_aliases:
-                    #             aliases.update(_aliases)
-                    #
-                    #         fn_gen.add_line(f'field={name!r}')
-                    #         condition = [f'({val} := o.get({alias!r}, MISSING)) is not MISSING'
-                    #                      for alias in _aliases]
-                    #
-                    #         val_is_found = '(' + '\n     or '.join(condition) + ')'
-                    #
-                    #
-                    # elif key_case is None:
-                    #
-                    #     if set_aliases:
-                    #         aliases.add(name)
-                    #
-                    #     f_assign = f'field={name!r}; {val}=o.get(field, MISSING)'
-                    #
-                    # elif auto_key_case:
-                    #     f_assign = None
-                    #
-                    #     _aliases = possible_json_keys(name)
-                    #
-                    #     if set_aliases:
-                    #         # add field name itself
-                    #         aliases.add(name)
-                    #         # add possible JSON keys
-                    #         aliases.update(_aliases)
-                    #
-                    #     fn_gen.add_line(f'field={name!r}')
-                    #     condition = [f'({val} := o.get(field, MISSING)) is not MISSING']
-                    #     for alias in _aliases:
-                    #         condition.append(f'({val} := o.get({alias!r}, MISSING)) is not MISSING')
-                    #
-                    #     val_is_found = '(' + '\n     or '.join(condition) + ')'
-                    #
-                    # else:
-                    #     alias = key_case(name)
-                    #
-                    #     if set_aliases:
-                    #         aliases.add(alias)
-                    #
-                    #     if alias != name:
-                    #         field_to_aliases[name] = (alias, )
-                    #
-                    #     f_assign = f'field={name!r}; {val}=o.get({alias!r}, MISSING)'
-
-
-                    # if f_assign is not None:
-                    #     fn_gen.add_line(f_assign)
+                    else:
+                        key = key_case(name)
 
                     if has_default:
                         # with fn_gen.if_(val_is_found):
@@ -1108,12 +1012,17 @@ def dump_func_for_dataclass(
                         string = generate_field_code(cls_dumper, extras, f, i, f'o.{name}')
                         required_field_assigns.append((name, key, string))
 
+                # Add assignments for `AliasPath(...)`
+                for line in path_assigns:
+                    fn_gen.add_line(line)
 
+                # Add required dataclass field assignments
                 fn_gen.add_line('result = {')
                 for (_, key, string) in required_field_assigns:
                     fn_gen.add_line(f'  {key!r}: {string},')
                 fn_gen.add_line('}')
 
+                # Add default (optional) dataclass field assignments
                 for (name, key, default_name, line) in default_assigns:
                     fn_gen.add_line(f'v1 = o.{name}')
                     with fn_gen.if_(f'add_defaults or v1 != {default_name}'):
@@ -1198,7 +1107,7 @@ def dump_func_for_dataclass(
             with fn_gen.for_('k in exclude'):
                 fn_gen.add_line('del result[k]')
 
-        if has_alias_paths:
+        if has_paths:
             fn_gen.add_line('result.update(paths)')
 
         fn_gen.add_line(f'return result if dict_factory is dict else dict_factory(result)')
