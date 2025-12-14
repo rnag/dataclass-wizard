@@ -17,24 +17,22 @@ from typing import (
 from uuid import UUID
 
 from .decorators import setup_recursive_safe_function, setup_recursive_safe_function_for_generic
+from .enums import KeyCase, DateTimeTo
 from .models import Extras, TypeInfo, SIMPLE_TYPES, PatternBase, UTC, ZERO
-
+from .type_conv import datetime_to_timestamp
 from ..abstractions import AbstractDumperGenerator
-from ..bases import BaseLoadHook, AbstractMeta, BaseDumpHook, META
+from ..bases import AbstractMeta, BaseDumpHook, META
 from ..class_helper import (
-    v1_dataclass_field_to_alias_for_dump, json_field_to_dataclass_field,
-    CLASS_TO_LOAD_FUNC, dataclass_fields, get_meta, is_subclass_safe, DATACLASS_FIELD_TO_ALIAS_PATH_FOR_DUMP,
-    dataclass_init_fields, dataclass_field_to_default, create_meta, dataclass_init_field_names, CLASS_TO_DUMP_FUNC,
-    dataclass_field_names,
+    v1_dataclass_field_to_alias_for_dump, dataclass_fields, get_meta, is_subclass_safe,
+    DATACLASS_FIELD_TO_ALIAS_PATH_FOR_DUMP,
+    dataclass_field_to_default, create_meta, CLASS_TO_DUMP_FUNC,
+    dataclass_field_names, dataclass_field_to_skip_if,
 )
 from ..constants import CATCH_ALL, TAG, PACKAGE_NAME
-from ..decorators import _identity
-from .enums import KeyAction, KeyCase, DateTimeTo
-from ..errors import (ParseError, MissingFields, UnknownKeysError,
-                      MissingData, JSONWizardError)
+from ..errors import (ParseError, MissingFields, MissingData, JSONWizardError)
 from ..loader_selection import get_dumper, asdict
 from ..log import LOG
-
+from ..models import get_skip_if_condition
 from ..type_def import (
     DefFactory, NoneType, JSONObject,
     PyLiteralString,
@@ -44,8 +42,6 @@ from ..type_def import (
 from ..utils.dataclass_compat import _set_new_attribute
 from ..utils.dict_helper import NestedDict
 from ..utils.function_builder import FunctionBuilder
-from ..utils.object_path import safe_get
-from .type_conv import datetime_to_timestamp
 from ..utils.typing_compat import (
     is_typed_dict, get_args, is_annotated,
     eval_forward_ref_if_needed, get_origin_v2, is_union,
@@ -794,16 +790,10 @@ def dump_func_for_dataclass(
     # TODO dynamically generate for multiple nested classes at once
 
     # Tuple describing the fields of this dataclass.
-    fields = dataclass_fields(cls)
+    cls_fields = dataclass_fields(cls)
 
-    # cls_init_fields = dataclass_init_fields(cls, True)
-
-    cls_fields = list(dataclass_fields(cls))
+    cls_fields_list = list(cls_fields)
     cls_field_names = dataclass_field_names(cls)
-
-    field_to_default = dataclass_field_to_default(cls)
-
-    has_defaults = True if field_to_default else False
 
     # Get the loader for the class, or create a new one as needed.
     cls_dumper = get_dumper(cls, base_cls=dumper_cls, v1=True)
@@ -829,7 +819,7 @@ def dump_func_for_dataclass(
 
         new_locals = {
             'cls': cls,
-            'fields': fields,
+            'fields': cls_fields,
         }
 
         extras: Extras = {
@@ -865,7 +855,7 @@ def dump_func_for_dataclass(
             meta.bind_to(cls, is_default=False)
 
         new_locals = extras['locals']
-        new_locals['fields'] = fields
+        new_locals['fields'] = cls_fields
 
         # TODO need a way to auto-magically do this
         extras['cls'] = cls
@@ -877,25 +867,40 @@ def dump_func_for_dataclass(
     if key_case is KeyCase.AUTO:
         key_case = None
 
+    # A cached mapping of each dataclass field to the resolved key name in a
+    # JSON or dictionary object; useful so we don't need to do a case
+    # transformation (via regex) each time.
     field_to_alias = v1_dataclass_field_to_alias_for_dump(cls)
     check_aliases = True if field_to_alias else False
 
     field_to_path = DATACLASS_FIELD_TO_ALIAS_PATH_FOR_DUMP[cls]
     has_alias_paths = True if field_to_path else False
 
+    # A cached mapping of dataclass field name to its default value, either
+    # via a `default` or `default_factory` argument.
+    field_to_default = dataclass_field_to_default(cls)
+    has_defaults = True if field_to_default else False
+
+    # A cached mapping of dataclass field name to its SkipIf condition.
+    field_to_skip_if = dataclass_field_to_skip_if(cls)
+    skip_if_condition = get_skip_if_condition(
+        meta.skip_if, new_locals, '_skip_value')
+    skip_defaults_if_condition = get_skip_if_condition(
+        meta.skip_defaults_if, new_locals, '_skip_defaults_value')
+    skip_defaults = True if meta.skip_defaults or meta.skip_defaults_if else False
+    has_skip_any = True if field_to_skip_if or skip_defaults or skip_if_condition else False
+
     # Fix for using `auto_assign_tags` and `raise_on_unknown_json_key` together
     # See https://github.com/rnag/dataclass-wizard/issues/137
-    has_tag_assigned = meta.tag is not None
-    if (has_tag_assigned and
-        # Ensure `tag_key` isn't a dataclass field,
-        # to avoid issues with our logic.
-        # See https://github.com/rnag/dataclass-wizard/issues/148
-        meta.tag_key not in cls_field_names):
-            expect_tag_as_unknown_key = True
-    else:
-        expect_tag_as_unknown_key = False
-
-    skip_defaults = True if meta.skip_defaults or meta.skip_defaults_if else False
+    # has_tag_assigned = meta.tag is not None
+    # if (has_tag_assigned and
+    #     # Ensure `tag_key` isn't a dataclass field,
+    #     # to avoid issues with our logic.
+    #     # See https://github.com/rnag/dataclass-wizard/issues/148
+    #     meta.tag_key not in cls_field_names):
+    #         expect_tag_as_unknown_key = True
+    # else:
+    #     expect_tag_as_unknown_key = False
 
     # Tag key to populate when a dataclass is in a `Union` with other types.
     # tag_key = meta.tag_key or TAG
@@ -907,9 +912,10 @@ def dump_func_for_dataclass(
         catch_all_name_stripped = catch_all_name.rstrip('?')
         catch_all_idx = cls_field_names.index(catch_all_name_stripped)
         # remove catch all field from list, so we don't iterate over it
-        catch_all_field = cls_fields.pop(catch_all_idx)
+        # noinspection PyTypeChecker
+        del cls_fields_list[catch_all_idx]
     else:
-        catch_all_name_stripped = catch_all_idx = catch_all_field = None
+        catch_all_name_stripped = None
 
     # if on_unknown_key is not None:
     #     should_raise = on_unknown_key is KeyAction.RAISE
@@ -945,7 +951,7 @@ def dump_func_for_dataclass(
         required_field_assigns = []
         default_assigns = []
 
-        if cls_fields:
+        if cls_fields_list:
 
             with fn_gen.try_():
 
@@ -953,10 +959,11 @@ def dump_func_for_dataclass(
                 #     with fn_gen.if_(f'{meta.tag_key!r} in o'):
                 #         fn_gen.add_line('i+=1')
 
-                for i, f in enumerate(cls_fields):
+                for i, f in enumerate(cls_fields_list):
                     name = f.name
                     default = field_to_default.get(name, ExplicitNull)
                     has_default = default is not ExplicitNull
+                    skip_field = f'_skip_{i}'
                     # skip_field = f'_skip_{i}'
                     # skip_if_field = f'_skip_if_{i}'
                     default_value = f'_default_{i}'
@@ -1174,7 +1181,7 @@ def dump_func_for_dataclass(
 
         if has_catch_all:
             if (default := field_to_default.get(catch_all_name_stripped, ExplicitNull)) is not ExplicitNull:
-                default_value = f'_default_{len(cls_fields)}'
+                default_value = f'_default_{len(cls_fields_list)}'
                 new_locals[default_value] = default
                 condition = f"(v0 := o.{catch_all_name_stripped}) != {default_value}"
 
