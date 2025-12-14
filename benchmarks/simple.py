@@ -143,18 +143,6 @@ def test_dump(data, n):
     benchmarks.simple.simple - [INFO] mashumaro            0.008702
     """
 
-    # [ RESULTS ]
-    # benchmarks.simple.simple - [INFO] dataclass-wizard     0.065604
-    # benchmarks.simple.simple - [INFO] asdict (dataclasses) 0.087785
-    # benchmarks.simple.simple - [INFO] dataclass-factory    0.084215
-    # benchmarks.simple.simple - [INFO] dataclasses-json     1.278573
-    # benchmarks.simple.simple - [INFO] jsons                6.192119
-    # benchmarks.simple.simple - [INFO] dacite (not applicable) -- skipped
-    # benchmarks.simple.simple - [INFO] pydantic             0.066679
-    # benchmarks.simple.simple - [INFO] marshmallow          0.000481
-    # benchmarks.simple.simple - [INFO] attrs                0.122282
-    # benchmarks.simple.simple - [INFO] mashumaro            0.009025
-
     c1 = MyClassWizard.from_dict(data)
     c2 = factory.load(data, MyClass)
     c3 = MyClassDJ.from_dict(data)

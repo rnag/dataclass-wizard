@@ -71,20 +71,13 @@ class SerializerHookMixin(Protocol):
 class JSONPyWizard(JSONSerializable, SerializerHookMixin):
     """Helper for JSONWizard that ensures dumping to JSON keeps keys as-is."""
 
-    def __init_subclass__(cls,
-                          str: bool = True,
-                          debug: bool | str | int = False,
-                          key_case: KeyCase | str | None = None,
-                          _key_transform: LetterCase | str | None = None):
-        """Bind child class to DumpMeta with no key transformation."""
+
+@dataclass_transform()
+class JSONSerializable(DataclassWizard, SerializerHookMixin): ...
 
 
 @dataclass_transform()
-class DataclassWizard(AbstractJSONWizard, SerializerHookMixin): ...
-
-
-@dataclass_transform()
-class JSONSerializable(DataclassWizard, SerializerHookMixin):
+class DataclassWizard(AbstractJSONWizard, SerializerHookMixin):
     """
     Mixin class to allow a `dataclass` sub-class to be easily converted
     to and from JSON.
@@ -177,12 +170,16 @@ class JSONSerializable(DataclassWizard, SerializerHookMixin):
         """
         ...
 
-    # noinspection PyShadowingBuiltins
     def __init_subclass__(cls,
-                          str: bool = True,
+                          str: bool = False,
                           debug: bool | str | int = False,
-                          key_case: KeyCase | str | None = None,
-                          _key_transform: LetterCase | str | None = None):
+                          case: KeyCase | str | None = None,
+                          dump_case: KeyCase | str | None = None,
+                          load_case: KeyCase | str | None = None,
+                          _key_transform: LetterCase | str | None = None,
+                          _v1_default: bool = True,
+                          _apply_dataclass: bool = True,
+                          **dc_kwargs):
         """
         Checks for optional settings and flags that may be passed in by the
         sub-class, and calls the Meta initializer when :class:`Meta` is sub-classed.
