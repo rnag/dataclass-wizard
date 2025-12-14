@@ -35,8 +35,7 @@ for complex and *nested dataclass* models!
     >>> from dataclasses import field
     >>> from dataclass_wizard import DataclassWizard
     ...
-    >>> `DataclassWizard` auto-applies `@dataclass` to subclasses
-    >>> @dataclass
+    >>> # DataclassWizard auto-applies @dataclass to subclasses
     ... class MyClass(DataclassWizard, load_case='AUTO', dump_case='CAMEL'):
     ...     my_str: str | None
     ...     is_active_tuple: tuple[bool, ...]

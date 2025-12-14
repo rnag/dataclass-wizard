@@ -18,6 +18,49 @@ def _str_fn():
                       ['return self.to_json(indent=2)'])
 
 
+def _configure_wizard_class(cls,
+                            str=True,
+                            debug=False,
+                            case=None,
+                            dump_case=None,
+                            load_case=None,
+                            _key_transform=None):
+    load_meta_kwargs = {}
+
+    if case is not None:
+        load_meta_kwargs['v1'] = True
+        load_meta_kwargs['v1_case'] = case
+
+    if dump_case is not None:
+        load_meta_kwargs['v1'] = True
+        load_meta_kwargs['v1_dump_case'] = dump_case
+
+    if load_case is not None:
+        load_meta_kwargs['v1'] = True
+        load_meta_kwargs['v1_load_case'] = load_case
+
+    if _key_transform is not None:
+        DumpMeta(key_transform=_key_transform).bind_to(cls)
+
+    if debug:
+        default_lvl = logging.DEBUG
+        logging.basicConfig(level=default_lvl)
+        # minimum logging level for logs by this library
+        min_level = default_lvl if isinstance(debug, bool) else debug
+        # set `v1_debug` flag for the class's Meta
+        load_meta_kwargs['v1_debug'] = min_level
+
+    # Calls the Meta initializer when inner :class:`Meta` is sub-classed.
+    call_meta_initializer_if_needed(cls)
+
+    if load_meta_kwargs:
+        LoadMeta(**load_meta_kwargs).bind_to(cls)
+
+    # Add a `__str__` method to the subclass, if needed
+    if str:
+        _set_new_attribute(cls, '__str__', _str_fn())
+
+
 @dataclass_transform()
 class DataclassWizard(AbstractJSONWizard):
 
@@ -65,7 +108,7 @@ class DataclassWizard(AbstractJSONWizard):
 
     # noinspection PyShadowingBuiltins
     def __init_subclass__(cls,
-                          str=True,
+                          str=False,
                           debug=False,
                           case=None,
                           dump_case=None,
@@ -77,53 +120,13 @@ class DataclassWizard(AbstractJSONWizard):
 
         # Apply the @dataclass decorator.
         if not is_dataclass(cls):
+            # noinspection PyArgumentList
             dataclass(cls, **dc_kwargs)
 
-        common_logic(cls, str, debug, case, dump_case, load_case, _key_transform)
-
-def common_logic(cls,
-                 str=True,
-                 debug=False,
-                 case=None,
-                 dump_case=None,
-                 load_case=None,
-                 _key_transform=None):
-    load_meta_kwargs = {}
-
-    if case is not None:
-        load_meta_kwargs['v1'] = True
-        load_meta_kwargs['v1_case'] = case
-
-    if dump_case is not None:
-        load_meta_kwargs['v1'] = True
-        load_meta_kwargs['v1_dump_case'] = dump_case
-
-    if load_case is not None:
-        load_meta_kwargs['v1'] = True
-        load_meta_kwargs['v1_load_case'] = load_case
-
-    if _key_transform is not None:
-        DumpMeta(key_transform=_key_transform).bind_to(cls)
-
-    if debug:
-        default_lvl = logging.DEBUG
-        logging.basicConfig(level=default_lvl)
-        # minimum logging level for logs by this library
-        min_level = default_lvl if isinstance(debug, bool) else debug
-        # set `v1_debug` flag for the class's Meta
-        load_meta_kwargs['v1_debug'] = min_level
-
-    # Calls the Meta initializer when inner :class:`Meta` is sub-classed.
-    call_meta_initializer_if_needed(cls)
-
-    if load_meta_kwargs:
-        LoadMeta(**load_meta_kwargs).bind_to(cls)
-
-    # Add a `__str__` method to the subclass, if needed
-    if str:
-        _set_new_attribute(cls, '__str__', _str_fn())
+        _configure_wizard_class(cls, str, debug, case, dump_case, load_case, _key_transform)
 
 
+# noinspection PyAbstractClass
 @dataclass_transform()
 class JSONSerializable(DataclassWizard):
 
@@ -138,11 +141,7 @@ class JSONSerializable(DataclassWizard):
                           load_case=None,
                           _key_transform=None):
 
-        super().__init_subclass__()
-
-        common_logic(cls, str, debug, case, dump_case, load_case, _key_transform)
-
-
+        super().__init_subclass__(str, debug, case, dump_case, load_case, _key_transform)
 
 
 def _str_pprint_fn():
@@ -166,12 +165,14 @@ class JSONPyWizard(JSONWizard):
                           str=True,
                           debug=False,
                           case=None,
+                          dump_case=None,
+                          load_case=None,
                           _key_transform=None):
         """Bind child class to DumpMeta with no key transformation."""
 
         # Call JSONSerializable.__init_subclass__()
         # set `key_transform_with_dump` for the class's Meta
-        super().__init_subclass__(False, debug, case, _key_transform='NONE')
+        super().__init_subclass__(False, debug, case, dump_case, load_case, 'NONE')
 
         # Add a `__str__` method to the subclass, if needed
         if str:
