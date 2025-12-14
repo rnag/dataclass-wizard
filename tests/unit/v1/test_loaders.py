@@ -3408,7 +3408,7 @@ def test_per_field_skip_if():
         class _(JSONPyWizard.Meta):
             v1 = True
 
-        my_str: Annotated['str | None', SkipIfNone]
+        my_str: 'Annotated[str | None, SkipIfNone]'
         other_str: 'str | None' = None
         third_str: 'str | None' = skip_if_field(EQ(''), default=None)
         my_bool: bool = False
@@ -3444,9 +3444,9 @@ def test_is_truthy_and_is_falsy_conditions():
         class _(JSONPyWizard.Meta):
             v1 = True
 
-        my_str: Annotated['str | None', SkipIf(IS_TRUTHY())]  # Skip if truthy
+        my_str: 'Annotated[str | None, SkipIf(IS_TRUTHY())]'  # Skip if truthy
         my_bool: bool = skip_if_field(IS_FALSY())  # Skip if falsy
-        my_int: Annotated['int | None', SkipIf(IS_FALSY())] = None  # Skip if falsy
+        my_int: 'Annotated[int | None, SkipIf(IS_FALSY())]' = None  # Skip if falsy
 
     # Test IS_TRUTHY condition (field will be skipped if truthy)
     obj = Example(my_str="Hello", my_bool=True, my_int=5)
@@ -3476,7 +3476,7 @@ def test_skip_if_truthy_or_falsy():
             v1 = True
             v1_dump_case = 'C'
 
-        my_str: Annotated['str | None', SkipIf(IS_TRUTHY())]
+        my_str: 'Annotated[str | None, SkipIf(IS_TRUTHY())]'
         my_bool: bool = skip_if_field(IS_FALSY())
 
     # Test with truthy `my_str` and falsy `my_bool` should be skipped
