@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import (
     Any, Type, Dict, List, Tuple, Iterable, Sequence, Union,
     NamedTupleMeta,
-    SupportsFloat, AnyStr, Text, Callable, Optional, cast, Literal, Annotated
+    SupportsFloat, AnyStr, Text, Callable, Optional, cast, Literal, Annotated, NamedTuple
 )
 from uuid import UUID
 

@@ -80,7 +80,11 @@ class JSONPyWizard(JSONSerializable, SerializerHookMixin):
 
 
 @dataclass_transform()
-class JSONSerializable(AbstractJSONWizard, SerializerHookMixin):
+class DataclassWizard(AbstractJSONWizard, SerializerHookMixin): ...
+
+
+@dataclass_transform()
+class JSONSerializable(DataclassWizard, SerializerHookMixin):
     """
     Mixin class to allow a `dataclass` sub-class to be easily converted
     to and from JSON.

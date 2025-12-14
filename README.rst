@@ -32,11 +32,12 @@ for complex and *nested dataclass* models!
 **Behold, the power of the Dataclass Wizard**::
 
     >>> from __future__ import annotations
-    >>> from dataclasses import dataclass, field
-    >>> from dataclass_wizard import JSONWizard
+    >>> from dataclasses import field
+    >>> from dataclass_wizard import DataclassWizard
     ...
+    >>> `DataclassWizard` auto-applies `@dataclass` to subclasses
     >>> @dataclass
-    ... class MyClass(JSONWizard):
+    ... class MyClass(DataclassWizard, load_case='AUTO', dump_case='CAMEL'):
     ...     my_str: str | None
     ...     is_active_tuple: tuple[bool, ...]
     ...     list_of_int: list[int] = field(default_factory=list)

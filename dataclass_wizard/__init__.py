@@ -70,6 +70,7 @@ For full documentation and more advanced usage, please see
 
 __all__ = [
     # Base exports
+    'DataclassWizard',
     'JSONSerializable',
     'JSONPyWizard',
     'JSONWizard',
@@ -130,7 +131,7 @@ from .models import (env_field, json_field, json_key, path_field, skip_if_field,
                      EQ, NE, LT, LE, GT, GE, IS, IS_NOT, IS_TRUTHY, IS_FALSY)
 from .environ.wizard import EnvWizard
 from .property_wizard import property_wizard
-from .serial_json import JSONWizard, JSONPyWizard, JSONSerializable
+from .serial_json import DataclassWizard, JSONWizard, JSONPyWizard, JSONSerializable
 from .wizard_mixins import JSONListWizard, JSONFileWizard, TOMLWizard, YAMLWizard
 
 

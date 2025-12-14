@@ -219,14 +219,14 @@ def test_load(request, data, data_2, data_dacite, n):
     """
     [ RESULTS ON MAC OS X ]
 
-    benchmarks.complex.complex - [INFO] dataclass-wizard     0.325364
-    benchmarks.complex.complex - [INFO] dataclass-factory    0.773195
-    benchmarks.complex.complex - [INFO] dataclasses-json     28.435088
-    benchmarks.complex.complex - [INFO] dacite               6.287875
-    benchmarks.complex.complex - [INFO] mashumaro            0.344701
-    benchmarks.complex.complex - [INFO] pydantic             0.547749
-    benchmarks.complex.complex - [INFO] jsons                29.978993
-    benchmarks.complex.complex - [INFO] jsons (strict)       34.052532
+    benchmarks.complex.complex - [INFO] dataclass-wizard     0.317641
+    benchmarks.complex.complex - [INFO] dataclass-factory    0.751124
+    benchmarks.complex.complex - [INFO] dacite               6.350958
+    benchmarks.complex.complex - [INFO] mashumaro            0.343612
+    benchmarks.complex.complex - [INFO] pydantic             0.538801
+    benchmarks.complex.complex - [INFO] dataclasses-json     28.214992
+    benchmarks.complex.complex - [INFO] jsons                31.735730
+    benchmarks.complex.complex - [INFO] jsons (strict)       34.855084
     """
     g = globals().copy()
     g.update(locals())
@@ -276,14 +276,14 @@ def test_dump(request, data, data_2, data_dacite, n):
     """
     [ RESULTS ON MAC OS X ]
 
-    benchmarks.complex.complex - [INFO] dataclass-wizard     1.606120
-    benchmarks.complex.complex - [INFO] asdict (dataclasses) 2.006917
-    benchmarks.complex.complex - [INFO] dataclass-factory    0.979412
-    benchmarks.complex.complex - [INFO] dataclasses-json     13.740522
-    benchmarks.complex.complex - [INFO] mashumaro            0.289991
-    benchmarks.complex.complex - [INFO] pydantic             0.384267
-    benchmarks.complex.complex - [INFO] jsons                41.673240
-    benchmarks.complex.complex - [INFO] jsons (strict)       45.934885
+    benchmarks.complex.complex - [INFO] dataclass-wizard     0.405688
+    benchmarks.complex.complex - [INFO] asdict (dataclasses) 1.727631
+    benchmarks.complex.complex - [INFO] dataclass-factory    0.831178
+    benchmarks.complex.complex - [INFO] dataclasses-json     11.072727
+    benchmarks.complex.complex - [INFO] mashumaro            0.248298
+    benchmarks.complex.complex - [INFO] pydantic             0.316203
+    benchmarks.complex.complex - [INFO] jsons                37.361450
+    benchmarks.complex.complex - [INFO] jsons (strict)       31.578708
     """
     c1 = MyClassWizard.from_dict(data)
     c2 = factory.load(data_2, MyClass)

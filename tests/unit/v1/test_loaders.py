@@ -94,7 +94,7 @@ def test_auto_key_casing_with_optional_fields():
     from dataclass_wizard import JSONWizard
 
     @dataclass
-    class MyClass(JSONWizard, key_case='AUTO'):
+    class MyClass(JSONWizard, case='AUTO'):
         my_str: 'str | None'
         is_active_tuple: tuple[bool, ...]
         list_of_int: list[int] = field(default_factory=list)
