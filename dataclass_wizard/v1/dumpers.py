@@ -1,4 +1,5 @@
 # TODO cleanup imports
+from __future__ import annotations
 
 import collections.abc as abc
 from base64 import b64encode
@@ -787,6 +788,7 @@ def check_and_raise_missing_fields(
         None, o, cls, fields, None, missing_fields,
         missing_keys
     ) from None
+
 
 def dump_func_for_dataclass(
     cls: type,
