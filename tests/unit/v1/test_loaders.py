@@ -3474,6 +3474,7 @@ def test_skip_if_truthy_or_falsy():
 
         class _(JSONWizard.Meta):
             v1 = True
+            v1_dump_case = 'C'
 
         my_str: Annotated['str | None', SkipIf(IS_TRUTHY())]
         my_bool: bool = skip_if_field(IS_FALSY())
