@@ -28,12 +28,12 @@ from .class_helper import (
     dataclass_to_dumper, set_class_dumper,
     CLASS_TO_DUMP_FUNC, setup_dump_config_for_cls_if_needed, get_meta,
     dataclass_field_to_load_parser, dataclass_field_to_json_path, is_builtin, dataclass_field_to_skip_if,
-    v1_dataclass_field_to_alias,
+    v1_dataclass_field_to_alias_for_load, v1_dataclass_field_to_alias_for_dump,
 )
 from .constants import _DUMP_HOOKS, TAG, CATCH_ALL
 from .decorators import _alias
 from .errors import show_deprecation_warning
-from .loader_selection import _get_load_fn_for_dataclass
+from .loader_selection import _get_load_fn_for_dataclass, get_dumper, asdict
 from .log import LOG
 from .models import get_skip_if_condition, finalize_skip_if
 from .type_def import (
@@ -186,80 +186,6 @@ def setup_default_dumper(cls=DumpMixin):
     cls.register_dump_hook(timedelta, cls.dump_with_timedelta)
 
 
-def get_dumper(cls=None, create=True) -> Type[DumpMixin]:
-    """
-    Get the dumper for the class, using the following logic:
-
-        * Return the class if it's already a sub-class of :class:`DumpMixin`
-        * If `create` is enabled (which is the default), a new sub-class of
-          :class:`DumpMixin` for the class will be generated and cached on the
-          initial run.
-        * Otherwise, we will return the base dumper, :class:`DumpMixin`, which
-          can potentially be shared by more than one dataclass.
-
-    """
-    try:
-        return dataclass_to_dumper(cls)
-
-    except KeyError:
-
-        if hasattr(cls, _DUMP_HOOKS):
-            return set_class_dumper(cls, cls)
-
-        elif create:
-            cls_dumper = create_new_class(cls, (DumpMixin, ))
-            return set_class_dumper(cls, cls_dumper)
-
-        return set_class_dumper(cls, DumpMixin)
-
-
-def asdict(o: T,
-           *, cls=None,
-           dict_factory=dict,
-           exclude: 'Collection[str] | None' = None,
-           **kwargs) -> JSONObject:
-    # noinspection PyUnresolvedReferences
-    """Return the fields of a dataclass instance as a new dictionary mapping
-    field names to field values.
-
-    Example usage:
-
-      @dataclass
-      class C:
-          x: int
-          y: int
-
-      c = C(1, 2)
-      assert asdict(c) == {'x': 1, 'y': 2}
-
-    When directly invoking this function, an optional Meta configuration for
-    the dataclass can be specified via ``DumpMeta``; by default, this will
-    apply recursively to any nested dataclasses. Here's a sample usage of this
-    below::
-
-        >>> DumpMeta(key_transform='CAMEL').bind_to(MyClass)
-        >>> asdict(MyClass(my_str="value"))
-
-    If given, 'dict_factory' will be used instead of built-in dict.
-    The function applies recursively to field values that are
-    dataclass instances. This will also look into built-in containers:
-    tuples, lists, and dicts.
-    """
-    # This likely won't be needed, as ``dataclasses.fields`` already has this
-    # check.
-    # if not _is_dataclass_instance(obj):
-    #     raise TypeError("asdict() should be called on dataclass instances")
-
-    cls = cls or type(o)
-
-    try:
-        dump = CLASS_TO_DUMP_FUNC[cls]
-    except KeyError:
-        dump = dump_func_for_dataclass(cls)
-
-    return dump(o, dict_factory, exclude, **kwargs)
-
-
 def dump_func_for_dataclass(cls: Type[T],
                             config: Optional[META] = None,
                             nested_cls_to_dump_func: Dict[Type, Any] = None,
@@ -296,7 +222,7 @@ def dump_func_for_dataclass(cls: Type[T],
 
     # TODO this is temporary
     if meta.v1:
-        _ = v1_dataclass_field_to_alias(cls)
+        _ = v1_dataclass_field_to_alias_for_dump(cls)
     # Set up the initial dump config for the dataclass.
     setup_dump_config_for_cls_if_needed(cls)
 

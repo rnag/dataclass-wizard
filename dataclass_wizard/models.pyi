@@ -539,5 +539,7 @@ def finalize_skip_if(skip_if: Condition,
 
 def get_skip_if_condition(skip_if: Condition,
                           _locals: dict[str, Any],
-                          operand_2: str) -> 'str | bool':
+                          operand_2: str = None,
+                          condition_i: int = None,
+                          condition_var: str = '_skip_if_') -> 'str | bool':
     ...

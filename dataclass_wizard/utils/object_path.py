@@ -49,7 +49,7 @@ def v1_safe_get(data, path, raise_):
     except (IndexError, KeyError, AttributeError) as e:
         if raise_:
             p = locals().get('p', path)  # to suppress "unbound local variable"
-            raise _format_err(e, current_data, path, p) from None
+            raise _format_err(e, current_data, path, p, True) from None
 
         return MISSING
 

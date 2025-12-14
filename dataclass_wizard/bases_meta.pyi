@@ -5,12 +5,13 @@ both import directly from `bases`.
 
 """
 from dataclasses import MISSING
+from datetime import tzinfo
 from typing import Sequence
 
 from .bases import AbstractMeta, META, AbstractEnvMeta
 from .constants import TAG
 from .enums import DateTimeTo, LetterCase, LetterCasePriority
-from .v1.enums import KeyAction, KeyCase
+from .v1.enums import KeyAction, KeyCase, DateTimeTo as V1DateTimeTo
 from .models import Condition
 from .type_def import E, EnvFileType
 
@@ -37,7 +38,7 @@ class BaseJSONWizardMeta(AbstractMeta):
 
     @classmethod
     def bind_to(cls, dataclass: type, create=True, is_default=True,
-                base_loader=None):
+                base_loader=None, base_dumper=None):
         ...
 
 
@@ -66,7 +67,7 @@ def LoadMeta(*, debug_enabled: 'bool | int | str' = MISSING,
              auto_assign_tags: bool = MISSING,
              v1: bool = MISSING,
              v1_debug: bool | int | str = False,
-             v1_key_case: KeyCase | str | None = MISSING,
+             v1_case: KeyCase | str | None = MISSING,
              v1_field_to_alias: dict[str, str | Sequence[str]] = MISSING,
              v1_on_unknown_key: KeyAction | str | None = KeyAction.IGNORE,
              v1_unsafe_parse_dataclass_in_union: bool = MISSING) -> META:
@@ -82,6 +83,12 @@ def DumpMeta(*, debug_enabled: 'bool | int | str' = MISSING,
              skip_defaults: bool = MISSING,
              skip_if: Condition = MISSING,
              skip_defaults_if: Condition = MISSING,
+             v1: bool = MISSING,
+             v1_debug: bool | int | str = False,
+             v1_case: KeyCase | str | None = MISSING,
+             v1_field_to_alias: dict[str, str | Sequence[str]] = MISSING,
+             v1_dump_date_time_as: V1DateTimeTo | str = MISSING,
+             v1_assume_naive_datetime_tz: tzinfo | None = None,
              ) -> META:
     ...
 

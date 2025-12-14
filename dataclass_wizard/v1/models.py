@@ -1,7 +1,7 @@
 import hashlib
 from collections import defaultdict
 from dataclasses import MISSING, Field as _Field
-from datetime import datetime, date, time, tzinfo, timezone
+from datetime import datetime, date, time, tzinfo, timezone, timedelta
 from typing import TYPE_CHECKING, Any, TypedDict, cast
 from zoneinfo import ZoneInfo
 
@@ -11,7 +11,6 @@ from ..log import LOG
 from ..type_def import DefFactory, ExplicitNull, PyNotRequired, NoneType
 from ..utils.function_builder import FunctionBuilder
 from ..utils.object_path import split_object_path
-from ..utils.type_conv import as_datetime_v1, as_date_v1, as_time_v1
 from ..utils.typing_compat import get_origin_v2
 
 
@@ -20,7 +19,10 @@ if TYPE_CHECKING:  # pragma: no cover
 
 
 # UTC Time Zone
-UTC = timezone.utc
+UTC: timezone = timezone.utc
+
+# UTC time zone (no offset)
+ZERO: timedelta = timedelta(0)
 
 _BUILTIN_COLLECTION_TYPES = frozenset({
     list,
@@ -28,6 +30,37 @@ _BUILTIN_COLLECTION_TYPES = frozenset({
     dict,
     tuple
 })
+
+# Atomic immutable types which don't require any recursive handling and for which deepcopy
+# returns the same object. We can provide a fast-path for these types in asdict and astuple.
+SIMPLE_TYPES = (
+    # Common JSON Serializable types
+    NoneType,
+    bool,
+    int,
+    float,
+    str,
+    # Other common types
+    complex,
+    bytes,
+    # TODO support
+    # Other types that are also unaffected by deepcopy
+    # types.EllipsisType,
+    # types.NotImplementedType,
+    # types.CodeType,
+    # types.BuiltinFunctionType,
+    # types.FunctionType,
+    # type,
+    # range,
+    # property,
+)
+
+SCALAR_TYPES = (
+    str,
+    int,
+    float,
+    bool,
+)
 
 
 class TypeInfo:
@@ -48,6 +81,8 @@ class TypeInfo:
         'prefix',
         # index of assignment (ex. `2 -> v1[2]`, *or* a string `"key" -> v4["key"]`)
         'index',
+        # explicit value name (overrides prefix + index)
+        'val_name',
         # optional attribute, that indicates if we should wrap the
         # assignment with `name` -- ex. `(1, 2)` -> `deque((1, 2))`
         '_wrapped',
@@ -62,6 +97,7 @@ class TypeInfo:
                  i=1,
                  field_i=1,
                  prefix='v',
+                 val_name=None,
                  index=None):
 
         self.name = name
@@ -70,6 +106,7 @@ class TypeInfo:
         self.i = i
         self.field_i = field_i
         self.prefix = prefix
+        self.val_name = val_name
         self.index = index
 
     def replace(self, **changes):
@@ -118,8 +155,11 @@ class TypeInfo:
             extras, force=True, bound=bound)
 
     def v(self):
-        return (f'{self.prefix}{self.i}' if (idx := self.index) is None
-                else f'{self.prefix}{self.i}[{idx}]')
+        val_name = self.val_name
+        if val_name is None:
+            val_name = f'{self.prefix}{self.i}'
+        return (val_name if (idx := self.index) is None
+                else f'{val_name}[{idx}]')
 
     def v_and_next(self):
         next_i = self.i + 1
@@ -188,7 +228,10 @@ class TypeInfo:
                 tn = name
                 LOG.debug(f'Ensuring %s=%s', tn, name)
                 extras['locals'].setdefault(tn, tp)
+            elif mod == 'builtins':
+                tn = name
             else:
+                # TODO might need to handle `var_name`
                 tn = f'{prefix}{name}_{self.field_i}'
                 LOG.debug(f'Adding %s=%s', tn, name)
                 extras['locals'][tn] = tp
@@ -259,6 +302,8 @@ class PatternBase:
 
     @setup_recursive_safe_function(add_cls=False)
     def load_to_pattern(self, tp: TypeInfo, extras: Extras):
+        from .type_conv import as_datetime_v1, as_date_v1, as_time_v1
+
         pb = cast(PatternBase, tp.origin)
         patterns = pb.patterns
         tz_info = getattr(pb, 'tz_info', None)
@@ -624,6 +669,7 @@ elif PY310_OR_ABOVE:  # pragma: no cover
               load=None,
               dump=None,
               skip=False,
+              path=None,
               default=MISSING,
               default_factory=MISSING,
               init=True, repr=True,
@@ -690,6 +736,10 @@ elif PY310_OR_ABOVE:  # pragma: no cover
             super().__init__(default, default_factory, init, repr, hash,
                              compare, metadata, kw_only)
 
+            if path is not None:
+                if isinstance(path, str):
+                    path = split_object_path(path) if path else (path, )
+
             self.load_alias = load_alias
             self.dump_alias = dump_alias
             self.skip = skip
@@ -701,6 +751,7 @@ else:  # pragma: no cover
               load=None,
               dump=None,
               skip=False,
+              path=None,
               default=MISSING,
               default_factory=MISSING,
               init=True, repr=True,
@@ -763,6 +814,10 @@ else:  # pragma: no cover
 
             super().__init__(default, default_factory, init, repr, hash,
                              compare, metadata)
+
+            if path is not None:
+                if isinstance(path, str):
+                    path = split_object_path(path) if path else (path,)
 
             self.load_alias = load_alias
             self.dump_alias = dump_alias

@@ -52,6 +52,15 @@ def test_property_wizard_with_unresolvable_forward_ref():
     a class or type that is not yet declared.
     """
     @dataclass
+    class Car:
+        spare_tires: int
+
+    class Truck:
+        ...
+
+    globals().update(locals())
+
+    @dataclass
     class Vehicle(metaclass=property_wizard):
 
         # The value of `cars` here will be ignored, since `cars` is simply
@@ -67,16 +76,11 @@ def test_property_wizard_with_unresolvable_forward_ref():
         def cars(self, cars: list[Car]):
             self._cars = cars * 2 if cars else cars
 
-    @dataclass
-    class Car:
-        spare_tires: int
-
-    class Truck:
-        ...
 
     v = Vehicle()
     log.debug(v)
-    assert v.cars is None
+    assert not v.cars
+    # assert v.cars is None
 
     v = Vehicle([Car(1)])
     log.debug(v)

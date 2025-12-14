@@ -13,15 +13,14 @@ from .class_helper import (
     META_INITIALIZER, _META,
     get_outer_class_name, get_class_name, create_new_class,
     json_field_to_dataclass_field, dataclass_field_to_json_field,
-    field_to_env_var, DATACLASS_FIELD_TO_ALIAS_FOR_LOAD,
+    field_to_env_var, DATACLASS_FIELD_TO_ALIAS_FOR_LOAD, DATACLASS_FIELD_TO_ALIAS_FOR_DUMP,
 )
 from .decorators import try_with_load
-from .dumpers import get_dumper
 from .enums import DateTimeTo, LetterCase, LetterCasePriority
-from .v1.enums import KeyAction, KeyCase
+from .v1.enums import KeyAction, KeyCase, DateTimeTo as V1DateTimeTo
 from .environ.loaders import EnvLoader
 from .errors import ParseError, show_deprecation_warning
-from .loader_selection import get_loader
+from .loader_selection import get_dumper, get_loader
 from .log import LOG
 from .type_def import E
 from .utils.type_conv import date_to_timestamp, as_enum
@@ -114,6 +113,10 @@ class BaseJSONWizardMeta(AbstractMeta):
                 AbstractMeta.json_key_to_field = cls.json_key_to_field
             if cls.v1_field_to_alias:
                 AbstractMeta.v1_field_to_alias = cls.v1_field_to_alias
+            if cls.v1_field_to_alias_dump:
+                AbstractMeta.v1_field_to_alias_dump = cls.v1_field_to_alias_dump
+            if cls.v1_field_to_alias_load:
+                AbstractMeta.v1_field_to_alias_load = cls.v1_field_to_alias_load
 
             # Create a new class of `Type[W]`, and then pass `create=False` so
             # that we don't create new loader / dumper for the class.
@@ -122,11 +125,13 @@ class BaseJSONWizardMeta(AbstractMeta):
 
     @classmethod
     def bind_to(cls, dataclass: type, create=True, is_default=True,
-                base_loader=None):
+                base_loader=None,
+                base_dumper=None):
 
         cls_loader = get_loader(dataclass, create=create,
                                 base_cls=base_loader, v1=cls.v1)
-        cls_dumper = get_dumper(dataclass, create=create)
+        cls_dumper = get_dumper(dataclass, create=create,
+                                base_cls=base_dumper, v1=cls.v1)
 
         if cls.v1_debug:
             _enable_debug_mode_if_needed(cls_loader, cls.v1_debug)
@@ -158,6 +163,10 @@ class BaseJSONWizardMeta(AbstractMeta):
                     if field not in dataclass_to_json_field:
                         dataclass_to_json_field[field] = json_key
 
+
+        if cls.v1_dump_date_time_as is not None:
+            cls.v1_dump_date_time_as = _as_enum_safe(cls, 'v1_dump_date_time_as', V1DateTimeTo)
+
         if cls.marshal_date_time_as is not None:
             enum_val = _as_enum_safe(cls, 'marshal_date_time_as', DateTimeTo)
 
@@ -179,28 +188,33 @@ class BaseJSONWizardMeta(AbstractMeta):
             cls_loader.transform_json_field = _as_enum_safe(
                 cls, 'key_transform_with_load', LetterCase)
 
-        if cls.v1_key_case is not None:
+        if (key_case := cls.v1_case) is not None:
+            cls.v1_load_case = cls.v1_dump_case = key_case
+            cls.v1_case = None
+
+        if cls.v1_load_case is not None:
             cls_loader.transform_json_field = _as_enum_safe(
-                cls, 'v1_key_case', KeyCase)
+                cls, 'v1_load_case', KeyCase)
+
+        if cls.v1_dump_case is not None:
+            cls_dumper.transform_dataclass_field = _as_enum_safe(
+                cls, 'v1_dump_case', KeyCase)
 
         if (field_to_alias := cls.v1_field_to_alias) is not None:
+            cls.v1_field_to_alias_dump = {
+                k: v if isinstance(v, str) else v[0]
+                for k, v in field_to_alias.items()
+            }
+            cls.v1_field_to_alias_load = field_to_alias
 
-            add_for_load = field_to_alias.pop('__load__', True)
-            add_for_dump = field_to_alias.pop('__dump__', True)
+        if (field_to_alias := cls.v1_field_to_alias_dump) is not None:
+            DATACLASS_FIELD_TO_ALIAS_FOR_DUMP[dataclass].update(field_to_alias)
 
-            # Convert string values to single-element tuples
-            field_to_aliases = {k: (v, ) if isinstance(v, str) else v
-                              for k, v in field_to_alias.items()}
-
-            if add_for_load:
-                DATACLASS_FIELD_TO_ALIAS_FOR_LOAD[dataclass].update(
-                    field_to_aliases
-                )
-
-            if add_for_dump:
-                dataclass_field_to_json_field(dataclass).update(
-                    {k: v[0] for k, v in field_to_aliases.items()}
-                )
+        if (field_to_alias := cls.v1_field_to_alias_load) is not None:
+            DATACLASS_FIELD_TO_ALIAS_FOR_LOAD[dataclass].update({
+                k: (v, ) if isinstance(v, str) else v
+                for k, v in field_to_alias.items()
+            })
 
         if cls.key_transform_with_dump is not None:
             cls_dumper.transform_dataclass_field = _as_enum_safe(
@@ -313,8 +327,14 @@ def LoadMeta(**kwargs) -> META:
     """
     base_dict = kwargs | {'__slots__': ()}
 
-    if 'key_transform' in kwargs:
-        base_dict['key_transform_with_load'] = base_dict.pop('key_transform')
+    if (v := base_dict.pop('key_transform', None)) is not None:
+        base_dict['key_transform_with_load'] = v
+
+    if (v := base_dict.pop('v1_case', None)) is not None:
+        base_dict['v1_load_case'] = v
+
+    if (v := base_dict.pop('v1_field_to_alias', None)) is not None:
+        base_dict['v1_field_to_alias_load'] = v
 
     # Create a new subclass of :class:`AbstractMeta`
     # noinspection PyTypeChecker
@@ -343,8 +363,14 @@ def DumpMeta(**kwargs) -> META:
     # Set meta attributes here.
     base_dict = kwargs | {'__slots__': ()}
 
-    if 'key_transform' in kwargs:
-        base_dict['key_transform_with_dump'] = base_dict.pop('key_transform')
+    if (v := base_dict.pop('key_transform', None)) is not None:
+        base_dict['key_transform_with_dump'] = v
+
+    if (v := base_dict.pop('v1_case', None)) is not None:
+        base_dict['v1_dump_case'] = v
+
+    if (v := base_dict.pop('v1_field_to_alias', None)) is not None:
+        base_dict['v1_field_to_alias_dump'] = v
 
     # Create a new subclass of :class:`AbstractMeta`
     # noinspection PyTypeChecker

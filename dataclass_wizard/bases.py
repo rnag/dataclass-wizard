@@ -1,12 +1,15 @@
+from __future__ import annotations
+
 from abc import ABCMeta, abstractmethod
-from typing import Callable, Type, Dict, Optional, ClassVar, Union, TypeVar
+from datetime import tzinfo
+from typing import Callable, Type, Dict, Optional, ClassVar, Union, TypeVar, Mapping, Sequence
 
 from .constants import TAG
 from .decorators import cached_class_property
 from .enums import DateTimeTo, LetterCase, LetterCasePriority
 from .models import Condition
 from .type_def import FrozenKeys, EnvFileType
-from .v1.enums import KeyAction, KeyCase
+from .v1.enums import KeyAction, KeyCase, DateTimeTo as V1DateTimeTo
 
 
 # Create a generic variable that can be 'AbstractMeta', or any subclass.
@@ -112,6 +115,8 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
         'recursive',
         'json_key_to_field',
         'v1_field_to_alias',
+        'v1_field_to_alias_dump',
+        'v1_field_to_alias_load',
         'tag',
     })
 
@@ -241,12 +246,24 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
     # Note: Enabling Debug mode may have a minor performance impact.
     v1_debug: ClassVar['bool | int | str'] = False
 
-    # Specifies the letter case used to match JSON keys when mapping them
-    # to dataclass fields.
+    # Specifies the letter case to use for JSON keys when both loading and dumping.
     #
-    # This setting determines how dataclass fields are transformed to match
-    # the expected case of JSON keys during lookup. It does not affect keys
-    # in `TypedDict` or `NamedTuple` subclasses.
+    # This is a convenience setting that applies the same key casing rule to
+    # both deserialization (load) and serialization (dump).
+    #
+    # If set, it is used as the default for both `v1_load_case` and
+    # `v1_dump_case`, unless either is explicitly specified.
+    #
+    # The setting is case-insensitive and supports shorthand assignment,
+    # such as using the string 'C' instead of 'CAMEL'.
+    v1_case: ClassVar[Union[KeyCase, str, None]] = None
+
+    # Specifies the letter case used to match JSON keys when mapping them
+    # to dataclass fields during deserialization.
+    #
+    # This setting determines how dataclass field names are transformed
+    # when looking up corresponding keys in the input JSON object. It does
+    # not affect keys in `TypedDict` or `NamedTuple` subclasses.
     #
     # By default, JSON keys are assumed to be in `snake_case`, and fields
     # are matched directly without transformation.
@@ -254,20 +271,66 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
     # The setting is case-insensitive and supports shorthand assignment,
     # such as using the string 'C' instead of 'CAMEL'.
     #
-    # If set to `A` or `AUTO`, all valid key casing transforms are attempted
-    # at runtime, and the result is cached for subsequent lookups.
-    v1_key_case: ClassVar[Union[KeyCase, str]] = None
+    # If set to `A` or `AUTO`, all supported key casing transforms are
+    # attempted at runtime, and the resolved transform is cached for
+    # subsequent lookups.
+    #
+    # If unset, this value defaults to `v1_case` when provided.
+    v1_load_case: ClassVar[Union[KeyCase, str, None]] = None
+
+    # Specifies the letter case used for JSON keys during serialization.
+    #
+    # This setting determines how dataclass field names are transformed
+    # when generating keys in the output JSON object.
+    #
+    # By default, field names are emitted in `snake_case`.
+    #
+    # The setting is case-insensitive and supports shorthand assignment,
+    # such as using the string 'P' instead of 'PASCAL'.
+    #
+    # If unset, this value defaults to `v1_case` when provided.
+    v1_dump_case: ClassVar[Union[KeyCase, str, None]] = None
+
+    # A custom mapping of dataclass fields to their JSON aliases (keys).
+    #
+    # Values may be a single alias string or a sequence of alias strings.
+    #
+    # - During deserialization (load), any listed alias for a field is accepted.
+    # - During serialization (dump), the first alias is used by default.
+    #
+    # This mapping overrides default key casing and implicit field-to-key
+    # transformations (e.g., "my_field" → "myField") for the affected fields.
+    #
+    # This setting applies to both load and dump unless explicitly overridden
+    # by `v1_field_to_alias_load` or `v1_field_to_alias_dump`.
+    v1_field_to_alias: ClassVar[
+        Mapping[str, Union[str, Sequence[str]]]
+    ] = None
 
     # A custom mapping of dataclass fields to their JSON aliases (keys) used
-    # during deserialization (`from_dict` or `from_json`) and serialization
-    # (`to_dict` or `to_json`).
+    # during deserialization only.
     #
-    # This mapping overrides default behavior, including implicit field-to-key
-    # transformations (e.g., "my_field" -> "myField").
+    # Values may be a single alias string or a sequence of alias strings.
+    # Any listed alias is accepted when mapping input JSON keys to
+    # dataclass fields.
     #
-    # By default, the reverse mapping (JSON alias to field) is applied during
-    # serialization, unless explicitly overridden.
-    v1_field_to_alias: ClassVar[Dict[str, str]] = None
+    # When set, this mapping overrides `v1_field_to_alias` for load behavior
+    # only.
+    v1_field_to_alias_load: ClassVar[
+        Mapping[str, Union[str, Sequence[str]]]
+    ] = None
+
+    # A custom mapping of dataclass fields to their JSON aliases (keys) used
+    # during serialization only.
+    #
+    # Values may be a single alias string or a sequence of alias strings.
+    # When a sequence is provided, the first alias is used as the output key.
+    #
+    # When set, this mapping overrides `v1_field_to_alias` for dump behavior
+    # only.
+    v1_field_to_alias_dump: ClassVar[
+        Mapping[str, Union[str, Sequence[str]]]
+    ] = None
 
     # Defines the action to take when an unknown JSON key is encountered during
     # `from_dict` or `from_json` calls. An unknown key is one that does not map
@@ -284,6 +347,35 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
     # the presence of a `tag_key`, i.e., a dictionary key identifying the
     # tag field in the input. Defaults to False.
     v1_unsafe_parse_dataclass_in_union: ClassVar[bool] = False
+
+    # Specifies how :class:`datetime` (and :class:`time`, where applicable)
+    # objects are serialized during output.
+    #
+    # This setting controls how temporal values are emitted when converting
+    # a dataclass to a Python dictionary (`to_dict`) or a JSON string
+    # (`to_json`). It applies to serialization only and does not affect
+    # deserialization.
+    #
+    # By default, values are serialized using ISO 8601 string format.
+    #
+    # Supported values are defined by :class:`DateTimeTo`.
+    v1_dump_date_time_as: ClassVar[Union[V1DateTimeTo, str]] = None
+
+    # Specifies the timezone to assume for naive :class:`datetime` values
+    # during serialization.
+    #
+    # By default, naive datetimes are rejected to avoid ambiguous or
+    # environment-dependent behavior.
+    #
+    # When set, naive datetimes are interpreted as being in the specified
+    # timezone before conversion to a UTC epoch timestamp.
+    #
+    # Common usage:
+    #     v1_assume_naive_datetime_tz = timezone.utc
+    #
+    # This setting applies to serialization only and does not affect
+    # deserialization.
+    v1_assume_naive_datetime_tz: ClassVar[tzinfo | None] = None
 
     # noinspection PyMethodParameters
     @cached_class_property
