@@ -627,6 +627,7 @@ class Field(_Field):
                  path: PathType | None,
                  default, default_factory, init, repr, hash, compare,
                  metadata, kw_only, doc):
+        ...
 
     # In Python 3.10, dataclasses adds a new parameter to the :class:`Field`
     # constructor: `kw_only`
