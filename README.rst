@@ -9,6 +9,8 @@ Release v\ |version| | 📚 Full docs on `Read the Docs`_ (`Installation`_).
    :width: 175px
    :align: center
 
+.. centered:: Fast, flexible serialization for Python dataclasses
+
 .. image:: https://github.com/rnag/dataclass-wizard/actions/workflows/dev.yml/badge.svg
     :target: https://github.com/rnag/dataclass-wizard/actions/workflows/dev.yml
     :alt: CI Status
