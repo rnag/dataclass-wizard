@@ -74,10 +74,10 @@ setup(
     install_requires=requires,
     project_urls={
         'Discussions': 'https://github.com/rnag/dataclass-wizard/discussions',
-        'Changelog': 'https://dataclass-wizard.readthedocs.io/en/latest/history.html',
+        'Changelog': 'https://dataclass-wizard.ritviknag.com/en/latest/history.html',
         'Source': 'https://github.com/rnag/dataclass-wizard',
         'Download': 'https://pypi.org/project/dataclass-wizard',
-        'Documentation': 'https://dataclass-wizard.readthedocs.io',
+        'Documentation': 'https://dataclass-wizard.ritviknag.com',
         'Bug Tracker': 'https://github.com/rnag/dataclass-wizard/issues',
     },
     license=about['__license__'],
