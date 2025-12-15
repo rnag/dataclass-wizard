@@ -4,6 +4,11 @@ Dataclass Wizard
 
 Release v\ |version| | 📚 Full docs on `Read the Docs`_ (`Installation`_).
 
+.. image:: https://raw.githubusercontent.com/rnag/dataclass-wizard/main/images/logo.png
+   :alt: Dataclass Wizard logo
+   :width: 175px
+   :align: center
+
 .. image:: https://github.com/rnag/dataclass-wizard/actions/workflows/dev.yml/badge.svg
     :target: https://github.com/rnag/dataclass-wizard/actions/workflows/dev.yml
     :alt: CI Status
