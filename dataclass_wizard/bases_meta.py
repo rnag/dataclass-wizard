@@ -323,7 +323,7 @@ def LoadMeta(**kwargs) -> META:
         >>> LoadMeta(key_transform='CAMEL').bind_to(MyClass)
         >>> fromdict(MyClass, {"myStr": "value"})
 
-    .. _Docs: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/meta.html
+    .. _Docs: https://dcw.ritviknag.com/en/latest/common_use_cases/meta.html
     """
     base_dict = kwargs | {'__slots__': ()}
 
@@ -357,7 +357,7 @@ def DumpMeta(**kwargs) -> META:
         >>> DumpMeta(key_transform='CAMEL').bind_to(MyClass)
         >>> asdict(MyClass, {"myStr": "value"})
 
-    .. _Docs: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/meta.html
+    .. _Docs: https://dcw.ritviknag.com/en/latest/common_use_cases/meta.html
     """
 
     # Set meta attributes here.
@@ -390,7 +390,7 @@ def EnvMeta(**kwargs) -> META:
 
         >>> EnvMeta(key_transform_with_dump='SNAKE').bind_to(MyClass)
 
-    .. _Docs: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/meta.html
+    .. _Docs: https://dcw.ritviknag.com/en/latest/common_use_cases/meta.html
     """
 
     # Set meta attributes here.

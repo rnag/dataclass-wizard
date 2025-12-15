@@ -15,7 +15,7 @@ string-to-type conversion. Requires subclass instantiation to function.
 
 For a detailed example and advanced features:
 
-- 📖 `Full Documentation <https://dataclass-wizard.readthedocs.io/en/latest/env_magic.html>`_
+- 📖 `Full Documentation <https://dcw.ritviknag.com/en/latest/env_magic.html>`_
 
 :class:`JSONPyWizard`
 ~~~~~~~~~~~~~~~~~~~~~

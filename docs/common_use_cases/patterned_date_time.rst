@@ -7,7 +7,7 @@ Patterned Date and Time
     This change is part of the ongoing improvements in version ``v0.35.0+``, and the old functionality will no longer be maintained in future releases.
 
 .. _Field Guide to V1 Opt‐in: https://github.com/rnag/dataclass-wizard/wiki/Field-Guide-to-V1-Opt%E2%80%90in
-.. _V1 Patterned Date and Time: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/v1_patterned_date_time.html
+.. _V1 Patterned Date and Time: https://dcw.ritviknag.com/en/latest/common_use_cases/v1_patterned_date_time.html
 
 Loading an `ISO 8601`_ format string into a :class:`date` / :class:`time` /
 :class:`datetime` object is already handled as part of the de-serialization

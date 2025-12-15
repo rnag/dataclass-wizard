@@ -42,7 +42,7 @@ def property_wizard(*args, **kwargs):
     the docs. I also added `an answer`_ on a SO article that deals with using
     such properties in dataclasses.
 
-    .. _Using Field Properties: https://dataclass-wizard.readthedocs.io/en/latest/using_field_properties.html
+    .. _Using Field Properties: https://dcw.ritviknag.com/en/latest/using_field_properties.html
     .. _an answer: https://stackoverflow.com/a/68488125/10237506
     """
     cls: Type = type(*args, **kwargs)
