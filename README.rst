@@ -2,67 +2,51 @@
 Dataclass Wizard
 ================
 
-Release v\ |version| | 📚 Full docs on `Read the Docs`_ (`Installation`_).
-
 .. image:: https://raw.githubusercontent.com/rnag/dataclass-wizard/main/images/logo.png
    :alt: Dataclass Wizard logo
-   :width: 175px
+   :width: 160px
    :align: center
 
-.. centered:: Fast, flexible serialization for Python dataclasses
+.. centered:: Simple, elegant wizarding tools for Python’s ``dataclasses``.
 
 .. image:: https://github.com/rnag/dataclass-wizard/actions/workflows/dev.yml/badge.svg
-    :target: https://github.com/rnag/dataclass-wizard/actions/workflows/dev.yml
-    :alt: CI Status
+   :target: https://github.com/rnag/dataclass-wizard/actions/workflows/dev.yml
+   :alt: CI Status
+
+.. image:: https://img.shields.io/pypi/v/dataclass-wizard.svg
+   :target: https://pypi.org/project/dataclass-wizard/
+   :alt: PyPI Version
 
 .. image:: https://img.shields.io/pypi/pyversions/dataclass-wizard.svg
-    :target: https://pypi.org/project/dataclass-wizard
-    :alt: Supported Python Versions
+   :target: https://pypi.org/project/dataclass-wizard/
+   :alt: Supported Python Versions
 
-.. image:: https://img.shields.io/pypi/l/dataclass-wizard.svg
-    :target: https://pypi.org/project/dataclass-wizard/
-    :alt: License
-
-.. image:: https://static.pepy.tech/badge/dataclass-wizard/month
-    :target: https://pepy.tech/project/dataclass-wizard
-    :alt: Monthly Downloads
-
-**Dataclass Wizard** 🪄
-Simple, elegant *wizarding* tools for Python’s ``dataclasses``.
-
-Lightning-fast ⚡, pure Python, and lightweight — effortlessly
-convert dataclass instances to/from JSON, perfect
-for complex and *nested dataclass* models!
+Lightning-fast ⚡, pure Python, and lightweight — Dataclass Wizard makes it easy
+to convert dataclass instances to and from JSON, with built-in support for
+complex dataclass models.
 
 -------------------
 
-**Behold, the power of the Dataclass Wizard**::
+**Behold, the power of Dataclass Wizard**::
 
     >>> from __future__ import annotations
     >>> from dataclasses import field
     >>> from dataclass_wizard import DataclassWizard
     ...
-    >>> # DataclassWizard auto-applies @dataclass to subclasses
-    ... class MyClass(DataclassWizard, load_case='AUTO', dump_case='CAMEL'):
+    >>> class MyClass(DataclassWizard, load_case='AUTO', dump_case='CAMEL'):
     ...     my_str: str | None
     ...     is_active_tuple: tuple[bool, ...]
     ...     list_of_int: list[int] = field(default_factory=list)
     ...
-    >>> string = """
-    ... {
-    ...   "my_str": 20,
-    ...   "ListOfInt": ["1", "2", 3],
-    ...   "isActiveTuple": ["true", false, 1]
-    ... }
-    ... """
-    ...
-    >>> instance = MyClass.from_json(string)
-    >>> instance
+    >>> MyClass.from_json(
+    ...     '{"my_str": 20, "ListOfInt": ["1", "2", 3], "isActiveTuple": [true, false, 1]}'
+    ... )
     MyClass(my_str='20', is_active_tuple=(True, False, True), list_of_int=[1, 2, 3])
-    >>> instance.to_json()
-    '{"myStr": "20", "isActiveTuple": [true, false, true], "listOfInt": [1, 2, 3]}'
-    >>> instance == MyClass.from_dict(instance.to_dict())
-    True
+
+.. note::
+  The example above demonstrates automatic type coercion, key casing
+  transforms, and support for nested dataclass structures. See the
+  documentation for round-trip serialization and advanced usage.
 
 ---
 
