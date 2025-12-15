@@ -50,9 +50,10 @@ complex dataclass models.
     MyClass(my_str='20', is_active_tuple=(True, False, True), list_of_int=[1, 2, 3])
 
 .. note::
-  The example above demonstrates automatic type coercion, key casing
-  transforms, and support for nested dataclass structures. See the
-  documentation for round-trip serialization and advanced usage.
+  The example above demonstrates automatic type coercion, key casing transforms,
+  and support for nested dataclass structures.
+  ``DataclassWizard`` also auto-applies ``@dataclass`` to subclasses.
+  See the docs for more examples and advanced usage.
 
 .. contents:: Contents
    :depth: 1
