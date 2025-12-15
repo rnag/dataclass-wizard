@@ -9,6 +9,8 @@ Dataclass Wizard
 
 .. centered:: Simple, elegant wizarding tools for Python’s ``dataclasses``.
 
+📘 Full Documentation → https://dataclass-wizard.ritviknag.com  ·  Release v\ |version|
+
 .. image:: https://github.com/rnag/dataclass-wizard/actions/workflows/dev.yml/badge.svg
    :target: https://github.com/rnag/dataclass-wizard/actions/workflows/dev.yml
    :alt: CI Status
@@ -20,6 +22,10 @@ Dataclass Wizard
 .. image:: https://img.shields.io/pypi/pyversions/dataclass-wizard.svg
    :target: https://pypi.org/project/dataclass-wizard/
    :alt: Supported Python Versions
+
+.. image:: https://static.pepy.tech/badge/dataclass-wizard
+   :target: https://pepy.tech/project/dataclass-wizard
+   :alt: Downloads per Month
 
 Lightning-fast ⚡, pure Python, and lightweight — Dataclass Wizard makes it easy
 to convert dataclass instances to and from JSON, with built-in support for
@@ -47,8 +53,6 @@ complex dataclass models.
   The example above demonstrates automatic type coercion, key casing
   transforms, and support for nested dataclass structures. See the
   documentation for round-trip serialization and advanced usage.
-
----
 
 .. contents:: Contents
    :depth: 1
