@@ -179,7 +179,7 @@ no_implicit_optional = true
 check_untyped_defs = false
 
 [tool.bumpversion]
-current_version = "0.36.0"
+current_version = "0.36.1"
 commit = true
 tag = true
 

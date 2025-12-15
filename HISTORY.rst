@@ -3,6 +3,20 @@ History
 =======
 
 
+0.36.1 (2025-12-15)
+------------------
+
+**Documentation**
+
+- Added a project logo and refreshed the front-page documentation layout.
+- Simplified and cleaned up the README and docs landing page for improved
+  readability, especially on mobile.
+
+**Notes**
+
+- This release contains documentation and presentation updates only.
+  No functional or behavioral changes were introduced.
+
 0.36.0 (2025-12-14)
 ------------------
 

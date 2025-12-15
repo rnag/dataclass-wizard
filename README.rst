@@ -2,62 +2,57 @@
 Dataclass Wizard
 ================
 
-Release v\ |version| | 📚 Full docs on `Read the Docs`_ (`Installation`_).
+.. image:: https://raw.githubusercontent.com/rnag/dataclass-wizard/main/images/logo.png
+   :alt: Dataclass Wizard logo
+   :width: 160px
+   :align: center
+
+**Simple, elegant wizarding tools for Python’s** ``dataclasses``.
+
+📘 Docs → `dataclass-wizard.ritviknag.com`_
 
 .. image:: https://github.com/rnag/dataclass-wizard/actions/workflows/dev.yml/badge.svg
-    :target: https://github.com/rnag/dataclass-wizard/actions/workflows/dev.yml
-    :alt: CI Status
+   :target: https://github.com/rnag/dataclass-wizard/actions/workflows/dev.yml
+   :alt: CI Status
+
+.. image:: https://img.shields.io/pypi/v/dataclass-wizard.svg
+   :target: https://pypi.org/project/dataclass-wizard/
+   :alt: PyPI Version
 
 .. image:: https://img.shields.io/pypi/pyversions/dataclass-wizard.svg
-    :target: https://pypi.org/project/dataclass-wizard
-    :alt: Supported Python Versions
+   :target: https://pypi.org/project/dataclass-wizard/
+   :alt: Supported Python Versions
 
-.. image:: https://img.shields.io/pypi/l/dataclass-wizard.svg
-    :target: https://pypi.org/project/dataclass-wizard/
-    :alt: License
+.. image:: https://static.pepy.tech/badge/dataclass-wizard
+   :target: https://pepy.tech/project/dataclass-wizard
+   :alt: Downloads per Month
 
-.. image:: https://static.pepy.tech/badge/dataclass-wizard/month
-    :target: https://pepy.tech/project/dataclass-wizard
-    :alt: Monthly Downloads
-
-**Dataclass Wizard** 🪄
-Simple, elegant *wizarding* tools for Python’s ``dataclasses``.
-
-Lightning-fast ⚡, pure Python, and lightweight — effortlessly
-convert dataclass instances to/from JSON, perfect
-for complex and *nested dataclass* models!
+Lightning-fast ⚡, pure Python, and lightweight — Dataclass Wizard makes it easy
+to convert dataclass instances to and from JSON, with built-in support for
+complex dataclass models.
 
 -------------------
 
-**Behold, the power of the Dataclass Wizard**::
+**Behold, the power of Dataclass Wizard**::
 
     >>> from __future__ import annotations
     >>> from dataclasses import field
     >>> from dataclass_wizard import DataclassWizard
     ...
-    >>> # DataclassWizard auto-applies @dataclass to subclasses
-    ... class MyClass(DataclassWizard, load_case='AUTO', dump_case='CAMEL'):
+    >>> class MyClass(DataclassWizard, load_case='AUTO', dump_case='CAMEL'):
     ...     my_str: str | None
     ...     is_active_tuple: tuple[bool, ...]
     ...     list_of_int: list[int] = field(default_factory=list)
     ...
-    >>> string = """
-    ... {
-    ...   "my_str": 20,
-    ...   "ListOfInt": ["1", "2", 3],
-    ...   "isActiveTuple": ["true", false, 1]
-    ... }
-    ... """
-    ...
-    >>> instance = MyClass.from_json(string)
-    >>> instance
+    >>> MyClass.from_json(
+    ...     '{"my_str": 20, "ListOfInt": ["1", "2", 3], "isActiveTuple": [true, false, 1]}'
+    ... )
     MyClass(my_str='20', is_active_tuple=(True, False, True), list_of_int=[1, 2, 3])
-    >>> instance.to_json()
-    '{"myStr": "20", "isActiveTuple": [true, false, true], "listOfInt": [1, 2, 3]}'
-    >>> instance == MyClass.from_dict(instance.to_dict())
-    True
 
----
+.. note::
+  The example above demonstrates automatic type coercion, key casing
+  transforms, and support for nested dataclass structures. See the
+  documentation for round-trip serialization and advanced usage.
 
 .. contents:: Contents
    :depth: 1
@@ -165,7 +160,7 @@ of *Dataclass Wizard* for unsupported Python versions (3.6 – 3.8):
 .. _PyPI: https://pypi.org/project/dataclass-wizard/
 .. _conda: https://anaconda.org/conda-forge/dataclass-wizard
 .. _conda-forge: https://conda-forge.org/
-.. _Changelog: https://dataclass-wizard.readthedocs.io/en/latest/history.html
+.. _Changelog: https://dataclass-wizard.ritviknag.com/en/latest/history.html
 
 See the package on `PyPI`_ and the `Changelog`_ in the docs for the latest version details.
 
@@ -381,7 +376,7 @@ debugging purposes. Whenever you invoke ``print(obj)`` or ``str(obj)``, for
 example, it'll call this method which will format the dataclass object as
 a prettified JSON string. If you prefer a ``__str__`` method to not be
 added, you can pass in ``str=False`` when extending from the Mixin class
-as mentioned `here <https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/skip_the_str.html>`_.
+as mentioned `here <https://dataclass-wizard.ritviknag.com/en/latest/common_use_cases/skip_the_str.html>`_.
 
 Note that the ``__repr__`` method, which is implemented by the
 ``dataclass`` decorator, is also available. To invoke the Python object
@@ -1281,7 +1276,7 @@ Quick Examples
 
    Combine these helpers for flexible serialization rules!
 
-.. _conditional skipping: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/serialization_options.html#skip-if-functionality
+.. _conditional skipping: https://dataclass-wizard.ritviknag.com/en/latest/common_use_cases/serialization_options.html#skip-if-functionality
 
 Serialization Options
 ---------------------
@@ -1430,7 +1425,7 @@ Easily map environment variables to Python dataclasses with ``EnvWizard``:
     - **Configurable**: Customize variable names, prefixes, and dotenv files.
     - **Validation**: Errors for missing or malformed variables.
 
-    📖 `Full Documentation <https://dataclass-wizard.readthedocs.io/en/latest/env_magic.html>`_
+    📖 `Full Documentation <https://dataclass-wizard.ritviknag.com/en/latest/env_magic.html>`_
 
 Advanced Example: Dynamic Prefix Handling
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1596,43 +1591,42 @@ Credits
 
 This package was created with Cookiecutter_ and the `rnag/cookiecutter-pypackage`_ project template.
 
-.. _Read The Docs: https://dataclass-wizard.readthedocs.io
-.. _Installation: https://dataclass-wizard.readthedocs.io/en/latest/installation.html
+.. _dataclass-wizard.ritviknag.com: https://dataclass-wizard.ritviknag.com
 .. _Cookiecutter: https://github.com/cookiecutter/cookiecutter
 .. _`rnag/cookiecutter-pypackage`: https://github.com/rnag/cookiecutter-pypackage
-.. _`Contributing`: https://dataclass-wizard.readthedocs.io/en/latest/contributing.html
+.. _`Contributing`: https://dataclass-wizard.ritviknag.com/en/latest/contributing.html
 .. _`open an issue`: https://github.com/rnag/dataclass-wizard/issues
-.. _`JSONPyWizard`: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/wizard_mixins.html#jsonpywizard
-.. _`EnvWizard`: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/wizard_mixins.html#envwizard
-.. _`on EnvWizard`: https://dataclass-wizard.readthedocs.io/en/latest/env_magic.html
-.. _`JSONListWizard`: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/wizard_mixins.html#jsonlistwizard
-.. _`JSONFileWizard`: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/wizard_mixins.html#jsonfilewizard
-.. _`TOMLWizard`: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/wizard_mixins.html#tomlwizard
-.. _`YAMLWizard`: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/wizard_mixins.html#yamlwizard
-.. _`Container`: https://dataclass-wizard.readthedocs.io/en/latest/dataclass_wizard.html#dataclass_wizard.Container
-.. _`Supported Types`: https://dataclass-wizard.readthedocs.io/en/latest/overview.html#supported-types
+.. _`JSONPyWizard`: https://dataclass-wizard.ritviknag.com/en/latest/common_use_cases/wizard_mixins.html#jsonpywizard
+.. _`EnvWizard`: https://dataclass-wizard.ritviknag.com/en/latest/common_use_cases/wizard_mixins.html#envwizard
+.. _`on EnvWizard`: https://dataclass-wizard.ritviknag.com/en/latest/env_magic.html
+.. _`JSONListWizard`: https://dataclass-wizard.ritviknag.com/en/latest/common_use_cases/wizard_mixins.html#jsonlistwizard
+.. _`JSONFileWizard`: https://dataclass-wizard.ritviknag.com/en/latest/common_use_cases/wizard_mixins.html#jsonfilewizard
+.. _`TOMLWizard`: https://dataclass-wizard.ritviknag.com/en/latest/common_use_cases/wizard_mixins.html#tomlwizard
+.. _`YAMLWizard`: https://dataclass-wizard.ritviknag.com/en/latest/common_use_cases/wizard_mixins.html#yamlwizard
+.. _`Container`: https://dataclass-wizard.ritviknag.com/en/latest/dataclass_wizard.html#dataclass_wizard.Container
+.. _`Supported Types`: https://dataclass-wizard.ritviknag.com/en/latest/overview.html#supported-types
 .. _`Mixin`: https://stackoverflow.com/a/547714/10237506
-.. _`Meta`: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/meta.html
+.. _`Meta`: https://dataclass-wizard.ritviknag.com/en/latest/common_use_cases/meta.html
 .. _`pydantic`: https://pydantic-docs.helpmanual.io/
-.. _`Using Field Properties`: https://dataclass-wizard.readthedocs.io/en/latest/using_field_properties.html
-.. _`field properties`: https://dataclass-wizard.readthedocs.io/en/latest/using_field_properties.html
-.. _`custom mapping`: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/custom_key_mappings.html
-.. _`wiz-cli`: https://dataclass-wizard.readthedocs.io/en/latest/wiz_cli.html
+.. _`Using Field Properties`: https://dataclass-wizard.ritviknag.com/en/latest/using_field_properties.html
+.. _`field properties`: https://dataclass-wizard.ritviknag.com/en/latest/using_field_properties.html
+.. _`custom mapping`: https://dataclass-wizard.ritviknag.com/en/latest/common_use_cases/custom_key_mappings.html
+.. _`wiz-cli`: https://dataclass-wizard.ritviknag.com/en/latest/wiz_cli.html
 .. _`key limitations`: https://florimond.dev/en/posts/2018/10/reconciling-dataclasses-and-properties-in-python/
-.. _`more complete example`: https://dataclass-wizard.readthedocs.io/en/latest/examples.html#a-more-complete-example
+.. _`more complete example`: https://dataclass-wizard.ritviknag.com/en/latest/examples.html#a-more-complete-example
 .. _custom formats: https://docs.python.org/3/library/datetime.html#strftime-and-strptime-format-codes
-.. _`Patterned Date and Time`: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/patterned_date_time.html
+.. _`Patterned Date and Time`: https://dataclass-wizard.ritviknag.com/en/latest/common_use_cases/patterned_date_time.html
 .. _Union: https://docs.python.org/3/library/typing.html#typing.Union
-.. _`Dataclasses in Union Types`: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/dataclasses_in_union_types.html
-.. _`Cyclic or "Recursive" Dataclasses`: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/cyclic_or_recursive_dataclasses.html
+.. _`Dataclasses in Union Types`: https://dataclass-wizard.ritviknag.com/en/latest/common_use_cases/dataclasses_in_union_types.html
+.. _`Cyclic or "Recursive" Dataclasses`: https://dataclass-wizard.ritviknag.com/en/latest/common_use_cases/cyclic_or_recursive_dataclasses.html
 .. _as milestones: https://github.com/rnag/dataclass-wizard/milestones
 .. _longstanding issue: https://github.com/rnag/dataclass-wizard/issues/62
-.. _Easier Debug Mode: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/easier_debug_mode.html
-.. _Handling Unknown JSON Keys: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/handling_unknown_json_keys.html
-.. _custom paths to access nested keys: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/nested_key_paths.html
+.. _Easier Debug Mode: https://dataclass-wizard.ritviknag.com/en/latest/common_use_cases/easier_debug_mode.html
+.. _Handling Unknown JSON Keys: https://dataclass-wizard.ritviknag.com/en/latest/common_use_cases/handling_unknown_json_keys.html
+.. _custom paths to access nested keys: https://dataclass-wizard.ritviknag.com/en/latest/common_use_cases/nested_key_paths.html
 .. _annotations: https://docs.python.org/3/library/typing.html#typing.Annotated
 .. _typing: https://docs.python.org/3/library/typing.html
 .. _dataclasses: https://docs.python.org/3/library/dataclasses.html
-.. _V1 Opt-in documentation for Patterned Date and Time: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/v1_patterned_date_time.html
+.. _V1 Opt-in documentation for Patterned Date and Time: https://dataclass-wizard.ritviknag.com/en/latest/common_use_cases/v1_patterned_date_time.html
 .. _`Field Guide to V1 Opt-in`: https://github.com/rnag/dataclass-wizard/wiki/Field-Guide-to-V1-Opt%E2%80%90in
-.. _V1 Alias: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/v1_alias.html
+.. _V1 Alias: https://dataclass-wizard.ritviknag.com/en/latest/common_use_cases/v1_alias.html
