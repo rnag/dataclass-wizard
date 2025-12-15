@@ -7,7 +7,7 @@ Dataclass Wizard
    :width: 160px
    :align: center
 
-.. centered:: Simple, elegant wizarding tools for Python’s ``dataclasses``.
+**Simple, elegant wizarding tools for Python’s** ``dataclasses``.
 
 📘 Docs → `dataclass-wizard.ritviknag.com`_
 
