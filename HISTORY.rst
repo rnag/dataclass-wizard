@@ -3,6 +3,20 @@ History
 =======
 
 
+0.36.2 (2025-12-15)
+------------------
+
+**Documentation**
+
+- Updated the documentation URL to ``https://dcw.ritviknag.com``.
+- Simplified the docs landing page by removing the redundant title header.
+- Refined the front-page layout for improved clarity and mobile readability.
+
+**Notes**
+
+- This release includes documentation and presentation updates only.
+- No functional or behavioral changes were introduced.
+
 0.36.1 (2025-12-15)
 ------------------
 
