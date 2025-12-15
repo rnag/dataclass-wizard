@@ -419,7 +419,7 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
                 #                    '  * `v1_unsafe_parse_dataclass_in_union = True`\n'
                 #                    f'    - Set on class `{extras["cls_name"]}`\n\n'
                 #                    'For more information, refer to:\n'
-                #                    '  https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/dataclasses_in_union_types.html')
+                #                    '  https://dcw.ritviknag.com/en/latest/common_use_cases/dataclasses_in_union_types.html')
                 #     raise e from None
 
             string = cls.get_string_for_annotation(tp_new, extras)

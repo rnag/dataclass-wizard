@@ -17,7 +17,7 @@ class KeyAction(Enum):
     - `WARN`: Log a warning for each unknown key.
 
     For capturing unknown keys (e.g., including them in a dataclass), use the `CatchAll` field.
-    More details: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/handling_unknown_json_keys.html#capturing-unknown-keys-with-catchall
+    More details: https://dcw.ritviknag.com/en/latest/common_use_cases/handling_unknown_json_keys.html#capturing-unknown-keys-with-catchall
     """
     IGNORE = 0  # Silently skip unknown keys.
     RAISE = 1   # Raise an exception for the first unknown key.
