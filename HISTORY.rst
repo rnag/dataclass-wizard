@@ -3,6 +3,20 @@ History
 =======
 
 
+0.36.2 (2025-12-15)
+------------------
+
+**Documentation**
+
+- Updated the documentation URL to ``https://dcw.ritviknag.com``.
+- Simplified the docs landing page by removing the redundant title header.
+- Refined the front-page layout for improved clarity and mobile readability.
+
+**Notes**
+
+- This release includes documentation and presentation updates only.
+- No functional or behavioral changes were introduced.
+
 0.36.1 (2025-12-15)
 ------------------
 
@@ -265,7 +279,7 @@ Happy Thanksgiving 🦃, y'all! In this release, Dataclass Wizard introduces the
 
 * Fixed compatibility between `Global Meta Settings`_ and :attr:`recursive_classes` (:issue:`142`).
 
-.. _Global Meta Settings: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/meta.html#global-meta-settings
+.. _Global Meta Settings: https://dcw.ritviknag.com/en/latest/common_use_cases/meta.html#global-meta-settings
 
 0.29.2 (2024-11-24)
 -------------------
@@ -593,7 +607,7 @@ Happy Thanksgiving 🦃, y'all! In this release, Dataclass Wizard introduces the
 * Update the docs and readme with examples and usage of *future
   annotations* in Python 3.7+.
 
-.. _new-style annotations: https://dataclass-wizard.readthedocs.io/en/latest/python_compatibility.html#python-3-7
+.. _new-style annotations: https://dcw.ritviknag.com/en/latest/python_compatibility.html#python-3-7
 .. _PEP 585: https://www.python.org/dev/peps/pep-0585/
 .. _PEP 604: https://www.python.org/dev/peps/pep-0604/
 

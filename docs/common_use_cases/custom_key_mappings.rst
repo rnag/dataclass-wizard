@@ -9,7 +9,7 @@ Map a JSON Key to a Field
     This change is part of the ongoing improvements in version ``v0.35.0+``, and the old functionality will no longer be maintained in future releases.
 
 .. _Field Guide to V1 Opt‐in: https://github.com/rnag/dataclass-wizard/wiki/Field-Guide-to-V1-Opt%E2%80%90in
-.. _V1 Alias: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/v1_alias.html
+.. _V1 Alias: https://dcw.ritviknag.com/en/latest/common_use_cases/v1_alias.html
 
 The ``dataclass-wizard`` library provides a set of built-in *key transform* helper
 functions that automatically transform the casing of keys in a JSON or Python

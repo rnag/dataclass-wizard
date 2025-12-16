@@ -40,7 +40,7 @@ Advantages
 .. _fromisoformat(): https://docs.python.org/3/library/datetime.html#datetime.date.fromisoformat
 .. _defaultdict: https://docs.python.org/3/library/collections.html#collections.defaultdict
 .. _jsons: https://pypi.org/project/jsons/
-.. _`wiz-cli`: https://dataclass-wizard.readthedocs.io/en/latest/wiz_cli.html
+.. _`wiz-cli`: https://dcw.ritviknag.com/en/latest/wiz_cli.html
 .. _dataclasses-json: https://pypi.org/project/dataclasses-json/
 
 Supported Types
@@ -221,5 +221,5 @@ Special Cases
   from JSON objects using the annotated base type, and serialized back as
   plain ``dict`` objects.
 
-.. _using dataclasses: https://dataclass-wizard.readthedocs.io/en/latest/common_use_cases/dataclasses_in_union_types.html
+.. _using dataclasses: https://dcw.ritviknag.com/en/latest/common_use_cases/dataclasses_in_union_types.html
 .. _pytimeparse: https://pypi.org/project/pytimeparse/
