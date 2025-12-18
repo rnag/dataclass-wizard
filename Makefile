@@ -87,11 +87,13 @@ check: dist-local  ## verify release before upload to PyPI
 	twine check dist/*
 
 dist: clean ## builds source and wheel package
-	python setup.py sdist bdist_wheel
+	pip install build
+	python -m build
 	ls -l dist
 
 dist-local: clean replace_version ## builds source and wheel package (for local testing)
-	python setup.py sdist bdist_wheel
+	pip install build
+	python -m build
 	ls -l dist
 	$(MAKE) revert_readme
 
@@ -109,7 +111,7 @@ revert_readme: ## revert README.rst to its original state
 	mv README.rst.bak README.rst
 
 install: clean ## install the package to the active Python's site-packages
-	python setup.py install
+	pip install .
 
 dist-conda: clean ## builds source and wheel package for Anaconda
 	conda build .

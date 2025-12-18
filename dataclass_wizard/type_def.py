@@ -62,7 +62,8 @@ if PY310_OR_ABOVE:
     # https://docs.python.org/3/library/types.html#types.NoneType
     from types import NoneType
 else:
-    NoneType = type(None)
+    # "Cannot assign to a type"
+    NoneType = type(None)  # type: ignore[misc]
 
 # Type check for numeric types - needed because `bool` is technically
 # a Number.
@@ -164,7 +165,8 @@ FREF = TypeVar('FREF', str, PyForwardRef)
 class ExplicitNullType:
     __slots__ = ()  # Saves memory by preventing the creation of instance dictionaries
 
-    _instance = None  # Class-level instance variable for singleton control
+    # Class-level instance variable for singleton control
+    _instance: "ExplicitNullType | None" = None
 
     def __new__(cls):
         if cls._instance is None:
