@@ -1,4 +1,4 @@
-.PHONY: clean clean-test clean-pyc clean-build docs help
+.PHONY: clean clean-test clean-pyc clean-build docs help bump-patch bump-minor bump-major bump-patch-dry
 .DEFAULT_GOAL := help
 
 define BROWSER_PYSCRIPT
@@ -28,6 +28,18 @@ help:
 
 init: ## install all dev dependencies for this project
 	pip install -e .[dev]
+
+bump-patch:
+	bump-my-version bump patch
+
+bump-minor:
+	bump-my-version bump minor
+
+bump-major:
+	bump-my-version bump major
+
+bump-patch-dry:
+	bump-my-version bump patch --dry-run --verbose
 
 clean: clean-build clean-pyc clean-test ## remove all build, test, coverage and Python artifacts
 
