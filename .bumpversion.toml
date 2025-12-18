@@ -1,0 +1,17 @@
+[tool.bumpversion]
+current_version = "0.36.2"
+parse = "(?P<major>\\d+)\\.(?P<minor>\\d+)\\.(?P<patch>\\d+)"
+serialize = ["{major}.{minor}.{patch}"]
+
+commit = true
+tag = true
+sign_tags = false
+tag_name = "v{new_version}"
+tag_message = "Bump version: {current_version} → {new_version}"
+allow_dirty = false
+message = "Bump version: {current_version} → {new_version}"
+
+[[tool.bumpversion.files]]
+filename = "dataclass_wizard/__version__.py"
+search = "__version__ = '{current_version}'"
+replace = "__version__ = '{new_version}'"
