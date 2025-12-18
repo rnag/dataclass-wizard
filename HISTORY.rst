@@ -3,6 +3,21 @@ History
 =======
 
 
+0.36.3 (2025-12-18)
+------------------
+
+**Packaging**
+
+- Migrated project configuration to ``pyproject.toml`` for modern,
+  PEP 517-compliant builds using ``python -m build``.
+  Thanks to :user:`CoolCat467` in :pr:`213`!
+
+**Typing**
+
+- Fixed a syntax error in typing stub files that could surface during
+  static analysis with tools such as ``mypy``.
+  Thanks to :user:`CoolCat467` in :pr:`213`!
+
 0.36.2 (2025-12-15)
 ------------------
 
