@@ -17,7 +17,6 @@ from .class_helper import (
 )
 from .decorators import try_with_load
 from .enums import DateTimeTo, LetterCase, LetterCasePriority
-from .v1.enums import KeyAction, KeyCase, DateTimeTo as V1DateTimeTo
 from .environ.loaders import EnvLoader
 from .errors import ParseError, show_deprecation_warning
 from .loader_selection import get_dumper, get_loader
@@ -127,6 +126,7 @@ class BaseJSONWizardMeta(AbstractMeta):
     def bind_to(cls, dataclass: type, create=True, is_default=True,
                 base_loader=None,
                 base_dumper=None):
+        from .v1.enums import KeyAction, KeyCase, DateTimeTo as V1DateTimeTo
 
         cls_loader = get_loader(dataclass, create=create,
                                 base_cls=base_loader, v1=cls.v1)
@@ -277,9 +277,20 @@ class BaseEnvWizardMeta(AbstractEnvMeta):
 
     @classmethod
     def bind_to(cls, env_class: type, create=True, is_default=True):
+        from .v1.enums import KeyCase
 
-        cls_loader = get_loader(env_class, create=create, base_cls=EnvLoader)
-        cls_dumper = get_dumper(env_class, create=create)
+        cls_loader = get_loader(
+            env_class,
+            create=create,
+            env=True,
+            v1=cls.v1)
+        cls_dumper = get_dumper(
+            env_class,
+            create=create,
+            v1=cls.v1)
+
+        if cls.v1_debug:
+            _enable_debug_mode_if_needed(cls_loader, cls.v1_debug)
 
         if cls.debug_enabled:
             _enable_debug_mode_if_needed(cls_loader, cls.debug_enabled)
@@ -292,8 +303,21 @@ class BaseEnvWizardMeta(AbstractEnvMeta):
         cls.key_lookup_with_load = _as_enum_safe(
             cls, 'key_lookup_with_load', LetterCasePriority)
 
-        cls_dumper.transform_dataclass_field = _as_enum_safe(
-            cls, 'key_transform_with_dump', LetterCase)
+        cls.v1_load_case = _as_enum_safe(
+            cls, 'v1_load_case', KeyCase)
+
+        # cls.v1_load_case = _as_enum_safe(
+        #     cls, 'v1_load_case', LetterCasePriority)
+
+        if cls.v1:
+            cls_loader.transform_json_field = _as_enum_safe(
+                cls, 'v1_load_case', KeyCase)
+            cls_dumper.transform_dataclass_field = _as_enum_safe(
+                cls, 'v1_dump_case', KeyCase)
+        else:
+            cls_dumper.transform_dataclass_field = _as_enum_safe(
+                cls, 'key_transform_with_dump', LetterCase)
+
 
         # Finally, if needed, save the meta config for the outer class. This
         # will allow us to access this config as part of the JSON load/dump

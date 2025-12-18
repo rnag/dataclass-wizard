@@ -2,14 +2,16 @@ from __future__ import annotations
 
 from abc import ABCMeta, abstractmethod
 from datetime import tzinfo
-from typing import Callable, Type, Dict, Optional, ClassVar, Union, TypeVar, Mapping, Sequence
+from typing import Callable, Type, Dict, Optional, ClassVar, Union, TypeVar, Mapping, Sequence, TYPE_CHECKING
 
 from .constants import TAG
 from .decorators import cached_class_property
 from .enums import DateTimeTo, LetterCase, LetterCasePriority
 from .models import Condition
 from .type_def import FrozenKeys, EnvFileType
-from .v1.enums import KeyAction, KeyCase, DateTimeTo as V1DateTimeTo
+
+if TYPE_CHECKING:
+    from .v1.enums import KeyAction, KeyCase, DateTimeTo as V1DateTimeTo
 
 
 # Create a generic variable that can be 'AbstractMeta', or any subclass.
@@ -490,6 +492,34 @@ class AbstractEnvMeta(metaclass=ABCOrAndMeta):
     #
     # The default is 'snake_case'.
     key_transform_with_dump: ClassVar[Union[LetterCase, str]] = LetterCase.SNAKE
+
+    # Enable opt-in to the "experimental" major release `v1` feature.
+    # This feature offers optimized performance for de/serialization.
+    # Defaults to False.
+    v1: ClassVar[bool] = False
+
+    # Enable Debug mode for more verbose log output.
+    #
+    # This setting can be a `bool`, `int`, or `str`:
+    # - `True` enables debug mode with default verbosity.
+    # - A `str` or `int` specifies the minimum log level (e.g., 'DEBUG', 10).
+    #
+    # Debug mode provides additional helpful log messages, including:
+    # - Logging unknown JSON keys encountered during `from_dict` or `from_json`.
+    # - Detailed error messages for invalid types during unmarshalling.
+    #
+    # Note: Enabling Debug mode may have a minor performance impact.
+    v1_debug: ClassVar['bool | int | str'] = False
+
+    # The letter casing priority to use when looking up Env Var Names.
+    #
+    # The default is `SCREAMING_SNAKE_CASE`.
+    v1_load_case: ClassVar[Union[LetterCasePriority, str]] = LetterCasePriority.SCREAMING_SNAKE
+
+    # How `EnvWizard` fields (variables) should be transformed to JSON keys.
+    #
+    # The default is 'snake_case'.
+    v1_dump_case: ClassVar[Union[LetterCase, str]] = None
 
     # Determines whether we should we skip / omit fields with default values
     # in the serialization process.

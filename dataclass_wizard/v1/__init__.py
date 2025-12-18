@@ -29,3 +29,6 @@ from .models import (Alias,
                      AwareTimePattern,
                      UTCDateTimePattern,
                      UTCTimePattern)
+
+# from .environ import EnvWizard
+from .env import EnvironWizard

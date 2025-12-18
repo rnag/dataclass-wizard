@@ -177,7 +177,8 @@ def get_dumper(class_or_instance=None, create=True,
 
 def get_loader(class_or_instance=None, create=True,
                base_cls: T = None,
-               v1: Optional[bool] = None) -> type[T]:
+               v1: Optional[bool] = None,
+               env: bool = False) -> type[T]:
     """
     Get the loader for the class, using the following logic:
 
@@ -195,13 +196,21 @@ def get_loader(class_or_instance=None, create=True,
     if v1:
         cls_to_loader = CLASS_TO_V1_LOADER
         if base_cls is None:
-            from .v1.loaders import LoadMixin as V1_LoadMixin
-            base_cls = V1_LoadMixin
+            if env:
+                from .v1.env import LoadMixin as V1_EnvLoadMixin
+                base_cls = V1_EnvLoadMixin
+            else:
+                from .v1.loaders import LoadMixin as V1_LoadMixin
+                base_cls = V1_LoadMixin
     else:
         cls_to_loader = CLASS_TO_LOADER
         if base_cls is None:
-            from .loaders import LoadMixin
-            base_cls = LoadMixin
+            if env:
+                from .environ.loaders import EnvLoader
+                base_cls = EnvLoader
+            else:
+                from .loaders import LoadMixin
+                base_cls = LoadMixin
 
     try:
         return cls_to_loader[class_or_instance]

@@ -86,7 +86,7 @@ class Env:
         env: Environ = {}
 
         for d in dirs:
-            d: Path = d if isinstance(dirs, os.PathLike) else Path(d)
+            d: Path = d if isinstance(d, os.PathLike) else Path(d)
 
             if d.exists():
                 if d.is_dir():

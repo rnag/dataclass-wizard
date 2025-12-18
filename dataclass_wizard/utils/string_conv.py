@@ -68,6 +68,52 @@ def possible_json_keys(field: str) -> list[str]:
     return possible_keys
 
 
+def possible_env_vars(field: str) -> list[str]:
+    """
+    Maps a dataclass field name to its possible var names in an env.
+
+    This function checks multiple naming conventions (e.g., camelCase,
+    PascalCase, kebab-case, etc.) to find the matching key in the JSON
+    object `o`. It also caches the mapping for future use.
+
+    Args:
+        field (str): The dataclass field name to map.
+
+    Returns:
+        list[str]: The possible JSON keys for the given field.
+    """
+    possible_keys = []
+
+    # `snake_case`
+    _key = to_snake_case(field)
+    possible_keys.append(_key)
+
+    # `Upper_Snake`
+    _key = _key.upper()
+    possible_keys.append(_key)
+
+    # `PascalCase`: same as `camelCase` but first letter is capitalized
+    # _key = _key[0].upper() + _key[1:]
+    # possible_keys.append(_key)
+
+    # `kebab-case`
+    # _key = to_lisp_case(field)
+    # possible_keys.append(_key)
+
+    # `Upper-Kebab`: same as `kebab-case`, each word is title-cased
+    # _key = _key.title()
+    # possible_keys.append(_key)
+
+    # remove 1:1 field mapping from possible keys,
+    # as that's the first thing we check.
+    # if field in possible_keys:
+    #     possible_keys.remove(field)
+
+    possible_keys = possible_keys[::-1]
+
+    return possible_keys
+
+
 def to_camel_case(string: str) -> str:
     """
     Convert a string to Camel Case.

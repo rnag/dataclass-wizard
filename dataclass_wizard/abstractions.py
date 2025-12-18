@@ -1,20 +1,24 @@
 """
 Contains implementations for Abstract Base Classes
 """
+from __future__ import annotations
 import json
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, InitVar, Field
-from typing import Type, TypeVar, Dict, Generic
+from typing import Type, TypeVar, Dict, Generic, TYPE_CHECKING
 
-from .bases import META
 from .models import Extras
-from .v1.models import Extras as V1Extras, TypeInfo
+
 from .type_def import T, TT
 
 
 # Create a generic variable that can be 'AbstractJSONWizard', or any subclass.
 W = TypeVar('W', bound='AbstractJSONWizard')
+
+
+if TYPE_CHECKING:
+    from .v1.models import Extras as V1Extras, TypeInfo
 
 
 class AbstractEnvWizard(ABC):
