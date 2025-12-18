@@ -3,6 +3,9 @@
 
 name: build & release
 
+permissions:
+  contents: read
+
 # Controls when the action will run.
 on:
   # Triggers the workflow on push or pull request events but only for the master branch
@@ -24,7 +27,14 @@ jobs:
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
+#        with:
+#          fetch-depth: 0
+
+      - name: Fail if tag is not on main
+        run: |
+          git fetch origin main
+          git merge-base --is-ancestor "$GITHUB_SHA" "origin/main"
 
       # Temporarily disable this - I want it to trigger on merge, but it doesn't
       # work (at least not on a tagged commit too)
@@ -33,24 +43,25 @@ jobs:
 #        run: exit -1
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install setuptools wheel
-
-      - name: Replace version in README
-        run: |
-          VERSION=$(grep -oP "__version__\s*=\s*'\K[^']+" dataclass_wizard/__version__.py)
-          echo "Extracted version: $VERSION"
-          sed -i "s/|version|/$VERSION/g" README.rst
+#      - name: Replace version in README
+#        run: |
+#          VERSION=$(grep -oP "__version__\s*=\s*'\K[^']+" dataclass_wizard/__version__.py)
+#          echo "Extracted version: $VERSION"
+#          sed -i "s/|version|/$VERSION/g" README.rst
 
       - name: Build wheels and source tarball
-        run: >-
+        run: |
           make dist
+
+      - name: Check dist metadata
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install twine
+          twine check dist/*
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
