@@ -3,6 +3,20 @@ History
 =======
 
 
+0.36.4 (2025-12-18)
+------------------
+
+**Bugfixes**
+
+- Fixed a regression in ``v0.36.x`` where frozen dataclasses could fail when
+  inheriting from ``JSONWizard`` or other library mixins
+  (``TypeError: cannot inherit frozen dataclass from a non-frozen one``).
+
+  This occurred due to internal auto-dataclass decoration being applied to
+  library-provided base classes. The behavior is now corrected so only
+  user-defined subclasses are decorated.
+  Thanks to :user:`o-l-a-v` for reporting this in :issue:`217`.
+
 0.36.3 (2025-12-18)
 ------------------
 
