@@ -128,11 +128,12 @@ class DataclassWizard(AbstractJSONWizard):
 
         super().__init_subclass__()
 
+        # skip classes provided by this library
+        if cls.__module__.startswith(f'{PACKAGE_NAME}.'):
+            return
+
         # Apply the @dataclass decorator.
-        if (_apply_dataclass
-                and not is_dataclass(cls)
-                # skip classes provided by this library
-                and not cls.__module__.startswith(f'{PACKAGE_NAME}.')):
+        if _apply_dataclass and not is_dataclass(cls):
             # noinspection PyArgumentList
             dataclass(cls, **dc_kwargs)
 

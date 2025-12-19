@@ -4,8 +4,11 @@ Import scenario if we move it there, since the `loaders` and `dumpers` modules
 both import directly from `bases`.
 
 """
+from __future__ import annotations
+
 import logging
 from datetime import datetime, date
+from typing import Mapping
 
 from .bases import AbstractMeta, META, AbstractEnvMeta
 from .class_helper import (
@@ -24,9 +27,46 @@ from .log import LOG
 from .type_def import E
 from .utils.type_conv import date_to_timestamp, as_enum
 
+_ALLOWED_MODES = ('runtime', 'v1_codegen')
 
 # global flag to determine if debug mode was ever enabled
 _debug_was_enabled = False
+
+
+def register_type(cls, tp, *, load=None, dump=None, mode=None) -> None:
+    meta = get_meta(cls)
+
+    if meta.v1:
+        if load is None:
+            load = tp
+        if dump is None:
+            dump = str
+
+        if (load_hook := meta.v1_type_to_load_hook) is None:
+            meta.v1_type_to_load_hook = load_hook = {}
+        if (dump_hook := meta.v1_type_to_dump_hook) is None:
+            meta.v1_type_to_dump_hook = dump_hook = {}
+
+        load_hook[tp] = (mode if mode else _infer_mode(load), load)
+        dump_hook[tp] = (mode if mode else _infer_mode(dump), dump)
+
+    else:
+        from .dumpers import DumpMixin
+        from .loaders import LoadMixin
+
+        dumper = get_dumper(cls, base_cls=DumpMixin)
+        loader = get_loader(cls, base_cls=LoadMixin)
+
+        # default hooks
+        load = tp if load is None else load
+        dump = str if dump is None else dump
+
+        # adapt to what v0 expects
+        load = _adapt_to_arity(load, loader.HOOK_ARITY)
+        dump = _adapt_to_arity(dump, dumper.HOOK_ARITY)
+
+        dumper.register_dump_hook(tp, dump)
+        loader.register_load_hook(tp, load)
 
 
 # use `debug_enabled` for log level if it's a str or int.
@@ -106,42 +146,6 @@ def _adapt_to_arity(fn, target_arity: int):
     )
 
 
-def register_type(cls, tp, *, load=None, dump=None, mode=None) -> None:
-    meta = get_meta(cls)
-
-    if meta.v1:
-        if load is None:
-            load = tp
-        if dump is None:
-            dump = str
-
-        if (load_hook := meta.v1_type_to_load_hook) is None:
-            meta.v1_type_to_load_hook = load_hook = {}
-        if (dump_hook := meta.v1_type_to_dump_hook) is None:
-            meta.v1_type_to_dump_hook = dump_hook = {}
-
-        load_hook[tp] = (mode if mode else _infer_mode(load), load)
-        dump_hook[tp] = (mode if mode else _infer_mode(dump), dump)
-
-    else:
-        from .dumpers import DumpMixin
-        from .loaders import LoadMixin
-
-        dumper = get_dumper(cls, base_cls=DumpMixin)
-        loader = get_loader(cls, base_cls=LoadMixin)
-
-        # default hooks
-        load = tp if load is None else load
-        dump = str if dump is None else dump
-
-        # adapt to what v0 expects
-        load = _adapt_to_arity(load, loader.HOOK_ARITY)
-        dump = _adapt_to_arity(dump, dumper.HOOK_ARITY)
-
-        dumper.register_dump_hook(tp, dump)
-        loader.register_load_hook(tp, load)
-
-
 def _infer_mode(hook) -> str:
     code = getattr(hook, '__code__', None)
 
@@ -159,6 +163,27 @@ def _infer_mode(hook) -> str:
         return 'v1_codegen'
 
     raise TypeError('hook must accept 1 arg (runtime) or 2 args (TypeInfo, Extras)')
+
+
+def _normalize_hooks(hooks: Mapping | None) -> None:
+    if not hooks:
+        return
+
+    for tp, hook in hooks.items():
+        if isinstance(hook, tuple):
+            if len(hook) != 2:
+                raise ValueError(f"hook tuple must be (mode, hook), got {hook!r}") from None
+
+            mode, fn = hook
+            if mode not in _ALLOWED_MODES:
+                raise ValueError(
+                    f"mode must be 'runtime' or 'v1_codegen' (got {mode!r})"
+                ) from None
+
+        else:
+            mode = _infer_mode(hook)
+            # noinspection PyUnresolvedReferences
+            hooks[tp] = mode, hook
 
 
 class BaseJSONWizardMeta(AbstractMeta):
@@ -317,12 +342,8 @@ class BaseJSONWizardMeta(AbstractMeta):
         if cls.v1_on_unknown_key is not None:
             cls.v1_on_unknown_key = _as_enum_safe(cls, 'v1_on_unknown_key', KeyAction)
 
-        for hooks in cls.v1_type_to_load_hook, cls.v1_type_to_dump_hook:
-            if hooks is not None:
-                for tp, hook in hooks.items():
-                    if not isinstance(tp, tuple):
-                        mode = _infer_mode(hook)
-                        hooks[tp] = (mode, hook)
+        _normalize_hooks(cls.v1_type_to_load_hook)
+        _normalize_hooks(cls.v1_type_to_dump_hook)
 
         # Finally, if needed, save the meta config for the outer class. This
         # will allow us to access this config as part of the JSON load/dump
