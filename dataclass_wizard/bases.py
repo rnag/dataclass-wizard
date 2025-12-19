@@ -2,14 +2,17 @@ from __future__ import annotations
 
 from abc import ABCMeta, abstractmethod
 from datetime import tzinfo
-from typing import Callable, Type, Dict, Optional, ClassVar, Union, TypeVar, Mapping, Sequence
+from typing import (Callable, Type, Dict, Optional, ClassVar, Union,
+                    TypeVar, Mapping, Sequence, TYPE_CHECKING)
 
 from .constants import TAG
 from .decorators import cached_class_property
 from .enums import DateTimeTo, LetterCase, LetterCasePriority
 from .models import Condition
 from .type_def import FrozenKeys, EnvFileType
-from .v1.enums import KeyAction, KeyCase, DateTimeTo as V1DateTimeTo
+
+if TYPE_CHECKING:
+    from .v1.enums import KeyAction, KeyCase, DateTimeTo as V1DateTimeTo
 
 
 # Create a generic variable that can be 'AbstractMeta', or any subclass.
