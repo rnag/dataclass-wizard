@@ -1,5 +1,6 @@
 from collections import defaultdict
 from dataclasses import MISSING, fields
+from typing import TYPE_CHECKING
 
 from .bases import AbstractMeta
 from .constants import CATCH_ALL, PACKAGE_NAME
@@ -10,7 +11,9 @@ from .utils.dict_helper import DictWithLowerStore
 from .utils.typing_compat import (
     is_annotated, get_args, eval_forward_ref_if_needed
 )
-from .v1.models import Field
+
+if TYPE_CHECKING:
+    from .v1.models import Field
 
 # A cached mapping of dataclass to the list of fields, as returned by
 # `dataclasses.fields()`.
@@ -345,7 +348,7 @@ def v1_dataclass_field_to_alias_for_load(
     return DATACLASS_FIELD_TO_ALIAS_FOR_LOAD[cls]
 
 def _process_field(name: str,
-                   f: Field,
+                   f: 'Field',
                    set_paths: bool,
                    init: bool,
                    load_dataclass_field_to_path,
@@ -378,6 +381,7 @@ def _process_field(name: str,
 
 # Set up load and dump config for dataclass
 def _setup_v1_config_for_cls(cls):
+    from .v1.models import Field
 
     load_dataclass_field_to_alias = DATACLASS_FIELD_TO_ALIAS_FOR_LOAD[cls]
     dump_dataclass_field_to_alias = DATACLASS_FIELD_TO_ALIAS_FOR_DUMP[cls]

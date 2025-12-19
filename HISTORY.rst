@@ -2,6 +2,17 @@
 History
 =======
 
+0.36.5 (2025-12-19)
+------------------
+
+**Bugfixes**
+
+- Fixed a regression where inheriting from both ``LoadMixin`` and ``DumpMixin``
+  could fail due to conflicting internal helper method names.
+  The helpers have been renamed to avoid method resolution order (MRO)
+  conflicts when both mixins are used together.
+
+  Reported by :user:`rexzhang` in :issue:`218`.
 
 0.36.4 (2025-12-18)
 ------------------
