@@ -3,7 +3,7 @@ from __future__ import annotations
 from abc import ABCMeta, abstractmethod
 from datetime import tzinfo
 from typing import (Callable, Type, Dict, Optional, ClassVar, Union,
-                    TypeVar, Mapping, Sequence, TYPE_CHECKING)
+                    TypeVar, Mapping, Sequence, TYPE_CHECKING, Any)
 
 from .constants import TAG
 from .decorators import cached_class_property
@@ -14,6 +14,8 @@ from .type_def import FrozenKeys, EnvFileType
 if TYPE_CHECKING:
     from .v1.enums import KeyAction, KeyCase, DateTimeTo as V1DateTimeTo
 
+
+V1HookFn = Callable[..., Any]
 
 # Create a generic variable that can be 'AbstractMeta', or any subclass.
 # Full word as `M` is already defined in another module
@@ -248,6 +250,29 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
     #
     # Note: Enabling Debug mode may have a minor performance impact.
     v1_debug: ClassVar['bool | int | str'] = False
+
+    # Custom load hooks for extending type support in the v1 engine.
+    #
+    # Mapping: {Type -> hook}
+    #
+    # A hook must accept either:
+    #   - one positional argument (runtime hook): value -> object
+    #   - two positional arguments (v1 hook): (TypeInfo, Extras) -> str | TypeInfo
+    #
+    # The hook is invoked when loading a value annotated with the given type.
+    v1_type_to_load_hook: ClassVar[Mapping[type, V1HookFn | None]] = None
+
+    # Custom dump hooks for extending type support in the v1 engine.
+    #
+    # Mapping: {Type -> hook}
+    #
+    # A hook must accept either:
+    #   - one positional argument (runtime hook): object -> JSON-serializable value
+    #   - two positional arguments (v1 hook): (TypeInfo, Extras) -> str | TypeInfo
+    #
+    # The hook is invoked when dumping a value whose runtime type matches
+    # the given type.
+    v1_type_to_dump_hook: ClassVar[Mapping[type, V1HookFn | None]] = None
 
     # Specifies the letter case to use for JSON keys when both loading and dumping.
     #

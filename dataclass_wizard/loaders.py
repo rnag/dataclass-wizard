@@ -61,6 +61,8 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
     """
     __slots__ = ()
 
+    HOOK_ARITY = 2
+
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__()
         setup_default_loader(cls)
@@ -84,7 +86,7 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
             return o
 
         e = ValueError(f'data type is not a {base_type!s}')
-        raise ParseError(e, o, base_type)
+        raise ParseError(e, o, base_type, 'load')
 
     @staticmethod
     @_alias(as_str)
@@ -490,10 +492,11 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
                 # No matching hook is found for the type.
                 err = TypeError('Provided type is not currently supported.')
                 raise ParseError(
-                    err, None, base_type,
+                    err, None, base_type, 'load',
                     unsupported_type=base_type
                 )
 
+        print(load_hook, hasattr(load_hook, SINGLE_ARG_ALIAS))
         if hasattr(load_hook, SINGLE_ARG_ALIAS):
             load_hook = resolve_alias_func(load_hook, locals())
             return SingleArgParser(base_cls, extras, base_type, load_hook)
@@ -746,7 +749,7 @@ def load_func_for_dataclass(
                 # for example, we could be passed in a `list` type instead.
                 with fn_gen.if_('not isinstance(o, dict)'):
                     fn_gen.add_line("e = TypeError('Incorrect type for field')")
-                    fn_gen.add_line("raise ParseError(e, o, dict, cls, desired_type=dict) from None")
+                    fn_gen.add_line("raise ParseError(e, o, dict, 'load', cls, desired_type=dict) from None")
 
                 # Else, just re-raise the error.
                 fn_gen.add_line("raise")

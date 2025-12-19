@@ -12,7 +12,7 @@ from .class_helper import (
     META_INITIALIZER, _META,
     get_outer_class_name, get_class_name, create_new_class,
     json_field_to_dataclass_field, dataclass_field_to_json_field,
-    field_to_env_var, DATACLASS_FIELD_TO_ALIAS_FOR_LOAD, DATACLASS_FIELD_TO_ALIAS_FOR_DUMP,
+    field_to_env_var, DATACLASS_FIELD_TO_ALIAS_FOR_LOAD, DATACLASS_FIELD_TO_ALIAS_FOR_DUMP, get_meta,
 )
 from .decorators import try_with_load
 from .enums import DateTimeTo, LetterCase, LetterCasePriority
@@ -66,6 +66,99 @@ def _as_enum_safe(cls: type, name: str, base_type: type[E]) -> 'E | None':
         e.class_name = get_class_name(cls)
         e.field_name = name
         raise
+
+
+def _arity(hook) -> int:
+    # Python function / method
+    code = getattr(hook, "__code__", None)
+    if code is not None:
+        # reject *args/**kwargs if you want strictness
+        if code.co_flags & 0x04 or code.co_flags & 0x08:
+            return -1
+        return code.co_argcount
+
+    # Classes / C-callables (e.g., IPv4Address) don't expose __code__.
+    # Treat as "callable(value)" i.e., 1-arg constructor.
+    return 1
+
+
+def _adapt_to_arity(fn, target_arity: int):
+    src = _arity(fn)
+
+    if src == -1:
+        # If they already accept *args/**kwargs, it will work everywhere.
+        return fn
+
+    if src == target_arity:
+        return fn
+
+    # Common case: user gives 1-arg callable but backend passes extra info
+    if src == 1 and target_arity > 1:
+        def wrapper(x, *rest):
+            return fn(x)
+        return wrapper
+
+    # Less common: user gives 2-arg (v1 codegen) but v0 expects 1
+    # You can reject this unless you have a sane mapping.
+    raise TypeError(
+        f"Hook {getattr(fn, '__name__', fn)!r} has {src} args, "
+        f"but backend expects {target_arity}."
+    )
+
+
+def register_type(cls, tp, *, load=None, dump=None, mode=None) -> None:
+    meta = get_meta(cls)
+
+    if meta.v1:
+        if load is None:
+            load = tp
+        if dump is None:
+            dump = str
+
+        if (load_hook := meta.v1_type_to_load_hook) is None:
+            meta.v1_type_to_load_hook = load_hook = {}
+        if (dump_hook := meta.v1_type_to_dump_hook) is None:
+            meta.v1_type_to_dump_hook = dump_hook = {}
+
+        load_hook[tp] = (mode if mode else _infer_mode(load), load)
+        dump_hook[tp] = (mode if mode else _infer_mode(dump), dump)
+
+    else:
+        from .dumpers import DumpMixin
+        from .loaders import LoadMixin
+
+        dumper = get_dumper(cls, base_cls=DumpMixin)
+        loader = get_loader(cls, base_cls=LoadMixin)
+
+        # default hooks
+        load = tp if load is None else load
+        dump = str if dump is None else dump
+
+        # adapt to what v0 expects
+        load = _adapt_to_arity(load, loader.HOOK_ARITY)
+        dump = _adapt_to_arity(dump, dumper.HOOK_ARITY)
+
+        dumper.register_dump_hook(tp, dump)
+        loader.register_load_hook(tp, load)
+
+
+def _infer_mode(hook) -> str:
+    code = getattr(hook, '__code__', None)
+
+    if code is None:
+        return 'runtime'  # types/builtins
+
+    co_flags = code.co_flags
+    if co_flags & 0x04 or co_flags & 0x08:
+        raise TypeError('hooks must not use *args/**kwargs')
+
+    argc = code.co_argcount
+    if argc == 1:
+        return 'runtime'
+    if argc == 2:
+        return 'v1_codegen'
+
+    raise TypeError('hook must accept 1 arg (runtime) or 2 args (TypeInfo, Extras)')
 
 
 class BaseJSONWizardMeta(AbstractMeta):
@@ -223,6 +316,13 @@ class BaseJSONWizardMeta(AbstractMeta):
 
         if cls.v1_on_unknown_key is not None:
             cls.v1_on_unknown_key = _as_enum_safe(cls, 'v1_on_unknown_key', KeyAction)
+
+        for hooks in cls.v1_type_to_load_hook, cls.v1_type_to_dump_hook:
+            if hooks is not None:
+                for tp, hook in hooks.items():
+                    if not isinstance(tp, tuple):
+                        mode = _infer_mode(hook)
+                        hooks[tp] = (mode, hook)
 
         # Finally, if needed, save the meta config for the outer class. This
         # will allow us to access this config as part of the JSON load/dump

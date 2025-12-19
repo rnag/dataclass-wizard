@@ -6,7 +6,7 @@ both import directly from `bases`.
 """
 from dataclasses import MISSING
 from datetime import tzinfo
-from typing import Sequence
+from typing import Sequence, Callable, Any
 
 from .bases import AbstractMeta, META, AbstractEnvMeta
 from .constants import TAG
@@ -18,6 +18,13 @@ from .type_def import E, EnvFileType
 
 # global flag to determine if debug mode was ever enabled
 _debug_was_enabled = False
+
+V1HookFn = Callable[..., Any]
+
+def register_type(cls, tp: type, *,
+                  load: 'V1HookFn | None' = None,
+                  dump: 'V1HookFn | None' = None,
+                  mode: str | None = None) -> None: ...
 
 
 def _enable_debug_mode_if_needed(cls_loader, possible_lvl: bool | int | str):

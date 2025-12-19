@@ -56,6 +56,8 @@ class DumpMixin(AbstractDumper, BaseDumpHook):
     """
     __slots__ = ()
 
+    HOOK_ARITY = 6
+
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__()
         setup_default_dumper(cls)

@@ -3,11 +3,12 @@ import logging
 from dataclasses import is_dataclass, dataclass
 
 from .abstractions import AbstractJSONWizard
-from .bases_meta import BaseJSONWizardMeta, LoadMeta, DumpMeta
-from .constants import PACKAGE_NAME
-from .class_helper import call_meta_initializer_if_needed
+from .bases_meta import BaseJSONWizardMeta, LoadMeta, DumpMeta, register_type
+from .constants import PACKAGE_NAME, SINGLE_ARG_ALIAS
+from .class_helper import call_meta_initializer_if_needed, get_meta
+from .decorators import _single_arg_alias
 from .type_def import dataclass_transform
-from .loader_selection import asdict, fromdict, fromlist
+from .loader_selection import asdict, fromdict, fromlist, get_loader, get_dumper
 # noinspection PyProtectedMember
 from .utils.dataclass_compat import _create_fn, _set_new_attribute
 from .type_def import dataclass_transform
@@ -79,6 +80,8 @@ class DataclassWizard(AbstractJSONWizard):
 
         def __init_subclass__(cls):
             return cls._init_subclass()
+
+    register_type = classmethod(register_type)
 
     @classmethod
     def from_json(cls, string, *,

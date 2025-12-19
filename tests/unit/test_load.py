@@ -2529,7 +2529,7 @@ def test_sequence_and_mutable_sequence_are_supported():
     assert opt.fields_tup == (IssueFields('X'), )
 
     # raises error: 2 elements instead of 1
-    with pytest.raises(ParseError, match="desired_count: '1'"):
+    with pytest.raises(ParseError, match="desired_count: 1"):
         _ = Options.from_dict({
             'email': 'a@b.org',
             'token': '<PASSWORD>',
