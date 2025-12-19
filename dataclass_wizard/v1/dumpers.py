@@ -124,7 +124,7 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
         except:
             elem_type = Any
 
-        string = cls.get_string_for_annotation(
+        string = cls.dump_dispatcher_for_annotation(
             tp.replace(origin=elem_type, i=i_next, index=None, val_name=None), extras)
 
         if issubclass(gorg, (set, frozenset)):
@@ -166,7 +166,7 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
             v, v_next, i_next = tp.v_and_next()
 
             # Given `Tuple[T, ...]`, we only need the generated string for `T`
-            string = cls.get_string_for_annotation(
+            string = cls.dump_dispatcher_for_annotation(
                 tp.replace(origin=args[0], i=i_next, index=None, val_name=None), extras)
 
             result = f'[{string} for {v_next} in {v}]'
@@ -175,7 +175,7 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
             force_wrap = True
         else:
             string = ', '.join([
-                cls.get_string_for_annotation(
+                cls.dump_dispatcher_for_annotation(
                     tp.replace(origin=arg, index=k, val_name=None),
                     extras)
                 for k, arg in enumerate(args)])
@@ -205,7 +205,7 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
         num_fields = 0
 
         for field, field_tp in nt_tp.__annotations__.items():
-            string = cls.get_string_for_annotation(
+            string = cls.dump_dispatcher_for_annotation(
                 tp.replace(origin=field_tp, index=num_fields, val_name=None), extras)
 
             if has_optionals and field in optional_fields:
@@ -263,10 +263,10 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
     @classmethod
     def _build_dict_comp(cls, tp, v, i_next, k_next, v_next, kt, vt, extras):
         tp_k_next = tp.replace(origin=kt, i=i_next, prefix='k', index=None, val_name=None)
-        string_k = cls.get_string_for_annotation(tp_k_next, extras)
+        string_k = cls.dump_dispatcher_for_annotation(tp_k_next, extras)
 
         tp_v_next = tp.replace(origin=vt, i=i_next, prefix='v', index=None, val_name=None)
-        string_v = cls.get_string_for_annotation(tp_v_next, extras)
+        string_v = cls.dump_dispatcher_for_annotation(tp_v_next, extras)
 
         return f'{{{string_k}: {string_v} for {k_next}, {v_next} in {v}.items()}}'
 
@@ -320,7 +320,7 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
         for k in req_keys:
             field_tp = td_annotations[k]
             field_name = repr(k)
-            string = cls.get_string_for_annotation(
+            string = cls.dump_dispatcher_for_annotation(
                 tp.replace(origin=field_tp,
                            index=field_name,
                            val_name=None), extras)
@@ -336,7 +336,7 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
             for k in opt_keys:
                 field_tp = td_annotations[k]
                 field_name = repr(k)
-                string = cls.get_string_for_annotation(
+                string = cls.dump_dispatcher_for_annotation(
                     tp.replace(origin=field_tp, i=2, index=None, val_name=None), extras)
                 with fn_gen.if_(f'(v2 := v1.get({field_name}, MISSING)) is not MISSING'):
                     fn_gen.add_line(f'result[{field_name}] = {string}')
@@ -403,7 +403,7 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
                         meta.tag = cls_name
 
                 if tag:
-                    string = cls.get_string_for_annotation(tp_new, extras)
+                    string = cls.dump_dispatcher_for_annotation(tp_new, extras)
                     dataclass_and_line.append(
                         (possible_tp, cls_name, tag,
                          f'result = {string}; result[tag_key] = {tag!r}; return result'))
@@ -422,7 +422,7 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
                 #                    '  https://dcw.ritviknag.com/en/latest/common_use_cases/dataclasses_in_union_types.html')
                 #     raise e from None
 
-            string = cls.get_string_for_annotation(tp_new, extras)
+            string = cls.dump_dispatcher_for_annotation(tp_new, extras)
 
             try_parse_lines = [
                 'try:',
@@ -546,9 +546,9 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
         dump_func_for_dataclass(tp.origin, extras)
 
     @classmethod
-    def get_string_for_annotation(cls,
-                                  tp,
-                                  extras):
+    def dump_dispatcher_for_annotation(cls,
+                                       tp,
+                                       extras):
 
         hooks = cls.__DUMP_HOOKS__
 
@@ -625,7 +625,7 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
                 new_tp = tp.replace(origin=origin, args=None, name=None, val_name=val_name)
                 new_tp.in_optional = True
 
-                string = cls.get_string_for_annotation(new_tp, extras)
+                string = cls.dump_dispatcher_for_annotation(new_tp, extras)
 
                 return string if is_simple_type else f'None if {o} is None else {string}'
 
@@ -1219,7 +1219,7 @@ def generate_field_code(cls_dumper: DumpMixin,
     field_type = field.type = eval_forward_ref_if_needed(field.type, cls)
 
     try:
-        return cls_dumper.get_string_for_annotation(
+        return cls_dumper.dump_dispatcher_for_annotation(
             TypeInfo(field_type, field_i=field_i, val_name=var_name), extras
         )
 
