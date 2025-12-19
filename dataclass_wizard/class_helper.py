@@ -348,7 +348,7 @@ def v1_dataclass_field_to_alias_for_load(
     return DATACLASS_FIELD_TO_ALIAS_FOR_LOAD[cls]
 
 def _process_field(name: str,
-                   f: Field,
+                   f: 'Field',
                    set_paths: bool,
                    init: bool,
                    load_dataclass_field_to_path,
