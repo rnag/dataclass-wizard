@@ -496,7 +496,6 @@ class LoadMixin(AbstractLoader, BaseLoadHook):
                     unsupported_type=base_type
                 )
 
-        print(load_hook, hasattr(load_hook, SINGLE_ARG_ALIAS))
         if hasattr(load_hook, SINGLE_ARG_ALIAS):
             load_hook = resolve_alias_func(load_hook, locals())
             return SingleArgParser(base_cls, extras, base_type, load_hook)
