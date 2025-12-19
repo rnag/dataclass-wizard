@@ -2,6 +2,16 @@
 History
 =======
 
+0.36.6 (2025-12-19)
+------------------
+
+**Packaging**
+
+- Fixed an issue where subpackages were not included in built distributions
+  after the switch to ``pyproject.toml`` packaging, which could cause import
+  errors at runtime. See :issue:`224`.
+- Reduced packaged non-code files to the typing marker and stubs only.
+
 0.36.5 (2025-12-19)
 ------------------
 

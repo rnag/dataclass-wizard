@@ -158,11 +158,13 @@ all = [
 ]
 
 [tool.setuptools]
-packages = ["dataclass_wizard"]
 include-package-data = true
 
+[tool.setuptools.packages.find]
+include = ["dataclass_wizard*"]
+
 [tool.setuptools.package-data]
-dataclass_wizard = ["*.pyi", "*.txt", "*.rst", "*.md", "py.typed"]
+"*" = ["*.pyi", "py.typed"]
 
 [tool.mypy]
 files = [
