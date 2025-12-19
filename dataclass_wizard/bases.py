@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from abc import ABCMeta, abstractmethod
 from datetime import tzinfo
-from typing import Callable, Type, Dict, Optional, ClassVar, Union, TypeVar, Mapping, Sequence, TYPE_CHECKING
+from typing import (Callable, Type, Dict, Optional, ClassVar, Union,
+                    TypeVar, Mapping, Sequence, TYPE_CHECKING)
 
 from .constants import TAG
 from .decorators import cached_class_property

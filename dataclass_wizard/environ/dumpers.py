@@ -1,5 +1,7 @@
 
-from typing import List, Any, Optional, Callable, Dict, Type
+from typing import List, Any, Optional, Callable, Dict, Type, TYPE_CHECKING
+if TYPE_CHECKING:
+    from collections.abc import Collection
 
 from .loaders import EnvLoader
 from .. import EnvMeta
@@ -72,7 +74,7 @@ def asdict(o: T,
 
 def dump_func_for_dataclass(cls: Type['E'],
                             config: Optional[META] = None,
-                            nested_cls_to_dump_func: Dict[Type, Any] = None,
+                            nested_cls_to_dump_func: Optional[Dict[Type, Any]] = None,
                             ) -> Callable[['E', Any, Any, Any], JSONObject]:
 
     # TODO dynamically generate for multiple nested classes at once

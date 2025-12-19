@@ -1,0 +1,262 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dataclass-wizard"
+dynamic = ["version"]
+authors = [
+    {name = "Ritvik Nag", email = "me@ritviknag.com"}
+]
+description = "A wizard-like JSON serialization library for Python dataclasses"
+readme = {file = "README.rst", content-type = "text/x-rst"}
+license = {file = "LICENSE"}
+requires-python = ">=3.9"
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Natural Language :: English",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python",
+    "Typing :: Typed",
+]
+keywords = [
+    "dataclasses", "wizard", "json", "serialization", "deserialization",
+    "dataclass serialization", "type hints", "performance", "alias",
+    "python", "env", "dotenv", "lightweight",
+]
+dependencies = [
+    "typing-extensions>=4.13.0; python_version <= '3.13'",
+]
+
+[tool.setuptools.dynamic]
+version = {attr = "dataclass_wizard.__version__.__version__"}
+
+[project.urls]
+Discussions = "https://github.com/rnag/dataclass-wizard/discussions"
+Changelog = "https://dcw.ritviknag.com/en/latest/history.html"
+Source = "https://github.com/rnag/dataclass-wizard"
+Download = "https://pypi.org/project/dataclass-wizard"
+Documentation = "https://dcw.ritviknag.com"
+"Bug Tracker" = "https://github.com/rnag/dataclass-wizard/issues"
+
+[project.scripts]
+wiz = "dataclass_wizard.wizard_cli.cli:main"
+
+[project.optional-dependencies]
+dotenv = ["python-dotenv>=1,<2"]
+timedelta = ["pytimeparse>=1.1.7"]
+toml = [
+    "tomli>=2,<3; python_version=='3.9'",
+    "tomli>=2,<3; python_version=='3.10'",
+    "tomli-w>=1,<2"
+]
+yaml = ["PyYAML>=6,<7"]
+dev = [
+    # TODO It seems `pip-upgrader` does not support Python 3.11+
+    # pip-upgrader==1.4.15
+    "flake8>=3",  # pyup: ignore
+    "tox==4.23.2",
+    # Extras
+    "pytimeparse==1.1.8",
+    "python-dotenv>=1,<2",
+    # [toml] extra
+    'tomli>=2,<3; python_version=="3.9"',
+    'tomli>=2,<3; python_version=="3.10"',
+    "tomli-w>=1,<2",
+    # TODO I don't know if we need the below on CI
+    "coverage>=6.2",
+    "pip>=21.3.1",
+    "bump-my-version==1.2.5",
+    "wheel==0.45.1",
+    "watchdog[watchmedo]==6.0.0",
+    'Sphinx==7.4.7; python_version == "3.9"',  # pyup: ignore
+    'Sphinx==8.1.3; python_version >= "3.10"',
+    "twine==6.0.1",
+    "dataclass-wizard[toml]",  # pyup: ignore
+]
+docs = [
+    "sphinx-issues==5.0.0",
+    'sphinx-autodoc-typehints==2.5.0; python_version>="3.10"',
+    "sphinx-copybutton==0.5.2",
+    "typing-extensions>=4.9.0",
+]
+test = [
+    "pytest==8.3.4",
+    "pytest-mock>=3.6.1",
+    "pytest-cov==6.0.0",
+    # "pytest-runner==5.3.1",
+]
+bench = [
+    # Benchmark tests
+    "matplotlib",
+    "pytest-benchmark[histogram]",
+    "dataclasses-json==0.6.7",
+    "jsons==1.6.3",
+    "dataclass-factory==2.16",  # pyup: ignore
+    "dacite==1.8.1",
+    "mashumaro==3.15",
+    "pydantic==2.10.3; python_version<'3.14'",
+    "attrs==24.3.0",
+]
+all = [
+    # Dotenv dependencies
+    "python-dotenv>=1,<2",
+
+    # Timedelta dependencies
+    "pytimeparse>=1.1.7",
+
+    # TOML dependencies
+    "tomli>=2,<3; python_version=='3.9'",
+    "tomli>=2,<3; python_version=='3.10'",
+    "tomli-w>=1,<2",
+
+    # YAML dependencies
+    "PyYAML>=6,<7",
+
+    # Dev dependencies (excluding CI-specific or tool-specific packages)
+    "flake8>=3",
+    "tox==4.23.2",
+    "pytimeparse==1.1.8",
+    "coverage>=6.2",
+    "bump-my-version==1.2.5",
+    "wheel==0.45.1",
+    "watchdog[watchmedo]==6.0.0",
+    'Sphinx==7.4.7; python_version == "3.9"',
+    'Sphinx==8.1.3; python_version >= "3.10"',
+    "twine==6.0.1",
+
+    # Docs dependencies
+    "sphinx-issues==5.0.0",
+    'sphinx-autodoc-typehints==2.5.0; python_version>="3.10"',
+    "sphinx-copybutton==0.5.2",
+    "typing-extensions>=4.9.0",
+
+    # Test dependencies
+    "pytest==8.3.4",
+    "pytest-mock>=3.6.1",
+    "pytest-cov==6.0.0",
+
+    # Bench dependencies
+    "matplotlib",
+    "pytest-benchmark[histogram]",
+    "dataclasses-json==0.6.7",
+    "jsons==1.6.3",
+    "dataclass-factory==2.16",
+    "dacite==1.8.1",
+    "mashumaro==3.15",
+    "pydantic==2.10.3; python_version<'3.14'",
+    "attrs==24.3.0",
+]
+
+[tool.setuptools]
+packages = ["dataclass_wizard"]
+include-package-data = true
+
+[tool.setuptools.package-data]
+dataclass_wizard = ["*.pyi", "*.txt", "*.rst", "*.md", "py.typed"]
+
+[tool.mypy]
+files = [
+    "dataclass_wizard",
+    # TODO: typing for unit tests
+    # "tests",
+]
+show_column_numbers = true
+show_error_codes = true
+show_traceback = true
+ignore_missing_imports = true
+local_partial_types = true
+no_implicit_optional = true
+check_untyped_defs = false
+
+[[tool.bumpversion.files]]
+filename = "dataclass_wizard/__version__.py"
+search = "__version__ = '{current_version}'"
+replace = "__version__ = '{new_version}'"
+
+[tool.pytest.ini_options]
+addopts = "-s"
+testpaths = ["tests"]
+log_cli = true
+log_cli_format = "%(name)s.%(module)s - [%(levelname)s] %(message)s"
+log_cli_level = "INFO"
+markers = [
+    "mutative: mark a test as potentially dangerous one",
+    "long: mark an integration test that might long to run"
+]
+collect_ignore = ['setup.py']
+
+[tool.flake8]
+exclude = ["docs"]
+ignore = [
+    "F403",  # star import used
+    "F405"   # variable may be undefined, or defined from star imports
+]
+
+[tool.coverage.run]
+branch = true
+omit = [
+    "*/__version__.py",
+]
+
+[tool.coverage.report]
+# Regexes for lines to exclude from consideration
+exclude_also = [
+    # Have to re-enable the standard pragma
+    "pragma: no cover",
+    # Conditional code which is dependent on the OS, or `os.name`
+    "if name == 'nt':",
+    "if TYPE_CHECKING.*:",
+    # This will exclude all lines starting with something like
+    # if PY311_OR_ABOVE: or if PY310_BETA:.
+    'if PY\d+_\\w+:',
+    # Don't complain if tests don't hit defensive assertion code:
+    "raise AssertionError",
+    "raise NotImplementedError",
+    # Ellipsis are used as placeholders in python 3 that will be overridden
+    "\\.\\.\\.",
+    # Don't complain if non-runnable code isn't run:
+    "if 0:",
+    "if __name__ == .__main__.:",
+    # Don't complain if alias functions aren't run:
+    "alias:",
+]
+ignore_errors = true
+
+[tool.tox]
+legacy_tox_ini = """
+[tox]
+envlist = py39, py310, py311, py312, py313, py314, flake8
+
+[gh-actions]
+python =
+    3.14: py314
+    3.13: py313
+    3.12: py312
+    3.11: py311
+    3.10: py310
+    3.9: py39
+
+[testenv:flake8]
+basepython = python
+deps = flake8
+commands = flake8 dataclass_wizard tests
+
+[testenv]
+setenv =
+    PYTHONPATH = {toxinidir}
+    PYTEST_ADDOPTS = --ignore-glob=*integration*
+commands =
+    pip install -U pip uv
+    uv pip install -e .[all]
+    pytest --basetemp={envtmpdir}
+"""

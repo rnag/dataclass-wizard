@@ -4,6 +4,7 @@ from dataclasses import is_dataclass, dataclass
 
 from .abstractions import AbstractJSONWizard
 from .bases_meta import BaseJSONWizardMeta, LoadMeta, DumpMeta
+from .constants import PACKAGE_NAME
 from .class_helper import call_meta_initializer_if_needed
 from .type_def import dataclass_transform
 from .loader_selection import asdict, fromdict, fromlist
@@ -125,7 +126,10 @@ class DataclassWizard(AbstractJSONWizard):
         super().__init_subclass__()
 
         # Apply the @dataclass decorator.
-        if _apply_dataclass and not is_dataclass(cls):
+        if (_apply_dataclass
+                and not is_dataclass(cls)
+                # skip classes provided by this library
+                and not cls.__module__.startswith(f'{PACKAGE_NAME}.')):
             # noinspection PyArgumentList
             dataclass(cls, **dc_kwargs)
 

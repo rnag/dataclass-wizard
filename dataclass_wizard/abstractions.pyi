@@ -628,14 +628,14 @@ class AbstractLoaderGenerator(ABC):
 
     @classmethod
     @abstractmethod
-    def get_string_for_annotation(cls,
-                                  tp: TypeInfo,
-                                  extras: V1Extras) -> str | TypeInfo:
+    def load_dispatcher_for_annotation(cls,
+                                       tp: TypeInfo,
+                                       extras: V1Extras) -> str | TypeInfo:
         """
-        Generate code to get the parser (dispatcher) for a given annotation type.
+        Resolve the load dispatcher for a given annotation type.
 
-        `base_cls` is the original class object, useful when the annotated
-        type is a :class:`typing.ForwardRef` object.
+        Returns either a string reference to a dispatcher or a TypeInfo object,
+        depending on how the annotation is handled.
         """
 
 
@@ -839,12 +839,12 @@ class AbstractDumperGenerator(ABC):
 
     @classmethod
     @abstractmethod
-    def get_string_for_annotation(cls,
-                                  tp: TypeInfo,
-                                  extras: V1Extras) -> 'str | TypeInfo':
+    def dump_dispatcher_for_annotation(cls,
+                                       tp: TypeInfo,
+                                       extras: V1Extras) -> 'str | TypeInfo':
         """
-        Generate code to get the parser (dispatcher) for a given annotation type.
+        Resolve the dump dispatcher for a given annotation type.
 
-        `base_cls` is the original class object, useful when the annotated
-        type is a :class:`typing.ForwardRef` object.
+        Returns either a string reference to a dispatcher or a TypeInfo object,
+        depending on how the annotation is handled.
         """
