@@ -158,7 +158,13 @@ all = [
 ]
 
 [tool.setuptools]
-packages = ["dataclass_wizard"]
+packages = [
+    "dataclass_wizard",
+    "dataclass_wizard.environ",
+    "dataclass_wizard.utils",
+    "dataclass_wizard.v1",
+    "dataclass_wizard.wizard_cli"
+]
 include-package-data = true
 
 [tool.setuptools.package-data]
