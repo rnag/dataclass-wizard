@@ -99,14 +99,15 @@ class ParseError(JSONWizardError):
     Base error when an error occurs during the JSON load process.
     """
 
-    _TEMPLATE = ('Failure parsing field `{field}` in class `{cls}`. Expected '
-                 'a type {ann_type}, got {obj_type}.\n'
-                 '  value: {o!r}\n'
+    _TEMPLATE = ('Failed to {p} field `{field}` in class `{cls}`.{expectation}\n'
+                 '  phase: {p}\n'
+                 '{value}'
                  '  error: {e!s}')
 
     def __init__(self, base_err: Exception,
                  obj: Any,
                  ann_type: Optional[Union[Type, Iterable]],
+                 phase: str,
                  _default_class: Optional[type] = None,
                  _field_name: Optional[str] = None,
                  _json_object: Any = None,
@@ -114,6 +115,7 @@ class ParseError(JSONWizardError):
 
         super().__init__()
 
+        self.phase = phase
         self.obj = obj
         self.obj_type = type(obj)
         self.ann_type = ann_type
@@ -146,6 +148,14 @@ class ParseError(JSONWizardError):
 
     @property
     def message(self) -> str:
+        if self.obj_type is type:
+            obj_type = self.name(self.obj)
+            expectation = ''
+            value = f'  value_type: {obj_type}\n'
+        else:
+            obj_type = self.name(self.obj_type)
+            expectation = f' Expected a type {self.ann_type}, got {obj_type}.'
+            value = f'  value: {self.obj!r}\n'
 
         ann_type = self.name(
             self.ann_type if self.ann_type is not None
@@ -153,10 +163,10 @@ class ParseError(JSONWizardError):
                        if f.name == self._field_name), None))
 
         msg = self._TEMPLATE.format(
+            expectation=expectation,
             cls=self.class_name, field=self.field_name,
-            e=self.base_error, o=self.obj,
-            ann_type=ann_type,
-            obj_type=self.name(self.obj_type))
+            e=self.base_error, value=value, p=self.phase,
+            ann_type=ann_type)
 
         if self.json_object:
             from .utils.json_util import safe_dumps
@@ -164,7 +174,8 @@ class ParseError(JSONWizardError):
 
         if self.kwargs:
             sep = '\n  '
-            parts = sep.join(f'{k}: {v!r}' for k, v in self.kwargs.items())
+            parts = sep.join(f'{k}: {v if isinstance(v, str) else repr(v)}'
+                             for k, v in self.kwargs.items())
             msg = f'{msg}{sep}{parts}'
 
         return msg
@@ -316,7 +327,8 @@ class MissingFields(JSONWizardError):
 
         if self.kwargs:
             sep = '\n  '
-            parts = sep.join(f'{k}: {v}' for k, v in self.kwargs.items())
+            parts = sep.join(f'{k}: {v if isinstance(v, str) else repr(v)}'
+                             for k, v in self.kwargs.items())
             msg = f'{msg}{sep}{parts}'
 
         return msg
@@ -375,7 +387,8 @@ class UnknownKeysError(JSONWizardError):
 
         if self.kwargs:
             sep = '\n  '
-            parts = sep.join(f'{k}: {v!r}' for k, v in self.kwargs.items())
+            parts = sep.join(f'{k}: {v if isinstance(v, str) else repr(v)}'
+                             for k, v in self.kwargs.items())
             msg = f'{msg}{sep}{parts}'
 
         return msg
@@ -398,7 +411,7 @@ class MissingData(ParseError):
                  '`Optional[{nested_cls}]` or `{nested_cls} | None`')
 
     def __init__(self, nested_cls: Type, **kwargs):
-        super().__init__(self, None, nested_cls, **kwargs)
+        super().__init__(self, None, nested_cls, 'load', **kwargs)
         self.nested_class_name: str = self.name(nested_cls)
 
         # self.nested_class_name: str = type_name(nested_cls)
@@ -412,12 +425,12 @@ class MissingData(ParseError):
             nested_cls=self.nested_class_name,
             json_string=safe_dumps(self.obj),
             field=self.field_name,
-            o=self.obj,
         )
 
         if self.kwargs:
             sep = '\n  '
-            parts = sep.join(f'{k}: {v!r}' for k, v in self.kwargs.items())
+            parts = sep.join(f'{k}: {v if isinstance(v, str) else repr(v)}'
+                             for k, v in self.kwargs.items())
             msg = f'{msg}{sep}{parts}'
 
         return msg

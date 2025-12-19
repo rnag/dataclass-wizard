@@ -347,7 +347,7 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
                 fn_gen.add_line('name = e.args[0]; e = KeyError(f"Missing required key: {name!r}")')
             with fn_gen.elif_('not isinstance(v1, dict)'):
                 fn_gen.add_line('e = TypeError("Incorrect type for object")')
-            fn_gen.add_line('raise ParseError(e, v1, {}) from None')
+            fn_gen.add_line('raise ParseError(e, v1, {}, "dump") from None')
 
     @classmethod
     @setup_recursive_safe_function_for_generic(None, prefix='dump')
@@ -479,7 +479,7 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
         # Invalid type for Union
         fn_gen.add_line("raise ParseError("
                         "TypeError('Object was not in any of Union types'),"
-                        f"v1,{fields},"
+                        f"v1,{fields},'dump',"
                         "tag_key=tag_key"
                         ")")
 
@@ -551,6 +551,8 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
                                        extras):
 
         hooks = cls.__DUMP_HOOKS__
+        new_hooks = extras['config'].v1_type_to_dump_hook
+        has_hooks = new_hooks is not None
 
         # type_ann = tp.origin
         type_ann = eval_forward_ref_if_needed(tp.origin, extras['cls'])
@@ -597,6 +599,20 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
             dump_hook = hooks.get(origin)
 
         elif (dump_hook := hooks.get(origin)) is not None:
+            try:
+                args = get_args(type_ann)
+            except ValueError:
+                args = Any,
+
+        elif has_hooks and (hook_info := new_hooks.get(origin)) is not None:
+            mode, dump_hook = hook_info
+
+            if mode == 'runtime':
+                fn_name = dump_hook.__name__
+                tp.ensure_in_locals(extras, dump_hook)
+                # extras['locals'].setdefault(fn_name, dump_hook)
+                return f'{fn_name}({tp.v()})'
+
             try:
                 args = get_args(type_ann)
             except ValueError:
@@ -722,8 +738,9 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
         #  an error but perform a default action?
         err = TypeError('Provided type is not currently supported.')
         pe = ParseError(
-            err, origin, type_ann,
-            resolution='Consider decorating the class with `@dataclass`',
+            err, origin, type_ann, 'dump',
+            resolution=f'Register a dump hook for {ParseError.name(origin)} '
+                       f'(v1: `register_type` / `Meta.v1_type_to_dump_hook`).',
             unsupported_type=origin
         )
         raise pe from None
@@ -759,7 +776,7 @@ def setup_default_dumper(cls=DumpMixin):
     cls.register_dump_hook(list, cls.dump_from_iterable)
     cls.register_dump_hook(tuple, cls.dump_from_tuple)
     # `typing` Generics
-    # cls.register_load_hook(Literal, cls.dump_from_literal)
+    # cls.register_dump_hook(Literal, cls.dump_from_literal)
     # noinspection PyTypeChecker
     cls.register_dump_hook(defaultdict, cls.dump_from_defaultdict)
     cls.register_dump_hook(dict, cls.dump_from_dict)
@@ -805,7 +822,7 @@ def dump_func_for_dataclass(
     cls_fields_list = list(cls_fields)
     cls_field_names = dataclass_field_names(cls)
 
-    # Get the loader for the class, or create a new one as needed.
+    # Get the dumper for the class, or create a new one as needed.
     cls_dumper = get_dumper(cls, base_cls=dumper_cls, v1=True)
 
     cls_name = cls.__name__
@@ -1241,7 +1258,7 @@ def re_raise(e, cls, o, fields, field, value):
             add_fields = False
         else:
             tp = getattr(next((f for f in fields if f.name == field), None), 'type', Any)
-            e = ParseError(e, value, tp)
+            e = ParseError(e, value, tp, 'dump')
 
     # We run into a parsing error while dumping the field value;
     # Add additional info on the Exception object before re-raising it.

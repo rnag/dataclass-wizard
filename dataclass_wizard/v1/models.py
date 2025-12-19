@@ -28,7 +28,8 @@ _BUILTIN_COLLECTION_TYPES = frozenset({
     list,
     set,
     dict,
-    tuple
+    tuple,
+    frozenset,
 })
 
 # Atomic immutable types which don't require any recursive handling and for which deepcopy
@@ -61,6 +62,52 @@ SCALAR_TYPES = (
     float,
     bool,
 )
+
+
+def ensure_type_ref(extras, tp, *, name=None, prefix='', is_builtin=False, field_i=0) -> str:
+    """
+    Return a safe symbol name for `tp` to use in generated code.
+
+    Adds entries to `extras['locals']` only when required (non-builtins,
+    non-collection literals, and cases where a stable local alias is needed).
+    """
+    if tp is NoneType:
+        return 'None'
+
+    if name is None:
+        name = tp.__name__
+
+    # Common built-in collections: always use the literal names directly.
+    if tp in _BUILTIN_COLLECTION_TYPES:
+        return name
+
+    mod = tp.__module__
+
+    # Builtins: can be referenced directly without injecting into locals.
+    # Includes str/int/float/bool/bytes and also built-in collection types.
+    if mod == 'builtins':
+        return name
+
+    if is_builtin or mod == 'collections':
+        LOG.debug('Ensuring %s=%s', name, name)
+        extras['locals'].setdefault(name, tp)
+        return name
+
+    _locals = extras['locals']
+
+    # If the type name is safe and not used yet, inject it.
+    # You may want stricter collision checks here.
+    if name not in _locals:
+        _locals[name] = tp
+        return name
+
+    # Collision: create a unique alias.
+    # TODO might need to handle `var_name`
+    alias = f'{prefix}{name}_{field_i}'
+    LOG.debug('Adding %s=%s', alias, name)
+    _locals.setdefault(alias, tp)
+
+    return alias
 
 
 class TypeInfo:
@@ -138,13 +185,12 @@ class TypeInfo:
 
     @staticmethod
     def ensure_in_locals(extras, *tps, **name_to_tp):
-        _locals = extras['locals']
-
-        for tp in tps:
-            _locals.setdefault(tp.__name__, tp)
+        names = [ensure_type_ref(extras, tp) for tp in tps]
 
         for name, tp in name_to_tp.items():
-            _locals.setdefault(name, tp)
+            extras['locals'].setdefault(name, tp)
+
+        return names
 
     def type_name(self, extras, bound=None):
         """Return type name as string (useful for `Union` type checks)"""
@@ -184,9 +230,8 @@ class TypeInfo:
         return result
 
     def wrap(self, result: str, extras, force=False, prefix='', bound=None):
-        if (tn := self._wrap_inner(
-                extras, prefix=prefix, force=force,
-                bound=bound)) is not None:
+        tn = self._wrap_inner(extras, prefix=prefix, force=force, bound=bound)
+        if tn is not None:
             result = f'{tn}({result})'
 
         setattr(self, '_wrapped', result)
@@ -214,6 +259,9 @@ class TypeInfo:
             name = 'None' if tp is NoneType else tp.__name__
             return_name = True
 
+        # If the type is the bound itself, treat it as "builtin" in naming
+        # (i.e., don't generate unique alias)
+        #
         # This ensures we don't create a "unique" name
         # if it's a non-subclass, e.g. ensures we end
         # up with `date` instead of `date_123`.
@@ -221,22 +269,14 @@ class TypeInfo:
             is_builtin = tp is bound
 
         if tp not in _BUILTIN_COLLECTION_TYPES:
-            if (mod := tp.__module__) == 'builtins':
-                tn = name
-            elif (is_builtin
-                  or mod == 'collections'):
-                tn = name
-                LOG.debug(f'Ensuring %s=%s', tn, name)
-                extras['locals'].setdefault(tn, tp)
-            elif mod == 'builtins':
-                tn = name
-            else:
-                # TODO might need to handle `var_name`
-                tn = f'{prefix}{name}_{self.field_i}'
-                LOG.debug(f'Adding %s=%s', tn, name)
-                extras['locals'][tn] = tp
-
-            return tn
+            return ensure_type_ref(
+                extras,
+                tp,
+                name=name,
+                prefix=prefix,
+                is_builtin=is_builtin,
+                field_i=self.field_i,
+            )
 
         return name if return_name else None
 

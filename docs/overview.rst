@@ -221,5 +221,16 @@ Special Cases
   from JSON objects using the annotated base type, and serialized back as
   plain ``dict`` objects.
 
+Extending Supported Types
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+If a type is not supported out of the box, you can extend Dataclass Wizard
+using **custom type hooks**.
+
+Type hooks allow you to define how a type is loaded and dumped, without
+modifying the type itself.
+
+See :doc:`advanced_usage/type_hooks` for more information.
+
 .. _using dataclasses: https://dcw.ritviknag.com/en/latest/common_use_cases/dataclasses_in_union_types.html
 .. _pytimeparse: https://pypi.org/project/pytimeparse/

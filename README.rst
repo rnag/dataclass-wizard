@@ -183,6 +183,25 @@ Supported Types 🧑‍💻
 
 For more info, check out the `Supported Types`_ section in the docs for detailed insights into each type and the load/dump process!
 
+Custom Type Hooks 🔌
+-------------------
+
+Dataclass Wizard allows you to extend serialization and deserialization
+to support custom or unsupported types via **type hooks**.
+
+Type hooks define how a value is:
+
+- **loaded** (parsed) from JSON or a dictionary
+- **dumped** (serialized) back into JSON-compatible data
+
+This makes it easy to support standard-library types such as
+`ipaddress.IPv4Address`_ as well as user-defined classes.
+
+Type hooks work with or without inheritance, and integrate seamlessly
+with the v1 code generation engine.
+
+See `Type Hooks`_ for details and examples.
+
 Usage and Examples
 ------------------
 
@@ -1626,3 +1645,5 @@ This package was created with Cookiecutter_ and the `rnag/cookiecutter-pypackage
 .. _V1 Opt-in documentation for Patterned Date and Time: https://dcw.ritviknag.com/en/latest/common_use_cases/v1_patterned_date_time.html
 .. _`Field Guide to V1 Opt-in`: https://github.com/rnag/dataclass-wizard/wiki/Field-Guide-to-V1-Opt%E2%80%90in
 .. _V1 Alias: https://dcw.ritviknag.com/en/latest/common_use_cases/v1_alias.html
+.. _Type Hooks: https://dcw.ritviknag.com/en/latest/advanced_usage/type_hooks.html
+.. _`ipaddress.IPv4Address`: https://docs.python.org/3/library/ipaddress.html#ipaddress.IPv4Address

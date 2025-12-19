@@ -63,7 +63,7 @@ def v1_safe_get(data, path, raise_):
 
 def _format_err(e, current_data, path, current_path, invalid_path=False):
     return ParseError(
-        e, current_data, dict if invalid_path else None,
+        e, current_data, dict if invalid_path else None, 'load',
         path=' => '.join(repr(p) for p in path),
         current_path=repr(current_path),
     )

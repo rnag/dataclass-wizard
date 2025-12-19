@@ -2,6 +2,31 @@
 History
 =======
 
+0.37.0 (2025-12-19)
+------------------
+
+**Enhancements**
+
+- Added first-class support for **custom type hooks** to extend (de)serialization
+  for unsupported or user-defined types.
+  Type hooks can be registered either programmatically via ``register_type()``
+  or declaratively via ``Meta`` for v1 code generation.
+
+- Improved error reporting for unsupported types to clearly indicate whether the
+  failure occurred during **load** or **dump**, and to suggest registering an
+  appropriate type hook.
+
+- Extended support for additional built-in and standard-library types,
+  including ``ipaddress.IPv4Address`` and ``frozenset``.
+
+- Simplified internal code generation for iterable types and improved handling
+  of built-in collection literals.
+
+**Backward compatibility**
+
+- Existing v0 behavior remains unchanged unless custom type hooks are registered.
+- v1 behavior is opt-in and backward compatible.
+
 0.36.6 (2025-12-19)
 ------------------
 

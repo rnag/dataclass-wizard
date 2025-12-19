@@ -2,67 +2,275 @@ Type Hooks
 ==========
 
 .. note::
-    To customize the load or dump process for dataclass
-    fields instead of annotated types, please see the `Serializer
-    Hooks <serializer_hooks.html>`__ section.
+   If you want to customize serialization for **specific fields** (rather than
+   a type everywhere it appears), see :doc:`serializer_hooks`.
 
-Sometimes you might want to customize the load and dump process for
-(annotated) variable types, rather than for specific dataclass fields.
-Type hooks are very useful and will let you do exactly that.
+Type hooks let you extend Dataclass Wizard to support **custom or unsupported
+types**, by defining how a type is:
 
-If you want to customize the load process for any type, extend from
-``LoadMixin`` and override the ``load_to_...`` methods. To instead
-customize the dump process for a type, extend from ``DumpMixin`` and
-override the ``dump_with_...`` methods.
+- **loaded** (parsed) from JSON/dicts into a Python object, and
+- **dumped** (serialized) back into JSON-compatible data.
 
-For instance, the default load process for ``Enum`` types is to look
-them up by value, and similarly convert them back to strings using the
-``value`` field. Suppose that you want to load ``Enum`` types using the
-``name`` field instead.
+This is the recommended way to add support for types such as
+``ipaddress.IPv4Address``, ``pathlib.Path``, custom IDs, and other domain types.
 
-The below example will do exactly that: it will convert using the *Enum*
-``name`` field when ``from_dict`` is called, and use the default
-approach to convert back using the *Enum* ``value`` field when
-``to_dict`` is called; it additionally customizes the dump process for
-strings, so they are converted to all uppercase when ``to_dict`` or
-``to_json`` is called.
+When to use type hooks
+----------------------
 
-.. code:: python3
+Use type hooks when:
 
-    from dataclasses import dataclass
-    from enum import Enum
-    from typing import Union, AnyStr, Type
+- a type is not supported out of the box and you want a clean, reusable solution
+- you want consistent behavior for a type across many dataclasses
+- you want to avoid sprinkling per-field logic throughout your models
 
-    from dataclass_wizard import JSONSerializable, DumpMixin, LoadMixin
-    from dataclass_wizard.type_def import N
+If you only need special handling for a single field (or a small subset of
+fields), prefer :doc:`serializer_hooks`.
 
+Quick start: register a type
+----------------------------
 
-    @dataclass
-    class MyClass(JSONSerializable, LoadMixin, DumpMixin):
+The simplest approach is to register a type and rely on sensible defaults:
 
-        my_str: str
-        my_enum: 'MyEnum'
+- **load**: ``Type(value)``
+- **dump**: ``str(value)``
 
-        def load_to_enum(o: Union[AnyStr, N], base_type: Type[Enum]) -> Enum:
-            return base_type[o.replace(' ', '_')]
+Example: ``ipaddress.IPv4Address``
 
-        def dump_with_str(o: str, *_):
-            return o.upper()
+.. code-block:: python
+
+   from dataclasses import dataclass
+   from ipaddress import IPv4Address
+
+   from dataclass_wizard import JSONWizard
 
 
-    class MyEnum(Enum):
-        NAME_1 = 'one'
-        NAME_2 = 'two'
+   @dataclass
+   class Foo(JSONWizard):
+       c: IPv4Address | None = None
 
 
-    data = {"my_str": "my string", "my_enum": "NAME 1"}
+   # Uses defaults: load=IPv4Address, dump=str
+   Foo.register_type(IPv4Address)
 
-    c = MyClass.from_dict(data)
-    print(repr(c))
-    # prints:
-    #   MyClass(my_str='my string', my_enum=<MyEnum.NAME_1: 'one'>)
 
-    string = c.to_json()
-    print(string)
-    # prints:
-    #   {"myStr": "MY STRING", "myEnum": "one"}
+   foo = Foo.from_dict({"c": "127.0.0.1"})
+   assert foo.c == IPv4Address("127.0.0.1")
+   assert foo.to_dict() == {"c": "127.0.0.1"}
+
+If you omit the registration, you will get an error indicating the type is not
+supported (and it should indicate whether the failure occurred during **load**
+or **dump**).
+
+Registering custom load and dump functions
+------------------------------------------
+
+You can override the defaults by providing custom functions. In general:
+
+- The **load** function should return the target type (or object).
+- The **dump** function must return a JSON-serializable value
+  (``str``, ``int``, ``float``, ``bool``, ``None``, ``list``, ``dict``).
+
+.. code-block:: python
+
+   from dataclasses import dataclass
+   from decimal import Decimal
+
+   from dataclass_wizard import JSONWizard
+
+
+   def load_decimal(v):
+       return Decimal(v)
+
+   def dump_decimal(v: Decimal):
+       # JSON wants a primitive; choose str for exactness
+       return str(v)
+
+
+   @dataclass
+   class Invoice(JSONWizard):
+       total: Decimal
+
+
+   Invoice.register_type(Decimal, load=load_decimal, dump=dump_decimal)
+
+V1 code generation hooks (advanced)
+-----------------------------------
+
+If you have v1 enabled, you may choose to provide **v1 codegen hooks**.
+These hooks accept ``(TypeInfo, Extras)`` and return a **string expression**
+(or ``TypeInfo``) used by the v1 compiler.
+
+This is useful if you need to integrate directly with the v1 compilation
+pipeline.
+
+.. note::
+   Most users should start with ``register_type()`` and only use codegen hooks
+   when needed.
+
+Example: ``IPv4Address`` with v1 codegen hooks
+
+.. code-block:: python
+
+   from dataclasses import dataclass
+   from ipaddress import IPv4Address
+
+   from dataclass_wizard import JSONWizard
+   from dataclass_wizard.v1.models import TypeInfo, Extras
+
+
+   def load_to_ipv4_address(tp: TypeInfo, extras: Extras) -> str:
+       # Wrap the value expression using the type's constructor
+       return tp.wrap(tp.v(), extras)
+
+   def dump_from_ipv4_address(tp: TypeInfo, extras: Extras) -> str:
+       # Dump an IPv4Address by converting to string
+       return f"str({tp.v()})"
+
+
+   @dataclass
+   class Foo(JSONWizard):
+       class Meta(JSONWizard.Meta):
+           v1 = True
+           v1_type_to_load_hook = {IPv4Address: load_to_ipv4_address}
+           v1_type_to_dump_hook = {IPv4Address: dump_from_ipv4_address}
+
+       c: IPv4Address | None = None
+
+
+   foo = Foo.from_dict({"c": "127.0.0.1"})
+   assert foo.to_dict() == {"c": "127.0.0.1"}
+
+Declaring hooks via Meta
+------------------------
+
+If you prefer a declarative style, you can set hooks in ``Meta``. This is
+especially useful for v1.
+
+.. code-block:: python
+
+   from dataclasses import dataclass
+   from ipaddress import IPv4Address
+
+   from dataclass_wizard import JSONWizard
+
+
+   @dataclass
+   class Foo(JSONWizard):
+       class Meta(JSONWizard.Meta):
+           v1 = True
+
+       c: IPv4Address | None = None
+
+
+   Foo.register_type(IPv4Address)
+
+If you want to avoid method calls entirely, you can also register via ``Meta``.
+(Exact configuration options may vary depending on the engine you use.)
+
+.. code-block:: python
+
+   from dataclasses import dataclass
+   from ipaddress import IPv4Address
+
+   from dataclass_wizard import JSONWizard
+
+
+   @dataclass
+   class Foo(JSONWizard):
+       class Meta(JSONWizard.Meta):
+           v1 = True
+           # Equivalent of Foo.register_type(IPv4Address)
+           # Defaults: load=IPv4Address, dump=str
+           v1_type_to_load_hook = {IPv4Address: IPv4Address}
+           v1_type_to_dump_hook = {IPv4Address: str}
+
+       c: IPv4Address | None = None
+
+Enum example: load by name, dump by value
+-----------------------------------------
+
+The default behavior for enums is typically to load/dump using ``value``.
+If you want to load by enum **name** instead, type hooks make it easy.
+
+.. code-block:: python
+
+   from dataclasses import dataclass
+   from enum import Enum
+
+   from dataclass_wizard import JSONWizard
+
+
+   class MyEnum(Enum):
+       NAME_1 = "one"
+       NAME_2 = "two"
+
+
+   def load_enum_by_name(v):
+       # Input example: "NAME 1" -> MyEnum.NAME_1
+       return MyEnum[v.replace(" ", "_")]
+
+   def dump_enum_by_value(e: MyEnum):
+       return e.value
+
+
+   @dataclass
+   class MyClass(JSONWizard):
+       my_str: str
+       my_enum: MyEnum
+
+
+   MyClass.register_type(MyEnum, load=load_enum_by_name, dump=dump_enum_by_value)
+
+
+   data = {"my_str": "my string", "my_enum": "NAME 1"}
+
+   c = MyClass.from_dict(data)
+   assert c.my_enum is MyEnum.NAME_1
+   assert c.to_dict() == {"my_str": "my string", "my_enum": "one"}
+
+Runtime vs v1 codegen hooks
+---------------------------
+
+Dataclass Wizard supports two styles of hooks:
+
+Runtime hooks
+   Regular Python callables used at runtime.
+
+   - load hook: ``fn(value) -> object``
+   - dump hook: ``fn(object) -> json_value``
+
+V1 codegen hooks
+   Functions used by the v1 compiler.
+
+   - hook: ``fn(TypeInfo, Extras) -> str | TypeInfo``
+
+If you provide a codegen hook, it must return a valid Python expression as a
+string, referencing any required types/functions that are in scope for the
+generated code.
+
+Errors and troubleshooting
+--------------------------
+
+Unsupported type errors
+   If a type is unsupported, Dataclass Wizard will raise a parse/serialization
+   error. The error should indicate:
+
+   - the field name
+   - whether the error occurred during **load** or **dump**
+   - the unsupported type
+   - a resolution hint (register a type hook)
+
+If your dump hook returns a non-JSON value
+   Ensure your dump hook returns JSON-compatible primitives (or nested
+   structures composed of primitives).
+
+If you see name errors in v1 generated code
+   Your codegen hook must reference names that are in scope for the generated
+   function. Prefer builtins (like ``str``) or ensure the type/function is
+   available to the compiler (via locals injection, if applicable).
+
+See also
+--------
+
+- :doc:`serializer_hooks` (field-level customization)
+- :doc:`../overview` (supported types and general usage)

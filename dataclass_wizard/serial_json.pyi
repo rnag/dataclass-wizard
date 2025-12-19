@@ -2,7 +2,7 @@ import json
 from typing import AnyStr, Collection, Callable, Protocol, dataclass_transform
 
 from .abstractions import AbstractJSONWizard, W
-from .bases_meta import BaseJSONWizardMeta
+from .bases_meta import BaseJSONWizardMeta, V1HookFn
 from .enums import LetterCase
 from .v1.enums import KeyCase
 from .type_def import Decoder, Encoder, JSONObject, ListOfJSONObject
@@ -99,6 +99,13 @@ class DataclassWizard(AbstractJSONWizard, SerializerHookMixin):
             # Set the `__init_subclass__` method here, so we can ensure it
             # doesn't run for the `JSONSerializable.Meta` class.
             ...
+
+    @classmethod
+    def register_type(cls, tp: type, *,
+                      load: V1HookFn | None = None,
+                      dump: V1HookFn | None = None,
+                      mode: str | None = None) -> None:
+
     @classmethod
     def from_json(cls: type[W], string: AnyStr, *,
                   decoder: Decoder = json.loads,

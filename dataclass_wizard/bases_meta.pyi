@@ -6,18 +6,26 @@ both import directly from `bases`.
 """
 from dataclasses import MISSING
 from datetime import tzinfo
-from typing import Sequence
+from typing import Sequence, Callable, Any, Mapping, Literal
 
-from .bases import AbstractMeta, META, AbstractEnvMeta
+from .bases import AbstractMeta, META, AbstractEnvMeta, V1TypeToHook
 from .constants import TAG
 from .enums import DateTimeTo, LetterCase, LetterCasePriority
 from .v1.enums import KeyAction, KeyCase, DateTimeTo as V1DateTimeTo
 from .models import Condition
 from .type_def import E, EnvFileType
 
+_ALLOWED_MODES = Literal['runtime', 'v1_codegen']
 
 # global flag to determine if debug mode was ever enabled
 _debug_was_enabled = False
+
+V1HookFn = Callable[..., Any]
+
+def register_type(cls, tp: type, *,
+                  load: 'V1HookFn | None' = None,
+                  dump: 'V1HookFn | None' = None,
+                  mode: str | None = None) -> None: ...
 
 
 def _enable_debug_mode_if_needed(cls_loader, possible_lvl: bool | int | str):
@@ -67,6 +75,8 @@ def LoadMeta(*, debug_enabled: 'bool | int | str' = MISSING,
              auto_assign_tags: bool = MISSING,
              v1: bool = MISSING,
              v1_debug: bool | int | str = False,
+             v1_type_to_load_hook: V1TypeToHook = None,
+             v1_type_to_dump_hook: V1TypeToHook = None,
              v1_case: KeyCase | str | None = MISSING,
              v1_field_to_alias: dict[str, str | Sequence[str]] = MISSING,
              v1_on_unknown_key: KeyAction | str | None = KeyAction.IGNORE,
