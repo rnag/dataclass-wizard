@@ -95,6 +95,10 @@ servedocs: docs ## compile the docs watching for changes
 release: dist ## package and upload a release
 	twine upload dist/*
 
+check-dist:
+	python -m build
+	python -m twine check dist/*
+
 check: dist-local  ## verify release before upload to PyPI
 	twine check dist/*
 
