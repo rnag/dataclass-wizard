@@ -1,0 +1,8 @@
+repos:
+  - repo: https://github.com/rstcheck/rstcheck
+    rev: v6.2.4
+    hooks:
+      - id: rstcheck
+        name: rstcheck (README.rst)
+        args: ["--report-level=warning"]
+        files: ^README\.rst$

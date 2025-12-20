@@ -705,8 +705,7 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
                                        extras):
 
         hooks = cls.__LOAD_HOOKS__
-        new_hooks = extras['config'].v1_type_to_load_hook
-        has_hooks = new_hooks is not None
+        type_hooks = extras['config'].v1_type_to_load_hook
 
         # type_ann = tp.origin
         type_ann = eval_forward_ref_if_needed(tp.origin, extras['cls'])
@@ -753,13 +752,8 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         elif origin in SIMPLE_TYPES or is_subclass_safe(origin, SIMPLE_TYPES):
             load_hook = hooks.get(origin)
 
-        elif (load_hook := hooks.get(origin)) is not None:
-            try:
-                args = get_args(type_ann)
-            except ValueError:
-                args = Any,
-
-        elif has_hooks and (hook_info := new_hooks.get(origin)) is not None:
+        elif (type_hooks is not None
+              and (hook_info := type_hooks.get(origin)) is not None):
             mode, load_hook = hook_info
 
             if mode == 'runtime':
@@ -767,6 +761,12 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
                 extras['locals'].setdefault(fn_name, load_hook)
                 return f'{fn_name}({tp.v()})'
 
+            try:
+                args = get_args(type_ann)
+            except ValueError:
+                args = Any,
+
+        elif (load_hook := hooks.get(origin)) is not None:
             try:
                 args = get_args(type_ann)
             except ValueError:

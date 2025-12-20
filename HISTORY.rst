@@ -3,7 +3,7 @@ History
 =======
 
 0.37.0 (2025-12-19)
-------------------
+-------------------
 
 **Enhancements**
 
@@ -28,7 +28,7 @@ History
 - v1 behavior is opt-in and backward compatible.
 
 0.36.6 (2025-12-19)
-------------------
+-------------------
 
 **Packaging**
 
@@ -38,7 +38,7 @@ History
 - Reduced packaged non-code files to the typing marker and stubs only.
 
 0.36.5 (2025-12-19)
-------------------
+-------------------
 
 **Bugfixes**
 
@@ -50,7 +50,7 @@ History
   Reported by :user:`rexzhang` in :issue:`218`.
 
 0.36.4 (2025-12-18)
-------------------
+-------------------
 
 **Bugfixes**
 
@@ -64,7 +64,7 @@ History
   Thanks to :user:`o-l-a-v` for reporting this in :issue:`217`.
 
 0.36.3 (2025-12-18)
-------------------
+-------------------
 
 **Packaging**
 
@@ -79,7 +79,7 @@ History
   Thanks to :user:`CoolCat467` in :pr:`213`!
 
 0.36.2 (2025-12-15)
-------------------
+-------------------
 
 **Documentation**
 
@@ -93,7 +93,7 @@ History
 - No functional or behavioral changes were introduced.
 
 0.36.1 (2025-12-15)
-------------------
+-------------------
 
 **Documentation**
 
@@ -107,7 +107,7 @@ History
   No functional or behavioral changes were introduced.
 
 0.36.0 (2025-12-14)
-------------------
+-------------------
 
 **Features and Improvements**
 

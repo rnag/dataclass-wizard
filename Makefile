@@ -28,6 +28,8 @@ help:
 
 init: ## install all dev dependencies for this project
 	pip install -e .[dev]
+	python -m pip install pre-commit build twine
+	pre-commit install
 
 bump-patch:
 	bump-my-version bump patch
