@@ -195,7 +195,7 @@ Type hooks define how a value is:
 - **dumped** (serialized) back into JSON-compatible data
 
 This makes it easy to support standard-library types such as
-``ipaddress.IPv4Address`` as well as user-defined classes.
+`ipaddress.IPv4Address`_ as well as user-defined classes.
 
 Type hooks work with or without inheritance, and integrate seamlessly
 with the v1 code generation engine.
