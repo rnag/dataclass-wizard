@@ -13,7 +13,8 @@ from .type_def import FrozenKeys, EnvFileType
 
 
 if TYPE_CHECKING:
-    from .v1.enums import KeyAction, KeyCase, DateTimeTo as V1DateTimeTo
+    from .v1.enums import KeyAction, KeyCase, DateTimeTo as V1DateTimeTo, EnvKeyStrategy
+
     _ALLOWED_MODES = Literal['runtime', 'v1_codegen']
     V1HookFn = Callable[..., Any]
     V1TypeToHook = Mapping[type, Union[tuple[_ALLOWED_MODES, V1HookFn], V1HookFn, None]]
@@ -21,8 +22,15 @@ if TYPE_CHECKING:
 # Create a generic variable that can be 'AbstractMeta', or any subclass.
 # Full word as `M` is already defined in another module
 META_ = TypeVar('META_', bound='AbstractMeta')
-# Use `Type` here explicitly, because we will never have an `META_` object.
-META = Type[META_]
+# Use `type` here explicitly, because we will never have an `META_` object.
+META = type[META_]
+
+
+# Create a generic variable that can be 'AbstractMeta', or any subclass.
+# Full word as `M` is already defined in another module
+ENV_META_ = TypeVar('ENV_META_', bound='AbstractEnvMeta')
+# Use `type` here explicitly, because we will never have an `META_` object.
+ENV_META = type[ENV_META_]
 
 
 class ABCOrAndMeta(ABCMeta):
@@ -538,10 +546,33 @@ class AbstractEnvMeta(metaclass=ABCOrAndMeta):
     # Note: Enabling Debug mode may have a minor performance impact.
     v1_debug: ClassVar['bool | int | str'] = False
 
-    # The letter casing priority to use when looking up Env Var Names.
+    # Custom load hooks for extending type support in the v1 engine.
     #
-    # The default is `SCREAMING_SNAKE_CASE`.
-    v1_load_case: ClassVar[Union[LetterCasePriority, str]] = None
+    # Mapping: {Type -> hook}
+    #
+    # A hook must accept either:
+    #   - one positional argument (runtime hook): value -> object
+    #   - two positional arguments (v1 hook): (TypeInfo, Extras) -> str | TypeInfo
+    #
+    # The hook is invoked when loading a value annotated with the given type.
+    v1_type_to_load_hook: ClassVar[V1TypeToHook] = None
+
+    # Custom dump hooks for extending type support in the v1 engine.
+    #
+    # Mapping: {Type -> hook}
+    #
+    # A hook must accept either:
+    #   - one positional argument (runtime hook): object -> JSON-serializable value
+    #   - two positional arguments (v1 hook): (TypeInfo, Extras) -> str | TypeInfo
+    #
+    # The hook is invoked when dumping a value whose runtime type matches
+    # the given type.
+    v1_type_to_dump_hook: ClassVar[V1TypeToHook] = None
+
+    # The key lookup strategy to use for Env Var Names.
+    #
+    # The default strategy is `SCREAMING_SNAKE_CASE` > `snake_case`.
+    v1_load_case: ClassVar[Union[EnvKeyStrategy, str]] = None
 
     # How `EnvWizard` fields (variables) should be transformed to JSON keys.
     #

@@ -7,9 +7,10 @@ __all__ = ['normalize',
            'repl_or_with_union']
 
 import re
-from typing import Iterable, Dict, List
+from typing import Iterable, Dict, List, TYPE_CHECKING
 
-from ..type_def import JSONObject
+if TYPE_CHECKING:
+    from ..v1.enums import EnvKeyStrategy
 
 
 def normalize(string: str) -> str:
@@ -68,7 +69,7 @@ def possible_json_keys(field: str) -> list[str]:
     return possible_keys
 
 
-def possible_env_vars(field: str) -> list[str]:
+def possible_env_vars(field: str, lookup_strat: 'EnvKeyStrategy') -> list[str]:
     """
     Maps a dataclass field name to its possible var names in an env.
 
@@ -78,38 +79,26 @@ def possible_env_vars(field: str) -> list[str]:
 
     Args:
         field (str): The dataclass field name to map.
+        lookup_strat (EnvKeyStrategy): The environment key strategy to use.
 
     Returns:
         list[str]: The possible JSON keys for the given field.
     """
-    possible_keys = []
+    from ..v1.enums import EnvKeyStrategy
+
+    _is_field_first = lookup_strat is EnvKeyStrategy.FIELD_FIRST
+    possible_keys = [field] if _is_field_first else []
 
     # `snake_case`
-    _key = to_snake_case(field)
-    possible_keys.append(_key)
+    _snake = to_snake_case(field)
 
     # `Upper_Snake`
-    _key = _key.upper()
-    possible_keys.append(_key)
+    _screaming_snake = _snake.upper()
 
-    # `PascalCase`: same as `camelCase` but first letter is capitalized
-    # _key = _key[0].upper() + _key[1:]
-    # possible_keys.append(_key)
+    possible_keys.append(_screaming_snake)
 
-    # `kebab-case`
-    # _key = to_lisp_case(field)
-    # possible_keys.append(_key)
-
-    # `Upper-Kebab`: same as `kebab-case`, each word is title-cased
-    # _key = _key.title()
-    # possible_keys.append(_key)
-
-    # remove 1:1 field mapping from possible keys,
-    # as that's the first thing we check.
-    # if field in possible_keys:
-    #     possible_keys.remove(field)
-
-    possible_keys = possible_keys[::-1]
+    if not _is_field_first or field != _snake:
+        possible_keys.append(_snake)
 
     return possible_keys
 

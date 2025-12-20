@@ -401,7 +401,7 @@ class BaseEnvWizardMeta(AbstractEnvMeta):
 
     @classmethod
     def bind_to(cls, env_class: type, create=True, is_default=True):
-        from .v1.enums import KeyCase
+        from .v1.enums import KeyCase, EnvKeyStrategy
 
         cls_loader = get_loader(
             env_class,
@@ -427,16 +427,9 @@ class BaseEnvWizardMeta(AbstractEnvMeta):
         cls.key_lookup_with_load = _as_enum_safe(
             cls, 'key_lookup_with_load', LetterCasePriority)
 
-        # TODO
-        cls.v1_load_case = _as_enum_safe(
-            cls, 'v1_load_case', KeyCase)
-
-        # cls.v1_load_case = _as_enum_safe(
-        #     cls, 'v1_load_case', LetterCasePriority)
-
         if cls.v1:
-            cls_loader.transform_json_field = _as_enum_safe(
-                cls, 'v1_load_case', KeyCase)
+            cls_loader.transform_json_field = cls.v1_load_case = _as_enum_safe(
+                cls, 'v1_load_case', EnvKeyStrategy) or EnvKeyStrategy.ENV
             cls_dumper.transform_dataclass_field = _as_enum_safe(
                 cls, 'v1_dump_case', KeyCase)
         else:
