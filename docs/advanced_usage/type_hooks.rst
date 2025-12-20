@@ -34,7 +34,7 @@ The simplest approach is to register a type and rely on sensible defaults:
 - **load**: ``Type(value)``
 - **dump**: ``str(value)``
 
-Example: ``ipaddress.IPv4Address``
+Example: `ipaddress.IPv4Address`_
 
 .. code-block:: python3
 
@@ -311,3 +311,5 @@ See also
 
 - :doc:`serializer_hooks` (field-level customization)
 - :doc:`../overview` (supported types and general usage)
+
+.. _`ipaddress.IPv4Address`: https://docs.python.org/3/library/ipaddress.html#ipaddress.IPv4Address
