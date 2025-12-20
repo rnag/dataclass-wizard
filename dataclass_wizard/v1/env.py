@@ -445,7 +445,7 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
                 fn_gen.add_line('name = e.args[0]; e = KeyError(f"Missing required key: {name!r}")')
             with fn_gen.elif_('not isinstance(v1, dict)'):
                 fn_gen.add_line('e = TypeError("Incorrect type for object")')
-            fn_gen.add_line('raise ParseError(e, v1, {}) from None')
+            fn_gen.add_line('raise ParseError(e, v1, {}, "load") from None')
 
     @classmethod
     @setup_recursive_safe_function_for_generic
@@ -563,7 +563,7 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
                 fn_gen.add_line(
                     "raise ParseError("
                     "TypeError('Object with tag was not in any of Union types'),"
-                    f"v1,{fields},"
+                    f"v1,{fields},'load',"
                     "input_tag=tag,"
                     "tag_key=tag_key,"
                     f"valid_tags={list(dataclass_tag_to_lines)})"
@@ -580,7 +580,7 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         # Invalid type for Union
         fn_gen.add_line("raise ParseError("
                         "TypeError('Object was not in any of Union types'),"
-                        f"v1,{fields},"
+                        f"v1,{fields},'load',"
                         "tag_key=tag_key"
                         ")")
 
@@ -599,7 +599,7 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
 
         # No such Literal with the value of `o`
         fn_gen.add_line("e = ValueError('Value not in expected Literal values')")
-        fn_gen.add_line(f'raise ParseError(e, v1, {fields}, '
+        fn_gen.add_line(f"raise ParseError(e, v1, {fields},'load', "
                         f'allowed_values=list({fields}))')
 
         # TODO Checks for Literal equivalence, as mentioned here:
@@ -730,6 +730,7 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
                                   extras):
 
         hooks = cls.__LOAD_HOOKS__
+        type_hooks = extras['config'].v1_type_to_load_hook
 
         # type_ann = tp.origin
         type_ann = eval_forward_ref_if_needed(tp.origin, extras['cls'])
@@ -775,6 +776,20 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         #    any iterative / recursive handling.
         elif origin in SIMPLE_TYPES or is_subclass_safe(origin, SIMPLE_TYPES):
             load_hook = hooks.get(origin)
+
+        elif (type_hooks is not None
+              and (hook_info := type_hooks.get(origin)) is not None):
+            mode, load_hook = hook_info
+
+            if mode == 'runtime':
+                fn_name = load_hook.__name__
+                extras['locals'].setdefault(fn_name, load_hook)
+                return f'{fn_name}({tp.v()})'
+
+            try:
+                args = get_args(type_ann)
+            except ValueError:
+                args = Any,
 
         elif (load_hook := hooks.get(origin)) is not None:
             try:
@@ -879,8 +894,9 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         #  an error but perform a default action?
         err = TypeError('Provided type is not currently supported.')
         pe = ParseError(
-            err, origin, type_ann,
-            resolution='Consider decorating the class with `@dataclass`',
+            err, origin, type_ann, 'load',
+            resolution=f'Register a load hook for {ParseError.name(origin)} '
+                       f'(v1: `register_type` / `Meta.v1_type_to_load_hook`).',
             unsupported_type=origin
         )
         raise pe from None
@@ -1345,7 +1361,7 @@ def re_raise(e, cls, o, fields, field, value):
             add_fields = False
         else:
             tp = getattr(next((f for f in fields if f.name == field), None), 'type', Any)
-            e = ParseError(e, value, tp)
+            e = ParseError(e, value, tp, 'load')
 
     # We run into a parsing error while loading the field value;
     # Add additional info on the Exception object before re-raising it.
