@@ -602,9 +602,7 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
             mode, dump_hook = hook_info
 
             if mode == 'runtime':
-                fn_name = dump_hook.__name__
-                tp.ensure_in_locals(extras, dump_hook)
-                # extras['locals'].setdefault(fn_name, dump_hook)
+                fn_name, = tp.ensure_in_locals(extras, dump_hook)
                 return f'{fn_name}({tp.v()})'
 
             try:

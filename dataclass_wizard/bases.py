@@ -541,7 +541,7 @@ class AbstractEnvMeta(metaclass=ABCOrAndMeta):
     # The letter casing priority to use when looking up Env Var Names.
     #
     # The default is `SCREAMING_SNAKE_CASE`.
-    v1_load_case: ClassVar[Union[LetterCasePriority, str]] = LetterCasePriority.SCREAMING_SNAKE
+    v1_load_case: ClassVar[Union[LetterCasePriority, str]] = None
 
     # How `EnvWizard` fields (variables) should be transformed to JSON keys.
     #

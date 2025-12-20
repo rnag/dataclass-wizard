@@ -757,8 +757,7 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
             mode, load_hook = hook_info
 
             if mode == 'runtime':
-                fn_name = load_hook.__name__
-                extras['locals'].setdefault(fn_name, load_hook)
+                fn_name, = tp.ensure_in_locals(extras, load_hook)
                 return f'{fn_name}({tp.v()})'
 
             try:

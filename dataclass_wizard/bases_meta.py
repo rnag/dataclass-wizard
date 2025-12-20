@@ -427,6 +427,7 @@ class BaseEnvWizardMeta(AbstractEnvMeta):
         cls.key_lookup_with_load = _as_enum_safe(
             cls, 'key_lookup_with_load', LetterCasePriority)
 
+        # TODO
         cls.v1_load_case = _as_enum_safe(
             cls, 'v1_load_case', KeyCase)
 

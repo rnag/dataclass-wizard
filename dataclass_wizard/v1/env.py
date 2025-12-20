@@ -226,9 +226,12 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         string = cls.get_string_for_annotation(
             tp.replace(origin=elem_type, i=i_next, index=None), extras)
 
-        if issubclass(gorg, (set, frozenset)):
+        if issubclass(gorg, set):
             start_char = '{'
             end_char = '}'
+        elif issubclass(gorg, frozenset):
+            start_char = 'frozenset(('
+            end_char = '))'
         else:
             start_char = '['
             end_char = ']'
@@ -782,8 +785,7 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
             mode, load_hook = hook_info
 
             if mode == 'runtime':
-                fn_name = load_hook.__name__
-                extras['locals'].setdefault(fn_name, load_hook)
+                fn_name, = tp.ensure_in_locals(extras, load_hook)
                 return f'{fn_name}({tp.v()})'
 
             try:
