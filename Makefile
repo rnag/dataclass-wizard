@@ -28,6 +28,8 @@ help:
 
 init: ## install all dev dependencies for this project
 	pip install -e .[dev]
+	python -m pip install pre-commit build twine
+	pre-commit install
 
 bump-patch:
 	bump-my-version bump patch
@@ -94,6 +96,10 @@ servedocs: docs ## compile the docs watching for changes
 
 release: dist ## package and upload a release
 	twine upload dist/*
+
+check-dist:
+	python -m build
+	python -m twine check dist/*
 
 check: dist-local  ## verify release before upload to PyPI
 	twine check dist/*

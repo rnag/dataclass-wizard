@@ -5,7 +5,7 @@ import pytest
 from dataclasses import dataclass
 from ipaddress import IPv4Address
 
-from dataclass_wizard import JSONWizard, LoadMeta
+from dataclass_wizard import register_type, JSONWizard, LoadMeta, fromdict, asdict
 from dataclass_wizard.errors import ParseError
 from dataclass_wizard.v1 import DumpMixin, LoadMixin
 from dataclass_wizard.v1.models import TypeInfo, Extras
@@ -110,6 +110,26 @@ def test_v1_meta_runtime_hooks_ipv4address_roundtrip():
         meta = LoadMeta(v1_type_to_load_hook={IPv4Address: ('RT', str)})
         meta.bind_to(Foo)
         assert "mode must be 'runtime' or 'v1_codegen' (got 'RT')" in str(e.value)
+
+
+def test_v1_register_type_no_inheritance_with_functional_api_roundtrip():
+    @dataclass
+    class Foo:
+        b: bytes = b""
+        s: str | None = None
+        c: IPv4Address | None = None
+
+    LoadMeta(v1=True).bind_to(Foo)
+
+    register_type(Foo, IPv4Address)
+
+    data = {"b": "AAAA", "c": "127.0.0.1", "s": "foobar"}
+
+    foo = fromdict(Foo, data)
+    assert foo.c == IPv4Address("127.0.0.1")
+
+    assert asdict(foo) == data
+    assert asdict(fromdict(Foo, asdict(foo))) == data
 
 
 def test_v1_ipv4address_hooks_with_load_and_dump_mixins_roundtrip():

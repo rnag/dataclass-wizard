@@ -184,7 +184,7 @@ Supported Types 🧑‍💻
 For more info, check out the `Supported Types`_ section in the docs for detailed insights into each type and the load/dump process!
 
 Custom Type Hooks 🔌
--------------------
+--------------------
 
 Dataclass Wizard allows you to extend serialization and deserialization
 to support custom or unsupported types via **type hooks**.

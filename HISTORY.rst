@@ -2,33 +2,39 @@
 History
 =======
 
-0.37.0 (2025-12-19)
-------------------
+0.37.0 (2025-12-20)
+-------------------
 
 **Enhancements**
 
-- Added first-class support for **custom type hooks** to extend (de)serialization
+- Added first-class support for **custom type hooks** (see :issue:`218`) to extend (de)serialization
   for unsupported or user-defined types.
-  Type hooks can be registered either programmatically via ``register_type()``
-  or declaratively via ``Meta`` for v1 code generation.
+
+  * Type hooks can be registered either programmatically via ``register_type()``
+    or declaratively via ``Meta`` for v1 code generation.
 
 - Improved error reporting for unsupported types to clearly indicate whether the
   failure occurred during **load** or **dump**, and to suggest registering an
   appropriate type hook.
 
-- Extended support for additional built-in and standard-library types,
-  including ``ipaddress.IPv4Address`` and ``frozenset``.
+- Extended support for additional standard-library types, such as
+  ``ipaddress.IPv4Address``.
 
 - Simplified internal code generation for iterable types and improved handling
   of built-in collection literals.
 
+- Exported ``register_type()`` at the top level, allowing type hooks to be
+  registered via ``from dataclass_wizard import register_type``.
+  This is especially useful when using the functional API
+  (``fromdict`` / ``asdict``) without class inheritance.
+
 **Backward compatibility**
 
-- Existing v0 behavior remains unchanged unless custom type hooks are registered.
-- v1 behavior is opt-in and backward compatible.
+- Existing ``v0`` behavior remains unchanged unless custom type hooks are registered.
+- ``v1`` behavior is opt-in and backward compatible.
 
 0.36.6 (2025-12-19)
-------------------
+-------------------
 
 **Packaging**
 
@@ -38,7 +44,7 @@ History
 - Reduced packaged non-code files to the typing marker and stubs only.
 
 0.36.5 (2025-12-19)
-------------------
+-------------------
 
 **Bugfixes**
 
@@ -50,7 +56,7 @@ History
   Reported by :user:`rexzhang` in :issue:`218`.
 
 0.36.4 (2025-12-18)
-------------------
+-------------------
 
 **Bugfixes**
 
@@ -64,7 +70,7 @@ History
   Thanks to :user:`o-l-a-v` for reporting this in :issue:`217`.
 
 0.36.3 (2025-12-18)
-------------------
+-------------------
 
 **Packaging**
 
@@ -79,7 +85,7 @@ History
   Thanks to :user:`CoolCat467` in :pr:`213`!
 
 0.36.2 (2025-12-15)
-------------------
+-------------------
 
 **Documentation**
 
@@ -93,7 +99,7 @@ History
 - No functional or behavioral changes were introduced.
 
 0.36.1 (2025-12-15)
-------------------
+-------------------
 
 **Documentation**
 
@@ -107,7 +113,7 @@ History
   No functional or behavioral changes were introduced.
 
 0.36.0 (2025-12-14)
-------------------
+-------------------
 
 **Features and Improvements**
 

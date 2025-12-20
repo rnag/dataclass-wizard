@@ -98,6 +98,34 @@ Ready to contribute? Here's how to set up `dataclass-wizard` for local developme
 
 7. Submit a pull request through the GitHub website.
 
+Pre-commit Hooks
+----------------
+
+This project uses ``pre-commit`` to catch formatting, packaging, and
+documentation issues *before* they reach CI or PyPI.
+
+Setup (one-time)
+~~~~~~~~~~~~~~~~
+
+Install the required tools and enable the git hooks:
+
+.. code-block:: bash
+
+   python -m pip install pre-commit build twine
+   pre-commit install
+
+After this, the hooks will run automatically on every commit.
+
+Running manually
+~~~~~~~~~~~~~~~~
+
+To run all hooks against the entire repository (recommended after
+changing documentation or release metadata):
+
+.. code-block:: bash
+
+   pre-commit run --all-files
+
 Pull Request Guidelines
 -----------------------
 

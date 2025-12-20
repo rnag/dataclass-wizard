@@ -551,8 +551,7 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
                                        extras):
 
         hooks = cls.__DUMP_HOOKS__
-        new_hooks = extras['config'].v1_type_to_dump_hook
-        has_hooks = new_hooks is not None
+        type_hooks = extras['config'].v1_type_to_dump_hook
 
         # type_ann = tp.origin
         type_ann = eval_forward_ref_if_needed(tp.origin, extras['cls'])
@@ -598,13 +597,8 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
         elif origin in SIMPLE_TYPES or is_subclass_safe(origin, SIMPLE_TYPES):
             dump_hook = hooks.get(origin)
 
-        elif (dump_hook := hooks.get(origin)) is not None:
-            try:
-                args = get_args(type_ann)
-            except ValueError:
-                args = Any,
-
-        elif has_hooks and (hook_info := new_hooks.get(origin)) is not None:
+        elif (type_hooks is not None
+              and (hook_info := type_hooks.get(origin)) is not None):
             mode, dump_hook = hook_info
 
             if mode == 'runtime':
@@ -613,6 +607,12 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
                 # extras['locals'].setdefault(fn_name, dump_hook)
                 return f'{fn_name}({tp.v()})'
 
+            try:
+                args = get_args(type_ann)
+            except ValueError:
+                args = Any,
+
+        elif (dump_hook := hooks.get(origin)) is not None:
             try:
                 args = get_args(type_ann)
             except ValueError:

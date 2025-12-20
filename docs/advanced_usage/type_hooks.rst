@@ -34,32 +34,66 @@ The simplest approach is to register a type and rely on sensible defaults:
 - **load**: ``Type(value)``
 - **dump**: ``str(value)``
 
-Example: ``ipaddress.IPv4Address``
+Example: `ipaddress.IPv4Address`_
 
-.. code-block:: python
+.. code-block:: python3
 
-   from dataclasses import dataclass
-   from ipaddress import IPv4Address
+    from __future__ import annotations  # Remove if Python 3.10+
 
-   from dataclass_wizard import JSONWizard
+    from ipaddress import IPv4Address
 
-
-   @dataclass
-   class Foo(JSONWizard):
-       c: IPv4Address | None = None
+    from dataclass_wizard import DataclassWizard
 
 
-   # Uses defaults: load=IPv4Address, dump=str
-   Foo.register_type(IPv4Address)
+    class Foo(DataclassWizard):
+        # DataclassWizard auto-applies @dataclass to subclasses
+        c: IPv4Address | None = None
 
 
-   foo = Foo.from_dict({"c": "127.0.0.1"})
-   assert foo.c == IPv4Address("127.0.0.1")
-   assert foo.to_dict() == {"c": "127.0.0.1"}
+    Foo.register_type(IPv4Address)
+
+    foo = Foo.from_dict({"c": "127.0.0.1"})
+    assert foo.c == IPv4Address("127.0.0.1")
+    assert foo.to_dict() == {"c": "127.0.0.1"}
 
 If you omit the registration, you will get an error indicating the type is not
 supported (and it should indicate whether the failure occurred during **load**
 or **dump**).
+
+No Inheritance Needed
+--------------------
+
+Type hooks also work without subclassing ``DataclassWizard`` or ``JSONWizard``.
+This is useful when you prefer plain dataclasses and use the functional
+API (``fromdict``/``asdict``).
+
+.. code-block:: python3
+
+    from __future__ import annotations  # Remove if Python 3.10+
+
+    from dataclasses import dataclass
+    from ipaddress import IPv4Address
+
+    from dataclass_wizard import LoadMeta, asdict, fromdict, register_type
+
+
+    @dataclass
+    class Foo:
+        b: bytes = b""
+        s: str | None = None
+        c: IPv4Address | None = None
+
+
+    LoadMeta(v1=True).bind_to(Foo)
+
+    # Register IPv4Address with default hooks (load=IPv4Address, dump=str)
+    register_type(Foo, IPv4Address)
+
+    data = {"b": "AAAA", "c": "127.0.0.1", "s": "foobar"}
+
+    foo = fromdict(Foo, data)
+    assert asdict(foo) == data
+    assert asdict(fromdict(Foo, asdict(foo))) == data
 
 Registering custom load and dump functions
 ------------------------------------------
@@ -70,28 +104,33 @@ You can override the defaults by providing custom functions. In general:
 - The **dump** function must return a JSON-serializable value
   (``str``, ``int``, ``float``, ``bool``, ``None``, ``list``, ``dict``).
 
-.. code-block:: python
+.. code-block:: python3
 
-   from dataclasses import dataclass
-   from decimal import Decimal
+    from decimal import Decimal, ROUND_HALF_UP
 
-   from dataclass_wizard import JSONWizard
-
-
-   def load_decimal(v):
-       return Decimal(v)
-
-   def dump_decimal(v: Decimal):
-       # JSON wants a primitive; choose str for exactness
-       return str(v)
+    from dataclass_wizard import DataclassWizard
 
 
-   @dataclass
-   class Invoice(JSONWizard):
-       total: Decimal
+    def load_decimal(v):
+        # Normalize all decimals to 2 decimal places on load
+        return Decimal(v).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
 
 
-   Invoice.register_type(Decimal, load=load_decimal, dump=dump_decimal)
+    def dump_decimal(v: Decimal):
+        # Serialize as string to preserve precision
+        return str(v)
+
+
+    class Invoice(DataclassWizard):
+        total: Decimal
+
+
+    # Override the built-in Decimal behavior
+    Invoice.register_type(Decimal, load=load_decimal, dump=dump_decimal)
+
+    invoice = Invoice.from_dict({'total': '1.235'})
+    print(invoice)              # Invoice(total=Decimal('1.24'))
+    print(invoice.to_dict())    # {'total': '1.24'}
 
 V1 code generation hooks (advanced)
 -----------------------------------
@@ -109,7 +148,7 @@ pipeline.
 
 Example: ``IPv4Address`` with v1 codegen hooks
 
-.. code-block:: python
+.. code-block:: python3
 
    from dataclasses import dataclass
    from ipaddress import IPv4Address
@@ -146,45 +185,45 @@ Declaring hooks via Meta
 If you prefer a declarative style, you can set hooks in ``Meta``. This is
 especially useful for v1.
 
-.. code-block:: python
+.. code-block:: python3
 
-   from dataclasses import dataclass
-   from ipaddress import IPv4Address
+    from ipaddress import IPv4Address
 
-   from dataclass_wizard import JSONWizard
-
-
-   @dataclass
-   class Foo(JSONWizard):
-       class Meta(JSONWizard.Meta):
-           v1 = True
-
-       c: IPv4Address | None = None
+    from dataclass_wizard import DataclassWizard
 
 
-   Foo.register_type(IPv4Address)
+    # DataclassWizard sets `v1=True` and auto-applies @dataclass to subclasses
+    class Foo(DataclassWizard):
+        c: IPv4Address | None = None
+
+
+    Foo.register_type(IPv4Address)
 
 If you want to avoid method calls entirely, you can also register via ``Meta``.
 (Exact configuration options may vary depending on the engine you use.)
 
-.. code-block:: python
+.. code-block:: python3
 
-   from dataclasses import dataclass
-   from ipaddress import IPv4Address
+    from __future__ import annotations  # Remove if Python 3.10+
 
-   from dataclass_wizard import JSONWizard
+    from dataclasses import dataclass
+    from ipaddress import IPv4Address
+
+    from dataclass_wizard import JSONWizard
 
 
-   @dataclass
-   class Foo(JSONWizard):
-       class Meta(JSONWizard.Meta):
-           v1 = True
-           # Equivalent of Foo.register_type(IPv4Address)
-           # Defaults: load=IPv4Address, dump=str
-           v1_type_to_load_hook = {IPv4Address: IPv4Address}
-           v1_type_to_dump_hook = {IPv4Address: str}
+    @dataclass
+    class Foo(JSONWizard):
+        class Meta(JSONWizard.Meta):
+            v1 = True
+            # Equivalent of Foo.register_type(IPv4Address)
+            # Defaults: load=IPv4Address, dump=str
+            v1_type_to_load_hook = {IPv4Address: IPv4Address}
+            v1_type_to_dump_hook = {IPv4Address: str}
 
-       c: IPv4Address | None = None
+        c: IPv4Address | None = None
+
+    assert Foo.from_dict({'c': '1.2.3.4'}).c == IPv4Address('1.2.3.4')  # True
 
 Enum example: load by name, dump by value
 -----------------------------------------
@@ -192,41 +231,39 @@ Enum example: load by name, dump by value
 The default behavior for enums is typically to load/dump using ``value``.
 If you want to load by enum **name** instead, type hooks make it easy.
 
-.. code-block:: python
+.. code-block:: python3
 
-   from dataclasses import dataclass
-   from enum import Enum
+    from enum import Enum
 
-   from dataclass_wizard import JSONWizard
-
-
-   class MyEnum(Enum):
-       NAME_1 = "one"
-       NAME_2 = "two"
+    from dataclass_wizard import DataclassWizard
 
 
-   def load_enum_by_name(v):
-       # Input example: "NAME 1" -> MyEnum.NAME_1
-       return MyEnum[v.replace(" ", "_")]
-
-   def dump_enum_by_value(e: MyEnum):
-       return e.value
+    class MyEnum(Enum):
+        NAME_1 = 'one'
+        NAME_2 = 'two'
 
 
-   @dataclass
-   class MyClass(JSONWizard):
-       my_str: str
-       my_enum: MyEnum
+    def load_enum_by_name(v):
+        # Input example: 'NAME 1' -> MyEnum.NAME_1
+        return MyEnum[v.replace(' ', '_')]
 
 
-   MyClass.register_type(MyEnum, load=load_enum_by_name, dump=dump_enum_by_value)
+    def dump_enum_by_name(e: MyEnum):
+        return e.name.replace('_', ' ')
 
 
-   data = {"my_str": "my string", "my_enum": "NAME 1"}
+    class MyClass(DataclassWizard):
+        my_str: str
+        my_enum: MyEnum
 
-   c = MyClass.from_dict(data)
-   assert c.my_enum is MyEnum.NAME_1
-   assert c.to_dict() == {"my_str": "my string", "my_enum": "one"}
+
+    MyClass.register_type(MyEnum, load=load_enum_by_name, dump=dump_enum_by_name)
+
+    data = {'my_str': 'my string', 'my_enum': 'NAME 1'}
+
+    c = MyClass.from_dict(data)
+    assert c.my_enum is MyEnum.NAME_1
+    assert c.to_dict() == data
 
 Runtime vs v1 codegen hooks
 ---------------------------
@@ -274,3 +311,5 @@ See also
 
 - :doc:`serializer_hooks` (field-level customization)
 - :doc:`../overview` (supported types and general usage)
+
+.. _`ipaddress.IPv4Address`: https://docs.python.org/3/library/ipaddress.html#ipaddress.IPv4Address
