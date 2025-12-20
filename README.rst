@@ -184,7 +184,7 @@ Supported Types 🧑‍💻
 For more info, check out the `Supported Types`_ section in the docs for detailed insights into each type and the load/dump process!
 
 Custom Type Hooks 🔌
--------------------
+--------------------
 
 Dataclass Wizard allows you to extend serialization and deserialization
 to support custom or unsupported types via **type hooks**.
@@ -195,7 +195,7 @@ Type hooks define how a value is:
 - **dumped** (serialized) back into JSON-compatible data
 
 This makes it easy to support standard-library types such as
-`ipaddress.IPv4Address`_ as well as user-defined classes.
+``ipaddress.IPv4Address`` as well as user-defined classes.
 
 Type hooks work with or without inheritance, and integrate seamlessly
 with the v1 code generation engine.

@@ -2,7 +2,7 @@
 History
 =======
 
-0.37.0 (2025-12-19)
+0.37.0 (2025-12-20)
 -------------------
 
 **Enhancements**
@@ -16,8 +16,8 @@ History
   failure occurred during **load** or **dump**, and to suggest registering an
   appropriate type hook.
 
-- Extended support for additional built-in and standard-library types,
-  including ``ipaddress.IPv4Address`` and ``frozenset``.
+- Extended support for additional standard-library types, such as
+  ``ipaddress.IPv4Address``.
 
 - Simplified internal code generation for iterable types and improved handling
   of built-in collection literals.
