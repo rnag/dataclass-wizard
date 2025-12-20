@@ -237,7 +237,7 @@ def as_enum(o: Union[AnyStr, N],
             e = ValueError(
                 f'as_enum: Unable to convert value to type {enum_cls_name!r}')
 
-            raise ParseError(e, o, base_type,
+            raise ParseError(e, o, base_type, 'load',
                              valid_values=valid_values,
                              lookup_key=key,
                              lookup_func=lookup_func_src)

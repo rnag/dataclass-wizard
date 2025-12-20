@@ -89,7 +89,7 @@ def try_with_load(load_fn: Callable):
                 raise
 
             except Exception as e:
-                raise ParseError(e, o, base_type, load_hook=load_fn.__name__)
+                raise ParseError(e, o, base_type, 'load', load_hook=load_fn.__name__)
 
         return new_func
 
@@ -143,7 +143,7 @@ def try_with_load_with_single_arg(original_fn: Callable,
             raise
 
         except Exception as e:
-            raise ParseError(e, o, base_type, load_hook=original_fn.__name__)
+            raise ParseError(e, o, base_type, 'load', load_hook=original_fn.__name__)
 
     return new_func
 

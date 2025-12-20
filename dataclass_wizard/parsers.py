@@ -145,7 +145,7 @@ class LiteralParser(AbstractParser[M, M]):
             # No such Literal with the value of `o`
             e: Exception = ValueError('Value not in expected Literal values')
             raise ParseError(
-                e, o, self.base_type,
+                e, o, self.base_type, 'load',
                 allowed_values=list(self.value_to_type))
 
         else:
@@ -157,7 +157,7 @@ class LiteralParser(AbstractParser[M, M]):
                     'Value did not match expected type for the Literal')
 
                 raise ParseError(
-                    e, o, self.base_type,
+                    e, o, self.base_type, 'load',
                     have_type=type(o),
                     desired_type=self.value_to_type[o],
                     desired_value=expected_val,
@@ -186,7 +186,7 @@ class PatternedDTParser(AbstractParser[PatternedDT, DT]):
             return self.hook(date_string)
         except ValueError as e:
             raise ParseError(
-                e, date_string, self.base_type.cls,
+                e, date_string, self.base_type.cls, 'load',
                 pattern=self.base_type.pattern
             )
 
@@ -301,6 +301,7 @@ class UnionParser(AbstractParser[Tuple[Type[T], ...], Optional[T]]):
                 raise ParseError(
                     TypeError('Object with tag was not in any of Union types'),
                     o, [p.base_type for p in self.parsers],
+                    'load',
                     input_tag=tag,
                     tag_key=self.tag_key,
                     valid_tags=list(self.tag_to_parser.keys()))
@@ -308,6 +309,7 @@ class UnionParser(AbstractParser[Tuple[Type[T], ...], Optional[T]]):
         raise ParseError(
             TypeError('Object was not in any of Union types'),
             o, [p.base_type for p in self.parsers],
+            'load',
             tag_key=self.tag_key
         )
 
@@ -417,7 +419,7 @@ class TupleParser(AbstractParser[Type[S], S]):
                 if self.elem_parsers else self.elem_types
 
             raise ParseError(
-                e, o, elem_parsers_types,
+                e, o, elem_parsers_types, 'load',
                 desired_count=desired_count,
                 actual_count=len(o))
 
@@ -617,12 +619,12 @@ class TypedDictParser(AbstractParser[Type[M], M]):
 
         except KeyError as e:
             err: Exception = KeyError(f'Missing required key: {e.args[0]}')
-            raise ParseError(err, o, self.base_type)
+            raise ParseError(err, o, self.base_type, 'load')
 
         except Exception:
             if not isinstance(o, dict):
                 err = TypeError('Incorrect type for object')
                 raise ParseError(
-                    err, o, self.base_type, desired_type=self.base_type)
+                    err, o, self.base_type, 'load', desired_type=self.base_type)
             else:
                 raise

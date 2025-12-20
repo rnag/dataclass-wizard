@@ -74,6 +74,7 @@ __all__ = [
     'JSONSerializable',
     'JSONPyWizard',
     'JSONWizard',
+    'register_type',
     'LoadMixin',
     'DumpMixin',
     'property_wizard',
@@ -119,7 +120,7 @@ __all__ = [
 
 import logging
 
-from .bases_meta import LoadMeta, DumpMeta, EnvMeta
+from .bases_meta import LoadMeta, DumpMeta, EnvMeta, register_type
 from .constants import PACKAGE_NAME
 from .dumpers import DumpMixin, setup_default_dumper
 from .loaders import LoadMixin, setup_default_loader

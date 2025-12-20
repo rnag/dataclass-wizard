@@ -67,6 +67,7 @@ class ParseError(JSONWizardError):
 
     obj: Any
     obj_type: type
+    phase: str
     ann_type: type | Iterable | None
     base_error: Exception
     kwargs: dict[str, Any]
@@ -79,6 +80,7 @@ class ParseError(JSONWizardError):
     def __init__(self, base_err: Exception,
                  obj: Any,
                  ann_type: type | Iterable | None,
+                 phase: str,
                  _default_class: type | None = None,
                  _field_name: str | None = None,
                  _json_object: Any = None,
