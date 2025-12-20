@@ -225,11 +225,12 @@ If you want to avoid method calls entirely, you can also register via ``Meta``.
 
     assert Foo.from_dict({'c': '1.2.3.4'}).c == IPv4Address('1.2.3.4')  # True
 
-Enum example: load by name, dump by value
------------------------------------------
+Enum example: load & dump by name
+---------------------------------
 
-The default behavior for enums is typically to load/dump using ``value``.
-If you want to load by enum **name** instead, type hooks make it easy.
+By default, enums are typically loaded and dumped using their ``value``.
+If you prefer to load and dump enums by their **name** instead, you can
+override the default behavior using type hooks.
 
 .. code-block:: python3
 
@@ -249,6 +250,7 @@ If you want to load by enum **name** instead, type hooks make it easy.
 
 
     def dump_enum_by_name(e: MyEnum):
+        # Output example: MyEnum.NAME_1 -> 'NAME 1'
         return e.name.replace('_', ' ')
 
 
@@ -257,6 +259,7 @@ If you want to load by enum **name** instead, type hooks make it easy.
         my_enum: MyEnum
 
 
+    # Override the built-in Enum behavior
     MyClass.register_type(MyEnum, load=load_enum_by_name, dump=dump_enum_by_name)
 
     data = {'my_str': 'my string', 'my_enum': 'NAME 1'}
