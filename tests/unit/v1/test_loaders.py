@@ -10,7 +10,7 @@ from abc import ABC
 from base64 import b64decode
 from collections import namedtuple, defaultdict, deque
 from dataclasses import dataclass, field
-from datetime import datetime, date, time, timedelta
+from datetime import datetime, date, time, timedelta, timezone
 from decimal import Decimal
 from pathlib import Path
 from typing import (
@@ -768,6 +768,26 @@ def test_date_times_with_custom_pattern_when_annotation_is_invalid():
         _ = fromdict(MyClass, data)
 
     log.debug('Error details: %r', e.value)
+
+
+# def test_epoch_timestamp_to_date_is_utc():
+#     ts = 1639763585  # 2021-12-17 17:53:05Z
+#
+#     class MyDate(DataclassWizard):
+#         my_date: date
+#
+#     got = MyDate.from_dict({'my_date': ts})  # whatever calls your loader
+#     assert got.my_date == datetime.fromtimestamp(ts, tz=timezone.utc).date()
+#
+#
+# def test_epoch_timestamp_to_datetime_is_utc_aware():
+#     ts = 1639763585
+#
+#     class MyDT(DataclassWizard):
+#         my_dt: datetime
+#
+#     got = MyDT.from_dict({'my_dt': ts})
+#     assert got.my_dt == datetime.fromtimestamp(ts, tz=timezone.utc)
 
 
 def test_aware_and_utc_date_times_with_custom_pattern():

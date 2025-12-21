@@ -138,6 +138,49 @@ def as_date_v1(o: Union[int, float, date],
 
         raise
 
+# Fix for: https://github.com/rnag/dataclass-wizard/issues/206
+#
+# def as_date_v1_utc(o: Union[int, float, date],
+#                    __base_cls=date,
+#                    __tz=UTC,
+#                    __dt_from_timestamp: Callable[[float], datetime] = datetime.fromtimestamp):
+#     """
+#     V1: Attempt to convert an object `o` to a :class:`date` object using the
+#     below logic.
+#
+#         * ``Number`` (int or float): Convert a numeric timestamp via the
+#             built-in ``fromtimestamp`` method, and return a date.
+#         * ``base_type``: Return object `o` if it's already of this type.
+#
+#     Note: It is assumed that `o` is not a ``str`` (in ISO format), as
+#     de-serialization in ``v1`` already checks for this.
+#
+#     Otherwise, if we're unable to convert the value of `o` to a
+#     :class:`date` as expected, raise an error.
+#
+#     """
+#     try:
+#         # We can assume that `o` is a number, as generally this will be the
+#         # case.
+#         # noinspection PyArgumentList
+#         return __dt_from_timestamp(o, __tz).date()
+#
+#     except Exception:
+#         # Note: the `__self__` attribute refers to the class bound
+#         # to the class method `fromtimestamp`.
+#         #
+#         # See: https://stackoverflow.com/a/41258933/10237506
+#         #
+#         # noinspection PyUnresolvedReferences
+#         if o.__class__ is __base_cls:
+#             return o
+#
+#         # Check `type` explicitly, because `bool` is a sub-class of `int`
+#         if o.__class__ not in NUMBERS:
+#             raise TypeError(f'Unsupported type, value={o!r}, type={type(o)}')
+#
+#         raise
+
 
 def as_time_v1(o: Union[time, Any], base_type: type[time]):
     """
