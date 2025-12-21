@@ -52,14 +52,18 @@ class EnvKeyStrategy(Enum):
         Useful when working with `.env` files or non-Python naming conventions.
 
     - `STRICT`:
-        Disables automatic key transformations.
-        Only explicitly provided values (init kwargs or aliases) are used.
+        Uses explicit keys only. No automatic key derivation is performed
+        (no prefixing, no casing transforms, no fallback lookups).
+        Only ``__init__()`` kwargs and explicit aliases are considered.
 
-        Useful for strict configuration validation.
+        Useful when you want configuration loading to be fully deterministic.
+
     """
     ENV = "env"             # `MY_FIELD` > `my_field`
     FIELD_FIRST = "field"   # try field name as written, then env-style (ENV)
-    STRICT = "strict"       # only explicit keys (kwargs -OR- exact alias), no guessing
+    STRICT = "strict"       # explicit keys only (kwargs + aliases), no prefixes / transforms
+    # TODO: Implement later, as time allows!
+    # PREFIXED_EXACT = "prefixed_exact"  # kwargs > prefixed exact field > alias > missing
 
 
 class KeyCase(Enum):

@@ -8,7 +8,8 @@ from dataclasses import dataclass, is_dataclass, Field, MISSING
 from datetime import date, datetime, time, timedelta
 from decimal import Decimal
 from pathlib import Path
-from typing import Any, Callable, NamedTuple, cast, Mapping, dataclass_transform
+from typing import (Any, Callable, NamedTuple, cast, Mapping,
+                    dataclass_transform, TYPE_CHECKING)
 from uuid import UUID
 
 from .decorators import (process_patterned_date_time,
@@ -32,7 +33,8 @@ from ..class_helper import (create_meta,
                             is_subclass_safe,
                             v1_dataclass_field_to_alias_for_load,
                             CLASS_TO_LOAD_FUNC,
-                            DATACLASS_FIELD_TO_ALIAS_PATH_FOR_LOAD, call_meta_initializer_if_needed)
+                            DATACLASS_FIELD_TO_ALIAS_PATH_FOR_LOAD,
+                            call_meta_initializer_if_needed)
 from ..constants import CATCH_ALL, TAG, PY311_OR_ABOVE, PACKAGE_NAME
 from ..errors import (JSONWizardError,
                       MissingData,
@@ -50,6 +52,9 @@ from ..utils.string_conv import possible_env_vars
 from ..utils.typing_compat import (eval_forward_ref_if_needed,
                                    get_keys_for_typed_dict,
                                    get_origin_v2)
+
+if TYPE_CHECKING:
+    from .env import EnvInit
 
 
 def env_config(**kw):
@@ -79,10 +84,20 @@ class EnvWizard:
         __init_fn__ = load_func_for_dataclass(self.__class__, loader_cls=LoadMixin, base_meta_cls=AbstractEnvMeta)
         __init_fn__(self, **kwargs)
 
-    def __init_subclass__(cls, debug: bool = False, **kwargs):
-        from ..bases_meta import LoadMeta
+    def __init_subclass__(cls,
+                          debug: bool = False,
+                          _apply_dataclass=True,
+                          **dc_kwargs):
+        super().__init_subclass__()
 
-        cls = dataclass(cls, init=False)
+        # skip classes provided by this library.
+        if cls.__module__.startswith(f'{PACKAGE_NAME}.'):
+            return
+
+        # Apply the @dataclass decorator.
+        if _apply_dataclass and not is_dataclass(cls):
+            # noinspection PyArgumentList
+            dataclass(cls, init=False, **dc_kwargs)
 
         load_meta_kwargs = {'v1': True}
 
@@ -98,11 +113,11 @@ class EnvWizard:
         call_meta_initializer_if_needed(cls)
 
         if load_meta_kwargs:
+            from ..bases_meta import LoadMeta
+
             LoadMeta(**load_meta_kwargs,
                      __base_name='EnvMeta',
                      __base_cls=BaseEnvWizardMeta).bind_to(cls)
-
-        super().__init_subclass__()
 
 
 def load_func_for_dataclass(
@@ -162,9 +177,9 @@ def load_func_for_dataclass(
         _globals = {
             'os': os,
             'MISSING': MISSING,
+            'ParseError': ParseError,
             'MissingVars': MissingVars,
             'add': _add_missing_var,
-            'ParseError': ParseError,
             'raise_missing_fields': check_and_raise_missing_fields,
             're_raise': re_raise,
         }

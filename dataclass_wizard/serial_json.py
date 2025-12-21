@@ -128,7 +128,7 @@ class DataclassWizard(AbstractJSONWizard):
 
         super().__init_subclass__()
 
-        # skip classes provided by this library
+        # skip classes provided by this library.
         if cls.__module__.startswith(f'{PACKAGE_NAME}.'):
             return
 
