@@ -81,7 +81,11 @@ class EnvWizard:
             return cls._init_subclass()
 
     def __init__(self, **kwargs):
-        __init_fn__ = load_func_for_dataclass(self.__class__, loader_cls=LoadMixin, base_meta_cls=AbstractEnvMeta)
+        __init_fn__ = load_func_for_dataclass(
+            self.__class__,
+            loader_cls=LoadMixin,
+            base_meta_cls=AbstractEnvMeta,
+        )
         __init_fn__(self, **kwargs)
 
     def __init_subclass__(cls,

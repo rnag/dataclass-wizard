@@ -35,7 +35,10 @@ class EnvWizard:
         __is_inner_meta__ = True
         def __init_subclass__(cls): ...
 
-    def __init_subclass__(cls, debug: bool = False, **kwargs): ...
+    def __init_subclass__(cls,
+                          debug: bool = False,
+                          _apply_dataclass=True,
+                          **dc_kwargs): ...
 
 
 def load_func_for_dataclass(
