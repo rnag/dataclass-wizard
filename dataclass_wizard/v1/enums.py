@@ -59,7 +59,7 @@ class EnvKeyStrategy(Enum):
     """
     ENV = "env"             # `MY_FIELD` > `my_field`
     FIELD_FIRST = "field"   # try field name as written, then env-style (ENV)
-    STRICT = "strict"       # only explicit keys (kwargs / aliases), no guessing
+    STRICT = "strict"       # only explicit keys (kwargs -OR- exact alias), no guessing
 
 
 class KeyCase(Enum):

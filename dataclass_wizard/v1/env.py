@@ -1,31 +1,27 @@
 from __future__ import annotations
 
-import collections.abc as abc
 import dataclasses
 import logging
 import os
-
 from base64 import b64decode
-from collections import defaultdict, deque
 from dataclasses import dataclass, is_dataclass, Field, MISSING
 from datetime import date, datetime, time, timedelta
 from decimal import Decimal
-from enum import Enum
 from pathlib import Path
-from typing import Any, Callable, Literal, NamedTuple, cast, Mapping, dataclass_transform, TypedDict, NotRequired
+from typing import Any, Callable, NamedTuple, cast, Mapping, dataclass_transform
 from uuid import UUID
 
 from .decorators import (process_patterned_date_time,
                          setup_recursive_safe_function,
                          setup_recursive_safe_function_for_generic)
-from .enums import KeyAction, KeyCase, EnvKeyStrategy
-from .models import Extras, PatternBase, TypeInfo, SIMPLE_TYPES
+from .enums import EnvKeyStrategy
+from .loaders import LoadMixin as V1LoaderMixIn
+from .models import Extras, TypeInfo, SIMPLE_TYPES
 from .type_conv import (
     as_datetime_v1, as_date_v1, as_int_v1,
     as_time_v1, as_timedelta, TRUTHY_VALUES,
 )
-from ..abstractions import AbstractLoaderGenerator
-from ..bases import AbstractMeta, BaseLoadHook, META, AbstractEnvMeta, ENV_META
+from ..bases import AbstractMeta, META, AbstractEnvMeta, ENV_META
 from ..bases_meta import BaseEnvWizardMeta
 from ..class_helper import (create_meta,
                             dataclass_fields,
@@ -43,35 +39,25 @@ from ..errors import (JSONWizardError,
                       MissingFields,
                       ParseError,
                       UnknownKeysError, type_name, MissingVars)
-from .loaders import LoadMixin as V1LoaderMixIn
-from ..loader_selection import fromdict, get_loader
+from ..loader_selection import get_loader
 from ..log import LOG
-from ..type_def import DefFactory, JSONObject, NoneType, PyLiteralString, T
+from ..type_def import DefFactory, NoneType, T
 # noinspection PyProtectedMember
 from ..utils.dataclass_compat import _set_new_attribute
 from ..utils.function_builder import FunctionBuilder
 from ..utils.object_path import v1_safe_get
-from ..utils.string_conv import possible_json_keys, possible_env_vars
+from ..utils.string_conv import possible_env_vars
 from ..utils.typing_compat import (eval_forward_ref_if_needed,
-                                   get_args,
                                    get_keys_for_typed_dict,
-                                   get_origin_v2,
-                                   is_annotated,
-                                   is_typed_dict,
-                                   is_typed_dict_type_qualifier,
-                                   is_union)
+                                   get_origin_v2)
 
 
-
-class EnvInit(TypedDict, total=False):
-    mapping: NotRequired[Mapping[str, str]]
-    file: NotRequired[str | list[str] | bool]
-    prefix: NotRequired[str]
-    secrets_dir: NotRequired[str | list[str]]
+def env_config(**kw):
+    return kw
 
 
 @dataclass_transform(kw_only_default=True)
-class EnvironWizard:
+class EnvWizard:
     __slots__ = ()
 
     class Meta(BaseEnvWizardMeta):
@@ -91,7 +77,6 @@ class EnvironWizard:
 
     def __init__(self, **kwargs):
         __init_fn__ = load_func_for_dataclass(self.__class__, loader_cls=LoadMixin, base_meta_cls=AbstractEnvMeta)
-        # noinspection PyArgumentList
         __init_fn__(self, **kwargs)
 
     def __init_subclass__(cls, debug: bool = False, **kwargs):
@@ -113,7 +98,9 @@ class EnvironWizard:
         call_meta_initializer_if_needed(cls)
 
         if load_meta_kwargs:
-            LoadMeta(**load_meta_kwargs).bind_to(cls)
+            LoadMeta(**load_meta_kwargs,
+                     __base_name='EnvMeta',
+                     __base_cls=BaseEnvWizardMeta).bind_to(cls)
 
         super().__init_subclass__()
 
@@ -123,7 +110,7 @@ def load_func_for_dataclass(
         extras: Extras | None = None,
         loader_cls=None,
         base_meta_cls: ENV_META = AbstractEnvMeta,
-) -> Callable[[JSONObject], T] | None:
+) -> Callable[[T, dict[str, Any]], None] | None:
 
     # Tuple describing the fields of this dataclass.
     fields = dataclass_fields(cls)
@@ -205,7 +192,8 @@ def load_func_for_dataclass(
         extras['cls'] = cls
         extras['cls_name'] = cls_name
 
-    env_key_strat: EnvKeyStrategy | None = meta.v1_load_case
+    # default `v1_load_case` to `EnvKeyStrategy.ENV` if not set
+    env_key_strat: EnvKeyStrategy | None = meta.v1_load_case or EnvKeyStrategy.ENV
     default_strat = env_key_strat is not EnvKeyStrategy.STRICT
 
     field_to_aliases = v1_dataclass_field_to_alias_for_load(cls)
@@ -279,8 +267,8 @@ def load_func_for_dataclass(
     new_locals['__settings__'] = _env_defaults
 
     init_params = ['self',
-                   '*',
-                   f'__env__:EnvInit=None']
+                   '__env__:EnvInit=None',
+                   '*']
 
     with fn_gen.function(fn_name, init_params, MISSING, new_locals):
 
@@ -294,11 +282,9 @@ def load_func_for_dataclass(
             new_locals['__pre_from_dict__'] = _pre_from_dict
             fn_gen.add_line('env = __pre_from_dict__(env)')
 
-        fn_gen.add_line("_env_prefix = __settings__.get('prefix')")
+        fn_gen.add_line("pfx = __settings__.get('prefix', '')")
         # Need to create a separate dictionary to copy over the constructor
         # args, as we don't want to mutate the original dictionary object.
-        if has_defaults:
-            fn_gen.add_line('init_kwargs = {}')
         if pre_assign:
             fn_gen.add_line('i = 0')
 
@@ -328,7 +314,8 @@ def load_func_for_dataclass(
                 val = 'v1'
                 _val_is_found = f'{val} is not MISSING'
                 for i, f in enumerate(cls_init_fields):
-                    preferred_env_var = name = f.name
+                    name = f.name
+                    preferred_env_var = f"f'{{pfx}}{name}'"
                     has_default = name in field_to_default
                     val_is_found = _val_is_found
 
@@ -370,26 +357,45 @@ def load_func_for_dataclass(
                                     condition.append(
                                         f'({val} := safe_get(env, {path!r}, False)) is not MISSING')
 
-                            val_is_found = '(' + '\n     or '.join(condition) + ')'
+                            if len(condition) > 1:
+                                val_is_found = '(' + '\n     or '.join(condition) + ')'
+                            else:
+                                val_is_found = condition
 
                         # TODO raise some useful message like (ex. on IndexError):
                         #       Field "my_str" of type tuple[float, str] in A2 has invalid value ['123']
 
                     else:
+                        condition = [val_is_found]
+
                         if (check_aliases
                             and (_initial_aliases := field_to_aliases.get(name)) is not None):
                             if len(_initial_aliases) == 1:
                                 _aliases = [_initial_aliases[0]]
                             else:
                                 _aliases = list(_initial_aliases)
+                            _has_alias = True
+                            # No prefix for explicit aliases!
+                            condition.extend([
+                                f"({val} := env.get({alias!r}, MISSING)) is not MISSING"
+                                for alias in _initial_aliases
+                            ])
+                            preferred_env_var = repr(_initial_aliases[0])
                         else:
                             _aliases = []
+                            _has_alias = False
 
                         if default_strat:
-                            _aliases.extend(possible_env_vars(name, env_key_strat))
-                            preferred_env_var = _aliases[0]
+                            _env_vars = possible_env_vars(name, env_key_strat)
+                            condition.extend([
+                                f"({val} := env.get(f'{{pfx}}{alias}', MISSING)) is not MISSING"
+                                for alias in _env_vars
+                            ])
+                            _aliases.extend(_env_vars)
+                            if not _has_alias:
+                                preferred_env_var = f"f'{{pfx}}{_env_vars[0]}'"
                         else:  # EnvKeyStrategy.STRICT
-                            _aliases = []
+                            pass
 
                         if set_aliases:
                             # add field name itself
@@ -397,13 +403,10 @@ def load_func_for_dataclass(
                             # add possible JSON keys
                             aliases.update(_aliases)
 
-                        # condition = [f'({val} := env.get(field, MISSING)) is not MISSING']
-                        condition = [val_is_found] + [
-                            f'({val} := env.get({alias!r}, MISSING)) is not MISSING'
-                            for alias in _aliases
-                        ]
-
-                        val_is_found = '(' + '\n     or '.join(condition) + ')'
+                        if len(condition) > 1:
+                            val_is_found = '(' + '\n     or '.join(condition) + ')'
+                        else:
+                            val_is_found = condition[0]
 
                     string = generate_field_code(cls_loader, extras, f, i)
 
@@ -426,7 +429,7 @@ def load_func_for_dataclass(
                         with fn_gen.if_(val_is_found):
                             fn_gen.add_line(f'{pre_assign}self.{name} = {string}')
                         with fn_gen.else_():
-                            fn_gen.add_line(f'_vars = add(_vars, field, _env_prefix, {preferred_env_var!r}, {tp_var})')
+                            fn_gen.add_line(f"_vars = add(_vars, field, {preferred_env_var}, {tp_var})")
 
 
                 # raise `MissingFields`, as required dataclass fields
@@ -448,7 +451,7 @@ def load_func_for_dataclass(
 
             if catch_all_field.endswith('?'):  # Default value
                 with fn_gen.if_('len(env) != i'):
-                    fn_gen.add_line(f'init_kwargs[{catch_all_field_stripped!r}] = {catch_all_def}')
+                    fn_gen.add_line(f'self.{catch_all_field_stripped} = {catch_all_def}')
             else:
                 var = f'__{catch_all_field_stripped}'
                 fn_gen.add_line(f'{var} = {{}} if len(env) == i else {catch_all_def}')
@@ -490,9 +493,7 @@ def load_func_for_dataclass(
         return cls_init
 
 
-def _add_missing_var(missing_vars: dict | None, name, env_prefix, var_name, tp):
-    var_name = f'{env_prefix}{var_name}' if env_prefix else var_name
-
+def _add_missing_var(missing_vars: dict | None, name, var_name, tp):
     tn = type_name(tp)
 
     # noinspection PyBroadException
@@ -509,16 +510,16 @@ def _add_missing_var(missing_vars: dict | None, name, env_prefix, var_name, tp):
     return missing_vars
 
 
-def _handle_parse_error(e, cls, name, env_prefix, var_name):
-
-    # We run into a parsing error while loading the field
-    # value; Add additional info on the Exception object
-    # before re-raising it.
-    e.class_name = cls
-    e.field_name = name
-    e.kwargs['env_variable'] = _get_var_name(name, env_prefix, var_name)
-
-    raise
+# def _handle_parse_error(e, cls, name, env_prefix, var_name):
+#
+#     # We run into a parsing error while loading the field
+#     # value; Add additional info on the Exception object
+#     # before re-raising it.
+#     e.class_name = cls
+#     e.field_name = name
+#     e.kwargs['env_variable'] = _get_var_name(name, env_prefix, var_name)
+#
+#     raise
 
 
 def generate_field_code(cls_loader: LoadMixin,

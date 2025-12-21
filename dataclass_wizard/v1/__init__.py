@@ -19,6 +19,9 @@ __all__ = [
     # UTC Date/Time Patterns
     'UTCDateTimePattern',
     'UTCTimePattern',
+    # Env Wizard
+    'EnvWizard',
+    'env_config',
 ]
 
 from .dumpers import DumpMixin, setup_default_dumper
@@ -38,4 +41,4 @@ from .models import (Alias,
                      UTCTimePattern)
 
 # from .environ import EnvWizard
-from .env import EnvironWizard
+from .env import EnvWizard, env_config

@@ -428,8 +428,10 @@ class BaseEnvWizardMeta(AbstractEnvMeta):
             cls, 'key_lookup_with_load', LetterCasePriority)
 
         if cls.v1:
-            cls_loader.transform_json_field = cls.v1_load_case = _as_enum_safe(
-                cls, 'v1_load_case', EnvKeyStrategy) or EnvKeyStrategy.ENV
+            if cls.v1_load_case is not None:
+                cls.v1_load_case = _as_enum_safe(
+                    cls, 'v1_load_case', EnvKeyStrategy)
+            # TODO
             cls_dumper.transform_dataclass_field = _as_enum_safe(
                 cls, 'v1_dump_case', KeyCase)
         else:
@@ -450,7 +452,7 @@ class BaseEnvWizardMeta(AbstractEnvMeta):
 
 
 # noinspection PyPep8Naming
-def LoadMeta(**kwargs) -> META:
+def LoadMeta(__base_name='Meta', __base_cls=BaseJSONWizardMeta, **kwargs) -> META:
     """
     Helper function to setup the ``Meta`` Config for the JSON load
     (de-serialization) process, which is intended for use alongside the
@@ -480,11 +482,11 @@ def LoadMeta(**kwargs) -> META:
 
     # Create a new subclass of :class:`AbstractMeta`
     # noinspection PyTypeChecker
-    return type('Meta', (BaseJSONWizardMeta, ), base_dict)
+    return type(__base_name, (__base_cls, ), base_dict)
 
 
 # noinspection PyPep8Naming
-def DumpMeta(**kwargs) -> META:
+def DumpMeta(__base_name='Meta', __base_cls=BaseJSONWizardMeta, **kwargs) -> META:
     """
     Helper function to setup the ``Meta`` Config for the JSON dump
     (serialization) process, which is intended for use alongside the
@@ -516,7 +518,7 @@ def DumpMeta(**kwargs) -> META:
 
     # Create a new subclass of :class:`AbstractMeta`
     # noinspection PyTypeChecker
-    return type('Meta', (BaseJSONWizardMeta, ), base_dict)
+    return type(__base_name, (__base_cls, ), base_dict)
 
 
 # noinspection PyPep8Naming

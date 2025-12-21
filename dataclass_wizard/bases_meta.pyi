@@ -13,7 +13,7 @@ from .constants import TAG
 from .enums import DateTimeTo, LetterCase, LetterCasePriority
 from .v1.enums import KeyAction, KeyCase, DateTimeTo as V1DateTimeTo
 from .models import Condition
-from .type_def import E, EnvFileType
+from .type_def import E, EnvFileType, T
 
 _ALLOWED_MODES = Literal['runtime', 'v1_codegen']
 
@@ -64,7 +64,10 @@ class BaseEnvWizardMeta(AbstractEnvMeta):
 
 
 # noinspection PyPep8Naming
-def LoadMeta(*, debug_enabled: 'bool | int | str' = MISSING,
+def LoadMeta(*,
+             __base_name: str = 'Meta',
+             __base_cls: T = AbstractMeta,
+             debug_enabled: 'bool | int | str' = MISSING,
              recursive: bool = True,
              recursive_classes: bool = MISSING,
              raise_on_unknown_json_key: bool = MISSING,
@@ -80,12 +83,15 @@ def LoadMeta(*, debug_enabled: 'bool | int | str' = MISSING,
              v1_case: KeyCase | str | None = MISSING,
              v1_field_to_alias: dict[str, str | Sequence[str]] = MISSING,
              v1_on_unknown_key: KeyAction | str | None = KeyAction.IGNORE,
-             v1_unsafe_parse_dataclass_in_union: bool = MISSING) -> META:
+             v1_unsafe_parse_dataclass_in_union: bool = MISSING) -> T | META:
     ...
 
 
 # noinspection PyPep8Naming
-def DumpMeta(*, debug_enabled: 'bool | int | str' = MISSING,
+def DumpMeta(*,
+             __base_name: str = 'Meta',
+             __base_cls: T = AbstractMeta,
+             debug_enabled: 'bool | int | str' = MISSING,
              recursive: bool = True,
              marshal_date_time_as: DateTimeTo | str = MISSING,
              key_transform: LetterCase | str = MISSING,
@@ -98,8 +104,7 @@ def DumpMeta(*, debug_enabled: 'bool | int | str' = MISSING,
              v1_case: KeyCase | str | None = MISSING,
              v1_field_to_alias: dict[str, str | Sequence[str]] = MISSING,
              v1_dump_date_time_as: V1DateTimeTo | str = MISSING,
-             v1_assume_naive_datetime_tz: tzinfo | None = None,
-             ) -> META:
+             v1_assume_naive_datetime_tz: tzinfo | None = None) -> T | META:
     ...
 
 

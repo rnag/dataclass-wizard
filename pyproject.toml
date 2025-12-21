@@ -34,7 +34,7 @@ keywords = [
     "python", "env", "dotenv", "lightweight",
 ]
 dependencies = [
-    "typing-extensions>=4.13.0; python_version <= '3.13'",
+    "typing-extensions>=4.13.0; python_version <= '3.12'",
 ]
 
 [tool.setuptools.dynamic]
