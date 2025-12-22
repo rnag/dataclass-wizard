@@ -25,7 +25,7 @@ from .log import LOG
 from .type_def import E
 from .utils.type_conv import date_to_timestamp, as_enum
 
-_ALLOWED_MODES = ('runtime', 'v1_codegen')
+ALLOWED_MODES = ('runtime', 'v1_codegen')
 
 # global flag to determine if debug mode was ever enabled
 _debug_was_enabled = False
@@ -173,7 +173,7 @@ def _normalize_hooks(hooks: Mapping | None) -> None:
                 raise ValueError(f"hook tuple must be (mode, hook), got {hook!r}") from None
 
             mode, fn = hook
-            if mode not in _ALLOWED_MODES:
+            if mode not in ALLOWED_MODES:
                 raise ValueError(
                     f"mode must be 'runtime' or 'v1_codegen' (got {mode!r})"
                 ) from None
@@ -401,6 +401,7 @@ class BaseEnvWizardMeta(AbstractEnvMeta):
     @classmethod
     def bind_to(cls, env_class: type, create=True, is_default=True):
         from .v1.enums import KeyCase, EnvKeyStrategy, EnvPrecedence
+        meta = get_meta(env_class)
 
         cls_loader = get_loader(
             env_class,
@@ -426,7 +427,7 @@ class BaseEnvWizardMeta(AbstractEnvMeta):
         cls.key_lookup_with_load = _as_enum_safe(
             cls, 'key_lookup_with_load', LetterCasePriority)
 
-        if cls.v1:
+        if cls.v1 or meta.v1:
             if cls.v1_load_case is not None:
                 cls.v1_load_case = _as_enum_safe(
                     cls, 'v1_load_case', EnvKeyStrategy)

@@ -105,6 +105,7 @@ class DataclassWizard(AbstractJSONWizard, SerializerHookMixin):
                       load: V1HookFn | None = None,
                       dump: V1HookFn | None = None,
                       mode: str | None = None) -> None:
+        ...
 
     @classmethod
     def from_json(cls: type[W], string: AnyStr, *,

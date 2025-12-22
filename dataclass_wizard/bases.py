@@ -13,11 +13,10 @@ from .models import Condition
 if TYPE_CHECKING:
     from .v1.enums import KeyAction, KeyCase, DateTimeTo as V1DateTimeTo, EnvKeyStrategy, EnvPrecedence
     from .v1.path_util import EnvFilePaths, SecretsDirs
+    from .bases_meta import ALLOWED_MODES, V1HookFn
     from .type_def import FrozenKeys
 
-    _ALLOWED_MODES = Literal['runtime', 'v1_codegen']
-    V1HookFn = Callable[..., Any]
-    V1TypeToHook = Mapping[type, Union[tuple[_ALLOWED_MODES, V1HookFn], V1HookFn, None]]
+    V1TypeToHook = Mapping[type, Union[tuple[ALLOWED_MODES, V1HookFn], V1HookFn, None]]
 
 # Create a generic variable that can be 'AbstractMeta', or any subclass.
 # Full word as `M` is already defined in another module

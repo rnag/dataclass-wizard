@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import dataclasses
+import json
 import logging
 import os
 from base64 import b64decode
@@ -25,7 +26,7 @@ from .type_conv import (
     as_time_v1, as_timedelta, TRUTHY_VALUES,
 )
 from ..bases import AbstractMeta, META, AbstractEnvMeta, ENV_META
-from ..bases_meta import BaseEnvWizardMeta, EnvMeta
+from ..bases_meta import BaseEnvWizardMeta, EnvMeta, register_type
 from ..class_helper import (create_meta,
                             dataclass_fields,
                             dataclass_field_to_default,
@@ -36,8 +37,9 @@ from ..class_helper import (create_meta,
                             v1_dataclass_field_to_alias_for_load,
                             CLASS_TO_LOAD_FUNC,
                             DATACLASS_FIELD_TO_ALIAS_PATH_FOR_LOAD,
-                            call_meta_initializer_if_needed)
+                            call_meta_initializer_if_needed, dataclass_field_names)
 from ..constants import CATCH_ALL, TAG, PY311_OR_ABOVE, PACKAGE_NAME
+from ..decorators import cached_class_property
 from ..errors import (JSONWizardError,
                       MissingData,
                       MissingFields,
@@ -45,7 +47,7 @@ from ..errors import (JSONWizardError,
                       UnknownKeysError, type_name, MissingVars)
 from ..loader_selection import get_loader, asdict
 from ..log import LOG
-from ..type_def import DefFactory, NoneType, T
+from ..type_def import DefFactory, NoneType, T, JSONObject
 # noinspection PyProtectedMember
 from ..utils.dataclass_compat import _set_new_attribute
 from ..utils.function_builder import FunctionBuilder
@@ -56,7 +58,7 @@ from ..utils.typing_compat import (eval_forward_ref_if_needed,
                                    get_origin_v2)
 
 if TYPE_CHECKING:
-    from .env import EnvInit
+    from .env import EnvInit, E_
 
 
 def env_config(**kw):
@@ -122,15 +124,36 @@ class EnvWizard:
             # set `v1_debug` flag for the class's Meta
             load_meta_kwargs['v1_debug'] = min_level
 
-        # Calls the Meta initializer when inner :class:`Meta` is sub-classed.
-        call_meta_initializer_if_needed(cls)
-
         if load_meta_kwargs:
             EnvMeta(**load_meta_kwargs).bind_to(cls)
 
-    to_dict = asdict
+        # Calls the Meta initializer when inner :class:`Meta` is sub-classed.
+        call_meta_initializer_if_needed(cls)
+
     _dcw_env_cache_secrets = classmethod(get_secrets_map)
     _dcw_env_cache_dotenv = classmethod(get_dotenv_map)
+
+    __field_names__ = cached_class_property(dataclass_field_names)
+
+    register_type = classmethod(register_type)
+
+    def raw_dict(self: E_) -> JSONObject:
+        """
+        Same as ``__dict__``, but only returns values for fields defined
+        on the `EnvWizard` instance. See :attr:`__field_names__` for more info.
+
+        .. NOTE::
+           The values in the returned dictionary object are not needed to be
+           JSON serializable. Use :meth:`to_dict` if this is required.
+        """
+
+    to_dict = asdict
+
+    def to_json(self, *,
+                encoder=json.dumps,
+                **encoder_kwargs):
+
+        return encoder(asdict(self), **encoder_kwargs)
 
 
 def load_func_for_dataclass(
@@ -156,6 +179,7 @@ def load_func_for_dataclass(
     cls_name = cls.__name__
 
     fn_name = f'__{PACKAGE_NAME}_init_{cls_name}__'
+    raw_dict_name = 'raw_dict'
 
     # Get the meta config for the class, or the default config otherwise.
     meta = get_meta(cls, base_meta_cls)
@@ -531,15 +555,26 @@ def load_func_for_dataclass(
     # Save the load function for the main dataclass, so we don't need to run
     # this logic each time.
     if is_main_class:
+        _locals = {}
+        with fn_gen.function(raw_dict_name, ['self'], JSONObject, _locals):
+            parts = ','.join([f'{name!r}:self.{name}' for name in cls.__field_names__])
+            fn_gen.add_line(f'return {{{parts}}}')
+
         # noinspection PyUnboundLocalVariable
         functions = fn_gen.create_functions(_globals)
 
         cls_init = functions[fn_name]
+        cls_raw_dict = functions[raw_dict_name]
 
         _set_new_attribute(
-            cls, f'__init__', cls_init)
+            cls, '__init__', cls_init)
         LOG.debug("setattr(%s, '__init__', %s)",
                   cls_name, fn_name)
+
+        _set_new_attribute(
+            cls, raw_dict_name, cls_raw_dict)
+        LOG.debug("setattr(%s, %r, %s)",
+                  cls_name, raw_dict_name, raw_dict_name)
 
         # TODO in `v1`, we will use class attribute (set above) instead.
         CLASS_TO_LOAD_FUNC[cls] = cls_init

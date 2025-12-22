@@ -16,7 +16,7 @@ from .type_def import E, T
 from .v1.enums import KeyAction, KeyCase, DateTimeTo as V1DateTimeTo, EnvPrecedence
 from .v1.path_util import EnvFilePaths, SecretsDirs
 
-_ALLOWED_MODES = Literal['runtime', 'v1_codegen']
+ALLOWED_MODES = Literal['runtime', 'v1_codegen']
 
 # global flag to determine if debug mode was ever enabled
 _debug_was_enabled = False
