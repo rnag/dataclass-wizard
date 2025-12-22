@@ -19,7 +19,6 @@ from .class_helper import (
 )
 from .decorators import try_with_load
 from .enums import DateTimeTo, LetterCase, LetterCasePriority
-from .environ.loaders import EnvLoader
 from .errors import ParseError, show_deprecation_warning
 from .loader_selection import get_dumper, get_loader
 from .log import LOG
@@ -401,7 +400,7 @@ class BaseEnvWizardMeta(AbstractEnvMeta):
 
     @classmethod
     def bind_to(cls, env_class: type, create=True, is_default=True):
-        from .v1.enums import KeyCase, EnvKeyStrategy
+        from .v1.enums import KeyCase, EnvKeyStrategy, EnvPrecedence
 
         cls_loader = get_loader(
             env_class,
@@ -431,6 +430,10 @@ class BaseEnvWizardMeta(AbstractEnvMeta):
             if cls.v1_load_case is not None:
                 cls.v1_load_case = _as_enum_safe(
                     cls, 'v1_load_case', EnvKeyStrategy)
+            if cls.v1_env_precedence is not None:
+                cls.v1_env_precedence = _as_enum_safe(
+                    cls, 'v1_env_precedence', EnvPrecedence)
+
             # TODO
             cls_dumper.transform_dataclass_field = _as_enum_safe(
                 cls, 'v1_dump_case', KeyCase)
@@ -452,7 +455,7 @@ class BaseEnvWizardMeta(AbstractEnvMeta):
 
 
 # noinspection PyPep8Naming
-def LoadMeta(__base_name='Meta', __base_cls=BaseJSONWizardMeta, **kwargs) -> META:
+def LoadMeta(**kwargs) -> META:
     """
     Helper function to setup the ``Meta`` Config for the JSON load
     (de-serialization) process, which is intended for use alongside the
@@ -482,11 +485,11 @@ def LoadMeta(__base_name='Meta', __base_cls=BaseJSONWizardMeta, **kwargs) -> MET
 
     # Create a new subclass of :class:`AbstractMeta`
     # noinspection PyTypeChecker
-    return type(__base_name, (__base_cls, ), base_dict)
+    return type('Meta', (BaseJSONWizardMeta, ), base_dict)
 
 
 # noinspection PyPep8Naming
-def DumpMeta(__base_name='Meta', __base_cls=BaseJSONWizardMeta, **kwargs) -> META:
+def DumpMeta(**kwargs) -> META:
     """
     Helper function to setup the ``Meta`` Config for the JSON dump
     (serialization) process, which is intended for use alongside the
@@ -518,7 +521,7 @@ def DumpMeta(__base_name='Meta', __base_cls=BaseJSONWizardMeta, **kwargs) -> MET
 
     # Create a new subclass of :class:`AbstractMeta`
     # noinspection PyTypeChecker
-    return type(__base_name, (__base_cls, ), base_dict)
+    return type('Meta', (BaseJSONWizardMeta, ), base_dict)
 
 
 # noinspection PyPep8Naming
@@ -542,4 +545,4 @@ def EnvMeta(**kwargs) -> META:
 
     # Create a new subclass of :class:`AbstractMeta`
     # noinspection PyTypeChecker
-    return type('Meta', (BaseEnvWizardMeta, ), base_dict)
+    return type('EnvMeta', (BaseEnvWizardMeta, ), base_dict)

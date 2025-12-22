@@ -9,11 +9,11 @@ from .constants import TAG
 from .decorators import cached_class_property
 from .enums import DateTimeTo, LetterCase, LetterCasePriority
 from .models import Condition
-from .type_def import FrozenKeys, EnvFileType
-
 
 if TYPE_CHECKING:
-    from .v1.enums import KeyAction, KeyCase, DateTimeTo as V1DateTimeTo, EnvKeyStrategy
+    from .v1.enums import KeyAction, KeyCase, DateTimeTo as V1DateTimeTo, EnvKeyStrategy, EnvPrecedence
+    from .v1.path_util import EnvFilePaths, SecretsDirs
+    from .type_def import FrozenKeys
 
     _ALLOWED_MODES = Literal['runtime', 'v1_codegen']
     V1HookFn = Callable[..., Any]
@@ -500,13 +500,13 @@ class AbstractEnvMeta(metaclass=ABCOrAndMeta):
     #
     # For example, in below the '.env.last' file takes priority over '.env':
     #   env_file = '.env', '.env.last'
-    env_file: ClassVar[EnvFileType] = None
+    env_file: ClassVar[EnvFilePaths] = None
 
     # Prefix for all environment variables. Defaults to `None`.
     env_prefix: ClassVar[str] = None
 
     # secrets_dir: The secret files directory or a sequence of directories. Defaults to `None`.
-    secrets_dir: ClassVar['EnvFileType | Sequence[EnvFileType]'] = None
+    secrets_dir: ClassVar[SecretsDirs] = None
 
     # The nested env values delimiter. Defaults to `None`.
     # env_nested_delimiter: ClassVar[str] = None
@@ -578,6 +578,10 @@ class AbstractEnvMeta(metaclass=ABCOrAndMeta):
     #
     # The default is 'snake_case'.
     v1_dump_case: ClassVar[Union[LetterCase, str]] = None
+
+    # Environment Precedence (order) to search for values
+    # Defaults to EnvPrecedence.SECRETS_ENV_DOTENV
+    v1_env_precedence: EnvPrecedence = None
 
     # Determines whether we should we skip / omit fields with default values
     # in the serialization process.

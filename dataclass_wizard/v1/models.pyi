@@ -1,7 +1,7 @@
 from dataclasses import MISSING, Field as _Field, dataclass
 from datetime import datetime, date, time, tzinfo, timezone, timedelta
 from typing import (Collection, Callable,
-                    Generic, Sequence, TypeAlias)
+                    Generic, Sequence, TypeAlias, Mapping)
 from typing import TypedDict, overload, Any, NotRequired, Self
 
 from ..bases import META
@@ -394,10 +394,14 @@ def AliasPath(*all: PathType | str,
               load: PathType | str | None = None,
               dump: PathType | str | None = None,
               skip: bool = False,
-              default=MISSING,
+              default: Any = MISSING,
               default_factory: Callable[[], MISSING] = MISSING,
-              init=True, repr=True,
-              hash=None, compare=True, metadata=None, kw_only=False):
+              init: bool = True,
+              repr: bool = True,
+              hash: bool | None = None,
+              compare: bool = True,
+              metadata: Mapping[Any, Any] | None = None,
+              kw_only: bool = False) -> Field:
     """
     Creates a dataclass field mapped to one or more nested JSON paths.
 

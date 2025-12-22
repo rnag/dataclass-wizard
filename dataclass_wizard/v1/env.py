@@ -4,6 +4,7 @@ import dataclasses
 import logging
 import os
 from base64 import b64decode
+from collections import ChainMap
 from dataclasses import dataclass, is_dataclass, Field, MISSING
 from datetime import date, datetime, time, timedelta
 from decimal import Decimal
@@ -15,15 +16,16 @@ from uuid import UUID
 from .decorators import (process_patterned_date_time,
                          setup_recursive_safe_function,
                          setup_recursive_safe_function_for_generic)
-from .enums import EnvKeyStrategy
+from .enums import EnvKeyStrategy, EnvPrecedence
 from .loaders import LoadMixin as V1LoaderMixIn
 from .models import Extras, TypeInfo, SIMPLE_TYPES
+from .path_util import read_secrets_dirs, dotenv_values
 from .type_conv import (
     as_datetime_v1, as_date_v1, as_int_v1,
     as_time_v1, as_timedelta, TRUTHY_VALUES,
 )
 from ..bases import AbstractMeta, META, AbstractEnvMeta, ENV_META
-from ..bases_meta import BaseEnvWizardMeta
+from ..bases_meta import BaseEnvWizardMeta, EnvMeta
 from ..class_helper import (create_meta,
                             dataclass_fields,
                             dataclass_field_to_default,
@@ -41,7 +43,7 @@ from ..errors import (JSONWizardError,
                       MissingFields,
                       ParseError,
                       UnknownKeysError, type_name, MissingVars)
-from ..loader_selection import get_loader
+from ..loader_selection import get_loader, asdict
 from ..log import LOG
 from ..type_def import DefFactory, NoneType, T
 # noinspection PyProtectedMember
@@ -59,6 +61,13 @@ if TYPE_CHECKING:
 
 def env_config(**kw):
     return kw
+
+
+_PRECEDENCE_ORDER: dict[EnvPrecedence, tuple[str, ...]] = {
+    EnvPrecedence.SECRETS_ENV_DOTENV: ('secrets', 'env', 'dotenv'),
+    EnvPrecedence.SECRETS_DOTENV_ENV: ('secrets', 'dotenv', 'env'),
+    EnvPrecedence.ENV_ONLY: ('env', ),
+}
 
 
 @dataclass_transform(kw_only_default=True)
@@ -117,11 +126,9 @@ class EnvWizard:
         call_meta_initializer_if_needed(cls)
 
         if load_meta_kwargs:
-            from ..bases_meta import LoadMeta
+            EnvMeta(**load_meta_kwargs).bind_to(cls)
 
-            LoadMeta(**load_meta_kwargs,
-                     __base_name='EnvMeta',
-                     __base_cls=BaseEnvWizardMeta).bind_to(cls)
+    to_dict = asdict
 
 
 def load_func_for_dataclass(
@@ -180,10 +187,13 @@ def load_func_for_dataclass(
 
         _globals = {
             'os': os,
+            'ChainMap': ChainMap,
             'MISSING': MISSING,
             'ParseError': ParseError,
             'MissingVars': MissingVars,
             'add': _add_missing_var,
+            'read_secrets_dirs': read_secrets_dirs,
+            'dotenv_values': dotenv_values,
             'raise_missing_fields': check_and_raise_missing_fields,
             're_raise': re_raise,
         }
@@ -214,6 +224,8 @@ def load_func_for_dataclass(
     # default `v1_load_case` to `EnvKeyStrategy.ENV` if not set
     env_key_strat: EnvKeyStrategy | None = meta.v1_load_case or EnvKeyStrategy.ENV
     default_strat = env_key_strat is not EnvKeyStrategy.STRICT
+    # default `v1_env_precedence` to SECRETS_ENV_DOTENV if not set
+    env_precedence: EnvPrecedence = meta.v1_env_precedence or EnvPrecedence.SECRETS_ENV_DOTENV
 
     field_to_aliases = v1_dataclass_field_to_alias_for_load(cls)
     check_aliases = True if field_to_aliases else False
@@ -276,11 +288,13 @@ def load_func_for_dataclass(
         new_locals['safe_get'] = v1_safe_get
 
     _env_defaults: EnvInit = {}
-    if (_env_file := meta.env_file) is not None:
+    if _env_file := meta.env_file:
         _env_defaults['file'] = _env_file
     if (_env_prefix := meta.env_prefix) is not None:
         _env_defaults['prefix'] = _env_prefix
     if (_secrets_dir := meta.secrets_dir) is not None:
+        _env_defaults['secrets_dir'] = '<configured>'
+        LOG.debug(f'Default __env__ = {_env_defaults!r}')
         _env_defaults['secrets_dir'] = _secrets_dir
 
     new_locals['__settings__'] = _env_defaults
@@ -291,21 +305,39 @@ def load_func_for_dataclass(
 
     with fn_gen.function(fn_name, init_params, MISSING, new_locals):
 
-        fn_gen.add_line(f'# default __env__ = {_env_defaults!r}')
-
         with fn_gen.if_('__env__ is not None'):
             fn_gen.add_line('__settings__.update(__env__)')
 
-        fn_gen.add_line("env = __settings__.get('mapping') or os.environ")
-        if (_pre_from_dict := getattr(cls, '_pre_from_dict', None)) is not None:
-            new_locals['__pre_from_dict__'] = _pre_from_dict
-            fn_gen.add_line('env = __pre_from_dict__(env)')
-
+        fn_gen.add_line("env_file = __settings__.get('file')")
+        fn_gen.add_line("env_map = __settings__.get('mapping') or os.environ")
+        fn_gen.add_line("secrets_dir = __settings__.get('secrets_dir')")
         fn_gen.add_line("pfx = __settings__.get('prefix', '')")
         # Need to create a separate dictionary to copy over the constructor
         # args, as we don't want to mutate the original dictionary object.
         if pre_assign:
             fn_gen.add_line('i = 0')
+
+        order = _PRECEDENCE_ORDER[env_precedence]
+
+        fn_gen.add_line('maps = []')
+        fn_gen.add_line(f'# precedence: {env_precedence.value}')
+        for src in order:
+            if src == 'secrets':
+                with fn_gen.if_('secrets_dir is not None'):
+                    fn_gen.add_line('secrets_map = read_secrets_dirs(secrets_dir)')
+                    fn_gen.add_line('maps.append(secrets_map)')
+            elif src == 'dotenv':
+                with fn_gen.if_('env_file'):
+                    fn_gen.add_line('dotenv_map = dotenv_values(env_file)')
+                    fn_gen.add_line('maps.append(dotenv_map)')
+            elif src == 'env':
+                fn_gen.add_line('maps.append(env_map)')
+
+        fn_gen.add_line('env = maps[0] if len(maps) == 1 else ChainMap(*maps)')
+
+        if (_pre_from_dict := getattr(cls, '_pre_from_dict', None)) is not None:
+            new_locals['__pre_from_dict__'] = _pre_from_dict
+            fn_gen.add_line('env = __pre_from_dict__(env)')
 
         fn_gen.add_line('_vars = None')
         # with fn_gen.if_('_secrets_dir'):
@@ -396,7 +428,7 @@ def load_func_for_dataclass(
                             _has_alias = True
                             # No prefix for explicit aliases!
                             condition.extend([
-                                f"({val} := env.get({alias!r}, MISSING)) is not MISSING"
+                                f'({val} := env.get({alias!r}, MISSING)) is not MISSING'
                                 for alias in _initial_aliases
                             ])
                             preferred_env_var = repr(_initial_aliases[0])
@@ -448,7 +480,7 @@ def load_func_for_dataclass(
                         with fn_gen.if_(val_is_found):
                             fn_gen.add_line(f'{pre_assign}self.{name} = {string}')
                         with fn_gen.else_():
-                            fn_gen.add_line(f"_vars = add(_vars, field, {preferred_env_var}, {tp_var})")
+                            fn_gen.add_line(f'_vars = add(_vars, field, {preferred_env_var}, {tp_var})')
 
 
                 # raise `MissingFields`, as required dataclass fields
@@ -484,7 +516,7 @@ def load_func_for_dataclass(
                 if should_raise:
                     # Raise an error here (if needed)
                     new_locals['UnknownKeysError'] = UnknownKeysError
-                    fn_gen.add_line("raise UnknownKeysError(extra_keys, env, cls, fields) from None")
+                    fn_gen.add_line('raise UnknownKeysError(extra_keys, env, cls, fields) from None')
                 elif should_warn:
                     # Show a warning here
                     new_locals['LOG'] = LOG

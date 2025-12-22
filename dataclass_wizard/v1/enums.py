@@ -102,3 +102,9 @@ class KeyCase(Enum):
 class DateTimeTo(Enum):
     ISO = 0          # ISO 8601 string (default)
     TIMESTAMP = 1    # Unix timestamp (seconds)
+
+
+class EnvPrecedence(Enum):
+    SECRETS_ENV_DOTENV = 'secrets > env > dotenv'  # default
+    SECRETS_DOTENV_ENV = 'secrets > dotenv > env'  # dev-heavy
+    ENV_ONLY = 'env-only'  # strict/prod

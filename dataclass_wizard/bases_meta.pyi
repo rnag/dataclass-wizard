@@ -6,14 +6,15 @@ both import directly from `bases`.
 """
 from dataclasses import MISSING
 from datetime import tzinfo
-from typing import Sequence, Callable, Any, Mapping, Literal
+from typing import Sequence, Callable, Any, Literal
 
 from .bases import AbstractMeta, META, AbstractEnvMeta, V1TypeToHook
 from .constants import TAG
 from .enums import DateTimeTo, LetterCase, LetterCasePriority
-from .v1.enums import KeyAction, KeyCase, DateTimeTo as V1DateTimeTo
 from .models import Condition
-from .type_def import E, EnvFileType, T
+from .type_def import E, T
+from .v1.enums import KeyAction, KeyCase, DateTimeTo as V1DateTimeTo, EnvPrecedence
+from .v1.path_util import EnvFilePaths, SecretsDirs
 
 _ALLOWED_MODES = Literal['runtime', 'v1_codegen']
 
@@ -65,8 +66,6 @@ class BaseEnvWizardMeta(AbstractEnvMeta):
 
 # noinspection PyPep8Naming
 def LoadMeta(*,
-             __base_name: str = 'Meta',
-             __base_cls: T = AbstractMeta,
              debug_enabled: 'bool | int | str' = MISSING,
              recursive: bool = True,
              recursive_classes: bool = MISSING,
@@ -89,8 +88,6 @@ def LoadMeta(*,
 
 # noinspection PyPep8Naming
 def DumpMeta(*,
-             __base_name: str = 'Meta',
-             __base_cls: T = AbstractMeta,
              debug_enabled: 'bool | int | str' = MISSING,
              recursive: bool = True,
              marshal_date_time_as: DateTimeTo | str = MISSING,
@@ -110,15 +107,26 @@ def DumpMeta(*,
 
 # noinspection PyPep8Naming
 def EnvMeta(*, debug_enabled: 'bool | int | str' = MISSING,
-             env_file: EnvFileType = MISSING,
-             env_prefix: str = MISSING,
-             secrets_dir: 'EnvFileType | Sequence[EnvFileType]' = MISSING,
-             field_to_env_var: dict[str, str] = MISSING,
-             key_lookup_with_load: LetterCasePriority | str = LetterCasePriority.SCREAMING_SNAKE,
-             key_transform_with_dump: LetterCase | str = LetterCase.SNAKE,
-             # marshal_date_time_as: DateTimeTo | str = MISSING,
-             skip_defaults: bool = MISSING,
-             skip_if: Condition = MISSING,
-             skip_defaults_if: Condition = MISSING,
-             ) -> META:
+            env_file: EnvFilePaths = MISSING,
+            env_prefix: str = MISSING,
+            secrets_dir: SecretsDirs = MISSING,
+            field_to_env_var: dict[str, str] = MISSING,
+            key_lookup_with_load: LetterCasePriority | str = LetterCasePriority.SCREAMING_SNAKE,
+            key_transform_with_dump: LetterCase | str = LetterCase.SNAKE,
+            # marshal_date_time_as: DateTimeTo | str = MISSING,
+            skip_defaults: bool = MISSING,
+            skip_if: Condition = MISSING,
+            skip_defaults_if: Condition = MISSING,
+            tag: str = MISSING,
+            tag_key: str = TAG,
+            auto_assign_tags: bool = MISSING,
+            v1: bool = MISSING,
+            v1_debug: bool | int | str = False,
+            v1_type_to_load_hook: V1TypeToHook = None,
+            v1_type_to_dump_hook: V1TypeToHook = None,
+            v1_case: KeyCase | str | None = MISSING,
+            v1_env_precedence: EnvPrecedence = MISSING,
+            # v1_field_to_alias: dict[str, str | Sequence[str]] = MISSING,
+            # v1_on_unknown_key: KeyAction | str | None = KeyAction.IGNORE,
+            v1_unsafe_parse_dataclass_in_union: bool = MISSING) -> META:
     ...
