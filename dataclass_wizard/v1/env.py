@@ -19,7 +19,7 @@ from .decorators import (process_patterned_date_time,
 from .enums import EnvKeyStrategy, EnvPrecedence
 from .loaders import LoadMixin as V1LoaderMixIn
 from .models import Extras, TypeInfo, SIMPLE_TYPES
-from .path_util import read_secrets_dirs, dotenv_values
+from .path_util import get_secrets_map, get_dotenv_map
 from .type_conv import (
     as_datetime_v1, as_date_v1, as_int_v1,
     as_time_v1, as_timedelta, TRUTHY_VALUES,
@@ -129,10 +129,12 @@ class EnvWizard:
             EnvMeta(**load_meta_kwargs).bind_to(cls)
 
     to_dict = asdict
+    _dcw_env_cache_secrets = classmethod(get_secrets_map)
+    _dcw_env_cache_dotenv = classmethod(get_dotenv_map)
 
 
 def load_func_for_dataclass(
-        cls: type,
+        cls,
         extras: Extras | None = None,
         loader_cls=None,
         base_meta_cls: ENV_META = AbstractEnvMeta,
@@ -192,8 +194,6 @@ def load_func_for_dataclass(
             'ParseError': ParseError,
             'MissingVars': MissingVars,
             'add': _add_missing_var,
-            'read_secrets_dirs': read_secrets_dirs,
-            'dotenv_values': dotenv_values,
             'raise_missing_fields': check_and_raise_missing_fields,
             're_raise': re_raise,
         }
@@ -297,8 +297,7 @@ def load_func_for_dataclass(
         LOG.debug(f'Default __env__ = {_env_defaults!r}')
         _env_defaults['secrets_dir'] = _secrets_dir
 
-    new_locals['__settings__'] = _env_defaults
-
+    new_locals['cfg'] = _env_defaults
     init_params = ['self',
                    '__env__:EnvInit=None',
                    '*']
@@ -306,17 +305,18 @@ def load_func_for_dataclass(
     with fn_gen.function(fn_name, init_params, MISSING, new_locals):
 
         with fn_gen.if_('__env__ is not None'):
-            fn_gen.add_line('__settings__.update(__env__)')
+            fn_gen.add_line('cfg.update(__env__)')
 
-        fn_gen.add_line("env_file = __settings__.get('file')")
-        fn_gen.add_line("secrets_dir = __settings__.get('secrets_dir')")
-        fn_gen.add_line("pfx = __settings__.get('prefix', '')")
+        fn_gen.add_line("reload = cfg.get('reload', False)")
+        fn_gen.add_line("env_file = cfg.get('file')")
+        fn_gen.add_line("secrets_dir = cfg.get('secrets_dir')")
+        fn_gen.add_line("pfx = cfg.get('prefix', '')")
         # Need to create a separate dictionary to copy over the constructor
         # args, as we don't want to mutate the original dictionary object.
         if pre_assign:
             fn_gen.add_line('i = 0')
 
-        env_map_assign = "__settings__.get('mapping') or os.environ"
+        env_map_assign = "cfg.get('mapping') or os.environ"
         if env_precedence is EnvPrecedence.ENV_ONLY:
             fn_gen.add_line(f'env = {env_map_assign}')
         else:
@@ -329,12 +329,10 @@ def load_func_for_dataclass(
             for src in order:
                 if src == 'secrets':
                     with fn_gen.if_('secrets_dir is not None'):
-                        fn_gen.add_line('secrets_map = read_secrets_dirs(secrets_dir)')
-                        fn_gen.add_line('maps.append(secrets_map)')
+                        fn_gen.add_line('maps.append(cls._dcw_env_cache_secrets(secrets_dir, reload=reload))')
                 elif src == 'dotenv':
                     with fn_gen.if_('env_file'):
-                        fn_gen.add_line('dotenv_map = dotenv_values(env_file)')
-                        fn_gen.add_line('maps.append(dotenv_map)')
+                        fn_gen.add_line('maps.append(cls._dcw_env_cache_dotenv(env_file, reload=reload))')
                 elif src == 'env':
                     fn_gen.add_line('maps.append(env_map)')
 

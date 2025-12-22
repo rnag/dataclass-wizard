@@ -1,4 +1,4 @@
-from os import PathLike, fspath, sep, altsep
+from os import PathLike, fspath, sep, altsep, getcwd
 from os.path import isabs
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -9,23 +9,61 @@ if TYPE_CHECKING:
     from .path_util import Environ, SecretsFileMapping
 
 
-def read_secrets_dirs(dirs):
-    if dirs is None:
+def get_secrets_map(cls, secret_dirs, *, reload=False):
+    if secret_dirs is None:
         return {}
 
     # Treat empty containers as empty; but empty string is likely a bug.
-    if isinstance(dirs, (str, PathLike)):
-        if str(dirs) == '':
+    if isinstance(secret_dirs, (str, PathLike)):
+        if str(secret_dirs) == '':
             raise ValueError('secrets_dir cannot be an empty string')
-        dir_list = [dirs]
+        dirs = fspath(secret_dirs),
     else:
-        dir_list = list(dirs)
-        if not dir_list:
-            return {}
+        dirs = tuple(fspath(d) for d in secret_dirs)
 
+    # optionally normalize paths (realpath)
+    key = dirs
+
+    cache = getattr(cls, '_dw_secrets_cache', None)
+    if cache is None:
+        cache = cls._dw_secrets_cache = {}
+
+    if not reload and key in cache:
+        return cache[key]
+
+    m = cache[key] = read_secrets_dirs(dirs)
+    return m
+
+
+def get_dotenv_map(cls, env_file, *, reload=False):
+    if not env_file:
+        return {}
+
+    if env_file is True:
+        files = '.env',
+    elif isinstance(env_file, (str, PathLike)):
+        files = fspath(env_file),
+    else:
+        files = tuple(fspath(f) for f in env_file)
+
+    cwd = getcwd()
+    key = (cwd, *files)
+
+    cache = getattr(cls, '_dw_dotenv_cache', None)
+    if cache is None:
+        cache = cls._dw_dotenv_cache = {}
+
+    if not reload and key in cache:
+        return cache[key]
+
+    m = cache[key] = dotenv_values(files)
+    return m
+
+
+def read_secrets_dirs(secret_dirs):
     out: SecretsFileMapping = {}
 
-    for d in dir_list:
+    for d in secret_dirs:
         if not isinstance(d, (str, PathLike)):
             raise TypeError(f'secrets_dir entries must be str/PathLike, got {type(d)!r}')
 

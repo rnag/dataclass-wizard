@@ -1109,7 +1109,7 @@ def dump_func_for_dataclass(
             # create a broad `except Exception` block, as we will be
             # re-raising all exception(s) as a custom `ParseError`.
             with fn_gen.except_(Exception, 'e', ParseError):
-                fn_gen.add_line("re_raise(e, cls, o, fields, '<UNK>', locals().get('v0'))")
+                fn_gen.add_line("re_raise(e, cls, o, fields, '<UNK>', locals().get('v1'))")
 
         # TODO
         # if has_catch_all:
@@ -1170,13 +1170,13 @@ def dump_func_for_dataclass(
             if (default := field_to_default.get(catch_all_name_stripped, ExplicitNull)) is not ExplicitNull:
                 default_value = f'_default_{len(cls_fields_list)}'
                 new_locals[default_value] = default
-                condition = f"(v0 := o.{catch_all_name_stripped}) != {default_value}"
+                condition = f"(v1 := o.{catch_all_name_stripped}) != {default_value}"
 
             else:
-                condition = f'v0 := o.{catch_all_name_stripped}'
+                condition = f'v1 := o.{catch_all_name_stripped}'
 
             with fn_gen.if_(condition):
-                with fn_gen.for_(f"k, v in v0.items()"):
+                with fn_gen.for_(f"k, v in v1.items()"):
                     fn_gen.globals['__asdict_inner__'] = __dataclasses_asdict_inner__
                     fn_gen.add_line('result[k] = __asdict_inner__(v,dict_factory)')
 

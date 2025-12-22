@@ -1,11 +1,15 @@
 from dataclasses import dataclass, Field, InitVar
-from typing import Callable, Mapping, dataclass_transform, TypedDict, NotRequired
+from typing import Callable, Mapping, dataclass_transform, TypedDict, NotRequired, TypeVar
 
 from .loaders import LoadMixin as V1LoaderMixIn
 from .models import Extras
 from ..bases import AbstractEnvMeta, ENV_META
 from ..bases_meta import BaseEnvWizardMeta
 from ..type_def import Unpack, JSONObject, T
+
+
+E_ = TypeVar('E_', bound=EnvWizard)
+E = type[E_]
 
 
 class EnvInit(TypedDict, total=False):
@@ -42,7 +46,7 @@ class EnvWizard:
 
 
 def load_func_for_dataclass(
-        cls: type,
+        cls: E,
         extras: Extras | None = None,
         loader_cls=None,
         base_meta_cls: ENV_META = AbstractEnvMeta,
