@@ -309,7 +309,6 @@ def load_func_for_dataclass(
             fn_gen.add_line('__settings__.update(__env__)')
 
         fn_gen.add_line("env_file = __settings__.get('file')")
-        fn_gen.add_line("env_map = __settings__.get('mapping') or os.environ")
         fn_gen.add_line("secrets_dir = __settings__.get('secrets_dir')")
         fn_gen.add_line("pfx = __settings__.get('prefix', '')")
         # Need to create a separate dictionary to copy over the constructor
@@ -317,23 +316,29 @@ def load_func_for_dataclass(
         if pre_assign:
             fn_gen.add_line('i = 0')
 
-        order = _PRECEDENCE_ORDER[env_precedence]
+        env_map_assign = "__settings__.get('mapping') or os.environ"
+        if env_precedence is EnvPrecedence.ENV_ONLY:
+            fn_gen.add_line(f'env = {env_map_assign}')
+        else:
+            fn_gen.add_line(f'env_map = {env_map_assign}')
 
-        fn_gen.add_line('maps = []')
-        fn_gen.add_line(f'# precedence: {env_precedence.value}')
-        for src in order:
-            if src == 'secrets':
-                with fn_gen.if_('secrets_dir is not None'):
-                    fn_gen.add_line('secrets_map = read_secrets_dirs(secrets_dir)')
-                    fn_gen.add_line('maps.append(secrets_map)')
-            elif src == 'dotenv':
-                with fn_gen.if_('env_file'):
-                    fn_gen.add_line('dotenv_map = dotenv_values(env_file)')
-                    fn_gen.add_line('maps.append(dotenv_map)')
-            elif src == 'env':
-                fn_gen.add_line('maps.append(env_map)')
+            order = _PRECEDENCE_ORDER[env_precedence]
 
-        fn_gen.add_line('env = maps[0] if len(maps) == 1 else ChainMap(*maps)')
+            fn_gen.add_line('maps = []')
+            fn_gen.add_line(f'# precedence: {env_precedence.value}')
+            for src in order:
+                if src == 'secrets':
+                    with fn_gen.if_('secrets_dir is not None'):
+                        fn_gen.add_line('secrets_map = read_secrets_dirs(secrets_dir)')
+                        fn_gen.add_line('maps.append(secrets_map)')
+                elif src == 'dotenv':
+                    with fn_gen.if_('env_file'):
+                        fn_gen.add_line('dotenv_map = dotenv_values(env_file)')
+                        fn_gen.add_line('maps.append(dotenv_map)')
+                elif src == 'env':
+                    fn_gen.add_line('maps.append(env_map)')
+
+            fn_gen.add_line('env = env_map if len(maps) == 1 else ChainMap(*maps)')
 
         if (_pre_from_dict := getattr(cls, '_pre_from_dict', None)) is not None:
             new_locals['__pre_from_dict__'] = _pre_from_dict
