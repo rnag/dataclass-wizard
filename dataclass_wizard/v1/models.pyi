@@ -393,6 +393,7 @@ class UTCDateTimePattern(datetime, Generic[T]):
 def AliasPath(*all: PathType | str,
               load: PathType | str | None = None,
               dump: PathType | str | None = None,
+              env: PathType | str | bool | None = None,
               skip: bool = False,
               default: Any = MISSING,
               default_factory: Callable[[], MISSING] = MISSING,
@@ -488,6 +489,7 @@ def AliasPath(*all: PathType | str,
 def Alias(*all: str,
           load: str | Sequence[str] | None = None,
           dump: str | None = None,
+          env: str | Sequence[str] | None = None,
           skip: bool = False,
           default=MISSING,
           default_factory: Callable[[], MISSING] = MISSING,
@@ -511,6 +513,8 @@ def Alias(*all: str,
     :type load: str | Sequence[str] | None
     :param dump: Key to use for serialization. Defaults to the first key in ``all``.
     :type dump: str | None
+    :param env: Environment variable(s) to use for deserialization.
+    :type env: str | Sequence[str] | None
     :param skip: If ``True``, the field is excluded during serialization. Defaults to ``False``.
     :type skip: bool
     :param default: Default value for the field. Cannot be used with ``default_factory``.
@@ -617,12 +621,13 @@ class Field(_Field):
     """
     __slots__ = ('load_alias',
                  'dump_alias',
+                 'env_vars',
                  'skip',
                  'path')
 
     load_alias: str | None
     dump_alias: str | None
-    # keys: tuple[str, ...] | PathType
+    env_vars: str | None
     skip: bool
     path: PathType | None
 
@@ -634,6 +639,7 @@ class Field(_Field):
     def __init__(self,
                  load_alias: str | None,
                  dump_alias: str | None,
+                 env_vars: str | None,
                  skip: bool,
                  path: PathType | None,
                  default, default_factory, init, repr, hash, compare,
@@ -648,6 +654,7 @@ class Field(_Field):
     def __init__(self,
                  load_alias: str | None,
                  dump_alias: str | None,
+                 env_vars: str | None,
                  skip: bool,
                  path: PathType | None,
                  default, default_factory, init, repr, hash, compare,
@@ -658,6 +665,7 @@ class Field(_Field):
     def __init__(self,
                  load_alias: str | None,
                  dump_alias: str | None,
+                 env_vars: str | None,
                  skip: bool,
                  path: PathType | None,
                  default, default_factory, init, repr, hash, compare,

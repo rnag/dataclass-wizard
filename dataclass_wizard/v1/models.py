@@ -558,7 +558,7 @@ def _normalize_alias_path_args(all_paths, load, dump):
     return all_paths, load, dump
 
 
-def _normalize_alias_args(default, default_factory, all_aliases, load, dump):
+def _normalize_alias_args(default, default_factory, all_aliases, load, dump, env):
     """Normalize `Alias` arguments and canonicalize alias values."""
 
     if default is not MISSING and default_factory is not MISSING:
@@ -570,7 +570,13 @@ def _normalize_alias_args(default, default_factory, all_aliases, load, dump):
     elif load is not None and isinstance(load, str):
         load = (load,)
 
-    return all_aliases, load, dump
+    elif env is not None:
+        if isinstance(env, str):
+            env = (env,)
+        elif env is True:
+            env = load
+
+    return all_aliases, load, dump, env
 
 
 # Instances of Field are only ever created from within this module,
@@ -594,6 +600,7 @@ if PY314_OR_ABOVE:
         *all,
         load=None,
         dump=None,
+        env=None,
         skip=False,
         default=MISSING,
         default_factory=MISSING,
@@ -606,11 +613,12 @@ if PY314_OR_ABOVE:
         doc=None,
     ):
 
-        all, load, dump = _normalize_alias_args(default, default_factory, all, load, dump)
+        all, load, dump, env = _normalize_alias_args(default, default_factory, all, load, dump, env)
 
         return Field(
             load,
             dump,
+            env,
             skip,
             None,
             default,
@@ -645,6 +653,7 @@ if PY314_OR_ABOVE:
         return Field(
             load,
             dump,
+            load,
             skip,
             all,
             default,
@@ -660,13 +669,14 @@ if PY314_OR_ABOVE:
 
     class Field(_Field):
 
-        __slots__ = ("load_alias", "dump_alias", "skip", "path")
+        __slots__ = ("load_alias", "dump_alias", "env_vars", "skip", "path")
 
         # noinspection PyShadowingBuiltins
         def __init__(
             self,
             load_alias,
             dump_alias,
+            env_vars,
             skip,
             path,
             default,
@@ -694,6 +704,7 @@ if PY314_OR_ABOVE:
 
             self.load_alias = load_alias
             self.dump_alias = dump_alias
+            self.env_vars = env_vars
             self.skip = skip
             self.path = path
 
@@ -708,19 +719,20 @@ elif PY310_OR_ABOVE:  # pragma: no cover
     def Alias(*all,
               load=None,
               dump=None,
+              env=None,
               skip=False,
-              path=None,
               default=MISSING,
               default_factory=MISSING,
               init=True, repr=True,
               hash=None, compare=True,
               metadata=None, kw_only=False):
 
-        all, load, dump = _normalize_alias_args(default, default_factory, all, load, dump)
+        all, load, dump, env = _normalize_alias_args(default, default_factory, all, load, dump, env)
 
         return Field(
             load,
             dump,
+            env,
             skip,
             None,
             default,
@@ -748,6 +760,7 @@ elif PY310_OR_ABOVE:  # pragma: no cover
         return Field(
             load,
             dump,
+            load,
             skip,
             all,
             default,
@@ -764,12 +777,13 @@ elif PY310_OR_ABOVE:  # pragma: no cover
 
         __slots__ = ('load_alias',
                      'dump_alias',
+                     'env_vars',
                      'skip',
                      'path')
 
         # noinspection PyShadowingBuiltins
         def __init__(self,
-                     load_alias, dump_alias, skip, path,
+                     load_alias, dump_alias, env_vars, skip, path,
                      default, default_factory, init, repr, hash, compare,
                      metadata, kw_only):
 
@@ -782,6 +796,7 @@ elif PY310_OR_ABOVE:  # pragma: no cover
 
             self.load_alias = load_alias
             self.dump_alias = dump_alias
+            self.env_vars = env_vars
             self.skip = skip
             self.path = path
 
@@ -790,18 +805,19 @@ else:  # pragma: no cover
     def Alias(*all,
               load=None,
               dump=None,
+              env=None,
               skip=False,
-              path=None,
               default=MISSING,
               default_factory=MISSING,
               init=True, repr=True,
               hash=None, compare=True, metadata=None):
 
-        all, load, dump = _normalize_alias_args(default, default_factory, all, load, dump)
+        all, load, dump, env = _normalize_alias_args(default, default_factory, all, load, dump, env)
 
         return Field(
             load,
             dump,
+            env,
             skip,
             None,
             default,
@@ -828,6 +844,7 @@ else:  # pragma: no cover
         return Field(
             load,
             dump,
+            load,
             skip,
             all,
             default,
@@ -843,12 +860,13 @@ else:  # pragma: no cover
 
         __slots__ = ('load_alias',
                      'dump_alias',
+                     'env_vars',
                      'skip',
                      'path')
 
         # noinspection PyArgumentList,PyShadowingBuiltins
         def __init__(self,
-                     load_alias, dump_alias, skip, path,
+                     load_alias, dump_alias, env_vars, skip, path,
                      default, default_factory, init, repr, hash, compare,
                      metadata):
 
@@ -861,6 +879,7 @@ else:  # pragma: no cover
 
             self.load_alias = load_alias
             self.dump_alias = dump_alias
+            self.env_vars = env_vars
             self.skip = skip
             self.path = path
 

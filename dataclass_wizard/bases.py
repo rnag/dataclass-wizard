@@ -454,8 +454,12 @@ class AbstractEnvMeta(metaclass=ABCOrAndMeta):
     # When merging two Meta configs for a class, these are the only
     # attributes which will *not* be merged.
     __special_attrs__ = frozenset({
+        'recursive',
         'debug_enabled',
         'env_var_to_field',
+        'v1_field_to_env_load',
+        'v1_field_to_alias_dump',
+        'tag',
     })
 
     # Class attribute which enables us to detect a `EnvWizard.Meta` subclass.
@@ -527,6 +531,19 @@ class AbstractEnvMeta(metaclass=ABCOrAndMeta):
     # The default is 'snake_case'.
     key_transform_with_dump: ClassVar[Union[LetterCase, str]] = LetterCase.SNAKE
 
+    # Determines whether we should we skip / omit fields with default values
+    # in the serialization process.
+    skip_defaults: ClassVar[bool] = False
+
+    # Determines the :class:`Condition` to skip / omit dataclass
+    # fields in the serialization process.
+    skip_if: ClassVar[Condition] = None
+
+    # Determines the condition to skip / omit fields with default values
+    # (based on the `default` or `default_factory` argument specified for
+    # the :func:`dataclasses.field`) in the serialization process.
+    skip_defaults_if: ClassVar[Condition] = None
+
     # Enable opt-in to the "experimental" major release `v1` feature.
     # This feature offers optimized performance for de/serialization.
     # Defaults to False.
@@ -582,18 +599,94 @@ class AbstractEnvMeta(metaclass=ABCOrAndMeta):
     # Defaults to EnvPrecedence.SECRETS_ENV_DOTENV
     v1_env_precedence: EnvPrecedence = None
 
-    # Determines whether we should we skip / omit fields with default values
-    # in the serialization process.
-    skip_defaults: ClassVar[bool] = False
+    # The field name that identifies the tag for a class.
+    #
+    # When set to a value, an :attr:`TAG` field will be populated in the
+    # dictionary object in the dump (serialization) process. When loading
+    # (or de-serializing) a dictionary object, the :attr:`TAG` field will be
+    # used to load the corresponding dataclass, assuming the dataclass field
+    # is properly annotated as a Union type, ex.:
+    #   my_data: Union[Data1, Data2, Data3]
+    v1_tag: ClassVar[str] = None
 
-    # Determines the :class:`Condition` to skip / omit dataclass
-    # fields in the serialization process.
-    skip_if: ClassVar[Condition] = None
+    # The dictionary key that identifies the tag field for a class. This is
+    # only set when the `tag` field or the `auto_assign_tags` flag is enabled
+    # in the `Meta` config for a dataclass.
+    #
+    # Defaults to '__tag__' if not specified.
+    v1_tag_key: ClassVar[str] = TAG
 
-    # Determines the condition to skip / omit fields with default values
-    # (based on the `default` or `default_factory` argument specified for
-    # the :func:`dataclasses.field`) in the serialization process.
-    skip_defaults_if: ClassVar[Condition] = None
+    # Auto-assign the class name as a dictionary "tag" key, for any dataclass
+    # fields which are in a `Union` declaration, ex.:
+    #   my_data: Union[Data1, Data2, Data3]
+    v1_auto_assign_tags: ClassVar[bool] = False
+
+    # A custom mapping of dataclass fields to their env vars (keys) used
+    # during deserialization only.
+    #
+    # Values may be a single alias string or a sequence of alias strings.
+    # Any listed alias is accepted when mapping input env vars to
+    # dataclass fields.
+    v1_field_to_env_load: ClassVar[
+        Mapping[str, Union[str, Sequence[str]]]
+    ] = None
+
+    # A custom mapping of dataclass fields to their JSON aliases (keys) used
+    # during serialization only.
+    #
+    # Values may be a single alias string or a sequence of alias strings.
+    # When a sequence is provided, the first alias is used as the output key.
+    #
+    # When set, this mapping overrides `v1_field_to_alias` for dump behavior
+    # only.
+    v1_field_to_alias_dump: ClassVar[
+        Mapping[str, Union[str, Sequence[str]]]
+    ] = None
+
+    # Defines the action to take when an unknown JSON key is encountered during
+    # `from_dict` or `from_json` calls. An unknown key is one that does not map
+    # to any dataclass field.
+    #
+    # Valid options are:
+    # - `"ignore"` (default): Silently ignore unknown keys.
+    # - `"warn"`: Log a warning for each unknown key. Requires `v1_debug`
+    #   to be `True` and properly configured logging.
+    # - `"raise"`: Raise an `UnknownKeyError` for the first unknown key encountered.
+    v1_on_unknown_key: ClassVar[KeyAction] = None
+
+    # Unsafe: Enables parsing of dataclasses in unions without requiring
+    # the presence of a `tag_key`, i.e., a dictionary key identifying the
+    # tag field in the input. Defaults to False.
+    v1_unsafe_parse_dataclass_in_union: ClassVar[bool] = False
+
+    # Specifies how :class:`datetime` (and :class:`time`, where applicable)
+    # objects are serialized during output.
+    #
+    # This setting controls how temporal values are emitted when converting
+    # a dataclass to a Python dictionary (`to_dict`) or a JSON string
+    # (`to_json`). It applies to serialization only and does not affect
+    # deserialization.
+    #
+    # By default, values are serialized using ISO 8601 string format.
+    #
+    # Supported values are defined by :class:`DateTimeTo`.
+    v1_dump_date_time_as: ClassVar[Union[V1DateTimeTo, str]] = None
+
+    # Specifies the timezone to assume for naive :class:`datetime` values
+    # during serialization.
+    #
+    # By default, naive datetimes are rejected to avoid ambiguous or
+    # environment-dependent behavior.
+    #
+    # When set, naive datetimes are interpreted as being in the specified
+    # timezone before conversion to a UTC epoch timestamp.
+    #
+    # Common usage:
+    #     v1_assume_naive_datetime_tz = timezone.utc
+    #
+    # This setting applies to serialization only and does not affect
+    # deserialization.
+    v1_assume_naive_datetime_tz: ClassVar[tzinfo | None] = None
 
     # noinspection PyMethodParameters
     @cached_class_property

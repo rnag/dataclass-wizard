@@ -34,10 +34,11 @@ from ..class_helper import (create_meta,
                             dataclass_init_field_names,
                             get_meta,
                             is_subclass_safe,
-                            v1_dataclass_field_to_alias_for_load,
+                            v1_dataclass_field_to_env_for_load,
                             CLASS_TO_LOAD_FUNC,
                             DATACLASS_FIELD_TO_ALIAS_PATH_FOR_LOAD,
-                            call_meta_initializer_if_needed, dataclass_field_names)
+                            call_meta_initializer_if_needed,
+                            dataclass_field_names)
 from ..constants import CATCH_ALL, TAG, PY311_OR_ABOVE, PACKAGE_NAME
 from ..decorators import cached_class_property
 from ..errors import (JSONWizardError,
@@ -251,8 +252,8 @@ def load_func_for_dataclass(
     # default `v1_env_precedence` to SECRETS_ENV_DOTENV if not set
     env_precedence: EnvPrecedence = meta.v1_env_precedence or EnvPrecedence.SECRETS_ENV_DOTENV
 
-    field_to_aliases = v1_dataclass_field_to_alias_for_load(cls)
-    check_aliases = True if field_to_aliases else False
+    field_to_env_vars = v1_dataclass_field_to_env_for_load(cls)
+    check_env_vars = True if field_to_env_vars else False
 
     field_to_paths = DATACLASS_FIELD_TO_ALIAS_PATH_FOR_LOAD[cls]
     has_alias_paths = True if field_to_paths else False
@@ -271,7 +272,7 @@ def load_func_for_dataclass(
 
     # on_unknown_key = meta.v1_on_unknown_key
 
-    catch_all_field: str | None = field_to_aliases.pop(CATCH_ALL, None)
+    catch_all_field: str | None = field_to_env_vars.pop(CATCH_ALL, None)
     has_catch_all = catch_all_field is not None
 
     if has_catch_all:
@@ -446,19 +447,19 @@ def load_func_for_dataclass(
                     else:
                         condition = [val_is_found]
 
-                        if (check_aliases
-                            and (_initial_aliases := field_to_aliases.get(name)) is not None):
-                            if len(_initial_aliases) == 1:
-                                _aliases = [_initial_aliases[0]]
+                        if (check_env_vars
+                            and (_initial_env_vars := field_to_env_vars.get(name)) is not None):
+                            if len(_initial_env_vars) == 1:
+                                _aliases = [_initial_env_vars[0]]
                             else:
-                                _aliases = list(_initial_aliases)
+                                _aliases = list(_initial_env_vars)
                             _has_alias = True
                             # No prefix for explicit aliases!
                             condition.extend([
                                 f'({val} := env.get({alias!r}, MISSING)) is not MISSING'
-                                for alias in _initial_aliases
+                                for alias in _initial_env_vars
                             ])
-                            preferred_env_var = repr(_initial_aliases[0])
+                            preferred_env_var = repr(_initial_env_vars[0])
                         else:
                             _aliases = []
                             _has_alias = False
@@ -1316,7 +1317,7 @@ def check_and_raise_missing_fields(
                           and (f.default is MISSING
                                and f.default_factory is MISSING)]
 
-        missing_keys = [v1_dataclass_field_to_alias_for_load(cls).get(field, [field])[0]
+        missing_keys = [v1_dataclass_field_to_env_for_load(cls).get(field, [field])[0]
                         for field in missing_fields]
 
     masked_environ = {k: '...' for k in o}

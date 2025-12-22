@@ -73,6 +73,9 @@ DATACLASS_FIELD_TO_ALIAS_PATH_FOR_DUMP = defaultdict(dict)
 # V1 Load: A cached mapping, per dataclass, of instance field name to alias
 DATACLASS_FIELD_TO_ALIAS_FOR_LOAD = defaultdict(dict)
 
+# V1 Load: A cached mapping, per dataclass, of instance field name to env var
+DATACLASS_FIELD_TO_ENV_FOR_LOAD = defaultdict(dict)
+
 # V1 Dump: A cached mapping, per dataclass, of instance field name to alias
 DATACLASS_FIELD_TO_ALIAS_FOR_DUMP: dict[type, dict[str, str]] = defaultdict(dict)
 
@@ -350,6 +353,15 @@ def v1_dataclass_field_to_alias_for_load(
 
     return DATACLASS_FIELD_TO_ALIAS_FOR_LOAD[cls]
 
+
+def v1_dataclass_field_to_env_for_load(cls):
+
+    if cls not in IS_V1_CONFIG_SETUP:
+        _setup_v1_config_for_cls(cls)
+
+    return DATACLASS_FIELD_TO_ENV_FOR_LOAD[cls]
+
+
 def _process_field(name: str,
                    f: 'Field',
                    set_paths: bool,
@@ -357,6 +369,7 @@ def _process_field(name: str,
                    load_dataclass_field_to_path,
                    dump_dataclass_field_to_path,
                    load_dataclass_field_to_alias,
+                   load_dataclass_field_to_env,
                    dump_dataclass_field_to_alias):
     """Process a :class:`Field` for a dataclass field."""
 
@@ -373,8 +386,11 @@ def _process_field(name: str,
             dump_dataclass_field_to_alias[name] = ''
 
     else:
-        if init and f.load_alias is not None:
-            load_dataclass_field_to_alias[name] = f.load_alias
+        if init:
+            if f.load_alias is not None:
+                load_dataclass_field_to_alias[name] = f.load_alias
+            if f.env_vars is not None:
+                load_dataclass_field_to_env[name] = f.env_vars
         if f.skip:
             dump_dataclass_field_to_alias[name] = ExplicitNull
         elif (dump := f.dump_alias) is not None:
@@ -387,6 +403,7 @@ def _setup_v1_config_for_cls(cls):
     from .v1.models import Field
 
     load_dataclass_field_to_alias = DATACLASS_FIELD_TO_ALIAS_FOR_LOAD[cls]
+    load_dataclass_field_to_env = DATACLASS_FIELD_TO_ENV_FOR_LOAD[cls]
     dump_dataclass_field_to_alias = DATACLASS_FIELD_TO_ALIAS_FOR_DUMP[cls]
 
     dataclass_field_to_path = DATACLASS_FIELD_TO_ALIAS_PATH_FOR_LOAD[cls]
@@ -408,6 +425,7 @@ def _setup_v1_config_for_cls(cls):
                            dataclass_field_to_path,
                            dump_dataclass_field_to_path,
                            load_dataclass_field_to_alias,
+                           load_dataclass_field_to_env,
                            dump_dataclass_field_to_alias)
 
         elif f.metadata:
@@ -417,6 +435,7 @@ def _setup_v1_config_for_cls(cls):
                                    dataclass_field_to_path,
                                    dump_dataclass_field_to_path,
                                    load_dataclass_field_to_alias,
+                                   load_dataclass_field_to_env,
                                    dump_dataclass_field_to_alias)
             elif value := f.metadata.get('__skip_if__'):
                 if isinstance(value, Condition):
@@ -425,6 +444,7 @@ def _setup_v1_config_for_cls(cls):
         # Check for a "Catch All" field
         if field_type is CatchAll:
             load_dataclass_field_to_alias[CATCH_ALL] \
+                = load_dataclass_field_to_env[CATCH_ALL] \
                 = dump_dataclass_field_to_alias[CATCH_ALL] \
                 = f'{f.name}{"" if f.default is MISSING else "?"}'
 
@@ -439,6 +459,7 @@ def _setup_v1_config_for_cls(cls):
                                    dataclass_field_to_path,
                                    dump_dataclass_field_to_path,
                                    load_dataclass_field_to_alias,
+                                   load_dataclass_field_to_env,
                                    dump_dataclass_field_to_alias)
                 elif isinstance(extra, Condition):
                     dataclass_field_to_skip_if[f.name] = extra

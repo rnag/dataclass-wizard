@@ -12,10 +12,13 @@ from typing import Mapping
 
 from .bases import AbstractMeta, META, AbstractEnvMeta
 from .class_helper import (
-    META_INITIALIZER, _META,
+    META_INITIALIZER, _META, get_meta,
     get_outer_class_name, get_class_name, create_new_class,
     json_field_to_dataclass_field, dataclass_field_to_json_field,
-    field_to_env_var, DATACLASS_FIELD_TO_ALIAS_FOR_LOAD, DATACLASS_FIELD_TO_ALIAS_FOR_DUMP, get_meta,
+    field_to_env_var,
+    DATACLASS_FIELD_TO_ALIAS_FOR_LOAD,
+    DATACLASS_FIELD_TO_ENV_FOR_LOAD,
+    DATACLASS_FIELD_TO_ALIAS_FOR_DUMP,
 )
 from .decorators import try_with_load
 from .enums import DateTimeTo, LetterCase, LetterCasePriority
@@ -392,6 +395,10 @@ class BaseEnvWizardMeta(AbstractEnvMeta):
                 setattr(AbstractEnvMeta, attr, getattr(cls, attr, None))
             if cls.field_to_env_var:
                 AbstractEnvMeta.field_to_env_var = cls.field_to_env_var
+            if cls.v1_field_to_alias_dump:
+                AbstractEnvMeta.v1_field_to_alias_dump = cls.v1_field_to_alias_dump
+            if cls.v1_field_to_env_load:
+                AbstractEnvMeta.v1_field_to_env_load = cls.v1_field_to_env_load
 
             # Create a new class of `Type[W]`, and then pass `create=False` so
             # that we don't create new loader / dumper for the class.
@@ -402,16 +409,17 @@ class BaseEnvWizardMeta(AbstractEnvMeta):
     def bind_to(cls, env_class: type, create=True, is_default=True):
         from .v1.enums import KeyCase, EnvKeyStrategy, EnvPrecedence
         meta = get_meta(env_class)
+        v1 = cls.v1 or meta.v1
 
         cls_loader = get_loader(
             env_class,
             create=create,
             env=True,
-            v1=cls.v1)
+            v1=v1)
         cls_dumper = get_dumper(
             env_class,
             create=create,
-            v1=cls.v1)
+            v1=v1)
 
         if cls.v1_debug:
             _enable_debug_mode_if_needed(cls_loader, cls.v1_debug)
@@ -427,7 +435,7 @@ class BaseEnvWizardMeta(AbstractEnvMeta):
         cls.key_lookup_with_load = _as_enum_safe(
             cls, 'key_lookup_with_load', LetterCasePriority)
 
-        if cls.v1 or meta.v1:
+        if v1:
             if cls.v1_load_case is not None:
                 cls.v1_load_case = _as_enum_safe(
                     cls, 'v1_load_case', EnvKeyStrategy)
@@ -438,6 +446,22 @@ class BaseEnvWizardMeta(AbstractEnvMeta):
             # TODO
             cls_dumper.transform_dataclass_field = _as_enum_safe(
                 cls, 'v1_dump_case', KeyCase)
+
+            if (field_to_alias := cls.v1_field_to_alias_dump) is not None:
+                DATACLASS_FIELD_TO_ALIAS_FOR_DUMP[env_class].update(field_to_alias)
+
+            if (field_to_env := cls.v1_field_to_env_load) is not None:
+                DATACLASS_FIELD_TO_ENV_FOR_LOAD[env_class].update({
+                    k: (v, ) if isinstance(v, str) else v
+                    for k, v in field_to_env.items()
+                })
+
+            if cls.v1_on_unknown_key is not None:
+                cls.v1_on_unknown_key = _as_enum_safe(cls, 'v1_on_unknown_key', KeyAction)
+
+            _normalize_hooks(cls.v1_type_to_load_hook)
+            _normalize_hooks(cls.v1_type_to_dump_hook)
+
         else:
             cls_dumper.transform_dataclass_field = _as_enum_safe(
                 cls, 'key_transform_with_dump', LetterCase)
