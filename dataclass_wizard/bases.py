@@ -554,6 +554,28 @@ class AbstractEnvMeta(metaclass=ABCOrAndMeta):
     # the :func:`dataclasses.field`) in the serialization process.
     skip_defaults_if: ClassVar[Condition] = None
 
+    # The field name that identifies the tag for a class.
+    #
+    # When set to a value, an :attr:`TAG` field will be populated in the
+    # dictionary object in the dump (serialization) process. When loading
+    # (or de-serializing) a dictionary object, the :attr:`TAG` field will be
+    # used to load the corresponding dataclass, assuming the dataclass field
+    # is properly annotated as a Union type, ex.:
+    #   my_data: Union[Data1, Data2, Data3]
+    tag: ClassVar[str] = None
+
+    # The dictionary key that identifies the tag field for a class. This is
+    # only set when the `tag` field or the `auto_assign_tags` flag is enabled
+    # in the `Meta` config for a dataclass.
+    #
+    # Defaults to '__tag__' if not specified.
+    tag_key: ClassVar[str] = TAG
+
+    # Auto-assign the class name as a dictionary "tag" key, for any dataclass
+    # fields which are in a `Union` declaration, ex.:
+    #   my_data: Union[Data1, Data2, Data3]
+    auto_assign_tags: ClassVar[bool] = False
+
     # Enable opt-in to the "experimental" major release `v1` feature.
     # This feature offers optimized performance for de/serialization.
     # Defaults to False.
@@ -618,28 +640,6 @@ class AbstractEnvMeta(metaclass=ABCOrAndMeta):
     # Environment Precedence (order) to search for values
     # Defaults to EnvPrecedence.SECRETS_ENV_DOTENV
     v1_env_precedence: EnvPrecedence = None
-
-    # The field name that identifies the tag for a class.
-    #
-    # When set to a value, an :attr:`TAG` field will be populated in the
-    # dictionary object in the dump (serialization) process. When loading
-    # (or de-serializing) a dictionary object, the :attr:`TAG` field will be
-    # used to load the corresponding dataclass, assuming the dataclass field
-    # is properly annotated as a Union type, ex.:
-    #   my_data: Union[Data1, Data2, Data3]
-    v1_tag: ClassVar[str] = None
-
-    # The dictionary key that identifies the tag field for a class. This is
-    # only set when the `tag` field or the `auto_assign_tags` flag is enabled
-    # in the `Meta` config for a dataclass.
-    #
-    # Defaults to '__tag__' if not specified.
-    v1_tag_key: ClassVar[str] = TAG
-
-    # Auto-assign the class name as a dictionary "tag" key, for any dataclass
-    # fields which are in a `Union` declaration, ex.:
-    #   my_data: Union[Data1, Data2, Data3]
-    v1_auto_assign_tags: ClassVar[bool] = False
 
     # A custom mapping of dataclass fields to their env vars (keys) used
     # during deserialization only.

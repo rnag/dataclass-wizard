@@ -1,21 +1,18 @@
 from __future__ import annotations
 
-import dataclasses
 import json
 import logging
 import os
 from collections import ChainMap
 from dataclasses import dataclass, is_dataclass, Field, MISSING
-from typing import (Any, Callable, NamedTuple, cast, Mapping,
+from typing import (Any, Callable, Mapping,
                     dataclass_transform, TYPE_CHECKING)
 
 from .enums import EnvKeyStrategy, EnvPrecedence
 from .loaders import LoadMixin as V1LoaderMixIn
 from .models import Extras, TypeInfo, SEQUENCE_ORIGINS, MAPPING_ORIGINS
 from .path_util import get_secrets_map, get_dotenv_map
-from .type_conv import (
-    as_list_v1, as_dict_v1,
-)
+from .type_conv import as_list_v1, as_dict_v1
 from ..bases import META, AbstractEnvMeta, ENV_META
 from ..bases_meta import BaseEnvWizardMeta, EnvMeta, register_type
 from ..class_helper import (dataclass_fields,
@@ -32,7 +29,6 @@ from ..constants import CATCH_ALL, PACKAGE_NAME
 from ..decorators import cached_class_property
 from ..errors import (JSONWizardError,
                       MissingData,
-                      MissingFields,
                       ParseError,
                       UnknownKeysError, type_name, MissingVars)
 from ..loader_selection import get_loader, asdict
@@ -60,12 +56,14 @@ _PRECEDENCE_ORDER: dict[EnvPrecedence, tuple[str, ...]] = {
 }
 
 
-def _pre_decoder(_cls: V1LoaderMixIn, container_tp: type, tp: TypeInfo, _extras: Extras):
+def _pre_decoder(_cls: V1LoaderMixIn, container_tp: type, tp: TypeInfo, extras: Extras):
     if tp.i == 1:  # Outermost container (first seen in field annotation)
         if container_tp in SEQUENCE_ORIGINS:
+            tp.ensure_in_locals(extras, as_list=as_list_v1)
             return tp.replace(val_name=f'as_list({tp.v()})')
 
         elif container_tp in MAPPING_ORIGINS:
+            tp.ensure_in_locals(extras, as_dict=as_dict_v1)
             return tp.replace(val_name=f'as_dict({tp.v()})')
 
     return tp
@@ -198,8 +196,6 @@ def load_func_for_dataclass(
         new_locals = {
             'cls': cls,
             'fields': fields,
-            'as_list': as_list_v1,
-            'as_dict': as_dict_v1,
         }
 
         # noinspection PyTypeChecker
@@ -219,7 +215,6 @@ def load_func_for_dataclass(
             'ParseError': ParseError,
             'MissingVars': MissingVars,
             'add': _add_missing_var,
-            'raise_missing_fields': check_and_raise_missing_fields,
             're_raise': re_raise,
         }
 
@@ -510,11 +505,6 @@ def load_func_for_dataclass(
                         with fn_gen.else_():
                             fn_gen.add_line(f'_vars = add(_vars, field, {preferred_env_var}, {tp_var})')
 
-
-                # raise `MissingFields`, as required dataclass fields
-                # are not present in the input object `env`.
-                # fn_gen.add_line("raise_missing_fields(locals(), env, cls, fields)")
-
                 # check for any required fields with missing values
                 with fn_gen.if_('_vars is not None'):
                     fn_gen.add_line('raise MissingVars(cls, _vars) from None')
@@ -686,43 +676,6 @@ class LoadMixin(V1LoaderMixIn):
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__()
 
-
-def check_and_raise_missing_fields(
-        _locals, o, cls,
-        fields: tuple[Field, ...] | None):
-
-    if fields is None:  # named tuple
-        nt_tp = cast(NamedTuple, cls)
-        # noinspection PyProtectedMember
-        field_to_default = nt_tp._field_defaults
-
-        fields = tuple([
-            dataclasses.field(
-                default=field_to_default.get(field, MISSING),
-            )
-            for field in cls.__annotations__])
-
-        for field, name in zip(fields, cls.__annotations__):
-            field.name = name
-
-        missing_fields = [f for f in cls.__annotations__
-                          if f'__{f}' not in _locals
-                          and f not in field_to_default]
-
-        missing_keys = None
-
-    else:
-        missing_fields = [f.name for f in fields
-                          if f.init
-                          and f'__{f.name}' not in _locals
-                          and (f.default is MISSING
-                               and f.default_factory is MISSING)]
-
-        missing_keys = [v1_dataclass_field_to_env_for_load(cls).get(field, [field])[0]
-                        for field in missing_fields]
-
-    masked_environ = {k: '...' for k in o}
-    raise MissingFields(
-        None, masked_environ, cls, fields, None, missing_fields,
-        missing_keys
-    ) from None
+    @staticmethod
+    def is_none(tp: TypeInfo, extras: Extras) -> str:
+        return f"{tp.v()} in (None, 'null')"

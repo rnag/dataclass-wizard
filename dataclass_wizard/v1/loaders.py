@@ -107,7 +107,11 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         return tp.v()
 
     @staticmethod
-    def load_to_str(tp: TypeInfo, extras: Extras):
+    def is_none(tp: TypeInfo, extras: Extras) -> str:
+        return f'{tp.v()} is None'
+
+    @classmethod
+    def load_to_str(cls, tp: TypeInfo, extras: Extras):
         tn = tp.type_name(extras)
         o = tp.v()
 
@@ -116,7 +120,7 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
 
         # '' if v is None else str(v)
         default = "''" if tp.origin is str else f'{tn}()'
-        return f'{default} if {o} is None else {tn}({o})'
+        return f'{default} if {cls.is_none(tp, extras)} else {tn}({o})'
 
     @staticmethod
     def load_to_int(tp: TypeInfo, extras: Extras):
@@ -432,7 +436,7 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
             fn_gen.add_line(f"raise ParseError(e, {v}, {{}}, 'load') from None")
 
     @classmethod
-    @setup_recursive_safe_function_for_generic
+    @setup_recursive_safe_function_for_generic(per_field_cache=True)
     def load_to_union(cls, tp: TypeInfo, extras: Extras):
         fn_gen = extras['fn_gen']
         config = extras['config']
@@ -442,9 +446,7 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         auto_assign_tags = config.auto_assign_tags
 
         field_i = tp.field_i
-        i = tp.i
         fields = f'fields_{field_i}'
-        v = tp.v_for_def()
 
         args = tp.args
         in_optional = NoneType in args
@@ -454,6 +456,24 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         _locals['tag_key'] = tag_key
 
         dataclass_tag_to_lines: dict[str, list] = {}
+        has_dataclass = any(is_dataclass(a) for a in args)
+
+        i = tp.i
+        v = tp.v_for_def()
+
+        if (has_dataclass
+                and (pre_decoder := config.v1_pre_decoder) is not None
+                and (new_v := pre_decoder(cls, dict, tp, extras).v()) != v):
+            current_v = v
+            tp = tp.replace(i=i+1)
+
+            i = tp.i
+            v = tp.v_for_def()
+
+            with fn_gen.try_():
+                fn_gen.add_line(f'{v} = {new_v}')
+            with fn_gen.except_(Exception):
+                fn_gen.add_line(f'{v} = {current_v}')
 
         type_checks = []
         try_parse_at_end = []
@@ -466,11 +486,11 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
             tp_new.in_optional = in_optional
 
             if possible_tp is NoneType:
-                with fn_gen.if_(f'{v} is None'):
+                with fn_gen.if_(cls.is_none(tp, extras)):
                     fn_gen.add_line('return None')
                 continue
 
-            if is_dataclass(possible_tp):
+            if has_dataclass and is_dataclass(possible_tp):
                 # we see a dataclass in `Union` declaration
                 meta = get_meta(possible_tp)
                 tag = meta.tag
@@ -798,7 +818,7 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
 
                 string = cls.load_dispatcher_for_annotation(new_tp, extras)
 
-                return f'None if {tp.v()} is None else {string}'
+                return f'None if {cls.is_none(tp, extras)} else {string}'
 
         # -> Literal[X, Y, ...]
         elif origin is Literal:

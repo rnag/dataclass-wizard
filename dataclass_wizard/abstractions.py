@@ -278,6 +278,13 @@ class AbstractLoaderGenerator(ABC):
 
     @staticmethod
     @abstractmethod
+    def is_none(tp: TypeInfo, extras: V1Extras) -> str:
+        """
+        Generate the condition to determine if a value is None.
+        """
+
+    @staticmethod
+    @abstractmethod
     def default_load_to(tp: TypeInfo, extras: V1Extras) -> str:
         """
         Generate code for the default load function if no other types match.
