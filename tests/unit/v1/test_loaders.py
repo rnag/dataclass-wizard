@@ -31,6 +31,8 @@ from dataclass_wizard.type_def import NoneType
 from dataclass_wizard.v1 import *
 from ..conftest import MyUUIDSubclass
 from ...conftest import *
+from ..._typing import *
+
 
 log = logging.getLogger(__name__)
 

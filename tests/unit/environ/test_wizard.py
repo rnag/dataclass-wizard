@@ -13,8 +13,7 @@ from dataclass_wizard import EnvWizard, env_field
 from dataclass_wizard.errors import MissingVars, ParseError, ExtraData
 import dataclass_wizard.bases_meta
 
-
-from ...conftest import *
+from ..._typing import *
 
 
 log = logging.getLogger(__name__)

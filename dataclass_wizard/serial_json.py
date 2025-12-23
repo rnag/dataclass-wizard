@@ -56,11 +56,11 @@ def _configure_wizard_class(cls,
         # set `v1_debug` flag for the class's Meta
         load_meta_kwargs['v1_debug'] = min_level
 
-    # Calls the Meta initializer when inner :class:`Meta` is sub-classed.
-    call_meta_initializer_if_needed(cls)
-
     if load_meta_kwargs:
         LoadMeta(**load_meta_kwargs).bind_to(cls)
+
+    # Calls the Meta initializer when inner :class:`Meta` is sub-classed.
+    call_meta_initializer_if_needed(cls)
 
     # Add a `__str__` method to the subclass, if needed
     if str:

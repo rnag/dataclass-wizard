@@ -71,7 +71,7 @@ def register_type(cls, tp, *, load=None, dump=None, mode=None) -> None:
 
 
 # use `debug_enabled` for log level if it's a str or int.
-def _enable_debug_mode_if_needed(cls_loader, possible_lvl):
+def _enable_debug_mode_if_needed(v1, cls_loader, possible_lvl):
     global _debug_was_enabled
     if not _debug_was_enabled:
         _debug_was_enabled = True
@@ -85,9 +85,10 @@ def _enable_debug_mode_if_needed(cls_loader, possible_lvl):
 
     # Decorate all hooks so they format more helpful messages
     # on error.
-    load_hooks = cls_loader.__LOAD_HOOKS__
-    for typ in load_hooks:
-        load_hooks[typ] = try_with_load(load_hooks[typ])
+    if not v1:
+        load_hooks = cls_loader.__LOAD_HOOKS__
+        for typ in load_hooks:
+            load_hooks[typ] = try_with_load(load_hooks[typ])
 
 
 def _as_enum_safe(cls: type, name: str, base_type: type[E]) -> 'E | None':
@@ -248,14 +249,16 @@ class BaseJSONWizardMeta(AbstractMeta):
                 base_loader=None,
                 base_dumper=None):
         from .v1.enums import KeyAction, KeyCase, DateTimeTo as V1DateTimeTo
+        meta = get_meta(dataclass)
+        v1 = cls.v1 or meta.v1
 
         cls_loader = get_loader(dataclass, create=create,
-                                base_cls=base_loader, v1=cls.v1)
+                                base_cls=base_loader, v1=v1)
         cls_dumper = get_dumper(dataclass, create=create,
-                                base_cls=base_dumper, v1=cls.v1)
+                                base_cls=base_dumper, v1=v1)
 
         if cls.v1_debug:
-            _enable_debug_mode_if_needed(cls_loader, cls.v1_debug)
+            _enable_debug_mode_if_needed(v1, cls_loader, cls.v1_debug)
 
         elif cls.debug_enabled:
             show_deprecation_warning(
@@ -263,7 +266,7 @@ class BaseJSONWizardMeta(AbstractMeta):
                 fmt="Deprecated Meta setting {name} ({reason}).",
                 reason='Use `v1_debug` instead',
             )
-            _enable_debug_mode_if_needed(cls_loader, cls.debug_enabled)
+            _enable_debug_mode_if_needed(v1, cls_loader, cls.debug_enabled)
 
         if cls.json_key_to_field is not None:
             add_for_both = cls.json_key_to_field.pop('__all__', None)
@@ -422,10 +425,10 @@ class BaseEnvWizardMeta(AbstractEnvMeta):
             v1=v1)
 
         if cls.v1_debug:
-            _enable_debug_mode_if_needed(cls_loader, cls.v1_debug)
+            _enable_debug_mode_if_needed(v1, cls_loader, cls.v1_debug)
 
         if cls.debug_enabled:
-            _enable_debug_mode_if_needed(cls_loader, cls.debug_enabled)
+            _enable_debug_mode_if_needed(v1, cls_loader, cls.debug_enabled)
 
         if cls.field_to_env_var is not None:
             field_to_env_var(env_class).update(

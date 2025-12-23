@@ -17,7 +17,7 @@ from dataclass_wizard.errors import ParseError
 from dataclass_wizard.v1.enums import KeyAction
 from dataclass_wizard.v1.models import Alias
 from ..conftest import *
-
+from ..._typing import *
 
 log = logging.getLogger(__name__)
 

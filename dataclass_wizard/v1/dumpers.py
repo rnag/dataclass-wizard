@@ -175,9 +175,9 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
             force_wrap = True
         else:
             string = ', '.join([
-                cls.dump_dispatcher_for_annotation(
+                str(cls.dump_dispatcher_for_annotation(
                     tp.replace(origin=arg, index=k, val_name=None),
-                    extras)
+                    extras))
                 for k, arg in enumerate(args)])
 
             result = f'({string}, )'
@@ -203,6 +203,7 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
         has_optionals = True if optional_fields else False
         only_optionals = has_optionals and len(optional_fields) == len(nt_tp.__annotations__)
         num_fields = 0
+        v = tp.v_for_def()
 
         for field, field_tp in nt_tp.__annotations__.items():
             string = cls.dump_dispatcher_for_annotation(
@@ -224,7 +225,7 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
 
             if has_optionals:
                 opt_start = len(req_field_to_assign)
-                fn_gen.add_line(f'L = len(v1); has_opt = L > {opt_start}')
+                fn_gen.add_line(f'L = len({v}); has_opt = L > {opt_start}')
                 with fn_gen.if_(f'has_opt'):
                     fn_gen.add_line(f'fields = [{field_assigns.pop(0)}]')
                     for i, string in enumerate(field_assigns, start=opt_start + 1):
@@ -241,8 +242,8 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
             with fn_gen.if_('(e_cls := e.__class__) is IndexError'):
                 # raise `MissingFields`, as required NamedTuple fields
                 # are not present in the input object `o`.
-                fn_gen.add_line("raise_missing_fields(locals(), v1, cls, None)")
-            with fn_gen.if_('e_cls is KeyError and type(v1) is dict'):
+                fn_gen.add_line(f'raise_missing_fields(locals(), {v}, cls, None)')
+            with fn_gen.if_(f'e_cls is KeyError and type({v}) is dict'):
                 # Input object is a `dict`
                 # TODO should we support dict for namedtuple?
                 fn_gen.add_line('raise TypeError(msg) from None')
@@ -313,6 +314,7 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
         req_keys, opt_keys = get_keys_for_typed_dict(tp.origin)
 
         result_list = []
+        v = tp.v_for_def()
         # TODO set __annotations__?
         td_annotations = tp.origin.__annotations__
 
@@ -333,21 +335,25 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
                              '}')
 
             # Set optional keys for the `TypedDict` (if they exist)
+            next_i = tp.i + 1
+            new_tp = tp.replace(i=next_i, index=None, val_name=None)
+            v_next = new_tp.v()
+
             for k in opt_keys:
                 field_tp = td_annotations[k]
                 field_name = repr(k)
                 string = cls.dump_dispatcher_for_annotation(
-                    tp.replace(origin=field_tp, i=2, index=None, val_name=None), extras)
-                with fn_gen.if_(f'(v2 := v1.get({field_name}, MISSING)) is not MISSING'):
+                    new_tp.replace(origin=field_tp), extras)
+                with fn_gen.if_(f'({v_next} := {v}.get({field_name}, MISSING)) is not MISSING'):
                     fn_gen.add_line(f'result[{field_name}] = {string}')
             fn_gen.add_line('return result')
 
         with fn_gen.except_(Exception, 'e'):
             with fn_gen.if_('type(e) is KeyError'):
                 fn_gen.add_line('name = e.args[0]; e = KeyError(f"Missing required key: {name!r}")')
-            with fn_gen.elif_('not isinstance(v1, dict)'):
+            with fn_gen.elif_(f'not isinstance({v}, dict)'):
                 fn_gen.add_line('e = TypeError("Incorrect type for object")')
-            fn_gen.add_line('raise ParseError(e, v1, {}, "dump") from None')
+            fn_gen.add_line(f'raise ParseError(e, {v}, {{}}, "dump") from None')
 
     @classmethod
     @setup_recursive_safe_function_for_generic(None, prefix='dump')
