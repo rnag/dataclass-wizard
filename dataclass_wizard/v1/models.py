@@ -1,5 +1,5 @@
 import hashlib
-from collections import defaultdict
+from collections import defaultdict, deque
 from dataclasses import MISSING, Field as _Field
 from datetime import datetime, date, time, tzinfo, timezone, timedelta
 from typing import TYPE_CHECKING, Any, TypedDict, cast
@@ -63,6 +63,18 @@ SCALAR_TYPES = (
     bool,
 )
 
+SEQUENCE_ORIGINS = frozenset({
+    list,
+    tuple,
+    set,
+    frozenset,
+    deque
+})
+
+MAPPING_ORIGINS = frozenset({
+    dict,
+    defaultdict
+})
 
 def ensure_type_ref(extras, tp, *, name=None, prefix='', is_builtin=False, field_i=0) -> str:
     """
@@ -207,6 +219,13 @@ class TypeInfo:
         return (val_name if (idx := self.index) is None
                 else f'{val_name}[{idx}]')
 
+    def v_for_def(self):
+        """
+        Returns a safe value for function `def` statements (e.g., no
+        dot (.) or indices [])
+        """
+        return f'{self.prefix}{self.i}'
+
     def v_and_next(self):
         next_i = self.i + 1
         return self.v(), f'v{next_i}', next_i
@@ -344,6 +363,8 @@ class PatternBase:
     def load_to_pattern(self, tp, extras):
         from .type_conv import as_datetime_v1, as_date_v1, as_time_v1
 
+        v = tp.v()
+
         pb = cast(PatternBase, tp.origin)
         patterns = pb.patterns
         tz_info = getattr(pb, 'tz_info', None)
@@ -400,31 +421,31 @@ class PatternBase:
 
         if is_datetime:
             _as_func = '__as_datetime'
-            _as_func_args = f'v1, {_fromtimestamp}, __tz' if has_tz else f'v1, {_fromtimestamp}'
+            _as_func_args = f'{v}, {_fromtimestamp}, __tz' if has_tz else f'{v}, {_fromtimestamp}'
             name_to_func[_as_func] = as_datetime_v1
             # `datetime` has a `fromtimestamp` method
             name_to_func[_fromtimestamp] = __base__.fromtimestamp
             end_part = ''
         elif is_date:
             _as_func = '__as_date'
-            _as_func_args = f'v1, {_fromtimestamp}'
+            _as_func_args = f'{v}, {_fromtimestamp}'
             name_to_func[_as_func] = as_date_v1
             # `date` has a `fromtimestamp` method
             name_to_func[_fromtimestamp] = __base__.fromtimestamp
             end_part = '.date()'
         else:
             _as_func = '__as_time'
-            _as_func_args = f'v1, cls'
+            _as_func_args = f'{v}, cls'
             name_to_func[_as_func] = as_time_v1
             end_part = '.timetz()' if has_tz else '.time()'
 
         tp.ensure_in_locals(extras, **name_to_func)
 
         if PY311_OR_ABOVE:
-            _parse_iso_string = f'{_fromisoformat}(v1){tz_part}'
+            _parse_iso_string = f'{_fromisoformat}({v}){tz_part}'
             errors_to_except = (TypeError, )
         else:  # pragma: no cover
-            _parse_iso_string = f"{_fromisoformat}(v1.replace('Z', '+00:00', 1)){tz_part}"
+            _parse_iso_string = f"{_fromisoformat}({v}.replace('Z', '+00:00', 1)){tz_part}"
             errors_to_except = (AttributeError, TypeError)
         # temp fix for Python 3.11+, since `time.fromisoformat` is updated
         # to support more formats, such as "-" and "+" in strings.
@@ -437,7 +458,7 @@ class PatternBase:
                     if is_subclass_time:
                         tz_arg = '__tz, ' if has_tz else ''
 
-                        fn_gen.add_line(f'__dt = {_strptime}(v1, {p!r})')
+                        fn_gen.add_line(f'__dt = {_strptime}({v}, {p!r})')
                         fn_gen.add_line('return cls('
                                         '__dt.hour, '
                                         '__dt.minute, '
@@ -445,7 +466,7 @@ class PatternBase:
                                         '__dt.microsecond, '
                                         f'{tz_arg}fold=__dt.fold)')
                     else:
-                        fn_gen.add_line(f'return {_strptime}(v1, {p!r}){tz_part}{end_part}')
+                        fn_gen.add_line(f'return {_strptime}({v}, {p!r}){tz_part}{end_part}')
                 with fn_gen.except_(Exception):
                     fn_gen.add_line('pass')
             # If that doesn't work, fallback to `time.fromisoformat`
@@ -467,13 +488,13 @@ class PatternBase:
                 for p in patterns:
                     with fn_gen.try_():
                         if is_subclass_date:
-                            fn_gen.add_line(f'__dt = {_strptime}(v1, {p!r})')
+                            fn_gen.add_line(f'__dt = {_strptime}({v}, {p!r})')
                             fn_gen.add_line('return cls('
                                             '__dt.year, '
                                             '__dt.month, '
                                             '__dt.day)')
                         elif is_subclass_time:
-                            fn_gen.add_line(f'__dt = {_strptime}(v1, {p!r})')
+                            fn_gen.add_line(f'__dt = {_strptime}({v}, {p!r})')
                             tz_arg = '__tz, ' if has_tz else ''
 
                             fn_gen.add_line('return cls('
@@ -483,13 +504,13 @@ class PatternBase:
                                             '__dt.microsecond, '
                                             f'{tz_arg}fold=__dt.fold)')
                         else:
-                            fn_gen.add_line(f'return {_strptime}(v1, {p!r}){tz_part}{end_part}')
+                            fn_gen.add_line(f'return {_strptime}({v}, {p!r}){tz_part}{end_part}')
                     with fn_gen.except_(Exception):
                         fn_gen.add_line('pass')
         # Raise a helpful error if we are unable to parse
         # the date string with the provided patterns.
         fn_gen.add_line(
-            'raise ValueError(f"Unable to parse the string \'{v1}\' '
+            f'raise ValueError(f"Unable to parse the string \'{{{v}}}\' '
             f'with the provided patterns: {patterns!r}")')
 
     def __repr__(self):

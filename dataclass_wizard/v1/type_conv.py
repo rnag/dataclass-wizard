@@ -9,8 +9,11 @@ __all__ = ['as_int_v1',
            'TRUTHY_VALUES',
            ]
 
+import csv
+
 from collections.abc import Callable
 from datetime import datetime, time, date, timedelta, timezone, tzinfo
+from json import loads, JSONDecodeError
 from typing import Union, Any
 
 from ..lazy_imports import pytimeparse
@@ -262,3 +265,133 @@ def datetime_to_timestamp(dt: datetime, assume_naive_tz: timezone) -> int:
         return int(dt.timestamp())
 
     return int(dt.astimezone(UTC).timestamp())
+
+
+def _looks_like_json(s: str, stripped=False) -> bool:
+    # Fast/cheap heuristic; avoids json.loads on most env strings
+    if not stripped:
+        s = s.lstrip()
+        return bool(s) and s[0] in '[{'
+
+    return s[0] in '[{'
+
+
+def _csv_split(s: str, sep: str) -> list[str]:
+    # csv handles quoting and escaped quotes well
+    # Note: csv expects 1-char delimiter; enforce at Meta level.
+    row = next(csv.reader([s], delimiter=sep, skipinitialspace=True))
+    return row
+
+
+def as_list_v1(
+    v: Any,
+    *,
+    sep: str = ",",
+    strip: bool = True,
+    drop_empty: bool = True,
+    json_enabled: bool = True,
+) -> Any:
+    """
+    If v is a str:
+      - If it looks like JSON array and json_enabled: parse JSON (must be valid)
+      - Else parse a delimited list; supports quotes via csv when needed
+    Otherwise return v unchanged.
+    """
+    if not isinstance(v, str):
+        return v
+
+    s = v.strip() if strip else v
+    if not s:
+        return [] if drop_empty else ['']
+
+    if json_enabled and _looks_like_json(s, strip):
+        try:
+            out = loads(s)
+        except JSONDecodeError as e:
+            raise ValueError(f'Invalid JSON for list value: {s!r}') from e
+        if not isinstance(out, list):
+            raise ValueError(f'Expected JSON array for list value, got {type(out).__name__}')
+        return out
+
+    # Fast path: no quotes -> split() is much faster than csv
+    if '"' not in s and "'" not in s:
+        parts = s.split(sep)
+    else:
+        if len(sep) != 1:
+            raise ValueError('sep must be a single character when quoted parsing is needed')
+        parts = _csv_split(s, sep)
+
+    if strip:
+        parts = [p.strip() for p in parts]
+    if drop_empty:
+        parts = [p for p in parts if p != '']
+    return parts
+
+
+def as_dict_v1(
+    v: Any,
+    *,
+    sep: str = ",",
+    kv_sep: str = "=",
+    strip: bool = True,
+    drop_empty: bool = True,
+    json_enabled: bool = True,
+    allow_bare_keys: bool = False,
+) -> Any:
+    """
+    If v is a str:
+      - If it looks like JSON object and json_enabled: parse JSON (must be valid)
+      - Else parse "k=v, k2=v2" style; supports quotes around keys/values
+    Otherwise return v unchanged.
+
+    Notes:
+      - Duplicate keys: last one wins (simple + predictable).
+      - If allow_bare_keys=True, allow "FLAG" -> {"FLAG": ""} (or None)
+    """
+    if not isinstance(v, str):
+        return v
+
+    s = v.strip() if strip else v
+    if not s:
+        return {}
+
+    if json_enabled and _looks_like_json(s, strip):
+        try:
+            out = loads(s)
+        except JSONDecodeError as e:
+            raise ValueError(f'Invalid JSON for dict value: {s!r}') from e
+        if not isinstance(out, dict):
+            raise ValueError(f'Expected JSON object for dict value, got {type(out).__name__}')
+        return out
+
+    # Split into pairs (with quoting support when needed)
+    if '"' not in s and "'" not in s:
+        pairs = s.split(sep)
+    else:
+        if len(sep) != 1:
+            raise ValueError('sep must be a single character when quoted parsing is needed')
+        pairs = _csv_split(s, sep)
+
+    out: dict[str, str] = {}
+    for pair in pairs:
+        if strip:
+            pair = pair.strip()
+        if drop_empty and not pair:
+            continue
+
+        if kv_sep in pair:
+            k, val = pair.split(kv_sep, 1)
+            if strip:
+                k = k.strip()
+                val = val.strip()
+            if drop_empty and not k:
+                continue
+            out[k] = val
+        else:
+            if not allow_bare_keys:
+                raise ValueError(f'Invalid dict token (missing {kv_sep!r}): {pair!r}')
+            k = pair.strip() if strip else pair
+            if drop_empty and not k:
+                continue
+            out[k] = ''
+    return out

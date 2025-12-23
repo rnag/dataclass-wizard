@@ -4,42 +4,31 @@ import dataclasses
 import json
 import logging
 import os
-from base64 import b64decode
 from collections import ChainMap
 from dataclasses import dataclass, is_dataclass, Field, MISSING
-from datetime import date, datetime, time, timedelta
-from decimal import Decimal
-from pathlib import Path
 from typing import (Any, Callable, NamedTuple, cast, Mapping,
                     dataclass_transform, TYPE_CHECKING)
-from uuid import UUID
 
-from .decorators import (process_patterned_date_time,
-                         setup_recursive_safe_function,
-                         setup_recursive_safe_function_for_generic)
 from .enums import EnvKeyStrategy, EnvPrecedence
 from .loaders import LoadMixin as V1LoaderMixIn
-from .models import Extras, TypeInfo, SIMPLE_TYPES
+from .models import Extras, TypeInfo, SEQUENCE_ORIGINS, MAPPING_ORIGINS
 from .path_util import get_secrets_map, get_dotenv_map
 from .type_conv import (
-    as_datetime_v1, as_date_v1, as_int_v1,
-    as_time_v1, as_timedelta, TRUTHY_VALUES,
+    as_list_v1, as_dict_v1,
 )
-from ..bases import AbstractMeta, META, AbstractEnvMeta, ENV_META
+from ..bases import META, AbstractEnvMeta, ENV_META
 from ..bases_meta import BaseEnvWizardMeta, EnvMeta, register_type
-from ..class_helper import (create_meta,
-                            dataclass_fields,
+from ..class_helper import (dataclass_fields,
                             dataclass_field_to_default,
                             dataclass_init_fields,
                             dataclass_init_field_names,
                             get_meta,
-                            is_subclass_safe,
                             v1_dataclass_field_to_env_for_load,
                             CLASS_TO_LOAD_FUNC,
                             DATACLASS_FIELD_TO_ALIAS_PATH_FOR_LOAD,
                             call_meta_initializer_if_needed,
                             dataclass_field_names)
-from ..constants import CATCH_ALL, TAG, PY311_OR_ABOVE, PACKAGE_NAME
+from ..constants import CATCH_ALL, PACKAGE_NAME
 from ..decorators import cached_class_property
 from ..errors import (JSONWizardError,
                       MissingData,
@@ -48,15 +37,13 @@ from ..errors import (JSONWizardError,
                       UnknownKeysError, type_name, MissingVars)
 from ..loader_selection import get_loader, asdict
 from ..log import LOG
-from ..type_def import DefFactory, NoneType, T, JSONObject
+from ..type_def import T, JSONObject
 # noinspection PyProtectedMember
 from ..utils.dataclass_compat import _set_new_attribute
 from ..utils.function_builder import FunctionBuilder
 from ..utils.object_path import v1_safe_get
 from ..utils.string_conv import possible_env_vars
-from ..utils.typing_compat import (eval_forward_ref_if_needed,
-                                   get_keys_for_typed_dict,
-                                   get_origin_v2)
+from ..utils.typing_compat import (eval_forward_ref_if_needed)
 
 if TYPE_CHECKING:
     from .env import EnvInit, E_
@@ -71,6 +58,17 @@ _PRECEDENCE_ORDER: dict[EnvPrecedence, tuple[str, ...]] = {
     EnvPrecedence.SECRETS_DOTENV_ENV: ('secrets', 'dotenv', 'env'),
     EnvPrecedence.ENV_ONLY: ('env', ),
 }
+
+
+def _pre_decoder(_cls: V1LoaderMixIn, container_tp: type, tp: TypeInfo, _extras: Extras):
+    if tp.i == 1:  # Outermost container (first seen in field annotation)
+        if container_tp in SEQUENCE_ORIGINS:
+            return tp.replace(val_name=f'as_list({tp.v()})')
+
+        elif container_tp in MAPPING_ORIGINS:
+            return tp.replace(val_name=f'as_dict({tp.v()})')
+
+    return tp
 
 
 @dataclass_transform(kw_only_default=True)
@@ -115,7 +113,7 @@ class EnvWizard:
             # noinspection PyArgumentList
             dataclass(cls, init=False, **dc_kwargs)
 
-        load_meta_kwargs = {'v1': True}
+        load_meta_kwargs = {'v1': True, 'v1_pre_decoder': _pre_decoder}
 
         if debug:
             default_lvl = logging.DEBUG
@@ -180,7 +178,7 @@ def load_func_for_dataclass(
     cls_name = cls.__name__
 
     fn_name = f'__{PACKAGE_NAME}_init_{cls_name}__'
-    raw_dict_name = 'raw_dict'
+    raw_dict_name = f'__{PACKAGE_NAME}_raw_dict_{cls_name}__'
 
     # Get the meta config for the class, or the default config otherwise.
     meta = get_meta(cls, base_meta_cls)
@@ -200,6 +198,8 @@ def load_func_for_dataclass(
         new_locals = {
             'cls': cls,
             'fields': fields,
+            'as_list': as_list_v1,
+            'as_dict': as_dict_v1,
         }
 
         # noinspection PyTypeChecker
@@ -573,9 +573,9 @@ def load_func_for_dataclass(
                   cls_name, fn_name)
 
         _set_new_attribute(
-            cls, raw_dict_name, cls_raw_dict)
-        LOG.debug("setattr(%s, %r, %s)",
-                  cls_name, raw_dict_name, raw_dict_name)
+            cls, 'raw_dict', cls_raw_dict)
+        LOG.debug("setattr(%s, 'raw_dict', %s)",
+                  cls_name, raw_dict_name)
 
         # TODO in `v1`, we will use class attribute (set above) instead.
         CLASS_TO_LOAD_FUNC[cls] = cls_init
@@ -685,605 +685,6 @@ class LoadMixin(V1LoaderMixIn):
 
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__()
-
-    @staticmethod
-    def default_load_to(tp: TypeInfo, extras: Extras):
-        # identity: o
-        return tp.v()
-
-    @staticmethod
-    def load_to_str(tp: TypeInfo, extras: Extras):
-        tn = tp.type_name(extras)
-        o = tp.v()
-
-        if tp.in_optional:  # str(v)
-            return f'{tn}({o})'
-
-        # '' if v is None else str(v)
-        default = "''" if tp.origin is str else f'{tn}()'
-        return f'{default} if {o} is None else {tn}({o})'
-
-    @staticmethod
-    def load_to_int(tp: TypeInfo, extras: Extras):
-        """
-        Generate code to load a value into an integer field.
-
-        Current logic to parse (an annotated) ``int`` returns:
-          - ``v``          -->  ``v`` is an ``int`` or similarly annotated type.
-          - ``int(v)``     -->  ``v`` is a ``str`` value of either a decimal
-                                integer (e.g. ``'123'``) or a non-fractional
-                                float value (e.g. ``42.0``).
-          - ``as_int(v)``  -->  ``v`` is a non-fractional ``float``, or in case
-                                of "less common" types / scenarios. Note that
-                                empty strings and ``None`` (e.g. null values)
-                                are not supported.
-
-        """
-        tn = tp.type_name(extras)
-        o = tp.v()
-        tp.ensure_in_locals(extras, as_int=as_int_v1)
-
-        return (f"{o} if (tp := {o}.__class__) is {tn} "
-                f"else {tn}("
-                f"f if '.' in {o} and (f := float({o})).is_integer() else {o}"
-                ") if tp is str "
-                f"else as_int({o},tp,{tn})")
-
-        # TODO when `in_union`, we already know `o.__class__`
-        #  is not `tn`, and we already have a variable `tp`.
-
-    @staticmethod
-    def load_to_float(tp: TypeInfo, extras: Extras):
-        # alias: float(o)
-        return tp.wrap_builtin(float, tp.v(), extras)
-
-    @staticmethod
-    def load_to_bool(tp: TypeInfo, extras: Extras):
-        o = tp.v()
-        tp.ensure_in_locals(extras, __TRUTHY=TRUTHY_VALUES)
-
-        return (f'{o}.lower() in __TRUTHY '
-                f'if {o}.__class__ is str '
-                f'else {o} == 1')
-
-    @staticmethod
-    def load_to_bytes(tp: TypeInfo, extras: Extras):
-        tp.ensure_in_locals(extras, b64decode)
-        return f'b64decode({tp.v()})'
-
-    @classmethod
-    def load_to_bytearray(cls, tp: TypeInfo, extras: Extras):
-        as_bytes = cls.load_to_bytes(tp, extras)
-        return tp.wrap_builtin(bytearray, as_bytes, extras)
-
-    @staticmethod
-    def load_to_none(tp: TypeInfo, extras: Extras):
-        return 'None'
-
-    @staticmethod
-    def load_to_enum(tp: TypeInfo, extras: Extras):
-        # alias: enum_cls(o)
-        return tp.wrap(tp.v(), extras)
-
-    @staticmethod
-    def load_to_uuid(tp: TypeInfo, extras: Extras):
-        # alias: UUID(o)
-        return tp.wrap_builtin(UUID, tp.v(), extras)
-
-    @classmethod
-    def load_to_iterable(cls, tp: TypeInfo, extras: Extras):
-        v, v_next, i_next = tp.v_and_next()
-        gorg = tp.origin
-
-        # noinspection PyBroadException
-        try:
-            elem_type = tp.args[0]
-        except:
-            elem_type = Any
-
-        string = cls.load_dispatcher_for_annotation(
-            tp.replace(origin=elem_type, i=i_next, index=None), extras)
-
-        if issubclass(gorg, set):
-            start_char = '{'
-            end_char = '}'
-        elif issubclass(gorg, frozenset):
-            start_char = 'frozenset(('
-            end_char = '))'
-        else:
-            start_char = '['
-            end_char = ']'
-
-        result = f'{start_char}{string} for {v_next} in {v}{end_char}'
-
-        return tp.wrap(result, extras)
-
-    @classmethod
-    def load_to_tuple(cls, tp: TypeInfo, extras: Extras):
-        args = tp.args
-
-        # Determine the code string for the annotation
-
-        # Check if the `Tuple` appears in the variadic form
-        #   i.e. Tuple[str, ...]
-        if args:
-            is_variadic = args[-1] is ...
-        else:
-            # Annotated without args, as simply `tuple`
-            args = (Any, ...)
-            is_variadic = True
-
-        if is_variadic:
-            # Logic that handles the variadic form of :class:`Tuple`'s,
-            # i.e. ``Tuple[str, ...]``
-            #
-            # Per `PEP 484`_, only **one** required type is allowed before the
-            # ``Ellipsis``. That is, ``Tuple[int, ...]`` is valid whereas
-            # ``Tuple[int, str, ...]`` would be invalid. `See here`_ for more info.
-            #
-            # .. _PEP 484: https://www.python.org/dev/peps/pep-0484/
-            # .. _See here: https://github.com/python/typing/issues/180
-            v, v_next, i_next = tp.v_and_next()
-
-            # Given `Tuple[T, ...]`, we only need the generated string for `T`
-            string = cls.load_dispatcher_for_annotation(
-                tp.replace(origin=args[0], i=i_next, index=None), extras)
-
-            result = f'[{string} for {v_next} in {v}]'
-
-            # Wrap because we need to create a tuple from list comprehension
-            force_wrap = True
-        else:
-            string = ', '.join([
-                cls.load_dispatcher_for_annotation(
-                    tp.replace(origin=arg, index=k),
-                    extras)
-                for k, arg in enumerate(args)])
-
-            result = f'({string}, )'
-
-            force_wrap = False
-
-        return tp.wrap(result, extras, force=force_wrap)
-
-    @classmethod
-    @setup_recursive_safe_function
-    def load_to_named_tuple(cls, tp: TypeInfo, extras: Extras):
-        fn_gen = extras['fn_gen']
-        nt_tp = cast(NamedTuple, tp.origin)
-
-        _locals = extras['locals']
-        _locals['cls'] = nt_tp
-        _locals['msg'] = "`dict` input is not supported for NamedTuple, use a dataclass instead."
-
-        req_field_to_assign = {}
-        field_assigns = []
-        # noinspection PyProtectedMember
-        optional_fields = set(nt_tp._field_defaults)
-        has_optionals = True if optional_fields else False
-        only_optionals = has_optionals and len(optional_fields) == len(nt_tp.__annotations__)
-        num_fields = 0
-
-        for field, field_tp in nt_tp.__annotations__.items():
-            string = cls.load_dispatcher_for_annotation(
-                tp.replace(origin=field_tp, index=num_fields), extras)
-
-            if has_optionals and field in optional_fields:
-                field_assigns.append(string)
-            else:
-                req_field_to_assign[f'__{field}'] = string
-
-            num_fields += 1
-
-        params = ', '.join(req_field_to_assign)
-
-        with fn_gen.try_():
-
-            for field, string in req_field_to_assign.items():
-                fn_gen.add_line(f'{field} = {string}')
-
-            if has_optionals:
-                opt_start = len(req_field_to_assign)
-                fn_gen.add_line(f'L = len(v1); has_opt = L > {opt_start}')
-                with fn_gen.if_(f'has_opt'):
-                    fn_gen.add_line(f'fields = [{field_assigns.pop(0)}]')
-                    for i, string in enumerate(field_assigns, start=opt_start + 1):
-                        fn_gen.add_line(f'if L > {i}: fields.append({string})')
-
-                    if only_optionals:
-                        fn_gen.add_line(f'return cls(*fields)')
-                    else:
-                        fn_gen.add_line(f'return cls({params}, *fields)')
-
-            fn_gen.add_line(f'return cls({params})')
-
-        with fn_gen.except_(Exception, 'e'):
-            with fn_gen.if_('(e_cls := e.__class__) is IndexError'):
-                # raise `MissingFields`, as required NamedTuple fields
-                # are not present in the input object `o`.
-                fn_gen.add_line("raise_missing_fields(locals(), v1, cls, None)")
-            with fn_gen.if_('e_cls is KeyError and type(v1) is dict'):
-                # Input object is a `dict`
-                # TODO should we support dict for namedtuple?
-                fn_gen.add_line('raise TypeError(msg) from None')
-            # re-raise
-            fn_gen.add_line('raise e from None')
-
-    @classmethod
-    def load_to_named_tuple_untyped(cls, tp: TypeInfo, extras: Extras):
-        # Check if input object is `dict` or `list`.
-        #
-        # Assuming `Point` is a `namedtuple`, this performs
-        # the equivalent logic as:
-        #   Point(**x) if isinstance(x, dict) else Point(*x)
-        v = tp.v()
-        star, dbl_star = tp.multi_wrap(extras, 'nt_', f'*{v}', f'**{v}')
-        return f'{dbl_star} if isinstance({v}, dict) else {star}'
-
-    @classmethod
-    def _build_dict_comp(cls, tp, v, i_next, k_next, v_next, kt, vt, extras):
-        tp_k_next = tp.replace(origin=kt, i=i_next, prefix='k', index=None)
-        string_k = cls.load_dispatcher_for_annotation(tp_k_next, extras)
-
-        tp_v_next = tp.replace(origin=vt, i=i_next, prefix='v', index=None)
-        string_v = cls.load_dispatcher_for_annotation(tp_v_next, extras)
-
-        return f'{{{string_k}: {string_v} for {k_next}, {v_next} in {v}.items()}}'
-
-    @classmethod
-    def load_to_dict(cls, tp: TypeInfo, extras: Extras):
-        v, k_next, v_next, i_next = tp.v_and_next_k_v()
-
-        try:
-            kt, vt = tp.args
-        except ValueError:
-            # Annotated without two arguments,
-            # e.g. like `dict[str]` or `dict`
-            kt = vt = Any
-
-        result = cls._build_dict_comp(
-            tp, v, i_next, k_next, v_next, kt, vt, extras)
-
-        return tp.wrap(result, extras)
-
-    @classmethod
-    def load_to_defaultdict(cls, tp: TypeInfo, extras: Extras):
-        v, k_next, v_next, i_next = tp.v_and_next_k_v()
-        default_factory: DefFactory | None
-
-        try:
-            kt, vt = tp.args
-            default_factory = getattr(vt, '__origin__', vt)
-        except ValueError:
-            # Annotated without two arguments,
-            # e.g. like `defaultdict[str]` or `defaultdict`
-            kt = vt = Any
-            default_factory = NoneType
-
-        result = cls._build_dict_comp(
-            tp, v, i_next, k_next, v_next, kt, vt, extras)
-
-        return tp.wrap_dd(default_factory, result, extras)
-
-    @classmethod
-    @setup_recursive_safe_function
-    def load_to_typed_dict(cls, tp: TypeInfo, extras: Extras):
-        fn_gen = extras['fn_gen']
-
-        req_keys, opt_keys = get_keys_for_typed_dict(tp.origin)
-
-        result_list = []
-        # TODO set __annotations__?
-        td_annotations = tp.origin.__annotations__
-
-        # Set required keys for the `TypedDict`
-        for k in req_keys:
-            field_tp = td_annotations[k]
-            field_name = repr(k)
-            string = cls.load_dispatcher_for_annotation(
-                tp.replace(origin=field_tp,
-                           index=field_name), extras)
-
-            result_list.append(f'{field_name}: {string}')
-
-        with fn_gen.try_():
-            fn_gen.add_lines('result = {',
-                             *(f'  {r},' for r in result_list),
-                             '}')
-
-            # Set optional keys for the `TypedDict` (if they exist)
-            for k in opt_keys:
-                field_tp = td_annotations[k]
-                field_name = repr(k)
-                string = cls.load_dispatcher_for_annotation(
-                    tp.replace(origin=field_tp, i=2, index=None), extras)
-                with fn_gen.if_(f'(v2 := v1.get({field_name}, MISSING)) is not MISSING'):
-                    fn_gen.add_line(f'result[{field_name}] = {string}')
-            fn_gen.add_line('return result')
-
-        with fn_gen.except_(Exception, 'e'):
-            with fn_gen.if_('type(e) is KeyError'):
-                fn_gen.add_line('name = e.args[0]; e = KeyError(f"Missing required key: {name!r}")')
-            with fn_gen.elif_('not isinstance(v1, dict)'):
-                fn_gen.add_line('e = TypeError("Incorrect type for object")')
-            fn_gen.add_line('raise ParseError(e, v1, {}, "load") from None')
-
-    @classmethod
-    @setup_recursive_safe_function_for_generic
-    def load_to_union(cls, tp: TypeInfo, extras: Extras):
-        fn_gen = extras['fn_gen']
-        config = extras['config']
-        actual_cls = extras['cls']
-
-        tag_key = config.tag_key or TAG
-        auto_assign_tags = config.auto_assign_tags
-
-        i = tp.field_i
-        fields = f'fields_{i}'
-
-        args = tp.args
-        in_optional = NoneType in args
-
-        _locals = extras['locals']
-        _locals[fields] = args
-        _locals['tag_key'] = tag_key
-
-        dataclass_tag_to_lines: dict[str, list] = {}
-
-        type_checks = []
-        try_parse_at_end = []
-
-        for possible_tp in args:
-
-            possible_tp = eval_forward_ref_if_needed(possible_tp, actual_cls)
-
-            tp_new = TypeInfo(possible_tp, field_i=i)
-            tp_new.in_optional = in_optional
-
-            if possible_tp is NoneType:
-                with fn_gen.if_('v1 is None'):
-                    fn_gen.add_line('return None')
-                continue
-
-            if is_dataclass(possible_tp):
-                # we see a dataclass in `Union` declaration
-                meta = get_meta(possible_tp)
-                tag = meta.tag
-                assign_tags_to_cls = auto_assign_tags or meta.auto_assign_tags
-                cls_name = possible_tp.__name__
-
-                if assign_tags_to_cls and not tag:
-                    tag = cls_name
-                    # We don't want to mutate the base Meta class here
-                    if meta is AbstractMeta:
-                        create_meta(possible_tp, cls_name, tag=tag)
-                    else:
-                        meta.tag = cls_name
-
-                if tag:
-                    string = cls.load_dispatcher_for_annotation(tp_new, extras)
-
-                    dataclass_tag_to_lines[tag] = [
-                        f'if tag == {tag!r}:',
-                        f'  return {string}'
-                    ]
-                    continue
-
-                elif not config.v1_unsafe_parse_dataclass_in_union:
-                    e = ValueError('Cannot parse dataclass types in a Union without '
-                                   'one of the following `Meta` settings:\n\n'
-                                   '  * `auto_assign_tags = True`\n'
-                                   f'    - Set on class `{extras["cls_name"]}`.\n\n'
-                                   f'  * `tag = "{cls_name}"`\n'
-                                   f'    - Set on class `{possible_tp.__qualname__}`.\n\n'
-                                   '  * `v1_unsafe_parse_dataclass_in_union = True`\n'
-                                   f'    - Set on class `{extras["cls_name"]}`\n\n'
-                                   'For more information, refer to:\n'
-                                   '  https://dcw.ritviknag.com/en/latest/common_use_cases/dataclasses_in_union_types.html')
-                    raise e from None
-
-            string = cls.load_dispatcher_for_annotation(tp_new, extras)
-
-            try_parse_lines = [
-                'try:',
-                f'  return {string}',
-                'except Exception:',
-                '  pass',
-            ]
-
-            # TODO disable for dataclasses
-
-            if (possible_tp in SIMPLE_TYPES
-                or is_subclass_safe(
-                    get_origin_v2(possible_tp), SIMPLE_TYPES)):
-
-                tn = tp_new.type_name(extras)
-                type_checks.extend([
-                    f'if tp is {tn}:',
-                    '  return v1'
-                ])
-                list_to_add = try_parse_at_end
-            else:
-                list_to_add = type_checks
-
-            list_to_add.extend(try_parse_lines)
-
-        if dataclass_tag_to_lines:
-
-            with fn_gen.try_():
-                fn_gen.add_line(f'tag = v1[tag_key]')
-
-            with fn_gen.except_(Exception):
-                fn_gen.add_line('pass')
-
-            with fn_gen.else_():
-
-                for lines in dataclass_tag_to_lines.values():
-                    fn_gen.add_lines(*lines)
-
-                fn_gen.add_line(
-                    "raise ParseError("
-                    "TypeError('Object with tag was not in any of Union types'),"
-                    f"v1,{fields},'load',"
-                    "input_tag=tag,"
-                    "tag_key=tag_key,"
-                    f"valid_tags={list(dataclass_tag_to_lines)})"
-                )
-
-        fn_gen.add_line('tp = type(v1)')
-
-        if type_checks:
-            fn_gen.add_lines(*type_checks)
-
-        if try_parse_at_end:
-            fn_gen.add_lines(*try_parse_at_end)
-
-        # Invalid type for Union
-        fn_gen.add_line("raise ParseError("
-                        "TypeError('Object was not in any of Union types'),"
-                        f"v1,{fields},'load',"
-                        "tag_key=tag_key"
-                        ")")
-
-    @staticmethod
-    @setup_recursive_safe_function_for_generic
-    def load_to_literal(tp: TypeInfo, extras: Extras):
-        fn_gen = extras['fn_gen']
-
-        fields = f'fields_{tp.field_i}'
-
-        _locals = extras['locals']
-        _locals[fields] = frozenset(tp.args)
-
-        with fn_gen.if_(f'{tp.v()} in {fields}', comment=repr(tp.args)):
-            fn_gen.add_line('return v1')
-
-        # No such Literal with the value of `o`
-        fn_gen.add_line("e = ValueError('Value not in expected Literal values')")
-        fn_gen.add_line(f"raise ParseError(e, v1, {fields},'load', "
-                        f'allowed_values=list({fields}))')
-
-        # TODO Checks for Literal equivalence, as mentioned here:
-        #   https://www.python.org/dev/peps/pep-0586/#equivalence-of-two-literals
-
-        # extras_cp['locals'][fields] = {
-        #     a: type(a) for a in tp.args
-        # }
-        #
-        # with fn_gen.function(fn_name, ['v1'], None, _locals):
-        #
-        #     with fn_gen.try_():
-        #         with fn_gen.if_(f'type({tp.v()}) is {fields}[{tp.v()}]'):
-        #             fn_gen.add_line('return v1')
-        #
-        #         # The value of `o` is in the ones defined for the Literal, but
-        #         # also confirm the type matches the one defined for the Literal.
-        #         fn_gen.add_line("e = TypeError('Value did not match expected type for the Literal')")
-        #
-        #         fn_gen.add_line('raise ParseError('
-        #                         f'e, v1, {fields}, '
-        #                         'have_type=type(v1), '
-        #                         f'desired_type={fields}[v1], '
-        #                         f'desired_value=next(v for v in {fields} if v == v1), '
-        #                         f'allowed_values=list({fields})'
-        #                         ')')
-        #     with fn_gen.except_(KeyError):
-        #         # No such Literal with the value of `o`
-        #         fn_gen.add_line("e = ValueError('Value not in expected Literal values')")
-        #         fn_gen.add_line('raise ParseError('
-        #                         f'e, v1, {fields}, allowed_values=list({fields})'
-        #                         f')')
-
-    @staticmethod
-    def load_to_decimal(tp: TypeInfo, extras: Extras):
-        o = tp.v()
-        s = f'str({o}) if {o}.__class__ is float else {o}'
-
-        return tp.wrap_builtin(Decimal, s, extras)
-
-    @staticmethod
-    def load_to_path(tp: TypeInfo, extras: Extras):
-        # alias: Path(o)
-        return tp.wrap_builtin(Path, tp.v(), extras)
-
-    @classmethod
-    @process_patterned_date_time
-    def load_to_date(cls, tp: TypeInfo, extras: Extras):
-        return cls._load_to_date(tp, extras, date)
-
-    @classmethod
-    @process_patterned_date_time
-    def load_to_datetime(cls, tp: TypeInfo, extras: Extras):
-        return cls._load_to_date(tp, extras, datetime)
-
-    @staticmethod
-    @process_patterned_date_time
-    def load_to_time(tp: TypeInfo, extras: Extras):
-        o = tp.v()
-        tn = tp.type_name(extras, bound=time)
-        tp_time = cast('type[time]', tp.origin)
-
-        __fromisoformat = f'__{tn}_fromisoformat'
-
-        tp.ensure_in_locals(
-            extras,
-            __as_time=as_time_v1,
-            **{__fromisoformat: tp_time.fromisoformat}
-        )
-
-        if PY311_OR_ABOVE:
-            _parse_iso_string = f'{__fromisoformat}({o})'
-        else:  # pragma: no cover
-            _parse_iso_string = f"{__fromisoformat}({o}.replace('Z', '+00:00', 1))"
-
-        return (f'{_parse_iso_string} if {o}.__class__ is str '
-                f'else __as_time({o}, {tn})')
-
-    @staticmethod
-    def _load_to_date(tp: TypeInfo, extras: Extras,
-                      cls: type[date] | type[datetime]):
-        o = tp.v()
-        tn = tp.type_name(extras, bound=cls)
-        tp_date_or_datetime = cast('type[date]', tp.origin)
-
-        _fromisoformat = f'__{tn}_fromisoformat'
-        _fromtimestamp = f'__{tn}_fromtimestamp'
-
-        name_to_func = {
-            _fromisoformat: tp_date_or_datetime.fromisoformat,
-            _fromtimestamp: tp_date_or_datetime.fromtimestamp,
-        }
-
-        if cls is datetime:
-            _as_func = '__as_datetime'
-            name_to_func[_as_func] = as_datetime_v1
-        else:
-            _as_func = '__as_date'
-            name_to_func[_as_func] = as_date_v1
-
-        tp.ensure_in_locals(extras, **name_to_func)
-
-        if PY311_OR_ABOVE:
-            _parse_iso_string = f'{_fromisoformat}({o})'
-        else:  # pragma: no cover
-            _parse_iso_string = f"{_fromisoformat}({o}.replace('Z', '+00:00', 1))"
-
-        return (f'{_parse_iso_string} if {o}.__class__ is str '
-                f'else {_as_func}({o}, {_fromtimestamp})')
-
-    @staticmethod
-    def load_to_timedelta(tp: TypeInfo, extras: Extras):
-        # alias: as_timedelta
-        tn = tp.type_name(extras, bound=timedelta)
-        tp.ensure_in_locals(extras, as_timedelta)
-
-        return f'as_timedelta({tp.v()}, {tn})'
-
-    @staticmethod
-    @setup_recursive_safe_function(
-        fn_name=f'__{PACKAGE_NAME}_from_dict_{{cls_name}}__')
-    def load_to_dataclass(tp: TypeInfo, extras: Extras):
-        load_func_for_dataclass(tp.origin, extras)
 
 
 def check_and_raise_missing_fields(

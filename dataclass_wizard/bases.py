@@ -13,7 +13,7 @@ from .models import Condition
 if TYPE_CHECKING:
     from .v1.enums import KeyAction, KeyCase, DateTimeTo as V1DateTimeTo, EnvKeyStrategy, EnvPrecedence
     from .v1.path_util import EnvFilePaths, SecretsDirs
-    from .bases_meta import ALLOWED_MODES, V1HookFn
+    from .bases_meta import ALLOWED_MODES, V1HookFn, V1PreDecoder
     from .type_def import FrozenKeys
 
     V1TypeToHook = Mapping[type, Union[tuple[ALLOWED_MODES, V1HookFn], V1HookFn, None]]
@@ -281,6 +281,16 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
     # The hook is invoked when dumping a value whose runtime type matches
     # the given type.
     v1_type_to_dump_hook: ClassVar[V1TypeToHook] = None
+
+    # ``v1_pre_decoder``: Optional hook called before ``v1`` type loading.
+    # Receives the container type plus (cls, TypeInfo, Extras) and may return a
+    # transformed ``TypeInfo`` (e.g., wrapped in a function which decodes
+    # JSON/delimited strings into list/dict for env loading). Returning the
+    # input value leaves behavior unchanged.
+    #
+    #  Pre-decoder signature:
+    #   (cls, container_tp, tp, extras) -> new_tp
+    v1_pre_decoder: V1PreDecoder | None = None
 
     # Specifies the letter case to use for JSON keys when both loading and dumping.
     #
@@ -584,6 +594,16 @@ class AbstractEnvMeta(metaclass=ABCOrAndMeta):
     # The hook is invoked when dumping a value whose runtime type matches
     # the given type.
     v1_type_to_dump_hook: ClassVar[V1TypeToHook] = None
+
+    # ``v1_pre_decoder``: Optional hook called before ``v1`` type loading.
+    # Receives the container type plus (cls, TypeInfo, Extras) and may return a
+    # transformed ``TypeInfo`` (e.g., wrapped in a function which decodes
+    # JSON/delimited strings into list/dict for env loading). Returning the
+    # input value leaves behavior unchanged.
+    #
+    #  Pre-decoder signature:
+    #   (cls, container_tp, tp, extras) -> new_tp
+    v1_pre_decoder: V1PreDecoder = None
 
     # The key lookup strategy to use for Env Var Names.
     #

@@ -359,8 +359,11 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
         tag_key = config.tag_key or TAG
         auto_assign_tags = config.auto_assign_tags
 
-        i = tp.field_i
-        fields = f'fields_{i}'
+        v = tp.v_for_def()
+
+        field_i = tp.field_i
+        i = tp.i
+        fields = f'fields_{field_i}'
 
         args = tp.args
         in_optional = NoneType in args
@@ -378,11 +381,11 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
 
             possible_tp = eval_forward_ref_if_needed(possible_tp, actual_cls)
 
-            tp_new = TypeInfo(possible_tp, field_i=i)
+            tp_new = TypeInfo(possible_tp, field_i=field_i, i=i)
             tp_new.in_optional = in_optional
 
             if possible_tp is NoneType:
-                with fn_gen.if_('v1 is None'):
+                with fn_gen.if_(f'{v} is None'):
                     fn_gen.add_line('return None')
                 continue
 
@@ -440,7 +443,7 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
                 tn = tp_new.type_name(extras)
                 type_checks.extend([
                     f'if tp is {tn}:',
-                    '  return v1'
+                    f'  return {v}'
                 ])
                 list_to_add = try_parse_at_end
             else:
@@ -448,13 +451,13 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
 
             list_to_add.extend(try_parse_lines)
 
-        fn_gen.add_line('tp = type(v1)')
+        fn_gen.add_line(f'tp = type({v})')
 
         if has_dataclass:
             var_to_dataclass = {}
 
-            for i, (dataclass, name, tag, line) in enumerate(dataclass_and_line, start=1):
-                cls_name = f'C{i}'
+            for field_i, (dataclass, name, tag, line) in enumerate(dataclass_and_line, start=1):
+                cls_name = f'C{field_i}'
                 var_to_dataclass[cls_name] = dataclass
                 with fn_gen.if_(f'tp is {cls_name}', comment=f'{name} -> {tag!r}'):
                     fn_gen.add_line(line)
@@ -479,7 +482,7 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
         # Invalid type for Union
         fn_gen.add_line("raise ParseError("
                         "TypeError('Object was not in any of Union types'),"
-                        f"v1,{fields},'dump',"
+                        f"{v},{fields},'dump',"
                         "tag_key=tag_key"
                         ")")
 
@@ -631,7 +634,7 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
                 o = tp.v()
 
                 if is_simple_type:
-                    val_name = tp.val_name or 'v1'
+                    val_name = tp.val_name
                     o = tp.v()
                 elif tp.val_name:
                     val_name = 'v0'

@@ -434,8 +434,10 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         tag_key = config.tag_key or TAG
         auto_assign_tags = config.auto_assign_tags
 
-        i = tp.field_i
-        fields = f'fields_{i}'
+        field_i = tp.field_i
+        i = tp.i
+        fields = f'fields_{field_i}'
+        v = tp.v_for_def()
 
         args = tp.args
         in_optional = NoneType in args
@@ -453,11 +455,11 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
 
             possible_tp = eval_forward_ref_if_needed(possible_tp, actual_cls)
 
-            tp_new = TypeInfo(possible_tp, field_i=i)
+            tp_new = TypeInfo(possible_tp, field_i=field_i, i=i)
             tp_new.in_optional = in_optional
 
             if possible_tp is NoneType:
-                with fn_gen.if_('v1 is None'):
+                with fn_gen.if_(f'{v} is None'):
                     fn_gen.add_line('return None')
                 continue
 
@@ -516,7 +518,7 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
                 tn = tp_new.type_name(extras)
                 type_checks.extend([
                     f'if tp is {tn}:',
-                    '  return v1'
+                    f'  return {v}'
                 ])
                 list_to_add = try_parse_at_end
             else:
@@ -527,7 +529,7 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         if dataclass_tag_to_lines:
 
             with fn_gen.try_():
-                fn_gen.add_line(f'tag = v1[tag_key]')
+                fn_gen.add_line(f'tag = {v}[tag_key]')
 
             with fn_gen.except_(Exception):
                 fn_gen.add_line('pass')
@@ -539,13 +541,13 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
                 fn_gen.add_line(
                     "raise ParseError("
                     "TypeError('Object with tag was not in any of Union types'),"
-                    f"v1,{fields},'load',"
+                    f"{v},{fields},'load',"
                     "input_tag=tag,"
                     "tag_key=tag_key,"
                     f"valid_tags={list(dataclass_tag_to_lines)})"
                 )
 
-        fn_gen.add_line('tp = type(v1)')
+        fn_gen.add_line(f'tp = type({v})')
 
         if type_checks:
             fn_gen.add_lines(*type_checks)
@@ -556,7 +558,7 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         # Invalid type for Union
         fn_gen.add_line("raise ParseError("
                         "TypeError('Object was not in any of Union types'),"
-                        f"v1,{fields},'load',"
+                        f"{v},{fields},'load',"
                         "tag_key=tag_key"
                         ")")
 
@@ -706,7 +708,9 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
                                        extras):
 
         hooks = cls.__LOAD_HOOKS__
-        type_hooks = extras['config'].v1_type_to_load_hook
+        config = extras['config']
+        pre_decoder = config.v1_pre_decoder
+        type_hooks = config.v1_type_to_load_hook
 
         # type_ann = tp.origin
         type_ann = eval_forward_ref_if_needed(tp.origin, extras['cls'])
@@ -714,6 +718,8 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         origin = get_origin_v2(type_ann)
         name = getattr(origin, '__name__', origin)
         args = None
+
+        container_tp = None
 
         if is_annotated(type_ann):
             # Given `Annotated[T, ...]`, we only need `T`
@@ -796,7 +802,7 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
             load_hook = cls.default_load_to
 
         elif is_subclass_safe(origin, tuple) and hasattr(origin, '_fields'):
-
+            container_tp = tuple
             if getattr(origin, '__annotations__', None):
                 # Annotated as a `typing.NamedTuple` subtype
                 load_hook = cls.load_to_named_tuple
@@ -805,9 +811,11 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
                 load_hook = cls.load_to_named_tuple_untyped
 
         elif is_typed_dict(origin):
+            container_tp = dict
             load_hook = cls.load_to_typed_dict
 
         elif is_dataclass(origin):
+            container_tp = dict
             # return a dynamically generated `fromdict`
             # for the `cls` (base_type)
             load_hook = cls.load_to_dataclass
@@ -853,12 +861,19 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
             # TODO END
             for t in hooks:
                 if issubclass(origin, (t,)):
+                    container_tp = t
                     load_hook = hooks[t]
                     break
 
         tp.origin = origin
         tp.args = args
         tp.name = name
+
+        if container_tp is None:
+            container_tp = origin
+
+        if pre_decoder is not None:
+            tp = pre_decoder(cls, container_tp, tp, extras)
 
         if load_hook is not None:
             result = load_hook(tp, extras)

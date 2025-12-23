@@ -6,14 +6,16 @@ both import directly from `bases`.
 """
 from dataclasses import MISSING
 from datetime import tzinfo
-from typing import Sequence, Callable, Any, Literal
+from typing import Sequence, Callable, Any, Literal, TypeAlias, ClassVar, TypeVar
 
 from .bases import AbstractMeta, META, AbstractEnvMeta, V1TypeToHook
 from .constants import TAG
 from .enums import DateTimeTo, LetterCase, LetterCasePriority
 from .models import Condition
 from .type_def import E, T
+from .v1 import LoadMixin
 from .v1.enums import KeyAction, KeyCase, DateTimeTo as V1DateTimeTo, EnvPrecedence
+from .v1.models import TypeInfo, Extras
 from .v1.path_util import EnvFilePaths, SecretsDirs
 
 ALLOWED_MODES = Literal['runtime', 'v1_codegen']
@@ -22,6 +24,12 @@ ALLOWED_MODES = Literal['runtime', 'v1_codegen']
 _debug_was_enabled = False
 
 V1HookFn = Callable[..., Any]
+
+L = TypeVar('L', bound=LoadMixin)
+
+# (cls, container_tp, tp, extras) -> new_tp
+V1PreDecoder: TypeAlias = Callable[[L, type | None, TypeInfo, Extras], TypeInfo]
+
 
 def register_type(cls, tp: type, *,
                   load: 'V1HookFn | None' = None,

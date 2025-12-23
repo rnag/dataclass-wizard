@@ -148,7 +148,7 @@ def setup_recursive_safe_function(
                 func(_cls, tp, updated_extras) if _cls else func(tp, updated_extras)
             else:
                 # Apply `with fn_gen.function(...)` explicitly
-                with new_fn_gen.function(_fn_name, ['v1'], MISSING, _locals):
+                with new_fn_gen.function(_fn_name, [tp.v_for_def()], MISSING, _locals):
                     func(_cls, tp, updated_extras) if _cls else func(tp, updated_extras)
 
             # Merge the new FunctionBuilder into the main one
