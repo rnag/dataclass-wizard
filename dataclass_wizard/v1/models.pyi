@@ -574,6 +574,82 @@ def Alias(*all: str,
     """
 
 
+# noinspection PyPep8Naming
+def Env(*load: str,
+        default=MISSING,
+        default_factory: Callable[[], MISSING] = MISSING,
+        init=True, repr=True,
+        hash=None, compare=True, metadata=None, kw_only=False):
+    """
+    Maps one or more Environment Variable names to a dataclass field.
+
+    This function acts as an alias for ``dataclasses.field(...)``, with additional
+    support for associating a field with one or more env vars. It customizes
+    serialization and deserialization behavior, including handling env vars with
+    varying cases or alternative names.
+
+    The mapping is case-sensitive; env vars must match exactly (e.g., ``myField``
+    will not match ``myfield``).
+
+    :param load: Env vars(s) to use for deserialization.
+    :type load: str
+    :param default: Default value for the field. Cannot be used with ``default_factory``.
+    :type default: Any
+    :param default_factory: Callable to generate the default value. Cannot be used with ``default``.
+    :type default_factory: Callable[[], Any]
+    :param init: Whether the field is included in the generated ``__init__`` method. Defaults to ``True``.
+    :type init: bool
+    :param repr: Whether the field appears in the ``__repr__`` output. Defaults to ``True``.
+    :type repr: bool
+    :param hash: Whether the field is included in the ``__hash__`` method. Defaults to ``None``.
+    :type hash: bool
+    :param compare: Whether the field is included in comparison methods. Defaults to ``True``.
+    :type compare: bool
+    :param metadata: Additional metadata for the field. Defaults to ``None``.
+    :type metadata: dict
+    :param kw_only: If ``True``, the field is keyword-only. Defaults to ``False``.
+    :type kw_only: bool
+    :return: A dataclass field with additional mappings to one or more JSON keys.
+    :rtype: Field
+
+    **Examples**
+
+    **Example 1** -- Mapping multiple key names to a field::
+
+        from dataclasses import dataclass
+
+        from dataclass_wizard import LoadMeta, fromdict
+        from dataclass_wizard.v1 import Alias
+
+        @dataclass
+        class Example:
+            my_field: str = Alias('key1', 'key2', default="default_value")
+
+        LoadMeta(v1=True).bind_to(Example)
+
+        print(fromdict(Example, {'key2': 'a value!'}))
+        #> Example(my_field='a value!')
+
+    **Example 2** -- Skipping a field during serialization::
+
+        from dataclasses import dataclass
+
+        from dataclass_wizard import JSONPyWizard
+        from dataclass_wizard.v1 import Alias
+
+        @dataclass
+        class Example(JSONPyWizard):
+            class _(JSONPyWizard.Meta):
+                v1 = True
+
+            my_field: str = Alias('key', skip=True)
+
+        ex = Example.from_dict({'key': 'some value'})
+        print(ex)                  #> Example(my_field='a value!')
+        assert ex.to_dict() == {}  #> True
+    """
+
+
 def skip_if_field(condition: Condition, *,
                   default=MISSING,
                   default_factory: Callable[[], MISSING] = MISSING,

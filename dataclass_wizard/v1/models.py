@@ -341,7 +341,7 @@ class PatternBase:
         return self.__getitem__(patterns)
 
     @setup_recursive_safe_function(add_cls=False)
-    def load_to_pattern(self, tp: TypeInfo, extras: Extras):
+    def load_to_pattern(self, tp, extras):
         from .type_conv import as_datetime_v1, as_date_v1, as_time_v1
 
         pb = cast(PatternBase, tp.origin)
@@ -586,9 +586,27 @@ def _normalize_alias_args(default, default_factory, all_aliases, load, dump, env
 # name and type are filled in after the fact, not in __init__.
 # They're not known at the time this class is instantiated, but it's
 # convenient if they're available later.
-#
-# When cls._FIELDS is filled in with a list of Field objects, the name
-# and type fields will have been populated.
+
+# noinspection PyPep8Naming,PyShadowingBuiltins
+def Env(*load,
+        default=MISSING,
+        default_factory=MISSING,
+        init=True, repr=True,
+        hash=None, compare=True, metadata=None,
+        **field_kwargs):
+
+    # noinspection PyTypeChecker
+    return Alias(
+        env=load,
+        default=default,
+        default_factory=default_factory,
+        init=init,
+        repr=repr,
+        hash=hash,
+        compare=compare,
+        metadata=metadata,
+        **field_kwargs,
+    )
 
 # In Python 3.14, dataclasses adds a new parameter to the :class:`Field`
 # constructor: `doc`
@@ -690,6 +708,7 @@ if PY314_OR_ABOVE:
             doc=None,
         ):
 
+            # noinspection PyArgumentList
             super().__init__(
                 default,
                 default_factory,

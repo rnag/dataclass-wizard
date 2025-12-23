@@ -5,6 +5,7 @@ __all__ = [
     # Models
     'Alias',
     'AliasPath',
+    'Env',
     # Abstract Pattern
     'Pattern',
     'AwarePattern',
@@ -29,6 +30,7 @@ from .loaders import LoadMixin, setup_default_loader
 
 from .models import (Alias,
                      AliasPath,
+                     Env,
                      Pattern,
                      AwarePattern,
                      UTCPattern,
