@@ -197,7 +197,7 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
             elem_type = Any
 
         string = cls.load_dispatcher_for_annotation(
-            tp.replace(origin=elem_type, i=i_next, index=None), extras)
+            tp.replace(origin=elem_type, i=i_next, index=None, val_name=None), extras)
 
         if issubclass(gorg, set):
             start_char = '{'
@@ -242,7 +242,7 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
 
             # Given `Tuple[T, ...]`, we only need the generated string for `T`
             string = cls.load_dispatcher_for_annotation(
-                tp.replace(origin=args[0], i=i_next, index=None), extras)
+                tp.replace(origin=args[0], i=i_next, index=None, val_name=None), extras)
 
             result = f'[{string} for {v_next} in {v}]'
 
@@ -251,7 +251,7 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         else:
             string = ', '.join([
                 cls.load_dispatcher_for_annotation(
-                    tp.replace(origin=arg, index=k),
+                    tp.replace(origin=arg, index=k, val_name=None),
                     extras)
                 for k, arg in enumerate(args)])
 
@@ -281,7 +281,7 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
 
         for field, field_tp in nt_tp.__annotations__.items():
             string = cls.load_dispatcher_for_annotation(
-                tp.replace(origin=field_tp, index=num_fields), extras)
+                tp.replace(origin=field_tp, index=num_fields, val_name=None), extras)
 
             if has_optionals and field in optional_fields:
                 field_assigns.append(string)
@@ -337,10 +337,10 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
 
     @classmethod
     def _build_dict_comp(cls, tp, v, i_next, k_next, v_next, kt, vt, extras):
-        tp_k_next = tp.replace(origin=kt, i=i_next, prefix='k', index=None)
+        tp_k_next = tp.replace(origin=kt, i=i_next, prefix='k', index=None, val_name=None)
         string_k = cls.load_dispatcher_for_annotation(tp_k_next, extras)
 
-        tp_v_next = tp.replace(origin=vt, i=i_next, prefix='v', index=None)
+        tp_v_next = tp.replace(origin=vt, i=i_next, prefix='v', index=None, val_name=None)
         string_v = cls.load_dispatcher_for_annotation(tp_v_next, extras)
 
         return f'{{{string_k}: {string_v} for {k_next}, {v_next} in {v}.items()}}'
@@ -397,7 +397,8 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
             field_name = repr(k)
             string = cls.load_dispatcher_for_annotation(
                 tp.replace(origin=field_tp,
-                           index=field_name), extras)
+                           index=field_name,
+                           val_name=None), extras)
 
             result_list.append(f'{field_name}: {string}')
 
@@ -411,7 +412,7 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
                 field_tp = td_annotations[k]
                 field_name = repr(k)
                 string = cls.load_dispatcher_for_annotation(
-                    tp.replace(origin=field_tp, i=2, index=None), extras)
+                    tp.replace(origin=field_tp, i=2, index=None, val_name=None), extras)
                 with fn_gen.if_(f'(v2 := v1.get({field_name}, MISSING)) is not MISSING'):
                     fn_gen.add_line(f'result[{field_name}] = {string}')
             fn_gen.add_line('return result')
@@ -778,7 +779,7 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
 
             # Special case for Optional[x], which is actually Union[x, None]
             if len(args) == 2 and NoneType in args:
-                new_tp = tp.replace(origin=args[0], args=None, name=None)
+                new_tp = tp.replace(origin=args[0], args=None, name=None, val_name=None)
                 new_tp.in_optional = True
 
                 string = cls.load_dispatcher_for_annotation(new_tp, extras)
@@ -1316,14 +1317,15 @@ def load_func_for_dataclass(
 def generate_field_code(cls_loader: LoadMixin,
                         extras: Extras,
                         field: Field,
-                        field_i: int) -> 'str | TypeInfo':
+                        field_i: int,
+                        var_name=None) -> 'str | TypeInfo':
 
     cls = extras['cls']
     field_type = field.type = eval_forward_ref_if_needed(field.type, cls)
 
     try:
         return cls_loader.load_dispatcher_for_annotation(
-            TypeInfo(field_type, field_i=field_i), extras
+            TypeInfo(field_type, field_i=field_i, val_name=var_name), extras
         )
 
     # except Exception as e:

@@ -4,7 +4,7 @@ from __future__ import annotations
 import collections.abc as abc
 from base64 import b64encode
 from collections import defaultdict, deque
-from dataclasses import _asdict_inner as __dataclasses_asdict_inner__, is_dataclass, MISSING, Field
+from dataclasses import is_dataclass, MISSING, Field
 from datetime import datetime, time, date, timedelta
 from decimal import Decimal
 from enum import Enum
@@ -1167,6 +1167,9 @@ def dump_func_for_dataclass(
         #     vars_for_fields.append('**init_kwargs')
 
         if has_catch_all:
+            # noinspection PyUnresolvedReferences,PyProtectedMember
+            from dataclasses import _asdict_inner as __dataclasses_asdict_inner__
+
             if (default := field_to_default.get(catch_all_name_stripped, ExplicitNull)) is not ExplicitNull:
                 default_value = f'_default_{len(cls_fields_list)}'
                 new_locals[default_value] = default
