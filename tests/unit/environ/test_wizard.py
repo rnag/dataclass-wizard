@@ -235,6 +235,8 @@ def test_load_with_parse_error():
     assert str(e.value.base_error) == "invalid literal for int() with base 10: 'abc'"
     assert e.value.kwargs['env_variable'] == 'MY_STR'
 
+    del os.environ['MY_STR']
+
 
 def test_load_with_parse_error_when_env_var_is_specified():
     """
@@ -255,6 +257,8 @@ def test_load_with_parse_error_when_env_var_is_specified():
 
     assert str(e.value.base_error) == "invalid literal for int() with base 10: 'abc'"
     assert e.value.kwargs['env_variable'] == 'MY_STR'
+
+    del os.environ['MY_STR']
 
 
 def test_load_with_dotenv_file():
@@ -339,6 +343,8 @@ def test_load_with_tuple_of_dotenv_and_env_file_param_to_init():
     assert c.dict() == {'my_str': 'hello world!',
                         'my_value': 3.21,
                         'other_key': 5}
+
+    del os.environ['MY_STR']
 
 
 def test_load_when_constructor_kwargs_are_passed():
@@ -512,6 +518,8 @@ def test_load_with_tuple_of_dotenv_and_env_prefix_param_to_init():
     assert c.dict() == {'my_str': 'hello world!',
                         'my_value': 3.21,
                         'other_key': 5}
+
+    del os.environ['MY_STR']
 
 
 def test_env_prefix_with_env_file():

@@ -312,21 +312,18 @@ def load_func_for_dataclass(
         _env_defaults['file'] = _env_file
     if (_env_prefix := meta.env_prefix) is not None:
         _env_defaults['prefix'] = _env_prefix
+    LOG.debug('__env__ defaults = %r', _env_defaults)
     if (_secrets_dir := meta.secrets_dir) is not None:
-        _env_defaults['secrets_dir'] = '<configured>'
-        LOG.debug(f'Default __env__ = {_env_defaults!r}')
         _env_defaults['secrets_dir'] = _secrets_dir
+        LOG.debug('secrets_dir = <configured>')
 
-    new_locals['cfg'] = _env_defaults
+    new_locals['_env_defaults'] = _env_defaults
     init_params = ['self',
                    '__env__:EnvInit=None',
                    '*']
 
     with fn_gen.function(fn_name, init_params, MISSING, new_locals):
-
-        with fn_gen.if_('__env__ is not None'):
-            fn_gen.add_line('cfg.update(__env__)')
-
+        fn_gen.add_line('cfg = _env_defaults if __env__ is None else _env_defaults | __env__')
         fn_gen.add_line("reload = cfg.get('reload', False)")
         fn_gen.add_line("env_file = cfg.get('file')")
         fn_gen.add_line("secrets_dir = cfg.get('secrets_dir')")

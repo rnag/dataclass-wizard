@@ -1,4 +1,5 @@
 from collections import deque
+from datetime import datetime, date, timezone
 from typing import Optional, Union, NamedTuple, Literal
 
 import pytest
@@ -132,3 +133,28 @@ def test_literal_in_container():
 
     new_dict = c.to_dict()
     assert new_dict == {'my_literal_dict': {'test': (123, {'Aa', 'Bb'})}}
+
+
+def test_decode_date_and_datetime_from_numeric_and_string_timestamp_and_iso_format():
+
+    class MyClass(DataclassWizard, debug=True):
+        my_value: float
+        my_dt: datetime
+        another_date: date
+
+    d = {"another_date": "2021-12-17", "my_dt": "2022-04-27T16:30:45Z", "my_value": 1.23}
+    expected_obj = MyClass(my_value=1.23,
+                           my_dt=datetime(2022, 4, 27, 16, 30, 45, tzinfo=timezone.utc),
+                           another_date=date(2021, 12, 17))
+    expected_dict = {'my_value': 1.23, 'my_dt': '2022-04-27T16:30:45Z', 'another_date': '2021-12-17'}
+
+    c1 = MyClass.from_dict(d)
+
+    d = {"another_date": "1639763585", "my_dt": "1651077045", "my_value": '1.23'}
+    c2 = MyClass.from_dict(d)
+
+    d = {"another_date": 1639763585, "my_dt": 1651077045, "my_value": '1.23'}
+    c3 = MyClass.from_dict(d)
+
+    assert c1 == c2 == c3 == expected_obj
+    assert c1.to_dict() == c2.to_dict() == c3.to_dict() == expected_dict

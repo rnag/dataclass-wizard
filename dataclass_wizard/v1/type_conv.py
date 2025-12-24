@@ -106,7 +106,9 @@ def as_datetime_v1(o: Union[int, float, datetime],
 
 
 def as_date_v1(o: Union[int, float, date],
-               __from_timestamp: Callable[[float], date]):
+               __from_timestamp: Callable[[float, tzinfo], datetime],
+               __tz=None,
+               __cls=date):
     """
     V1: Attempt to convert an object `o` to a :class:`date` object using the
     below logic.
@@ -125,7 +127,7 @@ def as_date_v1(o: Union[int, float, date],
     try:
         # We can assume that `o` is a number, as generally this will be the
         # case.
-        return __from_timestamp(o)
+        return __from_timestamp(o, __tz).date()
 
     except Exception:
         # Note: the `__self__` attribute refers to the class bound
@@ -134,7 +136,7 @@ def as_date_v1(o: Union[int, float, date],
         # See: https://stackoverflow.com/a/41258933/10237506
         #
         # noinspection PyUnresolvedReferences
-        if o.__class__ is __from_timestamp.__self__:
+        if o.__class__ is __cls:
             return o
 
         # Check `type` explicitly, because `bool` is a sub-class of `int`

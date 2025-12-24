@@ -18,5 +18,6 @@ def envsafe(mapping: Mapping, *, dumps=json.dumps) -> dict[str, str]:
     return out
 
 
-def from_env(cls: type[T], mapping: Mapping, **envcfg_kwargs: Unpack[EnvInit]) -> T:
-    return cls(__env__=env_config(mapping=envsafe(mapping), **envcfg_kwargs))
+def from_env(cls: type[T], mapping: Mapping=None, env_cfg: EnvInit=None, **init_kwargs) -> T:
+    env_map = envsafe(mapping or {})
+    return cls(__env__=env_config(mapping=env_map, **(env_cfg or {})), **init_kwargs)

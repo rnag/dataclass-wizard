@@ -17,7 +17,7 @@ from .decorators import (process_patterned_date_time,
                          setup_recursive_safe_function,
                          setup_recursive_safe_function_for_generic)
 from .enums import KeyAction, KeyCase
-from .models import Extras, PatternBase, TypeInfo, SIMPLE_TYPES
+from .models import Extras, PatternBase, TypeInfo, SIMPLE_TYPES, UTC
 from .type_conv import (
     as_datetime_v1, as_date_v1, as_int_v1,
     as_time_v1, as_timedelta, TRUTHY_VALUES,
@@ -692,29 +692,38 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         tp_date_or_datetime = cast('type[date]', tp.origin)
 
         _fromisoformat = f'__{tn}_fromisoformat'
-        _fromtimestamp = f'__{tn}_fromtimestamp'
 
         name_to_func = {
             _fromisoformat: tp_date_or_datetime.fromisoformat,
-            _fromtimestamp: tp_date_or_datetime.fromtimestamp,
         }
 
-        if cls is datetime:
+        if cls is datetime:  # datetime or a subclass
+            _fromtimestamp = f'__{tn}_fromtimestamp'
+            name_to_func[_fromtimestamp] = tp_date_or_datetime.fromtimestamp
             _as_func = '__as_datetime'
             name_to_func[_as_func] = as_datetime_v1
-        else:
+            _date_part = _opt_cls = ''
+
+        else:  # date or a subclass
+            _fromtimestamp = f'__datetime_fromtimestamp'
+            name_to_func[_fromtimestamp] = datetime.fromtimestamp
             _as_func = '__as_date'
             name_to_func[_as_func] = as_date_v1
+            _date_part = '.date()'
+            _opt_cls = f', {tn}'
 
-        tp.ensure_in_locals(extras, **name_to_func)
+        tp.ensure_in_locals(extras, UTC=UTC, **name_to_func)
 
         if PY311_OR_ABOVE:
             _parse_iso_string = f'{_fromisoformat}({o})'
         else:  # pragma: no cover
             _parse_iso_string = f"{_fromisoformat}({o}.replace('Z', '+00:00', 1))"
 
-        return (f'{_parse_iso_string} if {o}.__class__ is str '
-                f'else {_as_func}({o}, {_fromtimestamp})')
+
+        return (f'({_fromtimestamp}(int({o}), UTC){_date_part} if {o}.isdigit() '
+                f'else {_parse_iso_string}) '
+                f'if {o}.__class__ is str '
+                f'else {_as_func}({o}, {_fromtimestamp}, UTC{_opt_cls})')
 
     @staticmethod
     def load_to_timedelta(tp: TypeInfo, extras: Extras):
