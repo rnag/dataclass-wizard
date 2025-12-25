@@ -1,7 +1,8 @@
-import logging
 import tempfile
+
 from dataclasses import field, dataclass
 from datetime import datetime, time, date, timezone
+from logging import getLogger, DEBUG, StreamHandler
 from pathlib import Path
 from textwrap import dedent
 from typing import ClassVar, List, Dict, Union, DefaultDict, Set, TypedDict, Optional
@@ -9,6 +10,7 @@ from typing import ClassVar, List, Dict, Union, DefaultDict, Set, TypedDict, Opt
 import pytest
 
 import dataclass_wizard.bases_meta
+from dataclass_wizard.class_helper import get_meta
 from dataclass_wizard.errors import MissingVars, ParseError
 from dataclass_wizard import EnvWizard as EnvWizardV0, DataclassWizard
 from dataclass_wizard.v1 import Alias, EnvWizard, Env
@@ -16,7 +18,7 @@ from dataclass_wizard.v1 import Alias, EnvWizard, Env
 from ..utils_env import from_env, envsafe
 
 
-log = logging.getLogger(__name__)
+log = getLogger(__name__)
 
 # quick access to the `tests/unit` directory
 here = Path(__file__).parent
@@ -644,9 +646,33 @@ def test_env_wizard_handles_nested_dataclass_field_with_multiple_input_types():
 
     # Field `database` is specified as a dict
     settings = Settings(database={"host": "localhost", "port": "4000"})
-    assert settings.database == DatabaseSettings(host='localhost', port=4000)
+    assert settings == Settings(database=DatabaseSettings(host='localhost', port=4000))
 
     # Field `database` is passed in to constructor (__init__)
-    expected_db = DatabaseSettings(host='localhost', port=27017)
     settings = Settings(database={"host": "localhost", "port": "27017"})
-    assert settings.database == expected_db
+    assert settings == Settings(database=DatabaseSettings(host='localhost', port=27017))
+
+
+def test_env_wizard_with_no_apply_dataclass():
+    """Subclass `EnvWizard` with `_apply_dataclass=False`."""
+    @dataclass(init=False)
+    class MyClass(EnvWizard, _apply_dataclass=False):
+        my_str: str
+
+    assert from_env(MyClass, {'my_str': ''}) == MyClass(my_str='')
+
+
+def test_env_wizard_with_debug(restore_logger):
+    """Subclass `EnvWizard` with `debug=True`."""
+    logger = restore_logger
+
+    class _(EnvWizard, debug=True):
+        ...
+
+    assert get_meta(_).v1_debug == DEBUG
+
+    assert logger.level == DEBUG
+    assert logger.propagate is False
+    assert any(isinstance(h, StreamHandler) for h in logger.handlers)
+    # optional: ensure it didn't add duplicates
+    assert sum(isinstance(h, StreamHandler) for h in logger.handlers) == 1

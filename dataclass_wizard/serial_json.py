@@ -7,6 +7,7 @@ from .bases_meta import BaseJSONWizardMeta, LoadMeta, DumpMeta, register_type
 from .constants import PACKAGE_NAME, SINGLE_ARG_ALIAS
 from .class_helper import call_meta_initializer_if_needed, get_meta
 from .decorators import _single_arg_alias
+from .log import enable_library_debug_logging
 from .type_def import dataclass_transform
 from .loader_selection import asdict, fromdict, fromlist, get_loader, get_dumper
 # noinspection PyProtectedMember
@@ -49,12 +50,12 @@ def _configure_wizard_class(cls,
         DumpMeta(key_transform=_key_transform).bind_to(cls)
 
     if debug:
-        default_lvl = logging.DEBUG
-        logging.basicConfig(level=default_lvl)
         # minimum logging level for logs by this library
-        min_level = default_lvl if isinstance(debug, bool) else debug
+        lvl = logging.DEBUG if isinstance(debug, bool) else debug
+        # enable library logging
+        enable_library_debug_logging(lvl)
         # set `v1_debug` flag for the class's Meta
-        load_meta_kwargs['v1_debug'] = min_level
+        load_meta_kwargs['v1_debug'] = lvl
 
     if load_meta_kwargs:
         LoadMeta(**load_meta_kwargs).bind_to(cls)

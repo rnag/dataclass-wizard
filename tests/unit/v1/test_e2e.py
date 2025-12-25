@@ -139,7 +139,7 @@ def test_literal_in_container():
 
 def test_decode_date_and_datetime_from_numeric_and_string_timestamp_and_iso_format():
 
-    class MyClass(DataclassWizard, debug=True):
+    class MyClass(DataclassWizard):
         my_value: float
         my_dt: datetime
         another_date: date

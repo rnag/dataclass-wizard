@@ -32,7 +32,7 @@ from ..errors import (JSONWizardError,
                       ParseError,
                       UnknownKeysError, type_name, MissingVars)
 from ..loader_selection import get_loader, asdict
-from ..log import LOG
+from ..log import LOG, enable_library_debug_logging
 from ..type_def import T, JSONObject
 # noinspection PyProtectedMember
 from ..utils.dataclass_compat import _set_new_attribute
@@ -114,15 +114,12 @@ class EnvWizard:
         load_meta_kwargs = {'v1': True, 'v1_pre_decoder': _pre_decoder}
 
         if debug:
-            default_lvl = logging.DEBUG
-            logging.basicConfig(level=default_lvl)
-            # minimum logging level for logs by this library
-            min_level = default_lvl if isinstance(debug, bool) else debug
+            lvl = logging.DEBUG if isinstance(debug, bool) else debug
+            enable_library_debug_logging(lvl)
             # set `v1_debug` flag for the class's Meta
-            load_meta_kwargs['v1_debug'] = min_level
+            load_meta_kwargs['v1_debug'] = lvl
 
-        if load_meta_kwargs:
-            EnvMeta(**load_meta_kwargs).bind_to(cls)
+        EnvMeta(**load_meta_kwargs).bind_to(cls)
 
         # Calls the Meta initializer when inner :class:`Meta` is sub-classed.
         call_meta_initializer_if_needed(cls)
