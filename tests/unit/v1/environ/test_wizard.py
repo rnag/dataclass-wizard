@@ -24,7 +24,7 @@ here = Path(__file__).parent
 
 def test_v1_enabled_with_v0_base_class_raises_error():
     with pytest.raises(TypeError, match=r'MyClass is using Meta\(v1=True\) but does not inherit from `dataclass_wizard.v1.EnvWizard`.'):
-        class MyClass(EnvWizardV0, debug=True):
+        class MyClass(EnvWizardV0):
             class _(EnvWizardV0.Meta):
                 v1 = True
 
@@ -442,10 +442,6 @@ def test_load_when_constructor_kwargs_are_passed():
 def test_init_method_declaration_is_logged_when_debug_mode_is_enabled(mock_debug_log):
 
     class _EnvSettings(EnvWizard):
-
-        class _(EnvWizard.Meta):
-            v1_debug = True
-
         auth_key: str = Env('my_auth_key')
         api_key: str = Env('hello', 'test')
         domains: Set[str] = field(default_factory=set)
