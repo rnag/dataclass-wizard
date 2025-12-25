@@ -12,7 +12,7 @@ import pytest
 from dataclass_wizard.v1 import Alias, EnvWizard, Env
 from dataclass_wizard.errors import MissingVars, ParseError, ExtraData
 import dataclass_wizard.bases_meta
-from tests.unit.v1.utils_env import from_env
+from tests.unit.v1.utils_env import from_env, envsafe
 
 # from ...conftest import *
 
@@ -294,7 +294,7 @@ def test_load_with_dotenv_file_with_path():
 def test_load_with_tuple_of_dotenv_and_env_file_param_to_init():
     """
     Test when `env_file` is specified as a tuple of dotenv files, and
-    the `_env_file` parameter is also passed in to the constructor
+    the `file` parameter is also passed in to the constructor
     or __init__() method.
     """
 
@@ -309,7 +309,7 @@ def test_load_with_tuple_of_dotenv_and_env_file_param_to_init():
 
     env = {'MY_STR': 'default from env', 'MY_VALUE': '3322.11', 'other_key': '5'}
 
-    # pass `_env_file=False` so we don't load the Meta `env_file`
+    # pass `file=False` so we don't load the Meta `env_file`
     c = from_env(MyClass, env, {'file': False})
 
     assert c.raw_dict() == {'my_str': 'default from env',
@@ -324,7 +324,7 @@ def test_load_with_tuple_of_dotenv_and_env_file_param_to_init():
                             'my_value': 1.23,
                             'other_key': 7}
 
-    # load variables from the `_env_file` argument to the constructor
+    # load variables from the `file` argument to the constructor
     # method, overriding values from `env_file` in the Meta config.
     c = from_env(MyClass, env, {'file': here/ '.env.prod'})
 
@@ -418,15 +418,14 @@ def test_load_when_constructor_kwargs_are_passed():
 # #     assert not hasattr(c, 'third_field')
 # #
 # #     assert c.to_json() == '{"a_field": "hello world!"}'
-#
-#
+
+
 def test_init_method_declaration_is_logged_when_debug_mode_is_enabled(mock_debug_log):
 
     class _EnvSettings(EnvWizard):
 
         class _(EnvWizard.Meta):
             v1_debug = True
-            extra = 'ALLOW'
 
         auth_key: str = Env('my_auth_key')
         api_key: str = Env('hello', 'test')
@@ -442,199 +441,197 @@ def test_init_method_declaration_is_logged_when_debug_mode_is_enabled(mock_debug
     # reset global flag for other tests that
     # rely on `debug_enabled` functionality
     dataclass_wizard.bases_meta._debug_was_enabled = False
-#
-#
-# def test_load_with_tuple_of_dotenv_and_env_prefix_param_to_init():
-#     """
-#     Test when `env_file` is specified as a tuple of dotenv files, and
-#     the `_env_file` parameter is also passed in to the constructor
-#     or __init__() method. Additionally, test prefixing environment
-#     variables using `Meta.env_prefix` and `_env_prefix` in __init__().
-#     """
-#
-#     os.environ.update(
-#         PREFIXED_MY_STR='prefixed string',
-#         PREFIXED_MY_VALUE='12.34',
-#         PREFIXED_OTHER_KEY='10',
-#         MY_STR='default from env',
-#         MY_VALUE='3322.11',
-#         OTHER_KEY='5',
-#     )
-#
-#     class MyClass(EnvWizard):
-#         class _(EnvWizard.Meta):
-#             env_file = '.env', here / '.env.test'
-#             env_prefix = 'PREFIXED_'  # Static prefix
-#             key_lookup_with_load = 'PASCAL'
-#
-#         my_value: float
-#         my_str: str
-#         other_key: int = 3
-#
-#     # Test without prefix
-#     c = MyClass(_env_file=False, _reload=True,
-#                 _env_prefix=None)
-#
-#     assert c.dict() == {'my_str': 'default from env',
-#                         'my_value': 3322.11,
-#                         'other_key': 5}
-#
-#     # Test with Meta.env_prefix applied
-#     c = MyClass(other_key=7)
-#
-#     assert c.dict() == {'my_str': 'prefixed string',
-#                         'my_value': 12.34,
-#                         'other_key': 7}
-#
-#     # Override prefix dynamically with _env_prefix
-#     c = MyClass(_env_file=False, _env_prefix='', _reload=True)
-#
-#     assert c.dict() == {'my_str': 'default from env',
-#                         'my_value': 3322.11,
-#                         'other_key': 5}
-#
-#     # Dynamically set a new prefix via _env_prefix
-#     c = MyClass(_env_prefix='PREFIXED_')
-#
-#     assert c.dict() == {'my_str': 'prefixed string',
-#                         'my_value': 12.34,
-#                         'other_key': 10}
-#
-#     # Otherwise, this would take priority, as it's named `My_Value` in `.env.prod`
-#     del os.environ['MY_VALUE']
-#
-#     # Load from `_env_file` argument, ignoring prefixes
-#     c = MyClass(_reload=True, _env_file=here / '.env.prod', _env_prefix='')
-#
-#     assert c.dict() == {'my_str': 'hello world!',
-#                         'my_value': 3.21,
-#                         'other_key': 5}
-#
-#
-# def test_env_prefix_with_env_file():
-#     """
-#     Test `env_prefix` with `env_file` where file has prefixed env variables.
-#
-#     Contents of `.env.prefix`:
-#         MY_PREFIX_STR='my prefix value'
-#         MY_PREFIX_BOOL=t
-#         MY_PREFIX_INT='123.0'
-#
-#     """
-#     class MyPrefixTest(EnvWizard):
-#         class _(EnvWizard.Meta):
-#             env_prefix = 'MY_PREFIX_'
-#             env_file = here / '.env.prefix'
-#
-#         str: str
-#         bool: bool
-#         int: int
-#
-#     expected = MyPrefixTest(str='my prefix value',
-#                             bool=True,
-#                             int=123)
-#
-#     assert MyPrefixTest() == expected
-#
-#
-# def test_secrets_dir_and_override():
-#     """
-#     Test `Meta.secrets_dir` and `_secrets_dir` for handling secrets.
-#     """
-#     # Create temporary directories and files to simulate secrets
-#     with tempfile.TemporaryDirectory() as default_secrets_dir, tempfile.TemporaryDirectory() as override_secrets_dir:
-#         # Paths for default secrets
-#         default_dir_path = Path(default_secrets_dir)
-#         (default_dir_path / "MY_SECRET_KEY").write_text("default-secret-key")
-#         (default_dir_path / "ANOTHER_SECRET").write_text("default-another-secret")
-#
-#         # Paths for override secrets
-#         override_dir_path = Path(override_secrets_dir)
-#         (override_dir_path / "MY_SECRET_KEY").write_text("override-secret-key")
-#         (override_dir_path / "NEW_SECRET").write_text("new-secret-value")
-#
-#         # Define an EnvWizard class with Meta.secrets_dir
-#         class MySecretClass(EnvWizard):
-#             class _(EnvWizard.Meta):
-#                 secrets_dir = default_dir_path  # Static default secrets directory
-#
-#             my_secret_key: str
-#             another_secret: str = "default"
-#             new_secret: str = "default-new"
-#
-#         # Test case 1: Use Meta.secrets_dir
-#         instance = MySecretClass()
-#         assert instance.dict() == {
-#             "my_secret_key": "default-secret-key",
-#             "another_secret": "default-another-secret",
-#             "new_secret": "default-new",
-#         }
-#
-#         # Test case 2: Override secrets_dir using _secrets_dir
-#         instance = MySecretClass(_secrets_dir=override_dir_path)
-#         assert instance.dict() == {
-#             "my_secret_key": "override-secret-key",  # Overridden by override directory
-#             "another_secret": "default-another-secret",  # Still from Meta.secrets_dir
-#             "new_secret": "new-secret-value",  # Only in override directory
-#         }
-#
-#         # Test case 3: Missing secrets fallback to defaults
-#         instance = MySecretClass(_reload=True)
-#         assert instance.dict() == {
-#             "my_secret_key": "default-secret-key",  # From default directory
-#             "another_secret": "default-another-secret",  # From default directory
-#             "new_secret": "default-new",  # From the field default
-#         }
-#
-#         # Test case 4: Invalid secrets_dir scenarios
-#         # Case 4a: Directory doesn't exist (ignored with warning)
-#         instance = MySecretClass(_secrets_dir=(default_dir_path, Path("/non/existent/directory")),
-#                                  _reload=True)
-#         assert instance.dict() == {
-#             "my_secret_key": "default-secret-key",  # Fallback to default secrets
-#             "another_secret": "default-another-secret",
-#             "new_secret": "default-new",
-#         }
-#
-#         # Case 4b: secrets_dir is a file (raises error)
-#         with tempfile.NamedTemporaryFile() as temp_file:
-#             invalid_secrets_path = Path(temp_file.name)
-#             with pytest.raises(ValueError, match="Secrets directory .* is a file, not a directory"):
-#                 MySecretClass(_secrets_dir=invalid_secrets_path, _reload=True)
-#
-#
-# def test_env_wizard_handles_nested_dataclass_field_with_multiple_input_types():
-#     """
-#     Test that EnvWizard correctly handles a field typed as a nested dataclass:
-#
-#     - When specified as an environment variable (JSON-encoded string).
-#     - When passed as a dictionary to the constructor.
-#     - When passed as an instance of the nested dataclass.
-#     """
-#
-#     @dataclass
-#     class DatabaseSettings:
-#         host: str
-#         port: int
-#
-#     class Settings(EnvWizard):
-#         database: DatabaseSettings
-#
-#         class Config(EnvWizard.Meta):
-#             env_prefix='test'
-#             env_nested_delimiter = '_'
-#
-#     # Field `database` is specified as an env var
-#     os.environ['testdatabase'] = '{"host": "localhost", "port": "5432"}'
-#
-#     # need to `_reload` due to other test cases
-#     settings = Settings(_reload=True)
-#     assert settings == Settings(database=DatabaseSettings(host='localhost', port=5432))
-#
-#     # Field `database` is specified as a dict
-#     settings = Settings(database={"host": "localhost", "port": "4000"})
-#     assert settings == Settings(database=DatabaseSettings(host='localhost', port=4000))
-#
-#     # Field `database` is passed in to constructor (__init__)
-#     settings = Settings(database=(db := DatabaseSettings(host='localhost', port=27017)))
-#     assert settings.database == db
+
+
+def test_load_with_tuple_of_dotenv_and_env_prefix_param_to_init():
+    """
+    Test when `env_file` is specified as a tuple of dotenv files, and
+    the `file` parameter is also passed in to the constructor
+    or __init__() method. Additionally, test prefixing environment
+    variables using `Meta.env_prefix` and `prefix` in __init__().
+    """
+
+    class MyClass(EnvWizard):
+        class _(EnvWizard.Meta):
+            env_file = '.env', here / '.env.test'
+            env_prefix = 'PREFIXED_'  # Static prefix
+            v1_env_precedence = 'SECRETS_DOTENV_ENV'
+
+        my_value: float
+        my_str: str
+        other_key: int = 3
+
+    env = {
+        'PREFIXED_MY_STR': 'prefixed string',
+        'PREFIXED_MY_VALUE': '12.34',
+        'PREFIXED_OTHER_KEY': '10',
+        'MY_STR': 'default from env',
+        'MY_VALUE': '3322.11',
+        'OTHER_KEY': '5',
+    }
+
+    # Test without prefix
+    c = from_env(MyClass, env, {'file': False, 'prefix': ''})
+
+    assert c.raw_dict() == {'my_str': 'default from env',
+                            'my_value': 3322.11,
+                            'other_key': 5}
+
+    # Test with Meta.env_prefix applied
+    c = from_env(MyClass, env, other_key=7)
+
+    assert c.raw_dict() == {'my_str': 'prefixed string',
+                            'my_value': 12.34,
+                            'other_key': 7}
+
+    # Override prefix dynamically with prefix
+    c = from_env(MyClass, env, {'file': False, 'prefix': ''})
+
+    assert c.raw_dict() == {'my_str': 'default from env',
+                            'my_value': 3322.11,
+                            'other_key': 5}
+
+    # Dynamically set a new prefix via prefix
+    c = from_env(MyClass, env, {'prefix': 'PREFIXED_'})
+
+    assert c.raw_dict() == {'my_str': 'prefixed string',
+                            'my_value': 12.34,
+                            'other_key': 10}
+
+    # Otherwise, this would take priority, as it's named `My_Value` in `.env.prod`
+    del env['MY_VALUE']
+
+    # Load from `file` argument, ignoring prefixes
+    c = from_env(MyClass, env, {'file': here / '.env.prod', 'prefix': ''})
+
+    assert c.raw_dict() == {'my_str': 'hello world!',
+                            'my_value': 3.21,
+                            'other_key': 5}
+
+
+def test_env_prefix_with_env_file():
+    """
+    Test `env_prefix` with `env_file` where file has prefixed env variables.
+
+    Contents of `.env.prefix`:
+        MY_PREFIX_STR='my prefix value'
+        MY_PREFIX_BOOL=t
+        MY_PREFIX_INT='123.0'
+
+    """
+    class MyPrefixTest(EnvWizard):
+        class _(EnvWizard.Meta):
+            env_prefix = 'MY_PREFIX_'
+            env_file = here / '.env.prefix'
+
+        a_str: str
+        a_bool: bool
+        an_int: int
+
+    expected = MyPrefixTest(a_str='my prefix value',
+                            a_bool=True,
+                            an_int=123)
+
+    assert MyPrefixTest() == expected
+
+
+def test_secrets_dir_and_override():
+    """
+    Test `Meta.secrets_dir` and `_secrets_dir` for handling secrets.
+    """
+    # Create temporary directories and files to simulate secrets
+    with tempfile.TemporaryDirectory() as default_secrets_dir, tempfile.TemporaryDirectory() as override_secrets_dir:
+        # Paths for default secrets
+        default_dir_path = Path(default_secrets_dir)
+        (default_dir_path / "MY_SECRET_KEY").write_text("default-secret-key")
+        (default_dir_path / "ANOTHER_SECRET").write_text("default-another-secret")
+
+        # Paths for override secrets
+        override_dir_path = Path(override_secrets_dir)
+        (override_dir_path / "MY_SECRET_KEY").write_text("override-secret-key")
+        (override_dir_path / "NEW_SECRET").write_text("new-secret-value")
+
+        # Define an EnvWizard class with Meta.secrets_dir
+        class MySecretClass(EnvWizard):
+            class _(EnvWizard.Meta):
+                secrets_dir = default_dir_path  # Static default secrets directory
+
+            my_secret_key: str
+            another_secret: str = "default"
+            new_secret: str = "default-new"
+
+        # Test case 1: Use Meta.secrets_dir
+        instance = MySecretClass()
+        assert instance.raw_dict() == {
+            "my_secret_key": "default-secret-key",
+            "another_secret": "default-another-secret",
+            "new_secret": "default-new",
+        }
+
+        # Test case 2: Override secrets_dir using _secrets_dir
+        instance = MySecretClass(__env__={'secrets_dir': override_dir_path})
+        assert instance.raw_dict() == {
+            "my_secret_key": "override-secret-key",  # Overridden by override directory
+            "another_secret": "default",  # No longer from Meta.secrets_dir (explicit value overrides it)
+            "new_secret": "new-secret-value",  # Only in override directory
+        }
+
+        # Test case 3: Missing secrets fallback to defaults
+        instance = MySecretClass()
+        assert instance.raw_dict() == {
+            "my_secret_key": "default-secret-key",  # From default directory
+            "another_secret": "default-another-secret",  # From default directory
+            "new_secret": "default-new",  # From the field default
+        }
+
+        # Test case 4: Invalid secrets_dir scenarios
+        # Case 4a: Directory doesn't exist (ignored with warning)
+        instance = MySecretClass(__env__={'secrets_dir': (default_dir_path, Path("/non/existent/directory"))})
+        assert instance.raw_dict() == {
+            "my_secret_key": "default-secret-key",  # Fallback to default secrets
+            "another_secret": "default-another-secret",
+            "new_secret": "default-new",
+        }
+
+        # Case 4b: secrets_dir is a file (raises error)
+        with tempfile.NamedTemporaryFile() as temp_file:
+            invalid_secrets_path = Path(temp_file.name)
+            with pytest.raises(ValueError, match="Secrets directory .* is a file, not a directory"):
+                MySecretClass(__env__={'secrets_dir': invalid_secrets_path})
+
+
+def test_env_wizard_handles_nested_dataclass_field_with_multiple_input_types():
+    """
+    Test that EnvWizard correctly handles a field typed as a nested dataclass:
+
+    - When specified as an environment variable (JSON-encoded string).
+    - When passed as a dictionary to the constructor.
+    - When passed as an instance of the nested dataclass.
+    """
+
+    @dataclass
+    class DatabaseSettings:
+        host: str
+        port: int
+
+    class Settings(EnvWizard):
+        database: DatabaseSettings
+
+        class Config(EnvWizard.Meta):
+            env_prefix='test'
+            env_nested_delimiter = '_'
+
+    # Field `database` is specified as an env var
+    assert envsafe({'testdatabase': {"host": "localhost", "port": "5432"}}) == {'testdatabase': '{"host":"localhost","port":"5432"}'}
+
+    settings = from_env(Settings, {'testdatabase': {"host": "localhost", "port": "5432"}})
+    assert settings.database == DatabaseSettings(host='localhost', port=5432)
+
+    # Field `database` is specified as a dict
+    settings = Settings(database={"host": "localhost", "port": "4000"})
+    assert settings.database == DatabaseSettings(host='localhost', port=4000)
+
+    # Field `database` is passed in to constructor (__init__)
+    expected_db = DatabaseSettings(host='localhost', port=27017)
+    settings = Settings(database={"host": "localhost", "port": "27017"})
+    assert settings.database == expected_db
