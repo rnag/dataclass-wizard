@@ -521,6 +521,8 @@ class AbstractEnvMeta(metaclass=ABCOrAndMeta):
     # secrets_dir: The secret files directory or a sequence of directories. Defaults to `None`.
     secrets_dir: ClassVar[SecretsDirs] = None
 
+    # -- BEGIN Deprecated Fields --
+
     # The nested env values delimiter. Defaults to `None`.
     # env_nested_delimiter: ClassVar[str] = None
 
@@ -540,6 +542,8 @@ class AbstractEnvMeta(metaclass=ABCOrAndMeta):
     #
     # The default is 'snake_case'.
     key_transform_with_dump: ClassVar[Union[LetterCase, str]] = LetterCase.SNAKE
+
+    # -- END Deprecated Fields --
 
     # Determines whether we should we skip / omit fields with default values
     # in the serialization process.
@@ -672,7 +676,7 @@ class AbstractEnvMeta(metaclass=ABCOrAndMeta):
     # - `"warn"`: Log a warning for each unknown key. Requires `v1_debug`
     #   to be `True` and properly configured logging.
     # - `"raise"`: Raise an `UnknownKeyError` for the first unknown key encountered.
-    v1_on_unknown_key: ClassVar[KeyAction] = None
+    # v1_on_unknown_key: ClassVar[KeyAction] = None
 
     # Unsafe: Enables parsing of dataclasses in unions without requiring
     # the presence of a `tag_key`, i.e., a dictionary key identifying the

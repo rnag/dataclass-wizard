@@ -1,3 +1,5 @@
+import base64
+import json
 from collections import deque
 from datetime import datetime, date, timezone
 from typing import Optional, Union, NamedTuple, Literal
@@ -158,3 +160,47 @@ def test_decode_date_and_datetime_from_numeric_and_string_timestamp_and_iso_form
 
     assert c1 == c2 == c3 == expected_obj
     assert c1.to_dict() == c2.to_dict() == c3.to_dict() == expected_dict
+
+
+def test_json_bytes_roundtrip():
+    class C(DataclassWizard):
+        b: bytes
+
+    raw = b'testing 123'
+    c = C(b=raw)
+
+    s = c.to_json()
+    d = json.loads(s)
+
+    # JSON representation should be base64 ascii string
+    assert isinstance(d['b'], str)
+    assert base64.b64decode(d['b']) == raw
+
+    c2 = C.from_json(s)
+    assert c2.b == raw
+
+
+def test_json_bytearray_roundtrip():
+    class C(DataclassWizard):
+        b: bytearray
+
+    raw = bytearray(b'abc')
+    s = C(b=raw).to_json()
+    c2 = C.from_json(s)
+    assert c2.b == raw
+
+
+def test_from_dict_bytes_requires_base64_str():
+    class C(DataclassWizard):
+        b: bytes
+
+    with pytest.raises(ParseError):
+        C.from_dict({'b': 'raw'})
+
+
+def test_from_dict_bytes_accepts_bytes_and_bytearray():
+    class C(DataclassWizard):
+        b: bytes
+
+    assert C.from_dict({'b': b'raw'}).b == b'raw'
+    assert C.from_dict({'b': bytearray(b'raw')}).b == b'raw'

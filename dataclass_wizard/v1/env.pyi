@@ -2,7 +2,7 @@ import json
 from dataclasses import dataclass, Field, InitVar
 from typing import Callable, Mapping, dataclass_transform, TypedDict, NotRequired, TypeVar, ClassVar, Collection, AnyStr
 
-from .loaders import LoadMixin as V1LoaderMixIn
+from .loaders import LoadMixin as V1LoadMixIn
 from .models import Extras
 from ..bases import AbstractEnvMeta, ENV_META
 from ..bases_meta import BaseEnvWizardMeta, V1HookFn
@@ -106,4 +106,4 @@ def generate_field_code(cls_loader: LoadMixin,
 
 def re_raise(e, cls, o, fields, field, value): ...
 
-class LoadMixin(V1LoaderMixIn): ...
+class LoadMixin(V1LoadMixIn): ...

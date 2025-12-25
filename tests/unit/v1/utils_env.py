@@ -14,7 +14,7 @@ def envsafe(mapping: Mapping, *, dumps=json.dumps) -> dict[str, str]:
     out: dict[str, str] = {}
     for k, v in mapping.items():
         k = str(k)
-        out[k] = v if isinstance(v, str) else dumps(v, separators=(",", ":"), sort_keys=True)
+        out[k] = v if isinstance(v, str) else dumps(v, separators=(",", ":"), sort_keys=True, default=str)
     return out
 
 

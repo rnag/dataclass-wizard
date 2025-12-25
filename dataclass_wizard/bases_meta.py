@@ -7,6 +7,7 @@ both import directly from `bases`.
 from __future__ import annotations
 
 import logging
+import warnings
 from datetime import datetime, date
 from typing import Mapping
 
@@ -431,14 +432,34 @@ class BaseEnvWizardMeta(AbstractEnvMeta):
             _enable_debug_mode_if_needed(v1, cls_loader, cls.debug_enabled)
 
         if cls.field_to_env_var is not None:
-            field_to_env_var(env_class).update(
-                cls.field_to_env_var
-            )
+            if v1:
+                warnings.warn(
+                    '`field_to_env_var` is deprecated and will be removed in v1. '
+                    'Use `v1_field_to_env_load` instead.',
+                    FutureWarning,
+                    stacklevel=2,
+                )
+                cls.v1_field_to_env_load = cls.field_to_env_var
+            else:
+                field_to_env_var(env_class).update(
+                    cls.field_to_env_var
+                )
 
         cls.key_lookup_with_load = _as_enum_safe(
             cls, 'key_lookup_with_load', LetterCasePriority)
 
         if v1:
+            from . import EnvWizard as V0EnvWizard
+            from .v1 import EnvWizard as V1EnvWizard
+
+            if issubclass(env_class, V0EnvWizard) and not issubclass(env_class, V1EnvWizard):
+                raise TypeError(
+                    f'{env_class.__qualname__} is using Meta(v1=True) but does '
+                    'not inherit from `dataclass_wizard.v1.EnvWizard`.\n\n'
+                    'Fix:\n'
+                    '    from dataclass_wizard.v1 import EnvWizard'
+                ) from None
+
             if cls.v1_load_case is not None:
                 cls.v1_load_case = _as_enum_safe(
                     cls, 'v1_load_case', EnvKeyStrategy)
@@ -459,8 +480,12 @@ class BaseEnvWizardMeta(AbstractEnvMeta):
                     for k, v in field_to_env.items()
                 })
 
-            if cls.v1_on_unknown_key is not None:
-                cls.v1_on_unknown_key = _as_enum_safe(cls, 'v1_on_unknown_key', KeyAction)
+            # set this attribute in case of nested dataclasses (which
+            # uses codegen in `v1/loaders.py`)
+            cls.v1_on_unknown_key = None
+
+            # if cls.v1_on_unknown_key is not None:
+            #     cls.v1_on_unknown_key = _as_enum_safe(cls, 'v1_on_unknown_key', KeyAction)
 
             _normalize_hooks(cls.v1_type_to_load_hook)
             _normalize_hooks(cls.v1_type_to_dump_hook)
@@ -511,6 +536,9 @@ def LoadMeta(**kwargs) -> META:
     if (v := base_dict.pop('v1_field_to_alias', None)) is not None:
         base_dict['v1_field_to_alias_load'] = v
 
+    if (v := base_dict.pop('v1_type_to_hook', None)) is not None:
+        base_dict['v1_type_to_load_hook'] = v
+
     # Create a new subclass of :class:`AbstractMeta`
     # noinspection PyTypeChecker
     return type('Meta', (BaseJSONWizardMeta, ), base_dict)
@@ -546,6 +574,9 @@ def DumpMeta(**kwargs) -> META:
 
     if (v := base_dict.pop('v1_field_to_alias', None)) is not None:
         base_dict['v1_field_to_alias_dump'] = v
+
+    if (v := base_dict.pop('v1_type_to_hook', None)) is not None:
+        base_dict['v1_type_to_dump_hook'] = v
 
     # Create a new subclass of :class:`AbstractMeta`
     # noinspection PyTypeChecker

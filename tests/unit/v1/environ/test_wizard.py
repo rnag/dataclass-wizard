@@ -4,20 +4,41 @@ from dataclasses import field, dataclass
 from datetime import datetime, time, date, timezone
 from pathlib import Path
 from textwrap import dedent
-from typing import ClassVar, List, Dict, Union, DefaultDict, Set, TypedDict
+from typing import ClassVar, List, Dict, Union, DefaultDict, Set, TypedDict, Optional
 
 import pytest
 
 import dataclass_wizard.bases_meta
 from dataclass_wizard.errors import MissingVars, ParseError
+from dataclass_wizard import EnvWizard as EnvWizardV0, DataclassWizard
 from dataclass_wizard.v1 import Alias, EnvWizard, Env
-from tests.unit.v1.utils_env import from_env, envsafe
+
+from ..utils_env import from_env, envsafe
 
 
 log = logging.getLogger(__name__)
 
 # quick access to the `tests/unit` directory
 here = Path(__file__).parent
+
+
+def test_v1_enabled_with_v0_base_class_raises_error():
+    with pytest.raises(TypeError, match=r'MyClass is using Meta\(v1=True\) but does not inherit from `dataclass_wizard.v1.EnvWizard`.'):
+        class MyClass(EnvWizardV0, debug=True):
+            class _(EnvWizardV0.Meta):
+                v1 = True
+
+            my_value: str
+
+
+def test_env_wizard_accepts_nested_instance():
+    class Sub(DataclassWizard):
+        test: str
+
+    class MyClass(EnvWizard):
+        opt_class: Optional[Sub]
+
+    assert MyClass(opt_class=Sub(test='true')).opt_class.test == 'true'
 
 
 def test_load_and_dump():

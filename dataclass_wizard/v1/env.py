@@ -9,7 +9,7 @@ from typing import (Any, Callable, Mapping,
                     dataclass_transform, TYPE_CHECKING)
 
 from .enums import EnvKeyStrategy, EnvPrecedence
-from .loaders import LoadMixin as V1LoaderMixIn
+from .loaders import LoadMixin as V1LoadMixin
 from .models import Extras, TypeInfo, SEQUENCE_ORIGINS, MAPPING_ORIGINS
 from .path_util import get_secrets_map, get_dotenv_map
 from .type_conv import as_list_v1, as_dict_v1
@@ -56,7 +56,7 @@ _PRECEDENCE_ORDER: dict[EnvPrecedence, tuple[str, ...]] = {
 }
 
 
-def _pre_decoder(_cls: V1LoaderMixIn, container_tp: type, tp: TypeInfo, extras: Extras):
+def _pre_decoder(_cls: V1LoadMixin, container_tp: type, tp: TypeInfo, extras: Extras):
     if tp.i == 1:  # Outermost container (first seen in field annotation)
         if container_tp in SEQUENCE_ORIGINS:
             tp.ensure_in_locals(extras, as_list=as_list_v1)
@@ -656,7 +656,7 @@ def re_raise(e, cls, o, fields, field, value):
     raise e from None
 
 
-class LoadMixin(V1LoaderMixIn):
+class LoadMixin(V1LoadMixin):
     """
     This Mixin class derives its name from the eponymous `json.loads`
     function. Essentially it contains helper methods to convert JSON strings
@@ -675,4 +675,29 @@ class LoadMixin(V1LoaderMixIn):
 
     @staticmethod
     def is_none(tp: TypeInfo, extras: Extras) -> str:
-        return f"{tp.v()} in (None, 'null')"
+        o = tp.v()
+        return f"{o} is None or {o} == 'null'"
+
+    @staticmethod
+    def load_to_bytes(tp: TypeInfo, extras: Extras):
+        # could add support for b64-encoded strings later:
+        # bytes(__b64decode(o)) if (o.__class__ is str and __env_b64)
+        o = tp.v()
+        return (f"{o} if (tp := {o}.__class__) is bytes "
+                f"else {o}.encode('utf-8') if tp is str "
+                f"else bytes({o})")
+
+    @classmethod
+    def load_to_bytearray(cls, tp: TypeInfo, extras: Extras):
+        o = tp.v()
+        as_bytes = cls.load_to_bytes(tp, extras)
+        return (f'{o} if {o}.__class__ is bytearray '
+                f'else {tp.wrap_builtin(bytearray, as_bytes, extras)}')
+
+    @classmethod
+    def load_to_dataclass(cls, tp: TypeInfo, extras: Extras):
+        # pre-decoder wraps `v()` in `asdict(...)`, so use the wrapped value
+        o = tp.v_for_def()
+        tn = tp.type_name(extras)
+        from_dict = super().load_to_dataclass(tp, extras)
+        return f'{o} if {o}.__class__ is {tn} else {from_dict}'
