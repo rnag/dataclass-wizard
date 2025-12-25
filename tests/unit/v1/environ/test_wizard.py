@@ -1,5 +1,4 @@
 import logging
-import os
 import tempfile
 from dataclasses import field, dataclass
 from datetime import datetime, time, date, timezone
@@ -9,12 +8,11 @@ from typing import ClassVar, List, Dict, Union, DefaultDict, Set, TypedDict
 
 import pytest
 
-from dataclass_wizard.v1 import Alias, EnvWizard, Env
-from dataclass_wizard.errors import MissingVars, ParseError, ExtraData
 import dataclass_wizard.bases_meta
+from dataclass_wizard.errors import MissingVars, ParseError
+from dataclass_wizard.v1 import Alias, EnvWizard, Env
 from tests.unit.v1.utils_env import from_env, envsafe
 
-# from ...conftest import *
 
 log = logging.getLogger(__name__)
 
