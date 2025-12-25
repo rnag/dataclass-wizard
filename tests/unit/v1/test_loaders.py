@@ -3654,17 +3654,12 @@ def test_sequence_and_mutable_sequence_are_supported():
     assert opt.list_of_bool == [True, False, True]
 
 
-@pytest.mark.skip('Ran out of time to get this to work')
-def test_dataclass_decorator_is_automatically_applied():
+def test_dataclass_wizard_automatically_applies_dataclass_decorator():
     """
-    Confirm the `@dataclass` decorator is automatically
-    applied, if not decorated by the user.
+    v1: Confirm the `DataclassWizard` automatically applies the `@dataclass`
+    decorator, *even if* already decorated by the user.
     """
-    class Test(JSONWizard):
-
-        class _(JSONWizard.Meta):
-            v1 = True
-
+    class Test(DataclassWizard, load_case='CAMEL'):
         my_field: str
         my_bool: bool = False
 
@@ -3675,8 +3670,12 @@ def test_dataclass_decorator_is_automatically_applied():
     assert t.my_field == 'test'
     assert t.my_bool
 
-    with pytest.raises(TypeError, match=".*Test\.__init__\(\) missing 1 required positional argument: 'my_field'"):
+    with pytest.raises(TypeError, match=r".*Test\.__init__\(\) missing 1 required positional argument: 'my_field'"):
         Test()
+
+    with pytest.raises(MissingFields, match=r'.*Test\.__init__\(\)` missing required fields') as e:
+        Test.from_dict({})
+    assert e.value.missing_fields == ['my_field']
 
 
 def test_bytes_and_bytes_array_are_supported():

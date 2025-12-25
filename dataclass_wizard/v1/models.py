@@ -1,9 +1,10 @@
 import hashlib
+import sys
 from collections import defaultdict, deque
 from dataclasses import MISSING, Field as _Field
 from datetime import datetime, date, time, tzinfo, timezone, timedelta
 from typing import TYPE_CHECKING, Any, TypedDict, cast
-from zoneinfo import ZoneInfo
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from .decorators import setup_recursive_safe_function
 from ..constants import PY310_OR_ABOVE, PY311_OR_ABOVE, PY314_OR_ABOVE
@@ -79,6 +80,25 @@ MAPPING_ORIGINS = frozenset({
     dict,
     defaultdict
 })
+
+
+def get_zoneinfo(key: str) -> ZoneInfo:
+    try:
+        return ZoneInfo(key)
+    except ZoneInfoNotFoundError as e:
+        if sys.platform.startswith('win'):
+            try:
+                import tzdata  # noqa: F401
+            except Exception:
+                raise ZoneInfoNotFoundError(
+                    f'No time zone found with key {key!r}. '
+                    'On Windows, install tzdata or install Dataclass Wizard with the tz extra:\n'
+                    '    pip install dataclass-wizard[tz]'
+                ) from None
+            else:
+                return ZoneInfo(key)
+        raise
+
 
 def ensure_type_ref(extras, tp, *, name=None, prefix='', is_builtin=False, field_i=0) -> str:
     """
@@ -350,7 +370,7 @@ class PatternBase:
             # expect time zone as first argument
             tz_info, *patterns = patterns
             if isinstance(tz_info, str):
-                tz_info = ZoneInfo(tz_info)
+                tz_info = get_zoneinfo(tz_info)
         else:
             patterns = (patterns, ) if patterns.__class__ is str else patterns
 

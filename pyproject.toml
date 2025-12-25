@@ -59,10 +59,12 @@ toml = [
     "tomli>=2,<3; python_version=='3.10'",
     "tomli-w>=1,<2"
 ]
+tz = ["tzdata>=2024.1"]
 yaml = ["PyYAML>=6,<7"]
 dev = [
     # TODO It seems `pip-upgrader` does not support Python 3.11+
     # pip-upgrader==1.4.15
+    "tzdata>=2024.1; platform_system == 'Windows'",
     "flake8>=3",  # pyup: ignore
     "tox==4.23.2",
     # Extras
@@ -90,6 +92,7 @@ docs = [
     "typing-extensions>=4.9.0",
 ]
 test = [
+    "tzdata>=2024.1; platform_system == 'Windows'",
     "pytest==8.3.4",
     "pytest-mock>=3.6.1",
     "pytest-cov==6.0.0",
@@ -123,6 +126,7 @@ all = [
     "PyYAML>=6,<7",
 
     # Dev dependencies (excluding CI-specific or tool-specific packages)
+    "tzdata>=2024.1; platform_system == 'Windows'",
     "flake8>=3",
     "tox==4.23.2",
     "pytimeparse==1.1.8",

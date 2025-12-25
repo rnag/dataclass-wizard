@@ -3,6 +3,7 @@ from datetime import datetime, date, time, tzinfo, timezone, timedelta
 from typing import (Collection, Callable,
                     Generic, Sequence, TypeAlias, Mapping)
 from typing import TypedDict, overload, Any, NotRequired, Self
+from zoneinfo import ZoneInfo
 
 from ..bases import META
 from ..models import Condition
@@ -25,6 +26,9 @@ UTC: timezone
 
 # UTC time zone (no offset)
 ZERO: timedelta
+
+
+def get_zoneinfo(key: str) -> ZoneInfo: ...
 
 
 def ensure_type_ref(extras: 'Extras', tp: type, *,
@@ -81,6 +85,7 @@ class TypeInfo:
                     is_builtin: bool = False,
                     force=False,
                     bound: type | None = None) -> str | None: ...
+
 
 class Extras(TypedDict):
     """

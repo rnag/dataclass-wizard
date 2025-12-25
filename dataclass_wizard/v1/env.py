@@ -5,9 +5,7 @@ import logging
 import os
 from collections import ChainMap
 from dataclasses import dataclass, is_dataclass, Field, MISSING
-from typing import (Any, Callable, Mapping,
-                    dataclass_transform, TYPE_CHECKING)
-
+from typing import (Any, Callable, Mapping, TYPE_CHECKING)
 from .enums import EnvKeyStrategy, EnvPrecedence
 from .loaders import LoadMixin as V1LoadMixin
 from .models import Extras, TypeInfo, SEQUENCE_ORIGINS, MAPPING_ORIGINS
@@ -33,7 +31,7 @@ from ..errors import (JSONWizardError,
                       UnknownKeysError, type_name, MissingVars)
 from ..loader_selection import get_loader, asdict
 from ..log import LOG, enable_library_debug_logging
-from ..type_def import T, JSONObject
+from ..type_def import T, JSONObject, dataclass_transform
 # noinspection PyProtectedMember
 from ..utils.dataclass_compat import _set_new_attribute
 from ..utils.function_builder import FunctionBuilder
@@ -316,7 +314,7 @@ def load_func_for_dataclass(
 
     new_locals['_env_defaults'] = _env_defaults
     init_params = ['self',
-                   '__env__:EnvInit=None',
+                   "__env__:'EnvInit'=None",
                    '*']
 
     with fn_gen.function(fn_name, init_params, MISSING, new_locals):
