@@ -16,7 +16,7 @@ from .type_def import E, T
 from .v1 import LoadMixin
 from .v1.enums import KeyAction, KeyCase, DateTimeTo as V1DateTimeTo, EnvPrecedence, EnvKeyStrategy
 from .v1.models import TypeInfo, Extras
-from .v1.path_util import EnvFilePaths, SecretsDirs
+from .v1._path_util import EnvFilePaths, SecretsDirs
 
 ALLOWED_MODES = Literal['runtime', 'v1_codegen']
 

@@ -12,7 +12,7 @@ from typing import (Any, Callable, Mapping, TYPE_CHECKING)
 from .enums import EnvKeyStrategy, EnvPrecedence
 from .loaders import LoadMixin as V1LoadMixin
 from .models import Extras, TypeInfo, SEQUENCE_ORIGINS, MAPPING_ORIGINS
-from .path_util import get_secrets_map, get_dotenv_map
+from ._path_util import get_secrets_map, get_dotenv_map
 from .type_conv import as_list_v1, as_dict_v1
 from ..bases import META, AbstractEnvMeta, ENV_META
 from ..bases_meta import BaseEnvWizardMeta, EnvMeta, register_type

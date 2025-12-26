@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 from ..lazy_imports import dotenv
 
 if TYPE_CHECKING:
-    from .path_util import Environ, SecretsFileMapping
+    from ._path_util import Environ, SecretsFileMapping
 
 
 def get_secrets_map(cls, secret_dirs, *, reload=False):

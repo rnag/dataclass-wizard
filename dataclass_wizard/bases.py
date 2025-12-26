@@ -12,7 +12,7 @@ from .models import Condition
 
 if TYPE_CHECKING:
     from .v1.enums import KeyAction, KeyCase, DateTimeTo as V1DateTimeTo, EnvKeyStrategy, EnvPrecedence
-    from .v1.path_util import EnvFilePaths, SecretsDirs
+    from .v1._path_util import EnvFilePaths, SecretsDirs
     from .bases_meta import ALLOWED_MODES, V1HookFn, V1PreDecoder
     from .type_def import FrozenKeys
 
