@@ -1,15 +1,15 @@
 import base64
 import json
 from collections import deque
+from dataclasses import field, is_dataclass
 from datetime import datetime, date, timezone
 from typing import Optional, Union, NamedTuple, Literal
 
 import pytest
 
-from dataclass_wizard import asdict, fromdict, DataclassWizard
+from dataclass_wizard import asdict, fromdict, DataclassWizard, CatchAll
 from dataclass_wizard.errors import ParseError
 from dataclass_wizard.v1 import Alias
-
 from ..._typing import *
 
 
@@ -204,3 +204,70 @@ def test_from_dict_bytes_accepts_bytes_and_bytearray():
 
     assert C.from_dict({'b': b'raw'}).b == b'raw'
     assert C.from_dict({'b': bytearray(b'raw')}).b == b'raw'
+
+
+@pytest.mark.skipif(not PY310_OR_ABOVE, reason='requires Python 3.10 or higher')
+def test_kw_only_fields_and_kw_only_catchall():
+    from dataclasses import KW_ONLY
+
+    class Sub(DataclassWizard):
+        test: str
+        _: KW_ONLY
+        my_int: int
+
+    class Parent(DataclassWizard, kw_only=True):
+        opt: Optional[Sub]
+        extras: CatchAll
+        my_bool: bool = field(kw_only=False)
+
+    p = Parent.from_dict({'my_bool': 'false',
+                          'opt': {'my_int': '321', 'test': 123},
+                          'hello': 0, 'world': 1})
+    assert p == Parent(opt=Sub(test='123', my_int=321),
+                       extras={'hello': 0, 'world': 1},
+                       my_bool=False)
+
+    assert p.to_dict() == {'my_bool': False,
+                           'opt': {'test': '123', 'my_int': 321},
+                           'hello': 0, 'world': 1}
+
+
+def test_lazy_codegen_does_not_poison_subclasses():
+    class A(DataclassWizard):
+        a: int = 1
+
+    class B(A):
+        b: int = 2
+
+    class C(B):
+        c: int = 3
+
+    assert is_dataclass(A) and is_dataclass(B) and is_dataclass(C)
+
+    assert getattr(A.from_dict, '__func__', None) is fromdict
+    assert getattr(B.from_dict, '__func__', None) is fromdict
+    assert getattr(C.from_dict, '__func__', None) is fromdict
+
+    a = A.from_dict({'a': '10'})
+    assert type(a) is A
+    assert a.a == 10
+
+    b = B.from_dict({'a': '10', 'b': '20'})
+    assert type(b) is B
+    assert (b.a, b.b) == (10, 20)
+
+    c = C.from_dict({'a': '10', 'b': '20', 'c': '30'})
+    assert type(c) is C
+    assert (c.a, c.b, c.c) == (10, 20, 30)
+
+    # Ensure each class dumps its own fields correctly
+    assert a.to_dict() == {'a': 10}
+    assert b.to_dict() == {'a': 10, 'b': 20}
+    assert c.to_dict() == {'a': 10, 'b': 20, 'c': 30}
+
+    assert A.from_dict is not B.from_dict
+    assert B.from_dict is not C.from_dict
+    assert A.from_dict is not C.from_dict
+    assert A.from_dict is not fromdict
+    assert B.from_dict is not fromdict
+    assert C.from_dict is not fromdict

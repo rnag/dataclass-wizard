@@ -5,7 +5,7 @@ from dataclasses import MISSING, fields
 from typing import TYPE_CHECKING
 
 from .bases import AbstractMeta
-from .constants import CATCH_ALL, PACKAGE_NAME
+from .constants import CATCH_ALL, PACKAGE_NAME, PY310_OR_ABOVE
 from .errors import InvalidConditionError
 from .models import JSONField, JSON, Extras, PatternedDT, CatchAll, Condition
 from .type_def import ExplicitNull
@@ -546,6 +546,14 @@ def dataclass_field_names(cls):
 def dataclass_init_field_names(cls):
 
     return tuple(f.name for f in dataclass_init_fields(cls))
+
+
+if not PY310_OR_ABOVE:  # Python 3.9 doesn't have `kw_only`
+    def dataclass_kw_only_init_field_names(_):
+        return set()
+else:
+    def dataclass_kw_only_init_field_names(cls):
+        return {f.name for f in dataclass_init_fields(cls) if f.kw_only}
 
 
 def dataclass_field_to_default(cls):

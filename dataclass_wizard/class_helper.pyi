@@ -278,6 +278,10 @@ def dataclass_init_field_names(cls: type) -> tuple[str, ...]:
     """Get the names of all __init__() dataclass fields"""
 
 
+def dataclass_kw_only_init_field_names(cls: type) -> set[str]:
+    """Get the names of all "KEYWORD-ONLY" dataclass fields"""
+
+
 def dataclass_field_to_default(cls: type) -> dict[str, Any]:
     """Get default values for the (optional) dataclass fields."""
 

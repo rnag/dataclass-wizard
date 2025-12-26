@@ -33,7 +33,8 @@ from ..loader_selection import get_loader, asdict
 from ..log import LOG, enable_library_debug_logging
 from ..type_def import T, JSONObject, dataclass_transform
 # noinspection PyProtectedMember
-from ..utils.dataclass_compat import _set_new_attribute
+from ..utils.dataclass_compat import (_dataclass_needs_refresh,
+                                      _set_new_attribute)
 from ..utils.function_builder import FunctionBuilder
 from ..utils.object_path import v1_safe_get
 from ..utils.string_conv import possible_env_vars
@@ -101,13 +102,18 @@ class EnvWizard:
         super().__init_subclass__()
 
         # skip classes provided by this library.
-        if cls.__module__.startswith(f'{PACKAGE_NAME}.'):
+        if cls.__module__.startswith(f'{PACKAGE_NAME}.'):  # pragma: no cover
             return
 
         # Apply the @dataclass decorator.
-        if _apply_dataclass and not is_dataclass(cls):
+        if _apply_dataclass and _dataclass_needs_refresh(cls):
             # noinspection PyArgumentList
-            dataclass(cls, init=False, **dc_kwargs)
+            dataclass(
+                cls,
+                init=False,
+                kw_only=True,
+                **dc_kwargs
+            )
 
         load_meta_kwargs = {'v1': True, 'v1_pre_decoder': _pre_decoder}
 
@@ -177,8 +183,6 @@ def load_func_for_dataclass(
     meta = get_meta(cls, base_meta_cls)
 
     if extras is None:  # we are being run for the main dataclass
-        is_main_class = True
-
         # If the `recursive` flag is enabled and a Meta config is provided,
         # apply the Meta recursively to any nested classes.
         #
@@ -214,27 +218,11 @@ def load_func_for_dataclass(
         }
 
     # we are being run for a nested dataclass
-    else:
-        is_main_class = False
-
-        # config for nested dataclasses
-        config = extras['config']
-
-        # Initialize the FuncBuilder
-        fn_gen = extras['fn_gen']
-
-        if config is not base_meta_cls:
-            # we want to apply the meta config from the main dataclass
-            # recursively.
-            meta = meta | config
-            meta.bind_to(cls, is_default=False)
-
-        new_locals = extras['locals']
-        new_locals['fields'] = fields
-
-        # TODO need a way to auto-magically do this
-        extras['cls'] = cls
-        extras['cls_name'] = cls_name
+    # NOTE: I don't believe this path exists, since `v1.loaders.from_dict`
+    # is used for nested dataclasses.
+    #
+    # else:
+    #     is_main_class = False
 
     # default `v1_load_case` to `EnvKeyStrategy.ENV` if not set
     env_key_strat: EnvKeyStrategy | None = meta.v1_load_case or EnvKeyStrategy.ENV
@@ -537,32 +525,31 @@ def load_func_for_dataclass(
 
     # Save the load function for the main dataclass, so we don't need to run
     # this logic each time.
-    if is_main_class:
-        _locals = {}
-        with fn_gen.function(raw_dict_name, ['self'], JSONObject, _locals):
-            parts = ','.join([f'{name!r}:self.{name}' for name in cls.__field_names__])
-            fn_gen.add_line(f'return {{{parts}}}')
+    _locals = {}
+    with fn_gen.function(raw_dict_name, ['self'], JSONObject, _locals):
+        parts = ','.join([f'{name!r}:self.{name}' for name in cls.__field_names__])
+        fn_gen.add_line(f'return {{{parts}}}')
 
-        # noinspection PyUnboundLocalVariable
-        functions = fn_gen.create_functions(_globals)
+    # noinspection PyUnboundLocalVariable
+    functions = fn_gen.create_functions(_globals)
 
-        cls_init = functions[fn_name]
-        cls_raw_dict = functions[raw_dict_name]
+    cls_init = functions[fn_name]
+    cls_raw_dict = functions[raw_dict_name]
 
-        _set_new_attribute(
-            cls, '__init__', cls_init)
-        LOG.debug("setattr(%s, '__init__', %s)",
-                  cls_name, fn_name)
+    _set_new_attribute(
+        cls, '__init__', cls_init)
+    LOG.debug("setattr(%s, '__init__', %s)",
+              cls_name, fn_name)
 
-        _set_new_attribute(
-            cls, 'raw_dict', cls_raw_dict)
-        LOG.debug("setattr(%s, 'raw_dict', %s)",
-                  cls_name, raw_dict_name)
+    _set_new_attribute(
+        cls, 'raw_dict', cls_raw_dict)
+    LOG.debug("setattr(%s, 'raw_dict', %s)",
+              cls_name, raw_dict_name)
 
-        # TODO in `v1`, we will use class attribute (set above) instead.
-        CLASS_TO_LOAD_FUNC[cls] = cls_init
+    # TODO in `v1`, we will use class attribute (set above) instead.
+    CLASS_TO_LOAD_FUNC[cls] = cls_init
 
-        return cls_init
+    return cls_init
 
 
 def _add_missing_var(missing_vars: dict | None, name, var_name, tp):

@@ -1120,6 +1120,9 @@ def dump_func_for_dataclass(
             with fn_gen.except_(Exception, 'e', ParseError):
                 fn_gen.add_line("re_raise(e, cls, o, fields, '<UNK>', locals().get('v1'))")
 
+        else:
+            fn_gen.add_line('result = {}')
+
         # TODO
         # if has_catch_all:
         #     if expect_tag_as_unknown_key:
@@ -1218,11 +1221,12 @@ def dump_func_for_dataclass(
 
         # Check if the class has a `to_dict`, and it's
         # a class method bound to `todict`.
-        if ((to_dict := getattr(cls, 'to_dict', None)) is not None
-                and getattr(to_dict, '__func__', None) is asdict):
-
+        if getattr(cls, 'to_dict', None) is asdict:
             LOG.debug("setattr(%s, 'to_dict', %s)", cls_name, fn_name)
-            _set_new_attribute(cls, 'to_dict', cls_todict)
+            # Marker reserved for future detection/debugging of specialized dumpers.
+            # setattr(cls_todict, _SPECIALIZED_TO_DICT, True)
+            # safe to specialize only when user didn't define it on cls
+            _set_new_attribute(cls, 'to_dict', cls_todict, force=True)
 
         _set_new_attribute(
             cls, f'__{PACKAGE_NAME}_to_dict__', cls_todict)

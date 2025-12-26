@@ -3,7 +3,7 @@ Pulling some functions removed in recent versions of Python into the module for 
 All function names and bodies are left exactly as they were prior to being removed.
 """
 
-from dataclasses import MISSING
+from dataclasses import MISSING, is_dataclass, fields
 from types import FunctionType
 
 
@@ -17,16 +17,16 @@ def _set_qualname(cls, value):
     return value
 
 
-def _set_new_attribute(cls, name, value):
+def _set_new_attribute(cls, name, value, force=False):
     # Removed in Python 3.13
     # Original: `dataclasses._set_new_attribute`
     # Never overwrites an existing attribute.  Returns True if the
     # attribute already exists.
-    if name in cls.__dict__:
-        return True
-    _set_qualname(cls, value)
-    setattr(cls, name, value)
-    return False
+    if force or name not in cls.__dict__:
+        _set_qualname(cls, value)
+        setattr(cls, name, value)
+        return False
+    return True
 
 
 def _create_fn(name, args, body, *, globals=None, locals=None,
@@ -57,3 +57,18 @@ def _create_fn(name, args, body, *, globals=None, locals=None,
     ns = {}
     exec(txt, globals, ns)
     return ns['__create_fn__'](**locals)
+
+
+def _dataclass_needs_refresh(cls) -> bool:
+    if not is_dataclass(cls):
+        return True
+
+    # dataclass fields currently registered
+    dc_fields = {f.name for f in fields(cls)}
+    # annotated fields declared on the class (ignore ClassVar/InitVar nuance)
+    ann = getattr(cls, '__annotations__', {}) or {}
+    annotated = set(ann.keys())
+
+    # If class declares annotated fields not present in dataclass fields,
+    # the dataclass metadata is stale.
+    return not annotated.issubset(dc_fields)

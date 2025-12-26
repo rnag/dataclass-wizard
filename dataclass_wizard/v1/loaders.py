@@ -33,7 +33,8 @@ from ..class_helper import (create_meta,
                             is_subclass_safe,
                             v1_dataclass_field_to_alias_for_load,
                             CLASS_TO_LOAD_FUNC,
-                            DATACLASS_FIELD_TO_ALIAS_PATH_FOR_LOAD)
+                            DATACLASS_FIELD_TO_ALIAS_PATH_FOR_LOAD,
+                            dataclass_kw_only_init_field_names)
 from ..constants import CATCH_ALL, TAG, PY311_OR_ABOVE, PACKAGE_NAME
 from ..errors import (JSONWizardError,
                       MissingData,
@@ -60,24 +61,24 @@ from ..utils.typing_compat import (eval_forward_ref_if_needed,
 
 def _classify_hook(fn):
     if not callable(fn):
-        raise TypeError("hook must be callable")
+        raise TypeError('hook must be callable')
 
     code = getattr(fn, '__code__', None) or fn.__init__.__code__
 
     # Disallow *args / **kwargs (they hide mistakes)
     if code.co_flags & 0x04 or code.co_flags & 0x08:
-        raise TypeError("hook must not use *args or **kwargs")
+        raise TypeError('hook must not use *args or **kwargs')
 
     argc = code.co_argcount
 
     if argc == 1:
-        return "runtime"     # fn(value)
+        return 'runtime'     # fn(value)
     elif argc == 2:
-        return "v1_codegen"  # fn(TypeInfo, Extras)
+        return 'v1_codegen'  # fn(TypeInfo, Extras)
     else:
         raise TypeError(
-            "hook must accept either 1 argument (runtime) "
-            "or 2 arguments (TypeInfo, Extras)"
+            'hook must accept either 1 argument (runtime) '
+            'or 2 arguments (TypeInfo, Extras)'
         )
 
 
@@ -168,10 +169,15 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
     @staticmethod
     def load_to_bytes(tp: TypeInfo, extras: Extras):
         tp.ensure_in_locals(extras, b64decode)
-        return f'b64decode({tp.v()})'
+        o = tp.v()
+        return (f'{o} if (tp := {o}.__class__) is bytes '
+                f'else bytes({o}) if tp is bytearray '
+                f'else b64decode({o})')
 
     @classmethod
     def load_to_bytearray(cls, tp: TypeInfo, extras: Extras):
+        # micro-optimization: avoid copying when already a bytearray
+        # return f'{o} if (tp := {o}.__class__) is bytearray else bytearray({o} if tp is bytes else b64decode({o}))'
         as_bytes = cls.load_to_bytes(tp, extras)
         return tp.wrap_builtin(bytearray, as_bytes, extras)
 
@@ -1016,6 +1022,7 @@ def load_func_for_dataclass(
 
     cls_init_fields = dataclass_init_fields(cls, True)
     cls_init_field_names = dataclass_init_field_names(cls)
+    cls_init_kw_only_field_names = dataclass_kw_only_init_field_names(cls)
 
     field_to_default = dataclass_field_to_default(cls)
 
@@ -1086,6 +1093,9 @@ def load_func_for_dataclass(
         # TODO need a way to auto-magically do this
         extras['cls'] = cls
         extras['cls_name'] = cls_name
+
+        # Added for a `v1.EnvWizard` main class, which doesn't set this in globals
+        fn_gen.globals.setdefault('raise_missing_fields', check_and_raise_missing_fields)
 
     key_case: KeyCase | None = cls_loader.transform_json_field
     auto_key_case = key_case is KeyCase.AUTO
@@ -1164,6 +1174,7 @@ def load_func_for_dataclass(
             fn_gen.add_line('i = 0')
 
         vars_for_fields = []
+        kwargs_for_fields = []
 
         if cls_init_fields:
 
@@ -1284,9 +1295,10 @@ def load_func_for_dataclass(
                             fn_gen.add_line(f'{pre_assign}init_kwargs[field] = {string}')
 
                     else:
-                        # TODO confirm this is ok
-                        # vars_for_fields.append(f'{name}={var}')
-                        vars_for_fields.append(var)
+                        if name in cls_init_kw_only_field_names:
+                            kwargs_for_fields.append(f'{name}={var}')
+                        else:
+                            vars_for_fields.append(var)
 
                         with fn_gen.if_(val_is_found):
                             fn_gen.add_line(f'{pre_assign}{var} = {string}')
@@ -1305,7 +1317,11 @@ def load_func_for_dataclass(
             else:
                 var = f'__{catch_all_field_stripped}'
                 fn_gen.add_line(f'{var} = {{}} if len(o) == i else {catch_all_def}')
-                vars_for_fields.insert(catch_all_idx, var)
+
+                if catch_all_field_stripped in cls_init_kw_only_field_names:
+                    kwargs_for_fields.append(f'{catch_all_field_stripped}={var}')
+                else:
+                    vars_for_fields.insert(catch_all_idx, var)
 
         elif set_aliases:  # warn / raise on unknown key
             line = 'extra_keys = set(o) - aliases'
@@ -1330,6 +1346,8 @@ def load_func_for_dataclass(
 
         if has_defaults:
             vars_for_fields.append('**init_kwargs')
+        if kwargs_for_fields:
+            vars_for_fields.extend(kwargs_for_fields)
         init_parts = ', '.join(vars_for_fields)
         with fn_gen.try_():
             fn_gen.add_line(f"return cls({init_parts})")
@@ -1350,9 +1368,11 @@ def load_func_for_dataclass(
         # a class method bound to `fromdict`.
         if ((from_dict := getattr(cls, 'from_dict', None)) is not None
                 and getattr(from_dict, '__func__', None) is fromdict):
-
             LOG.debug("setattr(%s, 'from_dict', %s)", cls_name, fn_name)
-            _set_new_attribute(cls, 'from_dict', cls_fromdict)
+            # Marker reserved for future detection/debugging of specialized loaders.
+            # setattr(cls_fromdict, _SPECIALIZED_FROM_DICT, True)
+            # safe to specialize only when user didn't define it on cls
+            _set_new_attribute(cls, 'from_dict', cls_fromdict, force=True)
 
         _set_new_attribute(
             cls, f'__{PACKAGE_NAME}_from_dict__', cls_fromdict)

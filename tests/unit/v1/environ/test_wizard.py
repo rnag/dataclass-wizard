@@ -11,7 +11,7 @@ import pytest
 
 import dataclass_wizard.bases_meta
 from dataclass_wizard.class_helper import get_meta
-from dataclass_wizard.errors import MissingVars, ParseError
+from dataclass_wizard.errors import MissingVars, ParseError, MissingFields
 from dataclass_wizard import EnvWizard as EnvWizardV0, DataclassWizard
 from dataclass_wizard.v1 import Alias, EnvWizard, Env
 
@@ -33,14 +33,61 @@ def test_v1_enabled_with_v0_base_class_raises_error():
             my_value: str
 
 
-def test_env_wizard_accepts_nested_instance():
+def test_envwizard_nested_envwizard_from_env_and_instance_passthrough():
+    class Child(EnvWizard):
+        x: int
+
+    class Parent(EnvWizard):
+        child: Child
+
+    # 1) Instance passthrough (no parsing)
+    c = Child(x=5)
+    p1 = Parent(child=c)
+    assert p1.child is c
+    assert p1.child.x == 5
+
+    # 2) Env mapping with wrong casing should fail
+    with pytest.raises(MissingFields) as e:
+        from_env(Parent, {"CHILD": {"X": "123"}})
+    assert e.value.missing_fields == ["x"]
+
+    # 3) Env mapping with correct keys should parse
+    p2 = from_env(Parent, {"CHILD": {"x": "123"}})
+    assert p2.child.x == 123
+
+
+def test_dataclasswizard_nested_envwizard_from_dict():
+    class Child(EnvWizard):
+        x: int
+
+    class Parent(DataclassWizard):
+        child: Child
+
+    p = Parent.from_dict({"child": {"x": 7}})
+    assert p.child.x == 7
+
+
+def test_envwizard_optional_nested_dataclass_instance_and_env_dict():
     class Sub(DataclassWizard):
         test: str
 
-    class MyClass(EnvWizard):
-        opt_class: Optional[Sub]
+    class Parent(EnvWizard):
+        opt: Optional[Sub]
 
-    assert MyClass(opt_class=Sub(test='true')).opt_class.test == 'true'
+    # 1) Passing an instance should passthrough (no parsing)
+    s = Sub(test="true")
+    p1 = Parent(opt=s)
+    assert p1.opt is s
+    assert p1.opt.test == "true"
+
+    # 2) Env dict with wrong casing should fail (if your loader expects exact keys)
+    with pytest.raises(MissingFields) as e:
+        from_env(Parent, {"OPT": {"TEST": "true"}})
+    assert e.value.missing_fields == ["test"]
+
+    # 3) Env dict with correct keys should parse
+    p2 = from_env(Parent, {"OPT": {"test": "true"}})
+    assert p2.opt == Sub(test="true")
 
 
 def test_load_and_dump():
