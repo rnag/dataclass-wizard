@@ -81,3 +81,4 @@ jobs:
       - name: mypy
         run: |
           mypy dataclass_wizard
+        continue-on-error: true

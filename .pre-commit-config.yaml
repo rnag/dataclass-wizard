@@ -6,3 +6,8 @@ repos:
         name: rstcheck (README.rst)
         args: ["--report-level=warning"]
         files: ^README\.rst$
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-ast
+        files: \.py$
