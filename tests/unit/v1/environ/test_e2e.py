@@ -6,8 +6,8 @@ from typing import Optional, Union, NamedTuple, Literal
 import pytest
 
 from dataclass_wizard import DataclassWizard, CatchAll
-from dataclass_wizard.errors import ParseError
-from dataclass_wizard.v1 import Alias, EnvWizard, env_config
+from dataclass_wizard.errors import ParseError, MissingVars
+from dataclass_wizard.v1 import Alias, EnvWizard, env_config, AliasPath
 
 from ..utils_env import envsafe, from_env
 from ...._typing import *
@@ -228,7 +228,7 @@ def test_env_bytearray_from_bytes_and_list():
     assert C(__env__=env_config(mapping={'B': [1, 2, 3]})).b == bytearray([1, 2, 3])
 
 
-def test_env_wizard_with_no_init_fields():
+def test_env_with_no_init_fields():
     """Test EnvWizard` subclass with no *init-only *dataclass fields."""
     class E1(EnvWizard):
         ...
@@ -244,7 +244,7 @@ def test_env_wizard_with_no_init_fields():
     assert E2().raw_dict() == {'my_field': '123'}
 
 
-def test_env_wizard_with_catch_all():
+def test_env_with_catch_all():
     class E(EnvWizard):
         field: CatchAll = None
 
@@ -276,3 +276,104 @@ def test_env_wizard_with_catch_all():
     assert e.extras == {'k1': 'v1', 'k2': '["v2"]'}
     assert e.raw_dict() == {'my_int': 123, 'extras': {'k1': 'v1', 'k2': '["v2"]'}}
     assert e.to_dict() == {'my_int': 123, 'k1': 'v1', 'k2': '["v2"]'}
+
+
+def test_env_precedence_env_only():
+    class E(EnvWizard):
+        my_value: float
+
+        class _(EnvWizard.Meta):
+            v1_env_precedence = 'ENV_ONLY'
+            # contains `MY_VALUE=1.23`
+            env_file = '.env.test'
+
+    with pytest.raises(MissingVars) as e:
+        _ = E()
+
+    assert e.value.fields.lstrip() == '- my_value -> MY_VALUE'
+
+    e = from_env(E, {'MY_VALUE': '3.21'})
+    assert e.raw_dict() == {'my_value': 3.21}
+
+
+def test_env_load_case_strict():
+    class E(EnvWizard):
+        my_value: float
+
+        class _(EnvWizard.Meta):
+            v1_load_case = 'STRICT'
+
+    with pytest.raises(MissingVars) as e:
+        _ = from_env(E, {'my_value': 3.21})
+
+    assert e.value.fields.lstrip() == '- my_value -> my_value'
+
+    e = E(my_value='3.21')
+    assert e.raw_dict() == {'my_value': 3.21}
+
+
+def test_env_alias_path_required():
+    class E(EnvWizard):
+        my_value: float = AliasPath('a.b.c')
+
+    e = E(my_value=3.21)
+    assert e.raw_dict() == {'my_value': 3.21}
+
+    e = E(__env__={'mapping': {'a': {'b': {'c': '2.22'}}}})
+    assert e.raw_dict() == {'my_value': 2.22}
+
+    e = from_env(E, {'a': {'b': {'c': '1.11'}}})
+    assert e.raw_dict() == {'my_value': 1.11}
+
+    with pytest.raises(ParseError) as e:
+        _ = from_env(E, {'a': {'b': {'z': '1.11'}}})
+    assert e.value.kwargs['current_path'] == "'c'"
+
+    with pytest.raises(ParseError) as e:
+        _ = from_env(E, {'a': []})
+    assert str(e.value.base_error) == 'Invalid path'
+
+
+def test_env_alias_path_with_default_value():
+    class E(EnvWizard):
+        my_value: list[float] = AliasPath('a.b.c', default_factory=list)
+        another_value: Optional[str] = AliasPath('x.y.z', default=None)
+
+    e = E(my_value=[3.21])
+    assert e.raw_dict() == {'my_value': [3.21], 'another_value': None}
+
+    e = E(__env__={'mapping': {'a': {'b': {'c': ['2.22']}},
+                                'x': {'y': {'z': 3.333}}}})
+    assert e.raw_dict() == {'my_value': [2.22], 'another_value': '3.333'}
+
+    e = from_env(E, {'a': {'b': {'c': ['1.11', '2.', 3.7]}},
+                      'x': {'y': {'z': 5.55}}})
+    assert e.raw_dict() == {'my_value': [1.11, 2.0, 3.7], 'another_value': '5.55'}
+
+    e = from_env(E, {'a': {'b': {'z': '1.11'}}})
+    assert e == E(my_value=[], another_value=None)
+
+    with pytest.raises(ParseError) as e:
+        _ = from_env(E, {'a': []})
+    assert str(e.value.base_error) == 'Invalid path'
+
+
+def test_env_alias_path_with_multiple_paths():
+    class E2(EnvWizard):
+        my_value: float = AliasPath('a.b.c', 'x.y.z[0]')
+
+    e = E2(my_value='3.21')
+    assert e.raw_dict() == {'my_value': 3.21}
+
+    e = E2(__env__={'mapping': {'a': {'b': {'c': '2.22'}}}})
+    assert e.raw_dict() == {'my_value': 2.22}
+
+    e = from_env(E2, {'a': {'b': {'c': '1.11'}}})
+    assert e.raw_dict() == {'my_value': 1.11}
+
+    e = from_env(E2, {'x': {'y': {'z': ['3.33', '4.44']}}})
+    assert e == E2(my_value=3.33)
+
+    with pytest.raises(ParseError) as e:
+        _ = from_env(E2, {'a': []})
+    assert str(e.value.base_error) == 'Invalid path'

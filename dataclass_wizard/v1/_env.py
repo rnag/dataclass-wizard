@@ -39,7 +39,7 @@ from ..type_def import T, JSONObject, dataclass_transform
 from ..utils.dataclass_compat import (_dataclass_needs_refresh,
                                       _set_new_attribute)
 from ..utils.function_builder import FunctionBuilder
-from ..utils.object_path import v1_safe_get
+from ..utils.object_path import v1_env_safe_get
 from ..utils.string_conv import possible_env_vars
 from ..utils.typing_compat import (eval_forward_ref_if_needed)
 
@@ -293,7 +293,7 @@ def load_func_for_dataclass(
         aliases = None
 
     if has_alias_paths:
-        new_locals['safe_get'] = v1_safe_get
+        new_locals['safe_get'] = v1_env_safe_get
 
     add_body_lines = cls_init_fields or has_catch_all
 
@@ -351,19 +351,6 @@ def load_func_for_dataclass(
                 fn_gen.add_line('env = __pre_from_dict__(env)')
 
             fn_gen.add_line('_vars = None')
-            # with fn_gen.if_('_secrets_dir'):
-            #     fn_gen.add_line('Env.update_with_secret_values(_secrets_dir)')
-            #
-            # # update environment with values in the "dot env" files as needed.
-            # if _meta_env_file:
-            #     fn = fn_gen.elif_
-            #     _globals['_dotenv_values'] = Env.dotenv_values(_meta_env_file)
-            #     with fn_gen.if_('_env_file is None'):
-            #         fn_gen.add_line('Env.update_with_dotenv(dotenv_values=_dotenv_values)')
-            # else:
-            #     fn = fn_gen.if_
-            # with fn('_env_file'):
-            #     fn_gen.add_line('Env.update_with_dotenv(_env_file)')
 
             with fn_gen.try_():
 
@@ -386,48 +373,42 @@ def load_func_for_dataclass(
 
                     f_assign = f'field={name!r}; {val}={name}'
 
+                    condition = [val_is_found]
+
                     if (has_alias_paths
                             and (paths := field_to_paths.get(name)) is not None):
 
                         if len(paths) == 1:
-                            path = paths[0]
+                            first_key, *path = paths[0]
 
                             # add the first part (top-level key) of the path
                             if set_aliases:
-                                aliases.add(path[0])
+                                aliases.add(first_key)
 
-                            f_assign = f'field={name!r}; {val}=safe_get(env, {path!r}, {not has_default})'
+                            condition.append(
+                                f'({val} := safe_get(env, {first_key!r}, {path!r}, {not has_default})) is not MISSING'
+                            )
                         else:
-                            fn_gen.add_line(f_assign)
-                            f_assign = None
-
-                            condition = [val_is_found]
                             last_idx = len(paths) - 1
 
                             for k, path in enumerate(paths):
+                                first_key, *path = path
 
                                 # add the first part (top-level key) of each path
                                 if set_aliases:
-                                    aliases.add(path[0])
+                                    aliases.add(first_key)
 
                                 if k == last_idx:
                                     condition.append(
-                                        f'({val} := safe_get(env, {path!r}, {not has_default})) is not MISSING')
+                                        f'({val} := safe_get(env, {first_key!r}, {path!r}, {not has_default})) is not MISSING')
                                 else:
                                     condition.append(
-                                        f'({val} := safe_get(env, {path!r}, False)) is not MISSING')
-
-                            if len(condition) > 1:
-                                val_is_found = '(' + '\n     or '.join(condition) + ')'
-                            else:
-                                val_is_found = condition
+                                        f'({val} := safe_get(env, {first_key!r}, {path!r}, False)) is not MISSING')
 
                         # TODO raise some useful message like (ex. on IndexError):
                         #       Field "my_str" of type tuple[float, str] in A2 has invalid value ['123']
 
                     else:
-                        condition = [val_is_found]
-
                         if (check_env_vars
                             and (_initial_env_vars := field_to_env_vars.get(name)) is not None):
                             if len(_initial_env_vars) == 1:
@@ -463,10 +444,10 @@ def load_func_for_dataclass(
                             # add possible JSON keys
                             aliases.update(_aliases)
 
-                        if len(condition) > 1:
-                            val_is_found = '(' + '\n     or '.join(condition) + ')'
-                        else:
-                            val_is_found = condition[0]
+                    if len(condition) > 1:
+                        val_is_found = '(' + '\n     or '.join(condition) + ')'
+                    else:
+                        val_is_found = condition[0]
 
                     string = generate_field_code(cls_loader, extras, f, i)
 
@@ -512,22 +493,22 @@ def load_func_for_dataclass(
             else:
                 fn_gen.add_line(f'self.{catch_all_field_stripped} = {{}} if len(env) == i else {catch_all_def}')
 
-        elif set_aliases:  # warn / raise on unknown key
-            line = 'extra_keys = set(env) - aliases'
-
-            with fn_gen.if_('len(env) != i'):
-                fn_gen.add_line(line)
-                if should_raise:
-                    # Raise an error here (if needed)
-                    new_locals['UnknownKeysError'] = UnknownKeysError
-                    fn_gen.add_line('raise UnknownKeysError(extra_keys, env, cls, fields) from None')
-                elif should_warn:
-                    # Show a warning here
-                    new_locals['LOG'] = LOG
-                    fn_gen.add_line(r"LOG.warning('Found %d unknown keys %r not mapped to the dataclass schema.\n"
-                                    r"  Class: %r\n  Dataclass fields: %r', "
-                                    "len(extra_keys), extra_keys, "
-                                    "cls.__qualname__, [f.name for f in fields])")
+        # elif set_aliases:  # warn / raise on unknown key
+        #     line = 'extra_keys = set(env) - aliases'
+        #
+        #     with fn_gen.if_('len(env) != i'):
+        #         fn_gen.add_line(line)
+        #         if should_raise:
+        #             # Raise an error here (if needed)
+        #             new_locals['UnknownKeysError'] = UnknownKeysError
+        #             fn_gen.add_line('raise UnknownKeysError(extra_keys, env, cls, fields) from None')
+        #         elif should_warn:
+        #             # Show a warning here
+        #             new_locals['LOG'] = LOG
+        #             fn_gen.add_line(r"LOG.warning('Found %d unknown keys %r not mapped to the dataclass schema.\n"
+        #                             r"  Class: %r\n  Dataclass fields: %r', "
+        #                             "len(extra_keys), extra_keys, "
+        #                             "cls.__qualname__, [f.name for f in fields])")
 
         # Does this class have a post-init function?
         if has_post_init:

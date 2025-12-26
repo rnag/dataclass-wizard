@@ -7,6 +7,7 @@ __all__ = ['TRUTHY_VALUES',
            'as_time_v1',
            'as_timedelta',
            'datetime_to_timestamp',
+           'as_collection_v1',
            'as_list_v1',
            'as_dict_v1',
            ]
@@ -285,6 +286,35 @@ def _csv_split(s: str, sep: str) -> list[str]:
     # Note: csv expects 1-char delimiter; enforce at Meta level.
     row = next(csv.reader([s], delimiter=sep, skipinitialspace=True))
     return row
+
+
+def as_collection_v1(
+    v: Any,
+    *,
+    strip: bool = True,
+) -> Any:
+    """
+    If v is a str:
+      - If it looks like JSON array or dictionary: parse JSON (must be valid)
+    Otherwise return v unchanged.
+    """
+    if not isinstance(v, str):
+        return v
+
+    s = v.strip() if strip else v
+    if not s:
+        return []
+
+    if _looks_like_json(s, strip):
+        try:
+            out = loads(s)
+        except JSONDecodeError as e:
+            raise ValueError(f'Invalid JSON for collection value: {s!r}') from e
+        if not isinstance(out, (list, dict)):
+            raise ValueError(f'Expected JSON array or dictionary for value, got {type(out).__name__}')
+        return out
+
+    return s
 
 
 def as_list_v1(
