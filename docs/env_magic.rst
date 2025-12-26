@@ -11,6 +11,17 @@ Additionally, :class:`EnvWizard` supports type hinting and automatically applies
 
    These docs are inspired by and adapted from Pydantic's `Settings Management`_ documentation.
 
+.. important::
+
+   ``EnvWizard`` v1 introduces explicit environment precedence,
+   nested dataclass support, and a new alias model.
+
+   v1 is **opt-in** and documented separately.
+
+   See:
+     - :doc:`EnvWizard v1 overview <env_magic_v1>`
+     - :doc:`v0 → v1 migration guide <envwizard_v1_migration>`
+
 Key Features
 ------------
 - **Auto Mapping**: Seamlessly maps environment variables to dataclass fields, using field names or aliases.
