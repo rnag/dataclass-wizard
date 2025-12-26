@@ -3,8 +3,10 @@ Pulling some functions removed in recent versions of Python into the module for 
 All function names and bodies are left exactly as they were prior to being removed.
 """
 
-from dataclasses import MISSING, is_dataclass, fields
+from dataclasses import MISSING, is_dataclass, fields, dataclass
 from types import FunctionType
+
+from ..constants import PY310_OR_ABOVE
 
 
 def _set_qualname(cls, value):
@@ -72,3 +74,22 @@ def _dataclass_needs_refresh(cls) -> bool:
     # If class declares annotated fields not present in dataclass fields,
     # the dataclass metadata is stale.
     return not annotated.issubset(dc_fields)
+
+
+if PY310_OR_ABOVE:
+    def _apply_env_wizard_dataclass(cls, dc_kwargs):
+        # noinspection PyArgumentList
+        return dataclass(
+            cls,
+            init=False,
+            kw_only=True,
+            **dc_kwargs,
+        )
+else:  # Python 3.9: no `kw_only`
+    # noinspection PyArgumentList
+    def _apply_env_wizard_dataclass(cls, dc_kwargs):
+        return dataclass(
+            cls,
+            init=False,
+            **dc_kwargs,
+        )

@@ -36,7 +36,8 @@ from ..loader_selection import get_loader, asdict
 from ..log import LOG, enable_library_debug_logging
 from ..type_def import T, JSONObject, dataclass_transform
 # noinspection PyProtectedMember
-from ..utils.dataclass_compat import (_dataclass_needs_refresh,
+from ..utils.dataclass_compat import (_apply_env_wizard_dataclass,
+                                      _dataclass_needs_refresh,
                                       _set_new_attribute)
 from ..utils.function_builder import FunctionBuilder
 from ..utils.object_path import v1_env_safe_get
@@ -111,12 +112,7 @@ class EnvWizard:
         # Apply the @dataclass decorator.
         if _apply_dataclass and _dataclass_needs_refresh(cls):
             # noinspection PyArgumentList
-            dataclass(
-                cls,
-                init=False,
-                kw_only=True,
-                **dc_kwargs,
-            )
+            _apply_env_wizard_dataclass(cls, dc_kwargs)
 
         load_meta_kwargs = {'v1': True, 'v1_pre_decoder': _pre_decoder}
 
