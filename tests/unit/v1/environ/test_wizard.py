@@ -11,9 +11,11 @@ import pytest
 
 import dataclass_wizard.bases_meta
 from dataclass_wizard.class_helper import get_meta
+from dataclass_wizard.constants import PY311_OR_ABOVE
 from dataclass_wizard.errors import MissingVars, ParseError, MissingFields
 from dataclass_wizard import EnvWizard as EnvWizardV0, DataclassWizard
 from dataclass_wizard.v1 import Alias, EnvWizard, Env
+from tests._typing import PY310_OR_ABOVE
 
 from ..utils_env import from_env, envsafe
 
@@ -33,6 +35,7 @@ def test_v1_enabled_with_v0_base_class_raises_error():
             my_value: str
 
 
+@pytest.mark.skipif(not PY310_OR_ABOVE, reason='Requires Python 3.10 or higher')
 def test_envwizard_nested_envwizard_from_env_and_instance_passthrough():
     class Child(EnvWizard):
         x: int
@@ -56,6 +59,7 @@ def test_envwizard_nested_envwizard_from_env_and_instance_passthrough():
     assert p2.child.x == 123
 
 
+@pytest.mark.skipif(not PY310_OR_ABOVE, reason='Requires Python 3.10 or higher')
 def test_dataclasswizard_nested_envwizard_from_dict():
     class Child(EnvWizard):
         x: int

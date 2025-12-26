@@ -3670,7 +3670,7 @@ def test_dataclass_wizard_automatically_applies_dataclass_decorator():
     assert t.my_field == 'test'
     assert t.my_bool
 
-    with pytest.raises(TypeError, match=r".*Test\.__init__\(\) missing 1 required positional argument: 'my_field'"):
+    with pytest.raises(TypeError, match=r"__init__\(\) missing 1 required positional argument: 'my_field'"):
         Test()
 
     with pytest.raises(MissingFields, match=r'.*Test\.__init__\(\)` missing required fields') as e:
