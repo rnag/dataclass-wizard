@@ -197,7 +197,7 @@ def get_loader(class_or_instance=None, create=True,
         cls_to_loader = CLASS_TO_V1_LOADER
         if base_cls is None:
             if env:
-                from .v1.env import LoadMixin as V1_EnvLoadMixin
+                from .v1._env import LoadMixin as V1_EnvLoadMixin
                 base_cls = V1_EnvLoadMixin
             else:
                 from .v1.loaders import LoadMixin as V1_LoadMixin

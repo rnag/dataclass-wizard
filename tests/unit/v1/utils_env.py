@@ -8,7 +8,7 @@ from dataclass_wizard.v1 import env_config
 
 
 if TYPE_CHECKING:
-    from dataclass_wizard.v1.env import EnvInit
+    from dataclass_wizard.v1._env import EnvInit
     T = TypeVar('T')
 
 

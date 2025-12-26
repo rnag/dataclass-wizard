@@ -1,10 +1,11 @@
 from collections import deque
+from dataclasses import field
 from datetime import datetime, date, timezone
 from typing import Optional, Union, NamedTuple, Literal
 
 import pytest
 
-from dataclass_wizard import DataclassWizard
+from dataclass_wizard import DataclassWizard, CatchAll
 from dataclass_wizard.errors import ParseError
 from dataclass_wizard.v1 import Alias, EnvWizard, env_config
 
@@ -225,3 +226,53 @@ def test_env_bytearray_from_bytes_and_list():
 
     assert C(__env__=env_config(mapping={'B': b'abc'})).b == bytearray(b'abc')
     assert C(__env__=env_config(mapping={'B': [1, 2, 3]})).b == bytearray([1, 2, 3])
+
+
+def test_env_wizard_with_no_init_fields():
+    """Test EnvWizard` subclass with no *init-only *dataclass fields."""
+    class E1(EnvWizard):
+        ...
+
+    assert E1().raw_dict() == {}
+
+    class E2(EnvWizard):
+        my_field: str = field(init=False)
+
+        def __post_init__(self, __env__=None):
+            self.my_field = '123'
+
+    assert E2().raw_dict() == {'my_field': '123'}
+
+
+def test_env_wizard_with_catch_all():
+    class E(EnvWizard):
+        field: CatchAll = None
+
+    class MyDict(dict):
+        def __bool__(self):
+            return True
+
+    e = E(__env__={'mapping': MyDict()})
+    assert e.field is None
+    assert e.to_dict() == {}
+
+    e = from_env(E, {'k1': 'v1', 'k2': ['v2']})
+    assert e.to_dict() == e.field == {'k1': 'v1', 'k2': '["v2"]'}
+
+    class E(EnvWizard):
+        field: CatchAll
+
+    e = from_env(E, {'k1': 'v1', 'k2': ['v2']})
+    assert e.to_dict() == e.field == {'k1': 'v1', 'k2': '["v2"]'}
+
+    class E(EnvWizard):
+        my_int: int
+        extras: CatchAll
+
+    e = from_env(E, {'MY_INT': '123',
+                     'k1': 'v1',
+                     'k2': ['v2']})
+
+    assert e.extras == {'k1': 'v1', 'k2': '["v2"]'}
+    assert e.raw_dict() == {'my_int': 123, 'extras': {'k1': 'v1', 'k2': '["v2"]'}}
+    assert e.to_dict() == {'my_int': 123, 'k1': 'v1', 'k2': '["v2"]'}

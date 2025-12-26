@@ -42,5 +42,4 @@ from .models import (Alias,
                      UTCDateTimePattern,
                      UTCTimePattern)
 
-# from .environ import EnvWizard
-from .env import EnvWizard, env_config
+from ._env import EnvWizard, env_config

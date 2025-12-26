@@ -1,7 +1,7 @@
 from os import PathLike
 from typing import Sequence
 
-from .env import E
+from ._env import E
 
 
 SecretsDir = str | PathLike[str]

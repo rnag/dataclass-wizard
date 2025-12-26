@@ -4,8 +4,11 @@ import json
 import logging
 import os
 from collections import ChainMap
-from dataclasses import dataclass, is_dataclass, Field, MISSING
+from dataclasses import dataclass, Field, MISSING
+# noinspection PyUnresolvedReferences,PyProtectedMember
+from dataclasses import _FIELD_INITVAR, _POST_INIT_NAME
 from typing import (Any, Callable, Mapping, TYPE_CHECKING)
+
 from .enums import EnvKeyStrategy, EnvPrecedence
 from .loaders import LoadMixin as V1LoadMixin
 from .models import Extras, TypeInfo, SEQUENCE_ORIGINS, MAPPING_ORIGINS
@@ -41,7 +44,7 @@ from ..utils.string_conv import possible_env_vars
 from ..utils.typing_compat import (eval_forward_ref_if_needed)
 
 if TYPE_CHECKING:
-    from .env import EnvInit, E_
+    from ._env import EnvInit, E_
 
 
 def env_config(**kw):
@@ -112,7 +115,7 @@ class EnvWizard:
                 cls,
                 init=False,
                 kw_only=True,
-                **dc_kwargs
+                **dc_kwargs,
             )
 
         load_meta_kwargs = {'v1': True, 'v1_pre_decoder': _pre_decoder}
@@ -168,8 +171,10 @@ def load_func_for_dataclass(
     cls_init_field_names = dataclass_init_field_names(cls)
 
     field_to_default = dataclass_field_to_default(cls)
-
     has_defaults = True if field_to_default else False
+
+    # Does this class have a post-init function?
+    has_post_init = hasattr(cls, _POST_INIT_NAME)
 
     # Get the loader for the class, or create a new one as needed.
     cls_loader = get_loader(cls, base_cls=loader_cls or LoadMixin, v1=True)
@@ -182,40 +187,40 @@ def load_func_for_dataclass(
     # Get the meta config for the class, or the default config otherwise.
     meta = get_meta(cls, base_meta_cls)
 
-    if extras is None:  # we are being run for the main dataclass
-        # If the `recursive` flag is enabled and a Meta config is provided,
-        # apply the Meta recursively to any nested classes.
-        #
-        # Else, just use the base `AbstractMeta`.
-        config: META = meta if meta.recursive else base_meta_cls
+    # if extras is None:  # we are being run for the main dataclass
+    # If the `recursive` flag is enabled and a Meta config is provided,
+    # apply the Meta recursively to any nested classes.
+    #
+    # Else, just use the base `AbstractMeta`.
+    config: META = meta if meta.recursive else base_meta_cls
 
-        # Initialize the FuncBuilder
-        fn_gen = FunctionBuilder()
+    # Initialize the FuncBuilder
+    fn_gen = FunctionBuilder()
 
-        new_locals = {
-            'cls': cls,
-            'fields': fields,
-        }
+    new_locals = {
+        'cls': cls,
+        'fields': fields,
+    }
 
-        # noinspection PyTypeChecker
-        extras: Extras = {
-            'config': config,
-            'cls': cls,
-            'cls_name': cls_name,
-            'locals': new_locals,
-            'recursion_guard': {cls: fn_name},
-            'fn_gen': fn_gen,
-        }
+    # noinspection PyTypeChecker
+    extras: Extras = {
+        'config': config,
+        'cls': cls,
+        'cls_name': cls_name,
+        'locals': new_locals,
+        'recursion_guard': {cls: fn_name},
+        'fn_gen': fn_gen,
+    }
 
-        _globals = {
-            'os': os,
-            'ChainMap': ChainMap,
-            'MISSING': MISSING,
-            'ParseError': ParseError,
-            'MissingVars': MissingVars,
-            'add': _add_missing_var,
-            're_raise': re_raise,
-        }
+    _globals = {
+        'os': os,
+        'ChainMap': ChainMap,
+        'MISSING': MISSING,
+        'ParseError': ParseError,
+        'MissingVars': MissingVars,
+        'add': _add_missing_var,
+        're_raise': re_raise,
+    }
 
     # we are being run for a nested dataclass
     # NOTE: I don't believe this path exists, since `v1.loaders.from_dict`
@@ -290,6 +295,8 @@ def load_func_for_dataclass(
     if has_alias_paths:
         new_locals['safe_get'] = v1_safe_get
 
+    add_body_lines = cls_init_fields or has_catch_all
+
     _env_defaults: EnvInit = {}
     if _env_file := meta.env_file:
         _env_defaults['file'] = _env_file
@@ -306,58 +313,57 @@ def load_func_for_dataclass(
                    '*']
 
     with fn_gen.function(fn_name, init_params, MISSING, new_locals):
-        fn_gen.add_line('cfg = _env_defaults if __env__ is None else _env_defaults | __env__')
-        fn_gen.add_line("reload = cfg.get('reload', False)")
-        fn_gen.add_line("env_file = cfg.get('file')")
-        fn_gen.add_line("secrets_dir = cfg.get('secrets_dir')")
-        fn_gen.add_line("pfx = cfg.get('prefix', '')")
-        # Need to create a separate dictionary to copy over the constructor
-        # args, as we don't want to mutate the original dictionary object.
-        if pre_assign:
-            fn_gen.add_line('i = 0')
+        if add_body_lines:
+            fn_gen.add_line('cfg = _env_defaults if __env__ is None else _env_defaults | __env__')
+            fn_gen.add_line("reload = cfg.get('reload', False)")
+            fn_gen.add_line("env_file = cfg.get('file')")
+            fn_gen.add_line("secrets_dir = cfg.get('secrets_dir')")
+            fn_gen.add_line("pfx = cfg.get('prefix', '')")
+            # Need to create a separate dictionary to copy over the constructor
+            # args, as we don't want to mutate the original dictionary object.
+            if pre_assign:
+                fn_gen.add_line('i = 0')
 
-        env_map_assign = "cfg.get('mapping') or os.environ"
-        if env_precedence is EnvPrecedence.ENV_ONLY:
-            fn_gen.add_line(f'env = {env_map_assign}')
-        else:
-            fn_gen.add_line(f'env_map = {env_map_assign}')
+            env_map_assign = "cfg.get('mapping') or os.environ"
+            if env_precedence is EnvPrecedence.ENV_ONLY:
+                fn_gen.add_line(f'env = {env_map_assign}')
+            else:
+                fn_gen.add_line(f'env_map = {env_map_assign}')
 
-            order = _PRECEDENCE_ORDER[env_precedence]
+                order = _PRECEDENCE_ORDER[env_precedence]
 
-            fn_gen.add_line('maps = []')
-            fn_gen.add_line(f'# precedence: {env_precedence.value}')
-            for src in order:
-                if src == 'secrets':
-                    with fn_gen.if_('secrets_dir is not None'):
-                        fn_gen.add_line('maps.append(cls._dcw_env_cache_secrets(secrets_dir, reload=reload))')
-                elif src == 'dotenv':
-                    with fn_gen.if_('env_file'):
-                        fn_gen.add_line('maps.append(cls._dcw_env_cache_dotenv(env_file, reload=reload))')
-                elif src == 'env':
-                    fn_gen.add_line('maps.append(env_map)')
+                fn_gen.add_line('maps = []')
+                fn_gen.add_line(f'# precedence: {env_precedence.value}')
+                for src in order:
+                    if src == 'secrets':
+                        with fn_gen.if_('secrets_dir is not None'):
+                            fn_gen.add_line('maps.append(cls._dcw_env_cache_secrets(secrets_dir, reload=reload))')
+                    elif src == 'dotenv':
+                        with fn_gen.if_('env_file'):
+                            fn_gen.add_line('maps.append(cls._dcw_env_cache_dotenv(env_file, reload=reload))')
+                    elif src == 'env':
+                        fn_gen.add_line('maps.append(env_map)')
 
-            fn_gen.add_line('env = env_map if len(maps) == 1 else ChainMap(*maps)')
+                fn_gen.add_line('env = env_map if len(maps) == 1 else ChainMap(*maps)')
 
-        if (_pre_from_dict := getattr(cls, '_pre_from_dict', None)) is not None:
-            new_locals['__pre_from_dict__'] = _pre_from_dict
-            fn_gen.add_line('env = __pre_from_dict__(env)')
+            if (_pre_from_dict := getattr(cls, '_pre_from_dict', None)) is not None:
+                new_locals['__pre_from_dict__'] = _pre_from_dict
+                fn_gen.add_line('env = __pre_from_dict__(env)')
 
-        fn_gen.add_line('_vars = None')
-        # with fn_gen.if_('_secrets_dir'):
-        #     fn_gen.add_line('Env.update_with_secret_values(_secrets_dir)')
-        #
-        # # update environment with values in the "dot env" files as needed.
-        # if _meta_env_file:
-        #     fn = fn_gen.elif_
-        #     _globals['_dotenv_values'] = Env.dotenv_values(_meta_env_file)
-        #     with fn_gen.if_('_env_file is None'):
-        #         fn_gen.add_line('Env.update_with_dotenv(dotenv_values=_dotenv_values)')
-        # else:
-        #     fn = fn_gen.if_
-        # with fn('_env_file'):
-        #     fn_gen.add_line('Env.update_with_dotenv(_env_file)')
-
-        if cls_init_fields:
+            fn_gen.add_line('_vars = None')
+            # with fn_gen.if_('_secrets_dir'):
+            #     fn_gen.add_line('Env.update_with_secret_values(_secrets_dir)')
+            #
+            # # update environment with values in the "dot env" files as needed.
+            # if _meta_env_file:
+            #     fn = fn_gen.elif_
+            #     _globals['_dotenv_values'] = Env.dotenv_values(_meta_env_file)
+            #     with fn_gen.if_('_env_file is None'):
+            #         fn_gen.add_line('Env.update_with_dotenv(dotenv_values=_dotenv_values)')
+            # else:
+            #     fn = fn_gen.if_
+            # with fn('_env_file'):
+            #     fn_gen.add_line('Env.update_with_dotenv(_env_file)')
 
             with fn_gen.try_():
 
@@ -370,7 +376,7 @@ def load_func_for_dataclass(
                 for i, f in enumerate(cls_init_fields):
                     name = f.name
                     preferred_env_var = f"f'{{pfx}}{name}'"
-                    has_default = name in field_to_default
+                    has_default = has_defaults and name in field_to_default
                     val_is_found = _val_is_found
 
                     tp_var = f'tp_{i}'
@@ -477,9 +483,6 @@ def load_func_for_dataclass(
                                 fn_gen.add_line(f'self.{name} = {default_factory_name}()')
 
                     else:
-                        # TODO confirm this is ok
-                        # vars_for_fields.append(f'{name}={var}')
-
                         with fn_gen.if_(val_is_found):
                             fn_gen.add_line(f'{pre_assign}self.{name} = {string}')
                         with fn_gen.else_():
@@ -494,7 +497,12 @@ def load_func_for_dataclass(
             with fn_gen.except_(Exception, 'e', ParseError):
                 fn_gen.add_line("re_raise(e, cls, env, fields, field, locals().get('v1'))")
 
-        # TODO
+        elif not has_post_init:
+            fn_gen.add_line('pass')
+
+        if not cls_init_fields:
+            init_params.pop()  # remove trailing `*` in function params
+
         if has_catch_all:
             catch_all_def = f'{{k: env[k] for k in env if k not in aliases}}'
 
@@ -502,9 +510,7 @@ def load_func_for_dataclass(
                 with fn_gen.if_('len(env) != i'):
                     fn_gen.add_line(f'self.{catch_all_field_stripped} = {catch_all_def}')
             else:
-                var = f'__{catch_all_field_stripped}'
-                fn_gen.add_line(f'{var} = {{}} if len(env) == i else {catch_all_def}')
-                # vars_for_fields.insert(catch_all_idx, var)
+                fn_gen.add_line(f'self.{catch_all_field_stripped} = {{}} if len(env) == i else {catch_all_def}')
 
         elif set_aliases:  # warn / raise on unknown key
             line = 'extra_keys = set(env) - aliases'
@@ -522,6 +528,13 @@ def load_func_for_dataclass(
                                     r"  Class: %r\n  Dataclass fields: %r', "
                                     "len(extra_keys), extra_keys, "
                                     "cls.__qualname__, [f.name for f in fields])")
+
+        # Does this class have a post-init function?
+        if has_post_init:
+            # noinspection PyUnresolvedReferences,PyProtectedMember
+            params_str = ','.join(f.name for f in fields
+                                  if f._field_type is _FIELD_INITVAR)
+            fn_gen.add_line(f'self.{_POST_INIT_NAME}({params_str})')
 
     # Save the load function for the main dataclass, so we don't need to run
     # this logic each time.

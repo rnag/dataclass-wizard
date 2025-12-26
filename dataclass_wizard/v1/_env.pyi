@@ -24,6 +24,7 @@ def env_config(**kw: Unpack[EnvInit]) -> EnvInit:
 
 
 @dataclass_transform(kw_only_default=True)
+@dataclass()
 class EnvWizard:
     __slots__ = ()
     __env__: InitVar[EnvInit | None] = None
