@@ -8,17 +8,53 @@ History
 EnvWizard v1 (opt-in)
 ~~~~~~~~~~~~~~~~~~~~~
 
-- Introduced explicit environment precedence
-- Added nested dataclass support for env loading
-- Added v1-specific aliasing (load vs dump)
+EnvWizard v1 introduces a new, explicit environment-loading engine with
+predictable behavior and expanded feature support. v1 is **opt-in only**
+and does not affect existing users unless enabled.
+
+Highlights:
+
+- Explicit environment precedence (env / dotenv / secrets)
+- First-class nested dataclass support for env loading
+- Separate alias models for load vs dump
 - Improved error diagnostics and debug logging
+- Full support for dotenv files and secrets directories
 
-Internal / Refactors
-~~~~~~~~~~~~~~~~~~~~
+New v1 features:
 
-- Refactored env loader pipeline
-- Added v1 test coverage (90%+)
-- No breaking changes without v1 opt-in
+- Environment precedence is now configurable and explicit
+- Support for nested ``EnvWizard`` dataclasses
+- New aliasing model:
+  - ``v1_field_to_env_load`` (load-only)
+  - ``v1_field_to_alias_dump`` (dump-only)
+- Added ``Env(...)`` and ``Alias(env=...)`` helpers for field-level env configuration
+- Added ``v1_pre_decoder`` to decode JSON or delimited strings into ``dict`` / ``list``
+- Cached secrets and dotenv paths for improved performance
+- v1 supports ``__post_init__()`` in generated ``EnvWizard.__init__``
+
+Helpers and APIs:
+
+- Added ``env_config`` for optional ``TypedDict``-style typing of ``__env__``
+- ``EnvWizard.dict()`` (v0) is now ``EnvWizard.raw_dict()`` in v1
+- Optimized helpers: ``as_bool``, ``as_int``, ``as_str``
+- Added helpers: ``as_list``, ``as_dict``
+
+Internal Changes and Fixes
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- Fixed invalid ``.pyi`` output in ``register_type`` (thanks to :user:`GRcharles`, :pr:`234`)
+- Added syntax checks to pre-commit and type checks to CI (:pr:`234`)
+- Fixed lazy codegen inheritance poisoning (:issue:`209`)
+- v1: Decode ``date`` / ``datetime`` as UTC by default (:issue:`206`)
+- Improved Windows timezone handling via ``tz`` extra (``tzdata`` / ``ZoneInfo``)
+- Improved caching behavior for ``Union`` loaders
+- Fixed multiple codegen and caching edge cases:
+  - ``to_dict`` caching on subclasses
+  - empty dataclass dumpers
+  - ``kw_only`` field handling
+  - FunctionBuilder globals merging
+- Added extensive v1 test coverage (90%+)
+- No breaking changes without explicit v1 opt-in
 
 0.37.0 (2025-12-20)
 -------------------
