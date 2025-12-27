@@ -2,6 +2,14 @@
 History
 =======
 
+0.38.1 (2025-12-26)
+-------------------
+
+**Documentation**
+
+- Streamlined and modernized front-page documentation
+- Improved visibility and guidance for v1 opt-in usage
+
 0.38.0 (2025-12-26)
 -------------------
 
