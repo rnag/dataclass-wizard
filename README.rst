@@ -45,10 +45,8 @@
     MyClass(my_str='20', is_active_tuple=(True, False, True), list_of_int=[1, 2, 3])
 
 .. note::
-  The example above demonstrates automatic type coercion, key casing transforms,
-  and support for nested dataclass structures.
-  ``DataclassWizard`` also auto-applies ``@dataclass`` to subclasses.
-  See the docs for more examples and advanced usage.
+   Automatic type coercion, key casing transforms, nested dataclass support,
+   and automatic ``@dataclass`` application are shown above.
 
 .. contents:: Contents
    :depth: 1
@@ -81,6 +79,108 @@ Early access to **V1** is available! To opt in, simply enable ``v1=True`` in the
     assert a.to_dict() == {"my_str": "test", "version_info": 1.0}
 
 For more information, see the `Field Guide to V1 Opt-in`_.
+
+Quick Examples
+--------------
+
+.. rubric:: JSON De/Serialization
+
+.. code-block:: python3
+
+    from __future__ import annotations  # Optional in Python 3.10+
+
+    from dataclasses import dataclass, field
+    from enum import Enum
+    from datetime import date
+
+    from dataclass_wizard import JSONWizard
+
+
+    @dataclass
+    class Data(JSONWizard):
+        # Use Meta to customize JSON de/serialization
+        class _(JSONWizard.Meta):
+            key_transform_with_dump = 'LISP'  # Transform keys to LISP-case during dump
+
+        a_sample_bool: bool
+        values: list[Inner] = field(default_factory=list)
+
+
+    @dataclass
+    class Inner:
+        # Nested data with optional enums and typed dictionaries
+        vehicle: Car | None
+        my_dates: dict[int, date]
+
+
+    class Car(Enum):
+        SEDAN = 'BMW Coupe'
+        SUV = 'Toyota 4Runner'
+
+
+    # Input JSON-like dictionary
+    my_dict = {
+        'values': [{'vehicle': 'Toyota 4Runner', 'My-Dates': {'123': '2023-01-31'}}],
+        'aSampleBool': 'TRUE'
+    }
+
+    # Deserialize into strongly-typed dataclass instances
+    data = Data.from_dict(my_dict)
+    print((v := data.values[0]).vehicle)  # Prints: <Car.SUV: 'Toyota 4Runner'>
+    assert v.my_dates[123] == date(2023, 1, 31)  # > True
+
+    # Serialize back into pretty-printed JSON
+    print(data.to_json(indent=2))
+
+.. rubric:: Environment Variables (v0)
+
+.. code-block:: python3
+
+    import os
+    from dataclass_wizard import EnvWizard
+
+    os.environ.update({
+        'APP_NAME': 'My App',
+        'MAX_CONNECTIONS': '10',
+        'DEBUG_MODE': 'true'
+    })
+
+    class AppConfig(EnvWizard):
+        app_name: str
+        max_connections: int
+        debug_mode: bool
+
+    config = AppConfig()
+    print(config.app_name)    # My App
+    print(config.debug_mode)  # True
+
+📖 See more `on EnvWizard`_ in the full documentation.
+
+.. rubric:: EnvWizard v1 (Opt-in)
+
+.. code-block:: python
+
+    import os
+    from dataclass_wizard.v1 import EnvWizard, Env
+
+    os.environ.update({
+        'APP_NAME': 'Env Wizard',
+        'DEBUG_MODE': 'true',
+    })
+
+    class AppConfig(EnvWizard):
+        app_name: str
+        debug: bool = Env('DEBUG_MODE')
+
+    config = AppConfig()
+    assert config.app_name == 'Env Wizard'
+    assert config.debug is True
+
+.. important::
+
+   EnvWizard v1 is opt-in and introduces explicit
+   environment precedence, nested dataclass support, and field-level config.
+   See `V1 Env Magic`_ for full details.
 
 Why Dataclass Wizard?
 ---------------------
@@ -182,111 +282,6 @@ Type hooks work with or without inheritance, and integrate seamlessly
 with the v1 code generation engine.
 
 See `Type Hooks`_ for details and examples.
-
-Quick Examples
---------------
-
-.. rubric:: JSON De/Serialization
-
-.. code-block:: python3
-
-    from __future__ import annotations  # Optional in Python 3.10+
-
-    from dataclasses import dataclass, field
-    from enum import Enum
-    from datetime import date
-
-    from dataclass_wizard import JSONWizard
-
-
-    @dataclass
-    class Data(JSONWizard):
-        # Use Meta to customize JSON de/serialization
-        class _(JSONWizard.Meta):
-            key_transform_with_dump = 'LISP'  # Transform keys to LISP-case during dump
-
-        a_sample_bool: bool
-        values: list[Inner] = field(default_factory=list)
-
-
-    @dataclass
-    class Inner:
-        # Nested data with optional enums and typed dictionaries
-        vehicle: Car | None
-        my_dates: dict[int, date]
-
-
-    class Car(Enum):
-        SEDAN = 'BMW Coupe'
-        SUV = 'Toyota 4Runner'
-
-
-    # Input JSON-like dictionary
-    my_dict = {
-        'values': [{'vehicle': 'Toyota 4Runner', 'My-Dates': {'123': '2023-01-31'}}],
-        'aSampleBool': 'TRUE'
-    }
-
-    # Deserialize into strongly-typed dataclass instances
-    data = Data.from_dict(my_dict)
-    print((v := data.values[0]).vehicle)  # Prints: <Car.SUV: 'Toyota 4Runner'>
-    assert v.my_dates[123] == date(2023, 1, 31)  # > True
-
-    # Serialize back into pretty-printed JSON
-    print(data.to_json(indent=2))
-
-.. rubric:: Environment Variables
-
-Easily map environment variables to Python dataclasses:
-
-.. code-block:: python3
-
-    import os
-    from dataclass_wizard import EnvWizard
-
-    os.environ.update({
-        'APP_NAME': 'My App',
-        'MAX_CONNECTIONS': '10',
-        'DEBUG_MODE': 'true'
-    })
-
-    class AppConfig(EnvWizard):
-        app_name: str
-        max_connections: int
-        debug_mode: bool
-
-    config = AppConfig()
-    print(config.app_name)    # My App
-    print(config.debug_mode)  # True
-
-📖 See more `on EnvWizard`_ in the full documentation.
-
-.. rubric:: EnvWizard v1 (Opt-in)
-
-.. code-block:: python
-
-    import os
-    from dataclass_wizard.v1 import EnvWizard, Env
-
-    os.environ.update({
-        'APP_NAME': 'Env Wizard',
-        'DEBUG_MODE': 'true',
-    })
-
-    class AppConfig(EnvWizard):
-        app_name: str
-        debug: bool = Env('DEBUG_MODE')
-
-    config = AppConfig()
-    assert config.app_name == 'Env Wizard'
-    assert config.debug is True
-
-.. important::
-
-   EnvWizard v1 is opt-in and introduces explicit environment precedence,
-   nested dataclass support, and field-level configuration.
-
-   See `V1 Env Magic`_ for full details.
 
 JSON Marshalling
 ----------------
