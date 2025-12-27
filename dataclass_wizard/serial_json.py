@@ -22,7 +22,7 @@ def _str_fn():
 
 
 def _first_declared_attr_in_mro(cls, name: str):
-    'First `name` found in MRO (excluding cls); else None.'
+    """First `name` found in MRO (excluding cls); else None."""
     for base in cls.__mro__[1:]:
         attr = base.__dict__.get(name, MISSING)
         if attr is not MISSING:
