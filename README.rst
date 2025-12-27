@@ -53,7 +53,7 @@
 
    A new **v1 engine** is available as an opt-in, offering explicit
    environment precedence, nested dataclass support, and improved performance.
-   See the `v1-opt-in`_ guide for details.
+   See the `Field Guide to V1 Opt-in`_ for details.
 
 .. contents:: Contents
    :depth: 1
@@ -63,14 +63,14 @@
 Why Dataclass Wizard?
 ---------------------
 
-Dataclass Wizard is a fast, lightweight library for turning Python
-dataclasses into robust serialization schemas.
+Dataclass Wizard helps you turn Python dataclasses into robust,
+high-performance serialization schemas with minimal effort.
 
 - 🚀 Fast — code-generated loaders and dumpers
 - 🪶 Lightweight — pure Python, minimal dependencies
-- 🧙 Flexible — JSON, YAML, TOML, env vars, and more
-- 🧩 Typed — built on Python type hints
-- 🧪 Tested — high test coverage and battle-tested edge cases
+- 🧠 Typed — powered by Python type hints
+- 🧙 Flexible — JSON, YAML, TOML, and environment variables
+- 🧪 Reliable — battle-tested with extensive test coverage
 
 Quick Examples
 --------------
@@ -79,159 +79,96 @@ Quick Examples
 
 .. code-block:: python3
 
-    from __future__ import annotations  # Optional in Python 3.10+
-
-    from dataclasses import dataclass, field
-    from enum import Enum
-    from datetime import date
-
+    from dataclasses import dataclass
     from dataclass_wizard import JSONWizard
-
 
     @dataclass
     class Data(JSONWizard):
-        # Use Meta to customize JSON de/serialization
-        class _(JSONWizard.Meta):
-            key_transform_with_dump = 'LISP'  # Transform keys to LISP-case during dump
+        value: int
 
-        a_sample_bool: bool
-        values: list[Inner] = field(default_factory=list)
+    data = Data.from_dict({"value": "123"})
+    assert data.value == 123
+    print(data.to_json())
 
-
-    @dataclass
-    class Inner:
-        # Nested data with optional enums and typed dictionaries
-        vehicle: Car | None
-        my_dates: dict[int, date]
-
-
-    class Car(Enum):
-        SEDAN = 'BMW Coupe'
-        SUV = 'Toyota 4Runner'
-
-
-    # Input JSON-like dictionary
-    my_dict = {
-        'values': [{'vehicle': 'Toyota 4Runner', 'My-Dates': {'123': '2023-01-31'}}],
-        'aSampleBool': 'TRUE'
-    }
-
-    # Deserialize into strongly-typed dataclass instances
-    data = Data.from_dict(my_dict)
-    print((v := data.values[0]).vehicle)  # Prints: <Car.SUV: 'Toyota 4Runner'>
-    assert v.my_dates[123] == date(2023, 1, 31)  # > True
-
-    # Serialize back into pretty-printed JSON
-    print(data.to_json(indent=2))
-
-.. rubric:: Environment Variables (v0)
+.. rubric:: Environment Variables
 
 .. code-block:: python3
 
     import os
     from dataclass_wizard import EnvWizard
 
-    os.environ.update({
-        'APP_NAME': 'My App',
-        'MAX_CONNECTIONS': '10',
-        'DEBUG_MODE': 'true'
-    })
+    os.environ['DEBUG'] = 'true'
 
-    class AppConfig(EnvWizard):
-        app_name: str
-        max_connections: int
-        debug_mode: bool
+    class Config(EnvWizard):
+        debug: bool
 
-    config = AppConfig()
-    print(config.app_name)    # My App
-    print(config.debug_mode)  # True
-
-📖 See more `on EnvWizard`_ in the full documentation.
+    cfg = Config()
+    assert cfg.debug is True
 
 .. rubric:: EnvWizard v1 (Opt-in)
 
-.. code-block:: python
+.. code-block:: python3
 
     import os
     from dataclass_wizard.v1 import EnvWizard, Env
 
-    os.environ.update({
-        'APP_NAME': 'Env Wizard',
-        'DEBUG_MODE': 'true',
-    })
+    os.environ['DEBUG_MODE'] = 'true'
 
-    class AppConfig(EnvWizard):
-        app_name: str
+
+    class Config(EnvWizard):
         debug: bool = Env('DEBUG_MODE')
 
-    config = AppConfig()
-    assert config.app_name == 'Env Wizard'
-    assert config.debug is True
 
-.. important::
+    cfg = Config()
+    assert cfg.debug is True
 
-   EnvWizard v1 is opt-in and introduces explicit
-   environment precedence, nested dataclass support, and field-level config.
-   See `V1 Env Magic`_ for full details.
+.. tip::
+   EnvWizard v1 introduces explicit environment precedence and nested
+   dataclass support. See `Field Guide to V1 Opt-in`_ for full details.
 
 Installation
 ------------
 
-*Dataclass Wizard* is available on `PyPI`_. You can install it with ``pip``:
+Install from `PyPI`_:
 
 .. code-block:: console
 
-    $ pip install dataclass-wizard
+    pip install dataclass-wizard
 
-Also available on `conda`_ via `conda-forge`_. To install via ``conda``:
+Or via `conda-forge`_:
 
 .. code-block:: console
 
-    $ conda install dataclass-wizard -c conda-forge
+    conda install -c conda-forge dataclass-wizard
 
-This library supports **Python 3.9+**. Support for Python 3.6 – 3.8 was
-available in earlier releases but is no longer maintained, as those
-versions no longer receive security updates.
+Dataclass Wizard supports **Python 3.9+**.
 
-For convenience, the table below outlines the last compatible release
-of *Dataclass Wizard* for unsupported Python versions (3.6 – 3.8):
+.. note::
+   Python 3.6–3.8 users should install the last supported release,
+   ``dataclass-wizard==0.26.1``.
+   See `PyPI`_ for historical versions and the `Changelog`_ for details.
 
-.. list-table::
-   :header-rows: 1
-   :widths: 15 35 15
-
-   * - Python Version
-     - Last Version of ``dataclass-wizard``
-     - Python EOL
-   * - 3.8
-     - 0.26.1_
-     - 2024-10-07
-   * - 3.7
-     - 0.26.1_
-     - 2023-06-27
-   * - 3.6
-     - 0.26.1_
-     - 2021-12-23
-
-.. _0.26.1: https://pypi.org/project/dataclass-wizard/0.26.1/
 .. _PyPI: https://pypi.org/project/dataclass-wizard/
-.. _conda: https://anaconda.org/conda-forge/dataclass-wizard
 .. _conda-forge: https://conda-forge.org/
 .. _Changelog: https://dcw.ritviknag.com/en/latest/history.html
-
-See the package on `PyPI`_ and the `Changelog`_ in the docs for the latest version details.
 
 Wizard Mixins ✨
 ----------------
 
-In addition to ``JSONWizard``, these `Mixin`_ classes simplify common tasks and make your data handling *spellbindingly* efficient:
+In addition to ``JSONWizard``, Dataclass Wizard provides a set of focused
+Mixin_ classes to simplify common serialization tasks:
 
-- 🪄 `EnvWizard`_ — Load environment variables and `.env` files into typed schemas, even supporting secret files (keys as file names).
-- 🎩 `JSONPyWizard`_ — A helper for ``JSONWizard`` that preserves your keys as-is (no camelCase changes).
-- 🔮 `JSONListWizard`_ — Extend ``JSONWizard`` to convert lists into `Container`_ objects.
-- 💼 `JSONFileWizard`_ — Convert dataclass instances to/from local JSON files with ease.
-- 🌳 `TOMLWizard`_ — Map your dataclasses to/from TOML format.
-- 🧙‍♂️ `YAMLWizard`_ — Convert between YAML and dataclass instances using ``PyYAML``.
+- 🪄 `EnvWizard`_ — Load environment variables and ``.env`` files into typed schemas,
+  including support for secret directories.
+- 🎩 `JSONPyWizard`_ — A helper for ``JSONWizard`` that preserves keys as-is
+  (no case transformations).
+- 🔮 `JSONListWizard`_ — Extend ``JSONWizard`` to convert lists into container objects.
+- 💼 `JSONFileWizard`_ — Load and save dataclass instances from local JSON files.
+
+Optional format support:
+
+- 🌳 `TOMLWizard`_ — Map dataclasses to and from TOML.
+- 🧙‍♂️ `YAMLWizard`_ — Convert between YAML and dataclasses using ``PyYAML``.
 
 Supported Types 🧑‍💻
 ---------------------
@@ -1562,7 +1499,6 @@ This package was created with Cookiecutter_ and the `rnag/cookiecutter-pypackage
 .. _dataclasses: https://docs.python.org/3/library/dataclasses.html
 .. _V1 Opt-in documentation for Patterned Date and Time: https://dcw.ritviknag.com/en/latest/common_use_cases/v1_patterned_date_time.html
 .. _`Field Guide to V1 Opt-in`: https://github.com/rnag/dataclass-wizard/wiki/Field-Guide-to-V1-Opt%E2%80%90in
-.. _`v1-opt-in`: https://github.com/rnag/dataclass-wizard/wiki/Field-Guide-to-V1-Opt%E2%80%90in
 .. _V1 Alias: https://dcw.ritviknag.com/en/latest/common_use_cases/v1_alias.html
 .. _Type Hooks: https://dcw.ritviknag.com/en/latest/advanced_usage/type_hooks.html
 .. _`ipaddress.IPv4Address`: https://docs.python.org/3/library/ipaddress.html#ipaddress.IPv4Address
