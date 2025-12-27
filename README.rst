@@ -58,60 +58,41 @@
 ``v1`` Opt-In 🚀
 ----------------
 
+.. note::
+
+   Subclassing ``DataclassWizard`` automatically enables the v1 engine.
+   Other mixins (e.g. ``JSONWizard``) require explicit opt-in.
+
 Early access to **V1** is available! To opt in, simply enable ``v1=True`` in the ``Meta`` settings:
 
 .. code-block:: python3
 
-    from dataclasses import dataclass
-    from dataclass_wizard import JSONPyWizard
+    from dataclass_wizard import DataclassWizard
     from dataclass_wizard.v1 import Alias
 
-    @dataclass
-    class A(JSONPyWizard):
-        class _(JSONPyWizard.Meta):
-            v1 = True
 
+    class A(DataclassWizard):
         my_str: str
-        version_info: float = Alias(load='v-info')
+        version_info: float = Alias(load="v-info")
 
-    # Alternatively, for simple dataclasses that don't subclass `JSONPyWizard`:
-    # LoadMeta(v1=True).bind_to(A)
 
-    a = A.from_dict({'my_str': 'test', 'v-info': '1.0'})
+    a = A.from_dict({"my_str": "test", "v-info": "1.0"})
     assert a.version_info == 1.0
-    assert a.to_dict() == {'my_str': 'test', 'version_info': 1.0}
+    assert a.to_dict() == {"my_str": "test", "version_info": 1.0}
 
 For more information, see the `Field Guide to V1 Opt-in`_.
 
-Performance Improvements
-~~~~~~~~~~~~~~~~~~~~~~~~
+Why Dataclass Wizard?
+---------------------
 
-The upcoming **V1** release brings significant performance improvements in de/serialization. Personal benchmarks show that **V1** can make Dataclass Wizard
-approximately **2x faster** than ``pydantic``!
+Dataclass Wizard is a fast, lightweight library for turning Python
+dataclasses into robust serialization schemas.
 
-While some features are still being refined and fully supported, **v1** positions Dataclass Wizard alongside other high-performance serialization libraries in Python.
-
-Why Use Dataclass Wizard?
--------------------------
-
-Effortlessly handle complex data with one of the *fastest* and *lightweight* libraries available! Perfect for APIs, JSON wrangling, and more.
-
-- 🚀 **Blazing Fast** — One of the fastest libraries out there!
-- 🪶 **Lightweight** — Pure Python, minimal dependencies
-- 👶 Easy Setup — Intuitive, hassle-free
-- ☝️ **Battle-Tested** — Proven reliability with solid test coverage
-- ⚙️ Highly Customizable — Endless de/serialization options to fit your needs
-- 🎉 Built-in Support — JSON, YAML, TOML, and environment/settings management
-- 📦 **Full Python Type Support** — Powered by type hints with full support for native types and ``typing-extensions``
-- 📝 Auto-Generate Schemas — JSON to Dataclass made easy
-
-Key Features
-------------
-
-- 🔄 Flexible (de)serialization — Marshal dataclasses to/from JSON, TOML, YAML, or ``dict`` with ease.
-- 🌿 Environment Magic — Map env vars and ``.env`` files to strongly-typed class fields effortlessly.
-- 🧑‍💻 Field Properties Made Simple — Add properties with default values to your dataclasses.
-- 🧙‍♂️ JSON-to-Dataclass Wizardry — Auto-generate a dataclass schema from any JSON file or string instantly.
+- 🚀 Fast — code-generated loaders and dumpers
+- 🪶 Lightweight — pure Python, minimal dependencies
+- 🧙 Flexible — JSON, YAML, TOML, env vars, and more
+- 🧩 Typed — built on Python type hints
+- 🧪 Tested — high test coverage and battle-tested edge cases
 
 Installation
 ------------
@@ -202,10 +183,10 @@ with the v1 code generation engine.
 
 See `Type Hooks`_ for details and examples.
 
-Usage and Examples
-------------------
+Quick Examples
+--------------
 
-.. rubric:: Seamless JSON De/Serialization with ``JSONWizard``
+.. rubric:: JSON De/Serialization
 
 .. code-block:: python3
 
@@ -254,7 +235,7 @@ Usage and Examples
     # Serialize back into pretty-printed JSON
     print(data.to_json(indent=2))
 
-.. rubric:: Map Environment Variables with ``EnvWizard``
+.. rubric:: Environment Variables
 
 Easily map environment variables to Python dataclasses:
 
@@ -280,70 +261,32 @@ Easily map environment variables to Python dataclasses:
 
 📖 See more `on EnvWizard`_ in the full documentation.
 
-.. rubric:: Dataclass Properties with ``property_wizard``
+.. rubric:: EnvWizard v1 (Opt-in)
 
-Add field properties to your dataclasses with default values using ``property_wizard``:
+.. code-block:: python
 
-.. code-block:: python3
+    import os
+    from dataclass_wizard.v1 import EnvWizard, Env
 
-    from __future__ import annotations  # This can be removed in Python 3.10+
+    os.environ.update({
+        'APP_NAME': 'Env Wizard',
+        'DEBUG_MODE': 'true',
+    })
 
-    from dataclasses import dataclass, field
-    from typing_extensions import Annotated
+    class AppConfig(EnvWizard):
+        app_name: str
+        debug: bool = Env('DEBUG_MODE')
 
-    from dataclass_wizard import property_wizard
+    config = AppConfig()
+    assert config.app_name == 'Env Wizard'
+    assert config.debug is True
 
+.. important::
 
-    @dataclass
-    class Vehicle(metaclass=property_wizard):
-        wheels: Annotated[int | str, field(default=4)]
-        # or, alternatively:
-        #   _wheels: int | str = 4
+   EnvWizard v1 is opt-in and introduces explicit environment precedence,
+   nested dataclass support, and field-level configuration.
 
-        @property
-        def wheels(self) -> int:
-            return self._wheels
-
-        @wheels.setter
-        def wheels(self, value: int | str):
-            self._wheels = int(value)
-
-
-    v = Vehicle()
-    print(v.wheels)  # 4
-    v.wheels = '6'
-    print(v.wheels)  # 6
-
-    assert v.wheels == 6, 'Setter correctly handles type conversion'
-
-📖 For a deeper dive, visit the documentation on `field properties`_.
-
-.. rubric:: Generate Dataclass Schemas with CLI
-
-Quickly generate Python dataclasses from JSON input using the ``wiz-cli`` tool:
-
-.. code-block:: console
-
-    $ echo '{"myFloat": "1.23", "Items": [{"created": "2021-01-01"}]}' | wiz gs - output.py
-
-.. code-block:: python3
-
-    from dataclasses import dataclass
-    from datetime import date
-    from typing import List, Union
-
-    from dataclass_wizard import JSONWizard
-
-    @dataclass
-    class Data(JSONWizard):
-        my_float: Union[float, str]
-        items: List['Item']
-
-    @dataclass
-    class Item:
-        created: date
-
-📖 Check out the full CLI documentation at wiz-cli_.
+   See `V1 Env Magic`_ for full details.
 
 JSON Marshalling
 ----------------
@@ -1647,3 +1590,4 @@ This package was created with Cookiecutter_ and the `rnag/cookiecutter-pypackage
 .. _V1 Alias: https://dcw.ritviknag.com/en/latest/common_use_cases/v1_alias.html
 .. _Type Hooks: https://dcw.ritviknag.com/en/latest/advanced_usage/type_hooks.html
 .. _`ipaddress.IPv4Address`: https://docs.python.org/3/library/ipaddress.html#ipaddress.IPv4Address
+.. _V1 Env Magic: https://dcw.ritviknag.com/en/latest/env_magic_v1.html
