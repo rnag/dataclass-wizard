@@ -1,6 +1,7 @@
 import json
 from dataclasses import dataclass, Field, InitVar
-from typing import Callable, Mapping, dataclass_transform, TypedDict, NotRequired, TypeVar, ClassVar, Collection, AnyStr
+from typing import (Callable, Mapping, dataclass_transform, TypedDict,
+                    NotRequired, TypeVar, ClassVar, Collection, AnyStr)
 
 from .loaders import LoadMixin as V1LoadMixIn
 from .models import Extras
