@@ -2,6 +2,24 @@
 History
 =======
 
+0.38.0 (2025-12-26)
+-------------------
+
+EnvWizard v1 (opt-in)
+~~~~~~~~~~~~~~~~~~~~~
+
+- Introduced explicit environment precedence
+- Added nested dataclass support for env loading
+- Added v1-specific aliasing (load vs dump)
+- Improved error diagnostics and debug logging
+
+Internal / Refactors
+~~~~~~~~~~~~~~~~~~~~
+
+- Refactored env loader pipeline
+- Added v1 test coverage (90%+)
+- No breaking changes without v1 opt-in
+
 0.37.0 (2025-12-20)
 -------------------
 
