@@ -727,8 +727,7 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
 
 
         return (f'({_fromtimestamp}(int({o}), UTC){_date_part} if {o}.isdigit() '
-                f'else {_parse_iso_string}) '
-                f'if {o}.__class__ is str '
+                f'else {_parse_iso_string}) if {o}.__class__ is str '
                 f'else {_as_func}({o}, {_fromtimestamp}, UTC{_opt_cls})')
 
     @staticmethod

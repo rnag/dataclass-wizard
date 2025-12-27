@@ -2,6 +2,13 @@
 History
 =======
 
+0.38.2 (2025-12-27)
+-------------------
+
+**Documentation**
+
+- Improved visibility and guidance for v1 opt-in usage
+
 0.38.1 (2025-12-26)
 -------------------
 

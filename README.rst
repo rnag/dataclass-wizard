@@ -53,7 +53,10 @@
 
    A new **v1 engine** is available as an opt-in, offering explicit
    environment precedence, nested dataclass support, and improved performance.
-   See the `Field Guide to V1 Opt-in`_ for details.
+
+   ``EnvWizard`` v1 adds field-level configuration on top of these improvements.
+
+   See the `Field Guide to V1 Opt-in`_ and the `hands-on quickstart`_ for details.
 
 .. contents:: Contents
    :depth: 1
@@ -1499,6 +1502,7 @@ This package was created with Cookiecutter_ and the `rnag/cookiecutter-pypackage
 .. _dataclasses: https://docs.python.org/3/library/dataclasses.html
 .. _V1 Opt-in documentation for Patterned Date and Time: https://dcw.ritviknag.com/en/latest/common_use_cases/v1_patterned_date_time.html
 .. _`Field Guide to V1 Opt-in`: https://github.com/rnag/dataclass-wizard/wiki/Field-Guide-to-V1-Opt%E2%80%90in
+.. _hands-on quickstart: https://github.com/rnag/dataclass-wizard/wiki/EnvWizard-v1-%E2%80%94-Quickstart-(Opt%E2%80%90In)
 .. _V1 Alias: https://dcw.ritviknag.com/en/latest/common_use_cases/v1_alias.html
 .. _Type Hooks: https://dcw.ritviknag.com/en/latest/advanced_usage/type_hooks.html
 .. _`ipaddress.IPv4Address`: https://docs.python.org/3/library/ipaddress.html#ipaddress.IPv4Address
