@@ -9,20 +9,27 @@ from .constants import TAG
 from .decorators import cached_class_property
 from .enums import DateTimeTo, LetterCase, LetterCasePriority
 from .models import Condition
-from .type_def import FrozenKeys, EnvFileType
-
 
 if TYPE_CHECKING:
-    from .v1.enums import KeyAction, KeyCase, DateTimeTo as V1DateTimeTo
-    _ALLOWED_MODES = Literal['runtime', 'v1_codegen']
-    V1HookFn = Callable[..., Any]
-    V1TypeToHook = Mapping[type, Union[tuple[_ALLOWED_MODES, V1HookFn], V1HookFn, None]]
+    from .v1.enums import KeyAction, KeyCase, DateTimeTo as V1DateTimeTo, EnvKeyStrategy, EnvPrecedence
+    from .v1._path_util import EnvFilePaths, SecretsDirs
+    from .bases_meta import ALLOWED_MODES, V1HookFn, V1PreDecoder
+    from .type_def import FrozenKeys
+
+    V1TypeToHook = Mapping[type, Union[tuple[ALLOWED_MODES, V1HookFn], V1HookFn, None]]
 
 # Create a generic variable that can be 'AbstractMeta', or any subclass.
 # Full word as `M` is already defined in another module
 META_ = TypeVar('META_', bound='AbstractMeta')
-# Use `Type` here explicitly, because we will never have an `META_` object.
-META = Type[META_]
+# Use `type` here explicitly, because we will never have an `META_` object.
+META = type[META_]
+
+
+# Create a generic variable that can be 'AbstractMeta', or any subclass.
+# Full word as `M` is already defined in another module
+ENV_META_ = TypeVar('ENV_META_', bound='AbstractEnvMeta')
+# Use `type` here explicitly, because we will never have an `META_` object.
+ENV_META = type[ENV_META_]
 
 
 class ABCOrAndMeta(ABCMeta):
@@ -275,6 +282,16 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
     # the given type.
     v1_type_to_dump_hook: ClassVar[V1TypeToHook] = None
 
+    # ``v1_pre_decoder``: Optional hook called before ``v1`` type loading.
+    # Receives the container type plus (cls, TypeInfo, Extras) and may return a
+    # transformed ``TypeInfo`` (e.g., wrapped in a function which decodes
+    # JSON/delimited strings into list/dict for env loading). Returning the
+    # input value leaves behavior unchanged.
+    #
+    #  Pre-decoder signature:
+    #   (cls, container_tp, tp, extras) -> new_tp
+    v1_pre_decoder: V1PreDecoder | None = None
+
     # Specifies the letter case to use for JSON keys when both loading and dumping.
     #
     # This is a convenience setting that applies the same key casing rule to
@@ -447,8 +464,12 @@ class AbstractEnvMeta(metaclass=ABCOrAndMeta):
     # When merging two Meta configs for a class, these are the only
     # attributes which will *not* be merged.
     __special_attrs__ = frozenset({
+        'recursive',
         'debug_enabled',
         'env_var_to_field',
+        'v1_field_to_env_load',
+        'v1_field_to_alias_dump',
+        'tag',
     })
 
     # Class attribute which enables us to detect a `EnvWizard.Meta` subclass.
@@ -492,13 +513,15 @@ class AbstractEnvMeta(metaclass=ABCOrAndMeta):
     #
     # For example, in below the '.env.last' file takes priority over '.env':
     #   env_file = '.env', '.env.last'
-    env_file: ClassVar[EnvFileType] = None
+    env_file: ClassVar[EnvFilePaths] = None
 
     # Prefix for all environment variables. Defaults to `None`.
     env_prefix: ClassVar[str] = None
 
     # secrets_dir: The secret files directory or a sequence of directories. Defaults to `None`.
-    secrets_dir: ClassVar['EnvFileType | Sequence[EnvFileType]'] = None
+    secrets_dir: ClassVar[SecretsDirs] = None
+
+    # -- BEGIN Deprecated Fields --
 
     # The nested env values delimiter. Defaults to `None`.
     # env_nested_delimiter: ClassVar[str] = None
@@ -520,6 +543,8 @@ class AbstractEnvMeta(metaclass=ABCOrAndMeta):
     # The default is 'snake_case'.
     key_transform_with_dump: ClassVar[Union[LetterCase, str]] = LetterCase.SNAKE
 
+    # -- END Deprecated Fields --
+
     # Determines whether we should we skip / omit fields with default values
     # in the serialization process.
     skip_defaults: ClassVar[bool] = False
@@ -532,6 +557,160 @@ class AbstractEnvMeta(metaclass=ABCOrAndMeta):
     # (based on the `default` or `default_factory` argument specified for
     # the :func:`dataclasses.field`) in the serialization process.
     skip_defaults_if: ClassVar[Condition] = None
+
+    # The field name that identifies the tag for a class.
+    #
+    # When set to a value, an :attr:`TAG` field will be populated in the
+    # dictionary object in the dump (serialization) process. When loading
+    # (or de-serializing) a dictionary object, the :attr:`TAG` field will be
+    # used to load the corresponding dataclass, assuming the dataclass field
+    # is properly annotated as a Union type, ex.:
+    #   my_data: Union[Data1, Data2, Data3]
+    tag: ClassVar[str] = None
+
+    # The dictionary key that identifies the tag field for a class. This is
+    # only set when the `tag` field or the `auto_assign_tags` flag is enabled
+    # in the `Meta` config for a dataclass.
+    #
+    # Defaults to '__tag__' if not specified.
+    tag_key: ClassVar[str] = TAG
+
+    # Auto-assign the class name as a dictionary "tag" key, for any dataclass
+    # fields which are in a `Union` declaration, ex.:
+    #   my_data: Union[Data1, Data2, Data3]
+    auto_assign_tags: ClassVar[bool] = False
+
+    # Enable opt-in to the "experimental" major release `v1` feature.
+    # This feature offers optimized performance for de/serialization.
+    # Defaults to False.
+    v1: ClassVar[bool] = False
+
+    # Enable Debug mode for more verbose log output.
+    #
+    # This setting can be a `bool`, `int`, or `str`:
+    # - `True` enables debug mode with default verbosity.
+    # - A `str` or `int` specifies the minimum log level (e.g., 'DEBUG', 10).
+    #
+    # Debug mode provides additional helpful log messages, including:
+    # - Logging unknown JSON keys encountered during `from_dict` or `from_json`.
+    # - Detailed error messages for invalid types during unmarshalling.
+    #
+    # Note: Enabling Debug mode may have a minor performance impact.
+    v1_debug: ClassVar['bool | int | str'] = False
+
+    # Custom load hooks for extending type support in the v1 engine.
+    #
+    # Mapping: {Type -> hook}
+    #
+    # A hook must accept either:
+    #   - one positional argument (runtime hook): value -> object
+    #   - two positional arguments (v1 hook): (TypeInfo, Extras) -> str | TypeInfo
+    #
+    # The hook is invoked when loading a value annotated with the given type.
+    v1_type_to_load_hook: ClassVar[V1TypeToHook] = None
+
+    # Custom dump hooks for extending type support in the v1 engine.
+    #
+    # Mapping: {Type -> hook}
+    #
+    # A hook must accept either:
+    #   - one positional argument (runtime hook): object -> JSON-serializable value
+    #   - two positional arguments (v1 hook): (TypeInfo, Extras) -> str | TypeInfo
+    #
+    # The hook is invoked when dumping a value whose runtime type matches
+    # the given type.
+    v1_type_to_dump_hook: ClassVar[V1TypeToHook] = None
+
+    # ``v1_pre_decoder``: Optional hook called before ``v1`` type loading.
+    # Receives the container type plus (cls, TypeInfo, Extras) and may return a
+    # transformed ``TypeInfo`` (e.g., wrapped in a function which decodes
+    # JSON/delimited strings into list/dict for env loading). Returning the
+    # input value leaves behavior unchanged.
+    #
+    #  Pre-decoder signature:
+    #   (cls, container_tp, tp, extras) -> new_tp
+    v1_pre_decoder: V1PreDecoder = None
+
+    # The key lookup strategy to use for Env Var Names.
+    #
+    # The default strategy is `SCREAMING_SNAKE_CASE` > `snake_case`.
+    v1_load_case: ClassVar[Union[EnvKeyStrategy, str]] = None
+
+    # How `EnvWizard` fields (variables) should be transformed to JSON keys.
+    #
+    # The default is 'snake_case'.
+    v1_dump_case: ClassVar[Union[LetterCase, str]] = None
+
+    # Environment Precedence (order) to search for values
+    # Defaults to EnvPrecedence.SECRETS_ENV_DOTENV
+    v1_env_precedence: EnvPrecedence = None
+
+    # A custom mapping of dataclass fields to their env vars (keys) used
+    # during deserialization only.
+    #
+    # Values may be a single alias string or a sequence of alias strings.
+    # Any listed alias is accepted when mapping input env vars to
+    # dataclass fields.
+    v1_field_to_env_load: ClassVar[
+        Mapping[str, Union[str, Sequence[str]]]
+    ] = None
+
+    # A custom mapping of dataclass fields to their JSON aliases (keys) used
+    # during serialization only.
+    #
+    # Values may be a single alias string or a sequence of alias strings.
+    # When a sequence is provided, the first alias is used as the output key.
+    #
+    # When set, this mapping overrides `v1_field_to_alias` for dump behavior
+    # only.
+    v1_field_to_alias_dump: ClassVar[
+        Mapping[str, Union[str, Sequence[str]]]
+    ] = None
+
+    # Defines the action to take when an unknown JSON key is encountered during
+    # `from_dict` or `from_json` calls. An unknown key is one that does not map
+    # to any dataclass field.
+    #
+    # Valid options are:
+    # - `"ignore"` (default): Silently ignore unknown keys.
+    # - `"warn"`: Log a warning for each unknown key. Requires `v1_debug`
+    #   to be `True` and properly configured logging.
+    # - `"raise"`: Raise an `UnknownKeyError` for the first unknown key encountered.
+    # v1_on_unknown_key: ClassVar[KeyAction] = None
+
+    # Unsafe: Enables parsing of dataclasses in unions without requiring
+    # the presence of a `tag_key`, i.e., a dictionary key identifying the
+    # tag field in the input. Defaults to False.
+    v1_unsafe_parse_dataclass_in_union: ClassVar[bool] = False
+
+    # Specifies how :class:`datetime` (and :class:`time`, where applicable)
+    # objects are serialized during output.
+    #
+    # This setting controls how temporal values are emitted when converting
+    # a dataclass to a Python dictionary (`to_dict`) or a JSON string
+    # (`to_json`). It applies to serialization only and does not affect
+    # deserialization.
+    #
+    # By default, values are serialized using ISO 8601 string format.
+    #
+    # Supported values are defined by :class:`DateTimeTo`.
+    v1_dump_date_time_as: ClassVar[Union[V1DateTimeTo, str]] = None
+
+    # Specifies the timezone to assume for naive :class:`datetime` values
+    # during serialization.
+    #
+    # By default, naive datetimes are rejected to avoid ambiguous or
+    # environment-dependent behavior.
+    #
+    # When set, naive datetimes are interpreted as being in the specified
+    # timezone before conversion to a UTC epoch timestamp.
+    #
+    # Common usage:
+    #     v1_assume_naive_datetime_tz = timezone.utc
+    #
+    # This setting applies to serialization only and does not affect
+    # deserialization.
+    v1_assume_naive_datetime_tz: ClassVar[tzinfo | None] = None
 
     # noinspection PyMethodParameters
     @cached_class_property

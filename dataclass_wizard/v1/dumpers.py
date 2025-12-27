@@ -4,7 +4,7 @@ from __future__ import annotations
 import collections.abc as abc
 from base64 import b64encode
 from collections import defaultdict, deque
-from dataclasses import _asdict_inner as __dataclasses_asdict_inner__, is_dataclass, MISSING, Field
+from dataclasses import is_dataclass, MISSING, Field
 from datetime import datetime, time, date, timedelta
 from decimal import Decimal
 from enum import Enum
@@ -175,9 +175,9 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
             force_wrap = True
         else:
             string = ', '.join([
-                cls.dump_dispatcher_for_annotation(
+                str(cls.dump_dispatcher_for_annotation(
                     tp.replace(origin=arg, index=k, val_name=None),
-                    extras)
+                    extras))
                 for k, arg in enumerate(args)])
 
             result = f'({string}, )'
@@ -203,6 +203,7 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
         has_optionals = True if optional_fields else False
         only_optionals = has_optionals and len(optional_fields) == len(nt_tp.__annotations__)
         num_fields = 0
+        v = tp.v_for_def()
 
         for field, field_tp in nt_tp.__annotations__.items():
             string = cls.dump_dispatcher_for_annotation(
@@ -224,7 +225,7 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
 
             if has_optionals:
                 opt_start = len(req_field_to_assign)
-                fn_gen.add_line(f'L = len(v1); has_opt = L > {opt_start}')
+                fn_gen.add_line(f'L = len({v}); has_opt = L > {opt_start}')
                 with fn_gen.if_(f'has_opt'):
                     fn_gen.add_line(f'fields = [{field_assigns.pop(0)}]')
                     for i, string in enumerate(field_assigns, start=opt_start + 1):
@@ -241,8 +242,8 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
             with fn_gen.if_('(e_cls := e.__class__) is IndexError'):
                 # raise `MissingFields`, as required NamedTuple fields
                 # are not present in the input object `o`.
-                fn_gen.add_line("raise_missing_fields(locals(), v1, cls, None)")
-            with fn_gen.if_('e_cls is KeyError and type(v1) is dict'):
+                fn_gen.add_line(f'raise_missing_fields(locals(), {v}, cls, None)')
+            with fn_gen.if_(f'e_cls is KeyError and type({v}) is dict'):
                 # Input object is a `dict`
                 # TODO should we support dict for namedtuple?
                 fn_gen.add_line('raise TypeError(msg) from None')
@@ -313,6 +314,7 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
         req_keys, opt_keys = get_keys_for_typed_dict(tp.origin)
 
         result_list = []
+        v = tp.v_for_def()
         # TODO set __annotations__?
         td_annotations = tp.origin.__annotations__
 
@@ -333,21 +335,25 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
                              '}')
 
             # Set optional keys for the `TypedDict` (if they exist)
+            next_i = tp.i + 1
+            new_tp = tp.replace(i=next_i, index=None, val_name=None)
+            v_next = new_tp.v()
+
             for k in opt_keys:
                 field_tp = td_annotations[k]
                 field_name = repr(k)
                 string = cls.dump_dispatcher_for_annotation(
-                    tp.replace(origin=field_tp, i=2, index=None, val_name=None), extras)
-                with fn_gen.if_(f'(v2 := v1.get({field_name}, MISSING)) is not MISSING'):
+                    new_tp.replace(origin=field_tp), extras)
+                with fn_gen.if_(f'({v_next} := {v}.get({field_name}, MISSING)) is not MISSING'):
                     fn_gen.add_line(f'result[{field_name}] = {string}')
             fn_gen.add_line('return result')
 
         with fn_gen.except_(Exception, 'e'):
             with fn_gen.if_('type(e) is KeyError'):
                 fn_gen.add_line('name = e.args[0]; e = KeyError(f"Missing required key: {name!r}")')
-            with fn_gen.elif_('not isinstance(v1, dict)'):
+            with fn_gen.elif_(f'not isinstance({v}, dict)'):
                 fn_gen.add_line('e = TypeError("Incorrect type for object")')
-            fn_gen.add_line('raise ParseError(e, v1, {}, "dump") from None')
+            fn_gen.add_line(f'raise ParseError(e, {v}, {{}}, "dump") from None')
 
     @classmethod
     @setup_recursive_safe_function_for_generic(None, prefix='dump')
@@ -359,8 +365,11 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
         tag_key = config.tag_key or TAG
         auto_assign_tags = config.auto_assign_tags
 
-        i = tp.field_i
-        fields = f'fields_{i}'
+        v = tp.v_for_def()
+
+        field_i = tp.field_i
+        i = tp.i
+        fields = f'fields_{field_i}'
 
         args = tp.args
         in_optional = NoneType in args
@@ -378,11 +387,11 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
 
             possible_tp = eval_forward_ref_if_needed(possible_tp, actual_cls)
 
-            tp_new = TypeInfo(possible_tp, field_i=i)
+            tp_new = TypeInfo(possible_tp, field_i=field_i, i=i)
             tp_new.in_optional = in_optional
 
             if possible_tp is NoneType:
-                with fn_gen.if_('v1 is None'):
+                with fn_gen.if_(f'{v} is None'):
                     fn_gen.add_line('return None')
                 continue
 
@@ -440,7 +449,7 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
                 tn = tp_new.type_name(extras)
                 type_checks.extend([
                     f'if tp is {tn}:',
-                    '  return v1'
+                    f'  return {v}'
                 ])
                 list_to_add = try_parse_at_end
             else:
@@ -448,13 +457,13 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
 
             list_to_add.extend(try_parse_lines)
 
-        fn_gen.add_line('tp = type(v1)')
+        fn_gen.add_line(f'tp = type({v})')
 
         if has_dataclass:
             var_to_dataclass = {}
 
-            for i, (dataclass, name, tag, line) in enumerate(dataclass_and_line, start=1):
-                cls_name = f'C{i}'
+            for field_i, (dataclass, name, tag, line) in enumerate(dataclass_and_line, start=1):
+                cls_name = f'C{field_i}'
                 var_to_dataclass[cls_name] = dataclass
                 with fn_gen.if_(f'tp is {cls_name}', comment=f'{name} -> {tag!r}'):
                     fn_gen.add_line(line)
@@ -479,7 +488,7 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
         # Invalid type for Union
         fn_gen.add_line("raise ParseError("
                         "TypeError('Object was not in any of Union types'),"
-                        f"v1,{fields},'dump',"
+                        f"{v},{fields},'dump',"
                         "tag_key=tag_key"
                         ")")
 
@@ -602,9 +611,7 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
             mode, dump_hook = hook_info
 
             if mode == 'runtime':
-                fn_name = dump_hook.__name__
-                tp.ensure_in_locals(extras, dump_hook)
-                # extras['locals'].setdefault(fn_name, dump_hook)
+                fn_name, = tp.ensure_in_locals(extras, dump_hook)
                 return f'{fn_name}({tp.v()})'
 
             try:
@@ -633,7 +640,7 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
                 o = tp.v()
 
                 if is_simple_type:
-                    val_name = tp.val_name or 'v1'
+                    val_name = tp.val_name
                     o = tp.v()
                 elif tp.val_name:
                     val_name = 'v0'
@@ -1111,7 +1118,10 @@ def dump_func_for_dataclass(
             # create a broad `except Exception` block, as we will be
             # re-raising all exception(s) as a custom `ParseError`.
             with fn_gen.except_(Exception, 'e', ParseError):
-                fn_gen.add_line("re_raise(e, cls, o, fields, '<UNK>', locals().get('v0'))")
+                fn_gen.add_line("re_raise(e, cls, o, fields, '<UNK>', locals().get('v1'))")
+
+        else:
+            fn_gen.add_line('result = {}')
 
         # TODO
         # if has_catch_all:
@@ -1169,16 +1179,19 @@ def dump_func_for_dataclass(
         #     vars_for_fields.append('**init_kwargs')
 
         if has_catch_all:
+            # noinspection PyUnresolvedReferences,PyProtectedMember
+            from dataclasses import _asdict_inner as __dataclasses_asdict_inner__
+
             if (default := field_to_default.get(catch_all_name_stripped, ExplicitNull)) is not ExplicitNull:
                 default_value = f'_default_{len(cls_fields_list)}'
                 new_locals[default_value] = default
-                condition = f"(v0 := o.{catch_all_name_stripped}) != {default_value}"
+                condition = f"(v1 := o.{catch_all_name_stripped}) != {default_value}"
 
             else:
-                condition = f'v0 := o.{catch_all_name_stripped}'
+                condition = f'v1 := o.{catch_all_name_stripped}'
 
             with fn_gen.if_(condition):
-                with fn_gen.for_(f"k, v in v0.items()"):
+                with fn_gen.for_(f"k, v in v1.items()"):
                     fn_gen.globals['__asdict_inner__'] = __dataclasses_asdict_inner__
                     fn_gen.add_line('result[k] = __asdict_inner__(v,dict_factory)')
 
@@ -1208,11 +1221,12 @@ def dump_func_for_dataclass(
 
         # Check if the class has a `to_dict`, and it's
         # a class method bound to `todict`.
-        if ((to_dict := getattr(cls, 'to_dict', None)) is not None
-                and getattr(to_dict, '__func__', None) is asdict):
-
+        if getattr(cls, 'to_dict', None) is asdict:
             LOG.debug("setattr(%s, 'to_dict', %s)", cls_name, fn_name)
-            _set_new_attribute(cls, 'to_dict', cls_todict)
+            # Marker reserved for future detection/debugging of specialized dumpers.
+            # setattr(cls_todict, _SPECIALIZED_TO_DICT, True)
+            # safe to specialize only when user didn't define it on cls
+            _set_new_attribute(cls, 'to_dict', cls_todict, force=True)
 
         _set_new_attribute(
             cls, f'__{PACKAGE_NAME}_to_dict__', cls_todict)

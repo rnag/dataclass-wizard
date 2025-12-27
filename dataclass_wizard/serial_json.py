@@ -1,17 +1,18 @@
 import json
 import logging
-from dataclasses import is_dataclass, dataclass
+from dataclasses import dataclass, MISSING
 
 from .abstractions import AbstractJSONWizard
 from .bases_meta import BaseJSONWizardMeta, LoadMeta, DumpMeta, register_type
-from .constants import PACKAGE_NAME, SINGLE_ARG_ALIAS
-from .class_helper import call_meta_initializer_if_needed, get_meta
-from .decorators import _single_arg_alias
+from .class_helper import call_meta_initializer_if_needed
+from .constants import PACKAGE_NAME
+from .loader_selection import asdict, fromdict, fromlist
+from .log import enable_library_debug_logging
 from .type_def import dataclass_transform
-from .loader_selection import asdict, fromdict, fromlist, get_loader, get_dumper
 # noinspection PyProtectedMember
-from .utils.dataclass_compat import _create_fn, _set_new_attribute
-from .type_def import dataclass_transform
+from .utils.dataclass_compat import (_create_fn,
+                                     _dataclass_needs_refresh,
+                                     _set_new_attribute)
 
 
 def _str_fn():
@@ -20,6 +21,35 @@ def _str_fn():
                       ['return self.to_json(indent=2)'])
 
 
+def _first_declared_attr_in_mro(cls, name: str):
+    """First `name` found in MRO (excluding cls); else None."""
+    for base in cls.__mro__[1:]:
+        attr = base.__dict__.get(name, MISSING)
+        if attr is not MISSING:
+            return attr
+    return None
+
+
+def _set_from_dict_and_to_dict_if_needed(cls):
+    """
+    Pin default dispatchers on subclasses.
+
+    Codegen is lazy; if a base later gets a specialised
+    `from_dict` / `to_dict`, subclasses would inherit it.
+    Defining defaults in `cls.__dict__` blocks that.
+    """
+    if 'from_dict' not in cls.__dict__:
+        inherited = _first_declared_attr_in_mro(cls, 'from_dict')
+        if getattr(inherited, '__func__', None) is fromdict:
+            cls.from_dict = classmethod(fromdict)
+
+    if 'to_dict' not in cls.__dict__:
+        inherited = _first_declared_attr_in_mro(cls, 'to_dict')
+        if inherited is asdict:
+            cls.to_dict = asdict
+
+
+# noinspection PyShadowingBuiltins
 def _configure_wizard_class(cls,
                             str=True,
                             debug=False,
@@ -49,22 +79,25 @@ def _configure_wizard_class(cls,
         DumpMeta(key_transform=_key_transform).bind_to(cls)
 
     if debug:
-        default_lvl = logging.DEBUG
-        logging.basicConfig(level=default_lvl)
         # minimum logging level for logs by this library
-        min_level = default_lvl if isinstance(debug, bool) else debug
+        lvl = logging.DEBUG if isinstance(debug, bool) else debug
+        # enable library logging
+        enable_library_debug_logging(lvl)
         # set `v1_debug` flag for the class's Meta
-        load_meta_kwargs['v1_debug'] = min_level
-
-    # Calls the Meta initializer when inner :class:`Meta` is sub-classed.
-    call_meta_initializer_if_needed(cls)
+        load_meta_kwargs['v1_debug'] = lvl
 
     if load_meta_kwargs:
         LoadMeta(**load_meta_kwargs).bind_to(cls)
 
+    # Calls the Meta initializer when inner :class:`Meta` is sub-classed.
+    call_meta_initializer_if_needed(cls)
+
     # Add a `__str__` method to the subclass, if needed
     if str:
         _set_new_attribute(cls, '__str__', _str_fn())
+
+    # Add `from_dict` and `to_dict` methods to the subclass, if needed
+    _set_from_dict_and_to_dict_if_needed(cls)
 
 
 @dataclass_transform()
@@ -128,12 +161,12 @@ class DataclassWizard(AbstractJSONWizard):
 
         super().__init_subclass__()
 
-        # skip classes provided by this library
+        # skip classes provided by this library.
         if cls.__module__.startswith(f'{PACKAGE_NAME}.'):
             return
 
         # Apply the @dataclass decorator.
-        if _apply_dataclass and not is_dataclass(cls):
+        if _apply_dataclass and _dataclass_needs_refresh(cls):
             # noinspection PyArgumentList
             dataclass(cls, **dc_kwargs)
 
@@ -142,7 +175,6 @@ class DataclassWizard(AbstractJSONWizard):
 
 
 # noinspection PyAbstractClass
-@dataclass_transform()
 class JSONSerializable(DataclassWizard):
 
     __slots__ = ()

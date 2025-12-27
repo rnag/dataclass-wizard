@@ -61,6 +61,42 @@ def v1_safe_get(data, path, raise_):
         raise _format_err(e, current_data, path, p, True) from None
 
 
+def v1_env_safe_get(data, first_key, path, raise_):
+    from ..v1.type_conv import as_collection_v1
+
+    current_data = data
+
+    try:
+        current_data = as_collection_v1(current_data[first_key])
+
+        for p in path:
+            current_data = current_data[p]
+
+        return current_data
+
+    # IndexError -
+    #   raised when `data` is a `list`, and we access an index that is "out of bounds"
+    # KeyError -
+    #   raised when `data` is a `dict`, and we access a key that is not present
+    # AttributeError -
+    #   raised when `data` is an invalid type, such as a `None`
+    except (IndexError, KeyError, AttributeError) as e:
+        if raise_:
+            path = [first_key] + list(path)
+            p = locals().get('p', path)  # to suppress "unbound local variable"
+            raise _format_err(e, current_data, path, p, True) from None
+
+        return MISSING
+
+    # TypeError -
+    #   raised when `data` is a `list`, but we try to use it like a `dict`
+    except TypeError:
+        e = TypeError('Invalid path')
+        path = [first_key] + list(path)
+        p = locals().get('p', path)  # to suppress "unbound local variable"
+        raise _format_err(e, current_data, path, p, True) from None
+
+
 def _format_err(e, current_data, path, current_path, invalid_path=False):
     return ParseError(
         e, current_data, dict if invalid_path else None, 'load',

@@ -32,6 +32,7 @@ class FunctionBuilder:
 
         """
         self.functions |= other.functions
+        self.globals |= other.globals
         return self
 
     def __enter__(self):

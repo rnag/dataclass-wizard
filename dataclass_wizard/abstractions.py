@@ -1,19 +1,24 @@
 """
 Contains implementations for Abstract Base Classes
 """
+from __future__ import annotations
 import json
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, InitVar, Field
-from typing import Type, TypeVar, Dict, Generic
+from typing import Type, TypeVar, Dict, Generic, TYPE_CHECKING
 
 from .models import Extras
-from .v1.models import Extras as V1Extras, TypeInfo
+
 from .type_def import T, TT
 
 
 # Create a generic variable that can be 'AbstractJSONWizard', or any subclass.
 W = TypeVar('W', bound='AbstractJSONWizard')
+
+
+if TYPE_CHECKING:
+    from .v1.models import Extras as V1Extras, TypeInfo
 
 
 class AbstractEnvWizard(ABC):
@@ -269,6 +274,13 @@ class AbstractLoaderGenerator(ABC):
         Transform a JSON field name (which will typically be camel-cased)
         into the conventional format for a dataclass field name
         (which will ideally be snake-cased).
+        """
+
+    @staticmethod
+    @abstractmethod
+    def is_none(tp: TypeInfo, extras: V1Extras) -> str:
+        """
+        Generate the condition to determine if a value is None.
         """
 
     @staticmethod

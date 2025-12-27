@@ -1,5 +1,6 @@
 __all__ = ['normalize',
            'possible_json_keys',
+           'possible_env_vars',
            'to_camel_case',
            'to_pascal_case',
            'to_lisp_case',
@@ -7,9 +8,10 @@ __all__ = ['normalize',
            'repl_or_with_union']
 
 import re
-from typing import Iterable, Dict, List
+from typing import Iterable, Dict, List, TYPE_CHECKING
 
-from ..type_def import JSONObject
+if TYPE_CHECKING:
+    from ..v1.enums import EnvKeyStrategy
 
 
 def normalize(string: str) -> str:
@@ -64,6 +66,40 @@ def possible_json_keys(field: str) -> list[str]:
     # as that's the first thing we check.
     if field in possible_keys:
         possible_keys.remove(field)
+
+    return possible_keys
+
+
+def possible_env_vars(field: str, lookup_strat: 'EnvKeyStrategy') -> list[str]:
+    """
+    Maps a dataclass field name to its possible var names in an env.
+
+    This function checks multiple naming conventions (e.g., camelCase,
+    PascalCase, kebab-case, etc.) to find the matching key in the JSON
+    object `o`. It also caches the mapping for future use.
+
+    Args:
+        field (str): The dataclass field name to map.
+        lookup_strat (EnvKeyStrategy): The environment key strategy to use.
+
+    Returns:
+        list[str]: The possible JSON keys for the given field.
+    """
+    from ..v1.enums import EnvKeyStrategy
+
+    _is_field_first = lookup_strat is EnvKeyStrategy.FIELD_FIRST
+    possible_keys = [field] if _is_field_first else []
+
+    # `snake_case`
+    _snake = to_snake_case(field)
+
+    # `Upper_Snake`
+    _screaming_snake = _snake.upper()
+
+    possible_keys.append(_screaming_snake)
+
+    if not _is_field_first or field != _snake:
+        possible_keys.append(_snake)
 
     return possible_keys
 

@@ -5,6 +5,9 @@ import sys
 # Package name
 PACKAGE_NAME = 'dataclass_wizard'
 
+# _SPECIALIZED_FROM_DICT = f'__{PACKAGE_NAME}_specialized_from_dict__'
+# _SPECIALIZED_TO_DICT   = f'__{PACKAGE_NAME}_specialized_to_dict__'
+
 # Library Log Level
 LOG_LEVEL = os.getenv('WIZARD_LOG_LEVEL', 'ERROR').upper()
 

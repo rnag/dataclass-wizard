@@ -1,8 +1,9 @@
 from dataclasses import MISSING, Field as _Field, dataclass
 from datetime import datetime, date, time, tzinfo, timezone, timedelta
 from typing import (Collection, Callable,
-                    Generic, Sequence, TypeAlias)
+                    Generic, Sequence, TypeAlias, Mapping)
 from typing import TypedDict, overload, Any, NotRequired, Self
+from zoneinfo import ZoneInfo
 
 from ..bases import META
 from ..models import Condition
@@ -17,11 +18,17 @@ _STR_COLLECTION: TypeAlias = str | Collection[str]
 SIMPLE_TYPES: tuple[type, ...]
 SCALAR_TYPES: tuple[type, ...]
 
+SEQUENCE_ORIGINS: frozenset[type]
+MAPPING_ORIGINS: frozenset[type]
+
 # UTC Time Zone
 UTC: timezone
 
 # UTC time zone (no offset)
 ZERO: timedelta
+
+
+def get_zoneinfo(key: str) -> ZoneInfo: ...
 
 
 def ensure_type_ref(extras: 'Extras', tp: type, *,
@@ -57,10 +64,11 @@ class TypeInfo:
 
     def replace(self, **changes) -> TypeInfo: ...
     @staticmethod
-    def ensure_in_locals(extras: Extras, *tps: Callable | type, **name_to_tp: Callable[..., Any]) -> None: ...
+    def ensure_in_locals(extras: Extras, *tps: Callable | type, **name_to_tp: Callable[..., Any] | object) -> None: ...
     def type_name(self, extras: Extras,
                   *, bound: type | None = None) -> str: ...
     def v(self) -> str: ...
+    def v_for_def(self) -> str: ...
     def v_and_next(self) -> tuple[str, str, int]: ...
     def v_and_next_k_v(self) -> tuple[str, str, str, int]: ...
     def multi_wrap(self, extras, prefix='', *result, force=False) -> list[str]: ...
@@ -77,6 +85,7 @@ class TypeInfo:
                     is_builtin: bool = False,
                     force=False,
                     bound: type | None = None) -> str | None: ...
+
 
 class Extras(TypedDict):
     """
@@ -393,11 +402,16 @@ class UTCDateTimePattern(datetime, Generic[T]):
 def AliasPath(*all: PathType | str,
               load: PathType | str | None = None,
               dump: PathType | str | None = None,
+              env: PathType | str | bool | None = None,
               skip: bool = False,
-              default=MISSING,
+              default: Any = MISSING,
               default_factory: Callable[[], MISSING] = MISSING,
-              init=True, repr=True,
-              hash=None, compare=True, metadata=None, kw_only=False):
+              init: bool = True,
+              repr: bool = True,
+              hash: bool | None = None,
+              compare: bool = True,
+              metadata: Mapping[Any, Any] | None = None,
+              kw_only: bool = False) -> Field:
     """
     Creates a dataclass field mapped to one or more nested JSON paths.
 
@@ -484,6 +498,7 @@ def AliasPath(*all: PathType | str,
 def Alias(*all: str,
           load: str | Sequence[str] | None = None,
           dump: str | None = None,
+          env: str | Sequence[str] | None = None,
           skip: bool = False,
           default=MISSING,
           default_factory: Callable[[], MISSING] = MISSING,
@@ -507,8 +522,86 @@ def Alias(*all: str,
     :type load: str | Sequence[str] | None
     :param dump: Key to use for serialization. Defaults to the first key in ``all``.
     :type dump: str | None
+    :param env: Environment variable(s) to use for deserialization.
+    :type env: str | Sequence[str] | None
     :param skip: If ``True``, the field is excluded during serialization. Defaults to ``False``.
     :type skip: bool
+    :param default: Default value for the field. Cannot be used with ``default_factory``.
+    :type default: Any
+    :param default_factory: Callable to generate the default value. Cannot be used with ``default``.
+    :type default_factory: Callable[[], Any]
+    :param init: Whether the field is included in the generated ``__init__`` method. Defaults to ``True``.
+    :type init: bool
+    :param repr: Whether the field appears in the ``__repr__`` output. Defaults to ``True``.
+    :type repr: bool
+    :param hash: Whether the field is included in the ``__hash__`` method. Defaults to ``None``.
+    :type hash: bool
+    :param compare: Whether the field is included in comparison methods. Defaults to ``True``.
+    :type compare: bool
+    :param metadata: Additional metadata for the field. Defaults to ``None``.
+    :type metadata: dict
+    :param kw_only: If ``True``, the field is keyword-only. Defaults to ``False``.
+    :type kw_only: bool
+    :return: A dataclass field with additional mappings to one or more JSON keys.
+    :rtype: Field
+
+    **Examples**
+
+    **Example 1** -- Mapping multiple key names to a field::
+
+        from dataclasses import dataclass
+
+        from dataclass_wizard import LoadMeta, fromdict
+        from dataclass_wizard.v1 import Alias
+
+        @dataclass
+        class Example:
+            my_field: str = Alias('key1', 'key2', default="default_value")
+
+        LoadMeta(v1=True).bind_to(Example)
+
+        print(fromdict(Example, {'key2': 'a value!'}))
+        #> Example(my_field='a value!')
+
+    **Example 2** -- Skipping a field during serialization::
+
+        from dataclasses import dataclass
+
+        from dataclass_wizard import JSONPyWizard
+        from dataclass_wizard.v1 import Alias
+
+        @dataclass
+        class Example(JSONPyWizard):
+            class _(JSONPyWizard.Meta):
+                v1 = True
+
+            my_field: str = Alias('key', skip=True)
+
+        ex = Example.from_dict({'key': 'some value'})
+        print(ex)                  #> Example(my_field='a value!')
+        assert ex.to_dict() == {}  #> True
+    """
+
+
+# noinspection PyPep8Naming
+def Env(*load: str,
+        default=MISSING,
+        default_factory: Callable[[], MISSING] = MISSING,
+        init=True, repr=True,
+        hash=None, compare=True, metadata=None, kw_only=False):
+    """
+    Maps one or more Environment Variable names to a dataclass field.
+
+    This function acts as an alias for ``dataclasses.field(...)``, with additional
+    support for associating a field with one or more env vars. It customizes
+    serialization and deserialization behavior, including handling env vars with
+    varying cases or alternative names.
+
+    The mapping is case-sensitive; env vars must match exactly (e.g., ``myField``
+    will not match ``myfield``).
+
+    :param load: Env vars(s) to use for deserialization.
+    :type load: str
     :param default: Default value for the field. Cannot be used with ``default_factory``.
     :type default: Any
     :param default_factory: Callable to generate the default value. Cannot be used with ``default``.
@@ -613,12 +706,13 @@ class Field(_Field):
     """
     __slots__ = ('load_alias',
                  'dump_alias',
+                 'env_vars',
                  'skip',
                  'path')
 
     load_alias: str | None
     dump_alias: str | None
-    # keys: tuple[str, ...] | PathType
+    env_vars: str | None
     skip: bool
     path: PathType | None
 
@@ -630,6 +724,7 @@ class Field(_Field):
     def __init__(self,
                  load_alias: str | None,
                  dump_alias: str | None,
+                 env_vars: str | None,
                  skip: bool,
                  path: PathType | None,
                  default, default_factory, init, repr, hash, compare,
@@ -644,6 +739,7 @@ class Field(_Field):
     def __init__(self,
                  load_alias: str | None,
                  dump_alias: str | None,
+                 env_vars: str | None,
                  skip: bool,
                  path: PathType | None,
                  default, default_factory, init, repr, hash, compare,
@@ -654,6 +750,7 @@ class Field(_Field):
     def __init__(self,
                  load_alias: str | None,
                  dump_alias: str | None,
+                 env_vars: str | None,
                  skip: bool,
                  path: PathType | None,
                  default, default_factory, init, repr, hash, compare,

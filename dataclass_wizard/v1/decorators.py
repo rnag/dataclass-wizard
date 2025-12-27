@@ -71,6 +71,7 @@ def setup_recursive_safe_function(
     is_generic: bool = False,
     add_cls: bool = True,
     prefix: str = 'load',
+    per_field_cache: bool = False,
 ) -> Callable:
     """
     A decorator to ensure recursion safety and facilitate dynamic function generation
@@ -101,6 +102,7 @@ def setup_recursive_safe_function(
             is_generic=is_generic,
             add_cls=add_cls,
             prefix=prefix,
+            per_field_cache=per_field_cache,
         )
 
     def _wrapper_logic(tp: TypeInfo, extras: Extras, _cls=None) -> str:
@@ -119,7 +121,15 @@ def setup_recursive_safe_function(
         cls = tp.args if is_generic else tp.origin
         recursion_guard = extras['recursion_guard']
 
-        if (_fn_name := recursion_guard.get(cls)) is None:
+        # new function: drop indices and explicit name
+        tp_for_func = tp.replace(index=None, val_name=None)
+
+        if per_field_cache:
+            key = extras['cls'], tp.field_i, cls
+        else:
+            key = cls
+
+        if (_fn_name := recursion_guard.get(key)) is None:
             cls_name = extras['cls_name']
             tp_name = func.__name__.split('_', 2)[-1]
 
@@ -132,7 +142,7 @@ def setup_recursive_safe_function(
                     else f'_{prefix}_{cls_name}_{tp_name}_{tp.name}'
                 )
 
-            recursion_guard[cls] = _fn_name
+            recursion_guard[key] = _fn_name
 
             # Retrieve the main FunctionBuilder
             main_fn_gen = extras['fn_gen']
@@ -145,11 +155,11 @@ def setup_recursive_safe_function(
             # Apply the decorated function logic
             if fn_name:
                 # Assume `with fn_gen.function(...)` is already handled
-                func(_cls, tp, updated_extras) if _cls else func(tp, updated_extras)
+                func(_cls, tp_for_func, updated_extras) if _cls else func(tp_for_func, updated_extras)
             else:
                 # Apply `with fn_gen.function(...)` explicitly
-                with new_fn_gen.function(_fn_name, ['v1'], MISSING, _locals):
-                    func(_cls, tp, updated_extras) if _cls else func(tp, updated_extras)
+                with new_fn_gen.function(_fn_name, [tp_for_func.v_for_def()], MISSING, _locals):
+                    func(_cls, tp_for_func, updated_extras) if _cls else func(tp_for_func, updated_extras)
 
             # Merge the new FunctionBuilder into the main one
             main_fn_gen |= new_fn_gen
@@ -181,7 +191,9 @@ def setup_recursive_safe_function(
     return wrapper
 
 
-def setup_recursive_safe_function_for_generic(func: Callable, prefix='load') -> Callable:
+def setup_recursive_safe_function_for_generic(func: Callable = None,
+                                              prefix='load',
+                                              per_field_cache: bool = False) -> Callable:
     """
     A helper decorator to handle generic types using
     `setup_recursive_safe_function`.
@@ -197,4 +209,5 @@ def setup_recursive_safe_function_for_generic(func: Callable, prefix='load') -> 
     Callable
         A wrapped function ensuring recursion safety for generic types.
     """
-    return setup_recursive_safe_function(func, is_generic=True, prefix=prefix)
+    return setup_recursive_safe_function(func, is_generic=True, prefix=prefix,
+                                         per_field_cache=per_field_cache)

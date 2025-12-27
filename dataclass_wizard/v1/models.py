@@ -1,9 +1,10 @@
 import hashlib
-from collections import defaultdict
+import sys
+from collections import defaultdict, deque
 from dataclasses import MISSING, Field as _Field
 from datetime import datetime, date, time, tzinfo, timezone, timedelta
 from typing import TYPE_CHECKING, Any, TypedDict, cast
-from zoneinfo import ZoneInfo
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from .decorators import setup_recursive_safe_function
 from ..constants import PY310_OR_ABOVE, PY311_OR_ABOVE, PY314_OR_ABOVE
@@ -19,7 +20,11 @@ if TYPE_CHECKING:  # pragma: no cover
 
 
 # UTC Time Zone
-UTC: timezone = timezone.utc
+if PY311_OR_ABOVE:
+    # https://docs.python.org/3/library/datetime.html#datetime.UTC
+    from datetime import UTC
+else:
+    UTC: timezone = timezone.utc
 
 # UTC time zone (no offset)
 ZERO: timedelta = timedelta(0)
@@ -62,6 +67,37 @@ SCALAR_TYPES = (
     float,
     bool,
 )
+
+SEQUENCE_ORIGINS = frozenset({
+    list,
+    tuple,
+    set,
+    frozenset,
+    deque
+})
+
+MAPPING_ORIGINS = frozenset({
+    dict,
+    defaultdict
+})
+
+
+def get_zoneinfo(key: str) -> ZoneInfo:
+    try:
+        return ZoneInfo(key)
+    except ZoneInfoNotFoundError as e:
+        if sys.platform.startswith('win'):
+            try:
+                import tzdata  # noqa: F401
+            except Exception:
+                raise ZoneInfoNotFoundError(
+                    f'No time zone found with key {key!r}. '
+                    'On Windows, install tzdata or install Dataclass Wizard with the tz extra:\n'
+                    '    pip install dataclass-wizard[tz]'
+                ) from None
+            else:
+                return ZoneInfo(key)
+        raise
 
 
 def ensure_type_ref(extras, tp, *, name=None, prefix='', is_builtin=False, field_i=0) -> str:
@@ -207,6 +243,13 @@ class TypeInfo:
         return (val_name if (idx := self.index) is None
                 else f'{val_name}[{idx}]')
 
+    def v_for_def(self):
+        """
+        Returns a safe value for function `def` statements (e.g., no
+        dot (.) or indices [])
+        """
+        return f'{self.prefix}{self.i}'
+
     def v_and_next(self):
         next_i = self.i + 1
         return self.v(), f'v{next_i}', next_i
@@ -327,7 +370,7 @@ class PatternBase:
             # expect time zone as first argument
             tz_info, *patterns = patterns
             if isinstance(tz_info, str):
-                tz_info = ZoneInfo(tz_info)
+                tz_info = get_zoneinfo(tz_info)
         else:
             patterns = (patterns, ) if patterns.__class__ is str else patterns
 
@@ -341,8 +384,10 @@ class PatternBase:
         return self.__getitem__(patterns)
 
     @setup_recursive_safe_function(add_cls=False)
-    def load_to_pattern(self, tp: TypeInfo, extras: Extras):
+    def load_to_pattern(self, tp, extras):
         from .type_conv import as_datetime_v1, as_date_v1, as_time_v1
+
+        v = tp.v()
 
         pb = cast(PatternBase, tp.origin)
         patterns = pb.patterns
@@ -400,31 +445,31 @@ class PatternBase:
 
         if is_datetime:
             _as_func = '__as_datetime'
-            _as_func_args = f'v1, {_fromtimestamp}, __tz' if has_tz else f'v1, {_fromtimestamp}'
+            _as_func_args = f'{v}, {_fromtimestamp}, __tz' if has_tz else f'{v}, {_fromtimestamp}'
             name_to_func[_as_func] = as_datetime_v1
             # `datetime` has a `fromtimestamp` method
             name_to_func[_fromtimestamp] = __base__.fromtimestamp
             end_part = ''
         elif is_date:
             _as_func = '__as_date'
-            _as_func_args = f'v1, {_fromtimestamp}'
+            _as_func_args = f'{v}, {_fromtimestamp}'
             name_to_func[_as_func] = as_date_v1
             # `date` has a `fromtimestamp` method
             name_to_func[_fromtimestamp] = __base__.fromtimestamp
             end_part = '.date()'
         else:
             _as_func = '__as_time'
-            _as_func_args = f'v1, cls'
+            _as_func_args = f'{v}, cls'
             name_to_func[_as_func] = as_time_v1
             end_part = '.timetz()' if has_tz else '.time()'
 
         tp.ensure_in_locals(extras, **name_to_func)
 
         if PY311_OR_ABOVE:
-            _parse_iso_string = f'{_fromisoformat}(v1){tz_part}'
+            _parse_iso_string = f'{_fromisoformat}({v}){tz_part}'
             errors_to_except = (TypeError, )
         else:  # pragma: no cover
-            _parse_iso_string = f"{_fromisoformat}(v1.replace('Z', '+00:00', 1)){tz_part}"
+            _parse_iso_string = f"{_fromisoformat}({v}.replace('Z', '+00:00', 1)){tz_part}"
             errors_to_except = (AttributeError, TypeError)
         # temp fix for Python 3.11+, since `time.fromisoformat` is updated
         # to support more formats, such as "-" and "+" in strings.
@@ -437,7 +482,7 @@ class PatternBase:
                     if is_subclass_time:
                         tz_arg = '__tz, ' if has_tz else ''
 
-                        fn_gen.add_line(f'__dt = {_strptime}(v1, {p!r})')
+                        fn_gen.add_line(f'__dt = {_strptime}({v}, {p!r})')
                         fn_gen.add_line('return cls('
                                         '__dt.hour, '
                                         '__dt.minute, '
@@ -445,7 +490,7 @@ class PatternBase:
                                         '__dt.microsecond, '
                                         f'{tz_arg}fold=__dt.fold)')
                     else:
-                        fn_gen.add_line(f'return {_strptime}(v1, {p!r}){tz_part}{end_part}')
+                        fn_gen.add_line(f'return {_strptime}({v}, {p!r}){tz_part}{end_part}')
                 with fn_gen.except_(Exception):
                     fn_gen.add_line('pass')
             # If that doesn't work, fallback to `time.fromisoformat`
@@ -467,13 +512,13 @@ class PatternBase:
                 for p in patterns:
                     with fn_gen.try_():
                         if is_subclass_date:
-                            fn_gen.add_line(f'__dt = {_strptime}(v1, {p!r})')
+                            fn_gen.add_line(f'__dt = {_strptime}({v}, {p!r})')
                             fn_gen.add_line('return cls('
                                             '__dt.year, '
                                             '__dt.month, '
                                             '__dt.day)')
                         elif is_subclass_time:
-                            fn_gen.add_line(f'__dt = {_strptime}(v1, {p!r})')
+                            fn_gen.add_line(f'__dt = {_strptime}({v}, {p!r})')
                             tz_arg = '__tz, ' if has_tz else ''
 
                             fn_gen.add_line('return cls('
@@ -483,13 +528,13 @@ class PatternBase:
                                             '__dt.microsecond, '
                                             f'{tz_arg}fold=__dt.fold)')
                         else:
-                            fn_gen.add_line(f'return {_strptime}(v1, {p!r}){tz_part}{end_part}')
+                            fn_gen.add_line(f'return {_strptime}({v}, {p!r}){tz_part}{end_part}')
                     with fn_gen.except_(Exception):
                         fn_gen.add_line('pass')
         # Raise a helpful error if we are unable to parse
         # the date string with the provided patterns.
         fn_gen.add_line(
-            'raise ValueError(f"Unable to parse the string \'{v1}\' '
+            f'raise ValueError(f"Unable to parse the string \'{{{v}}}\' '
             f'with the provided patterns: {patterns!r}")')
 
     def __repr__(self):
@@ -558,7 +603,7 @@ def _normalize_alias_path_args(all_paths, load, dump):
     return all_paths, load, dump
 
 
-def _normalize_alias_args(default, default_factory, all_aliases, load, dump):
+def _normalize_alias_args(default, default_factory, all_aliases, load, dump, env):
     """Normalize `Alias` arguments and canonicalize alias values."""
 
     if default is not MISSING and default_factory is not MISSING:
@@ -570,7 +615,13 @@ def _normalize_alias_args(default, default_factory, all_aliases, load, dump):
     elif load is not None and isinstance(load, str):
         load = (load,)
 
-    return all_aliases, load, dump
+    elif env is not None:
+        if isinstance(env, str):
+            env = (env,)
+        elif env is True:
+            env = load
+
+    return all_aliases, load, dump, env
 
 
 # Instances of Field are only ever created from within this module,
@@ -580,9 +631,27 @@ def _normalize_alias_args(default, default_factory, all_aliases, load, dump):
 # name and type are filled in after the fact, not in __init__.
 # They're not known at the time this class is instantiated, but it's
 # convenient if they're available later.
-#
-# When cls._FIELDS is filled in with a list of Field objects, the name
-# and type fields will have been populated.
+
+# noinspection PyPep8Naming,PyShadowingBuiltins
+def Env(*load,
+        default=MISSING,
+        default_factory=MISSING,
+        init=True, repr=True,
+        hash=None, compare=True, metadata=None,
+        **field_kwargs):
+
+    # noinspection PyTypeChecker
+    return Alias(
+        env=load,
+        default=default,
+        default_factory=default_factory,
+        init=init,
+        repr=repr,
+        hash=hash,
+        compare=compare,
+        metadata=metadata,
+        **field_kwargs,
+    )
 
 # In Python 3.14, dataclasses adds a new parameter to the :class:`Field`
 # constructor: `doc`
@@ -594,6 +663,7 @@ if PY314_OR_ABOVE:
         *all,
         load=None,
         dump=None,
+        env=None,
         skip=False,
         default=MISSING,
         default_factory=MISSING,
@@ -606,11 +676,12 @@ if PY314_OR_ABOVE:
         doc=None,
     ):
 
-        all, load, dump = _normalize_alias_args(default, default_factory, all, load, dump)
+        all, load, dump, env = _normalize_alias_args(default, default_factory, all, load, dump, env)
 
         return Field(
             load,
             dump,
+            env,
             skip,
             None,
             default,
@@ -645,6 +716,7 @@ if PY314_OR_ABOVE:
         return Field(
             load,
             dump,
+            load,
             skip,
             all,
             default,
@@ -660,13 +732,14 @@ if PY314_OR_ABOVE:
 
     class Field(_Field):
 
-        __slots__ = ("load_alias", "dump_alias", "skip", "path")
+        __slots__ = ("load_alias", "dump_alias", "env_vars", "skip", "path")
 
         # noinspection PyShadowingBuiltins
         def __init__(
             self,
             load_alias,
             dump_alias,
+            env_vars,
             skip,
             path,
             default,
@@ -680,6 +753,7 @@ if PY314_OR_ABOVE:
             doc=None,
         ):
 
+            # noinspection PyArgumentList
             super().__init__(
                 default,
                 default_factory,
@@ -694,6 +768,7 @@ if PY314_OR_ABOVE:
 
             self.load_alias = load_alias
             self.dump_alias = dump_alias
+            self.env_vars = env_vars
             self.skip = skip
             self.path = path
 
@@ -708,19 +783,20 @@ elif PY310_OR_ABOVE:  # pragma: no cover
     def Alias(*all,
               load=None,
               dump=None,
+              env=None,
               skip=False,
-              path=None,
               default=MISSING,
               default_factory=MISSING,
               init=True, repr=True,
               hash=None, compare=True,
               metadata=None, kw_only=False):
 
-        all, load, dump = _normalize_alias_args(default, default_factory, all, load, dump)
+        all, load, dump, env = _normalize_alias_args(default, default_factory, all, load, dump, env)
 
         return Field(
             load,
             dump,
+            env,
             skip,
             None,
             default,
@@ -748,6 +824,7 @@ elif PY310_OR_ABOVE:  # pragma: no cover
         return Field(
             load,
             dump,
+            load,
             skip,
             all,
             default,
@@ -764,12 +841,13 @@ elif PY310_OR_ABOVE:  # pragma: no cover
 
         __slots__ = ('load_alias',
                      'dump_alias',
+                     'env_vars',
                      'skip',
                      'path')
 
         # noinspection PyShadowingBuiltins
         def __init__(self,
-                     load_alias, dump_alias, skip, path,
+                     load_alias, dump_alias, env_vars, skip, path,
                      default, default_factory, init, repr, hash, compare,
                      metadata, kw_only):
 
@@ -782,6 +860,7 @@ elif PY310_OR_ABOVE:  # pragma: no cover
 
             self.load_alias = load_alias
             self.dump_alias = dump_alias
+            self.env_vars = env_vars
             self.skip = skip
             self.path = path
 
@@ -790,18 +869,19 @@ else:  # pragma: no cover
     def Alias(*all,
               load=None,
               dump=None,
+              env=None,
               skip=False,
-              path=None,
               default=MISSING,
               default_factory=MISSING,
               init=True, repr=True,
               hash=None, compare=True, metadata=None):
 
-        all, load, dump = _normalize_alias_args(default, default_factory, all, load, dump)
+        all, load, dump, env = _normalize_alias_args(default, default_factory, all, load, dump, env)
 
         return Field(
             load,
             dump,
+            env,
             skip,
             None,
             default,
@@ -828,6 +908,7 @@ else:  # pragma: no cover
         return Field(
             load,
             dump,
+            load,
             skip,
             all,
             default,
@@ -843,12 +924,13 @@ else:  # pragma: no cover
 
         __slots__ = ('load_alias',
                      'dump_alias',
+                     'env_vars',
                      'skip',
                      'path')
 
         # noinspection PyArgumentList,PyShadowingBuiltins
         def __init__(self,
-                     load_alias, dump_alias, skip, path,
+                     load_alias, dump_alias, env_vars, skip, path,
                      default, default_factory, init, repr, hash, compare,
                      metadata):
 
@@ -861,6 +943,7 @@ else:  # pragma: no cover
 
             self.load_alias = load_alias
             self.dump_alias = dump_alias
+            self.env_vars = env_vars
             self.skip = skip
             self.path = path
 

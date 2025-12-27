@@ -15,6 +15,7 @@ from ..enums import LetterCase
 from ..environ.loaders import EnvLoader
 from ..errors import ExtraData, MissingVars, ParseError, type_name
 from ..loader_selection import get_loader
+from ..log import enable_library_debug_logging
 from ..models import Extras, JSONField
 from ..type_def import ExplicitNull, JSONObject, dataclass_transform
 from ..utils.function_builder import FunctionBuilder
@@ -168,12 +169,12 @@ class EnvWizard(AbstractEnvWizard):
         meta = EnvMeta(key_transform_with_dump=key_transform)
 
         if debug:
-            default_lvl = logging.DEBUG
-            logging.basicConfig(level=default_lvl)
             # minimum logging level for logs by this library
-            min_level = default_lvl if isinstance(debug, bool) else debug
+            lvl = logging.DEBUG if isinstance(debug, bool) else debug
+            # enable library logging
+            enable_library_debug_logging(lvl)
             # set `debug_enabled` flag for the class's Meta
-            meta.debug_enabled = min_level
+            meta.debug_enabled = lvl
 
         # Bind child class to DumpMeta with no key transformation.
         meta.bind_to(cls)

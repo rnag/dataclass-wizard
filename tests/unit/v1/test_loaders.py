@@ -10,7 +10,7 @@ from abc import ABC
 from base64 import b64decode
 from collections import namedtuple, defaultdict, deque
 from dataclasses import dataclass, field
-from datetime import datetime, date, time, timedelta
+from datetime import datetime, date, time, timedelta, timezone
 from decimal import Decimal
 from pathlib import Path
 from typing import (
@@ -31,6 +31,8 @@ from dataclass_wizard.type_def import NoneType
 from dataclass_wizard.v1 import *
 from ..conftest import MyUUIDSubclass
 from ...conftest import *
+from ..._typing import *
+
 
 log = logging.getLogger(__name__)
 
@@ -768,6 +770,26 @@ def test_date_times_with_custom_pattern_when_annotation_is_invalid():
         _ = fromdict(MyClass, data)
 
     log.debug('Error details: %r', e.value)
+
+
+# def test_epoch_timestamp_to_date_is_utc():
+#     ts = 1639763585  # 2021-12-17 17:53:05Z
+#
+#     class MyDate(DataclassWizard):
+#         my_date: date
+#
+#     got = MyDate.from_dict({'my_date': ts})  # whatever calls your loader
+#     assert got.my_date == datetime.fromtimestamp(ts, tz=timezone.utc).date()
+#
+#
+# def test_epoch_timestamp_to_datetime_is_utc_aware():
+#     ts = 1639763585
+#
+#     class MyDT(DataclassWizard):
+#         my_dt: datetime
+#
+#     got = MyDT.from_dict({'my_dt': ts})
+#     assert got.my_dt == datetime.fromtimestamp(ts, tz=timezone.utc)
 
 
 def test_aware_and_utc_date_times_with_custom_pattern():
@@ -3632,17 +3654,12 @@ def test_sequence_and_mutable_sequence_are_supported():
     assert opt.list_of_bool == [True, False, True]
 
 
-@pytest.mark.skip('Ran out of time to get this to work')
-def test_dataclass_decorator_is_automatically_applied():
+def test_dataclass_wizard_automatically_applies_dataclass_decorator():
     """
-    Confirm the `@dataclass` decorator is automatically
-    applied, if not decorated by the user.
+    v1: Confirm the `DataclassWizard` automatically applies the `@dataclass`
+    decorator, *even if* already decorated by the user.
     """
-    class Test(JSONWizard):
-
-        class _(JSONWizard.Meta):
-            v1 = True
-
+    class Test(DataclassWizard, load_case='CAMEL'):
         my_field: str
         my_bool: bool = False
 
@@ -3653,8 +3670,12 @@ def test_dataclass_decorator_is_automatically_applied():
     assert t.my_field == 'test'
     assert t.my_bool
 
-    with pytest.raises(TypeError, match=".*Test\.__init__\(\) missing 1 required positional argument: 'my_field'"):
+    with pytest.raises(TypeError, match=r"__init__\(\) missing 1 required positional argument: 'my_field'"):
         Test()
+
+    with pytest.raises(MissingFields, match=r'.*Test\.__init__\(\)` missing required fields') as e:
+        Test.from_dict({})
+    assert e.value.missing_fields == ['my_field']
 
 
 def test_bytes_and_bytes_array_are_supported():

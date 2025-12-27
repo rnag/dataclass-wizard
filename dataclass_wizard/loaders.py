@@ -781,7 +781,7 @@ def load_func_for_dataclass(
         # a class method bound to `fromdict`.
         if ((from_dict := getattr(cls, 'from_dict', None)) is not None
                 and getattr(from_dict, '__func__', None) is fromdict):
-            _set_new_attribute(cls, 'from_dict', cls_fromdict)
+            _set_new_attribute(cls, 'from_dict', cls_fromdict, force=True)
         CLASS_TO_LOAD_FUNC[cls] = cls_fromdict
 
     return cls_fromdict

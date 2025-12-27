@@ -25,6 +25,47 @@ class KeyAction(Enum):
     # INCLUDE = 3
 
 
+class EnvKeyStrategy(Enum):
+    """
+    Defines how environment variable names are resolved for dataclass fields.
+
+    This controls *which keys are tried, and in what order*, when loading values
+    from environment variables, `.env` files, or Docker secrets.
+
+    Strategies:
+
+    - `ENV` (default):
+        Uses conventional environment variable naming.
+        Tries SCREAMING_SNAKE_CASE first, then snake_case.
+
+        Example:
+            Field: ``my_field_name``
+            Keys tried: ``MY_FIELD_NAME``, ``my_field_name``
+
+    - `FIELD_FIRST`:
+        Tries the field name as written first, then environment-style variants.
+
+        Example:
+            Field: ``myFieldName``
+            Keys tried: ``myFieldName``, ``MY_FIELD_NAME``, ``my_field_name``
+
+        Useful when working with `.env` files or non-Python naming conventions.
+
+    - `STRICT`:
+        Uses explicit keys only. No automatic key derivation is performed
+        (no prefixing, no casing transforms, no fallback lookups).
+        Only ``__init__()`` kwargs and explicit aliases are considered.
+
+        Useful when you want configuration loading to be fully deterministic.
+
+    """
+    ENV = "env"             # `MY_FIELD` > `my_field`
+    FIELD_FIRST = "field"   # try field name as written, then env-style (ENV)
+    STRICT = "strict"       # explicit keys only (kwargs + aliases), no prefixes / transforms
+    # TODO: Implement later, as time allows!
+    # PREFIXED_EXACT = "prefixed_exact"  # kwargs > prefixed exact field > alias > missing
+
+
 class KeyCase(Enum):
     """
     Defines transformations for string keys, commonly used for mapping JSON keys to dataclass fields.
@@ -61,3 +102,9 @@ class KeyCase(Enum):
 class DateTimeTo(Enum):
     ISO = 0          # ISO 8601 string (default)
     TIMESTAMP = 1    # Unix timestamp (seconds)
+
+
+class EnvPrecedence(Enum):
+    SECRETS_ENV_DOTENV = 'secrets > env > dotenv'  # default
+    SECRETS_DOTENV_ENV = 'secrets > dotenv > env'  # dev-heavy
+    ENV_ONLY = 'env-only'  # strict/prod

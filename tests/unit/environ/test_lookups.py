@@ -1,3 +1,6 @@
+import os
+from dataclasses import MISSING
+
 import pytest
 
 from dataclass_wizard.environ.lookups import *

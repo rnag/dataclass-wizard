@@ -443,7 +443,7 @@ def dump_func_for_dataclass(cls: Type[T],
         # Check if the class has a `to_dict`, and it's
         # equivalent to `asdict`.
         if getattr(cls, 'to_dict', None) is asdict:
-            _set_new_attribute(cls, 'to_dict', asdict_func)
+            _set_new_attribute(cls, 'to_dict', asdict_func, force=True)
         CLASS_TO_DUMP_FUNC[cls] = asdict_func
     else:
         nested_cls_to_dump_func[cls] = asdict_func

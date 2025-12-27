@@ -17,7 +17,7 @@ from dataclass_wizard.errors import ParseError
 from dataclass_wizard.v1.enums import KeyAction
 from dataclass_wizard.v1.models import Alias
 from ..conftest import *
-
+from ..._typing import *
 
 log = logging.getLogger(__name__)
 
@@ -157,7 +157,7 @@ def test_tag_field_is_used_in_dump_process():
             tag = 'B'
 
     @dataclass
-    class Container(JSONWizard, debug=True):
+    class Container(JSONWizard):
         """ container holds a subclass of Data """
 
         class _(JSONWizard.Meta):
@@ -557,7 +557,7 @@ def test_bytes_and_bytes_array_are_supported():
     """Confirm dump with `bytes` and `bytesarray` is supported."""
 
     @dataclass
-    class Foo(JSONWizard, debug=True):
+    class Foo(JSONWizard):
         class _(JSONWizard.Meta):
             v1 = True
 

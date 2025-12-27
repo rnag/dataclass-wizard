@@ -1,5 +1,6 @@
 __all__ = [
     'Buffer',
+    'Unpack',
     'PyForwardRef',
     'PyProtocol',
     'PyDeque',
@@ -133,7 +134,8 @@ StrCollection = Union[str, Collection[str]]
 if PY313_OR_ABOVE:  # pragma: no cover
     from collections.abc import Buffer
 
-    from typing import (Required as PyRequired,
+    from typing import (Unpack,
+                        Required as PyRequired,
                         NotRequired as PyNotRequired,
                         ReadOnly as PyReadOnly,
                         LiteralString as PyLiteralString,
@@ -144,13 +146,15 @@ elif PY311_OR_ABOVE:  # pragma: no cover
     else:
         from typing_extensions import Buffer
 
-    from typing import (Required as PyRequired,
+    from typing import (Unpack,
+                        Required as PyRequired,
                         NotRequired as PyNotRequired,
                         LiteralString as PyLiteralString,
                         dataclass_transform)
     from typing_extensions import ReadOnly as PyReadOnly
 else:
-    from typing_extensions import (Buffer,
+    from typing_extensions import (Unpack,
+                                   Buffer,
                                    Required as PyRequired,
                                    NotRequired as PyNotRequired,
                                    ReadOnly as PyReadOnly,

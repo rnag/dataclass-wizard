@@ -93,6 +93,15 @@ Timezone-Aware Date and Time Patterns
     as detailed in the Timezone-aware_ section. This is accomplished
     using the built-in zoneinfo_ module in Python 3.9+.
 
+.. tip::
+   On Windows, install ``tzdata`` with the ``tz`` extra:
+
+   .. code-block:: bash
+
+      pip install dataclass-wizard[tz]
+
+   This is required because Windows does not ship IANA time zone data.
+
 To handle timezone-aware ``datetime`` and ``time`` values, use the following patterns:
 
 - :class:`AwareDateTimePattern`
