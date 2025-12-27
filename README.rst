@@ -45,40 +45,32 @@
     MyClass(my_str='20', is_active_tuple=(True, False, True), list_of_int=[1, 2, 3])
 
 .. note::
-   Automatic type coercion, key casing transforms, nested dataclass support,
-   and automatic ``@dataclass`` application are shown above.
+   The example above demonstrates automatic type coercion, key casing
+   transforms, and support for nested dataclasses. ``DataclassWizard``
+   also auto-applies ``@dataclass`` to subclasses.
+
+.. important::
+
+   A new **v1 engine** is available as an opt-in, offering explicit
+   environment precedence, nested dataclass support, and improved performance.
+   See the `v1-opt-in`_ guide for details.
 
 .. contents:: Contents
    :depth: 1
    :local:
    :backlinks: none
 
-``v1`` Opt-In 🚀
-----------------
+Why Dataclass Wizard?
+---------------------
 
-.. note::
+Dataclass Wizard is a fast, lightweight library for turning Python
+dataclasses into robust serialization schemas.
 
-   Subclassing ``DataclassWizard`` automatically enables the v1 engine.
-   Other mixins (e.g. ``JSONWizard``) require explicit opt-in.
-
-Early access to **V1** is available! To opt in, simply enable ``v1=True`` in the ``Meta`` settings:
-
-.. code-block:: python3
-
-    from dataclass_wizard import DataclassWizard
-    from dataclass_wizard.v1 import Alias
-
-
-    class A(DataclassWizard):
-        my_str: str
-        version_info: float = Alias(load="v-info")
-
-
-    a = A.from_dict({"my_str": "test", "v-info": "1.0"})
-    assert a.version_info == 1.0
-    assert a.to_dict() == {"my_str": "test", "version_info": 1.0}
-
-For more information, see the `Field Guide to V1 Opt-in`_.
+- 🚀 Fast — code-generated loaders and dumpers
+- 🪶 Lightweight — pure Python, minimal dependencies
+- 🧙 Flexible — JSON, YAML, TOML, env vars, and more
+- 🧩 Typed — built on Python type hints
+- 🧪 Tested — high test coverage and battle-tested edge cases
 
 Quick Examples
 --------------
@@ -181,18 +173,6 @@ Quick Examples
    EnvWizard v1 is opt-in and introduces explicit
    environment precedence, nested dataclass support, and field-level config.
    See `V1 Env Magic`_ for full details.
-
-Why Dataclass Wizard?
----------------------
-
-Dataclass Wizard is a fast, lightweight library for turning Python
-dataclasses into robust serialization schemas.
-
-- 🚀 Fast — code-generated loaders and dumpers
-- 🪶 Lightweight — pure Python, minimal dependencies
-- 🧙 Flexible — JSON, YAML, TOML, env vars, and more
-- 🧩 Typed — built on Python type hints
-- 🧪 Tested — high test coverage and battle-tested edge cases
 
 Installation
 ------------
@@ -1582,6 +1562,7 @@ This package was created with Cookiecutter_ and the `rnag/cookiecutter-pypackage
 .. _dataclasses: https://docs.python.org/3/library/dataclasses.html
 .. _V1 Opt-in documentation for Patterned Date and Time: https://dcw.ritviknag.com/en/latest/common_use_cases/v1_patterned_date_time.html
 .. _`Field Guide to V1 Opt-in`: https://github.com/rnag/dataclass-wizard/wiki/Field-Guide-to-V1-Opt%E2%80%90in
+.. _`v1-opt-in`: https://github.com/rnag/dataclass-wizard/wiki/Field-Guide-to-V1-Opt%E2%80%90in
 .. _V1 Alias: https://dcw.ritviknag.com/en/latest/common_use_cases/v1_alias.html
 .. _Type Hooks: https://dcw.ritviknag.com/en/latest/advanced_usage/type_hooks.html
 .. _`ipaddress.IPv4Address`: https://docs.python.org/3/library/ipaddress.html#ipaddress.IPv4Address
