@@ -51,4 +51,7 @@ class SafeEncoder(JSONEncoder):
 
 
 def safe_dumps(o, cls=SafeEncoder, **kwargs):
-    return dumps(o, cls=cls, **kwargs)
+    try:
+        return dumps(o, cls=cls, **kwargs)
+    except TypeError:
+        return o

@@ -1,9 +1,10 @@
 import hashlib
 import sys
+import types
 from collections import defaultdict, deque
 from dataclasses import MISSING, Field as _Field
 from datetime import datetime, date, time, tzinfo, timezone, timedelta
-from typing import TYPE_CHECKING, Any, TypedDict, cast
+from typing import TYPE_CHECKING, Any, TypedDict, cast, Literal
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from .decorators import setup_recursive_safe_function
@@ -37,9 +38,7 @@ _BUILTIN_COLLECTION_TYPES = frozenset({
     frozenset,
 })
 
-# Atomic immutable types which don't require any recursive handling and for which deepcopy
-# returns the same object. We can provide a fast-path for these types in asdict and astuple.
-SIMPLE_TYPES = (
+SCALAR_TYPES = (
     # Common JSON Serializable types
     NoneType,
     bool,
@@ -48,25 +47,20 @@ SIMPLE_TYPES = (
     str,
     # Other common types
     complex,
-    bytes,
-    # TODO support
     # Other types that are also unaffected by deepcopy
-    # types.EllipsisType,
-    # types.NotImplementedType,
-    # types.CodeType,
-    # types.BuiltinFunctionType,
-    # types.FunctionType,
-    # type,
-    # range,
-    # property,
+    types.EllipsisType,
+    types.NotImplementedType,
+    types.CodeType,
+    types.BuiltinFunctionType,
+    types.FunctionType,
+    type,
+    range,
+    property,
 )
 
-SCALAR_TYPES = (
-    str,
-    int,
-    float,
-    bool,
-)
+# Atomic immutable types which don't require any recursive handling and for which deepcopy
+# returns the same object. We can provide a fast-path for these types in asdict and astuple.
+SIMPLE_TYPES = SCALAR_TYPES + (bytes, )
 
 SEQUENCE_ORIGINS = frozenset({
     list,
@@ -252,7 +246,7 @@ class TypeInfo:
 
     def v_and_next(self):
         next_i = self.i + 1
-        return self.v(), f'v{next_i}', next_i
+        return self.v(), f'{self.prefix}{next_i}', next_i
 
     def v_and_next_k_v(self):
         next_i = self.i + 1

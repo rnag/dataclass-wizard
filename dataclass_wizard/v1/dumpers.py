@@ -50,6 +50,24 @@ from ..utils.typing_compat import (
 )
 
 
+def _is_simple_type(arg, origin=None):
+    # optional simple type: (str, int, float, bool, Literal, Any)
+    if origin is None:
+        origin = get_origin_v2(arg)
+
+    return (origin is Any
+            or origin is Literal
+            or origin in SCALAR_TYPES
+            or is_subclass_safe(origin, SCALAR_TYPES))
+
+
+def _all_simple_types(args):
+    for arg in args:
+        if not _is_simple_type(arg):
+            return False
+    return True
+
+
 class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
     """
     This Mixin class derives its name from the eponymous `json.dumps`
@@ -118,6 +136,11 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
         v, v_next, i_next = tp.v_and_next()
         gorg = tp.origin
 
+        if v_next[0] == 'k':
+            # raise same error as `json` (not serializable)
+            raise TypeError('keys must be str, int, float, bool or None, '
+                            f'not {gorg.__qualname__}') from None
+
         # noinspection PyBroadException
         try:
             elem_type = tp.args[0]
@@ -127,16 +150,10 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
         string = cls.dump_dispatcher_for_annotation(
             tp.replace(origin=elem_type, i=i_next, index=None, val_name=None), extras)
 
-        if issubclass(gorg, (set, frozenset)):
-            start_char = '{'
-            end_char = '}'
-        else:
-            start_char = '['
-            end_char = ']'
+        if string == v_next:
+            return f'{v}.copy()' if issubclass(gorg, list) else f'list({v})'
 
-        result = f'{start_char}{string} for {v_next} in {v}{end_char}'
-
-        return tp.wrap(result, extras)
+        return f'[{string} for {v_next} in {v}]'
 
     @classmethod
     def dump_from_tuple(cls, tp: TypeInfo, extras: Extras):
@@ -269,42 +286,27 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
         tp_v_next = tp.replace(origin=vt, i=i_next, prefix='v', index=None, val_name=None)
         string_v = cls.dump_dispatcher_for_annotation(tp_v_next, extras)
 
+        if k_next == string_k and v_next == string_v:
+            # Easy path; shallow copy
+            return f'{v}.copy()'
+
         return f'{{{string_k}: {string_v} for {k_next}, {v_next} in {v}.items()}}'
 
     @classmethod
     def dump_from_dict(cls, tp: TypeInfo, extras: Extras):
-        v, k_next, v_next, i_next = tp.v_and_next_k_v()
-
         try:
             kt, vt = tp.args
         except ValueError:
             # Annotated without two arguments,
             # e.g. like `dict[str]` or `dict`
-            kt = vt = Any
+            return f'{tp.v()}.copy()'
 
-        result = cls._build_dict_comp(
-            tp, v, i_next, k_next, v_next, kt, vt, extras)
-
-        return tp.wrap(result, extras)
-
-    @classmethod
-    def dump_from_defaultdict(cls, tp: TypeInfo, extras: Extras):
         v, k_next, v_next, i_next = tp.v_and_next_k_v()
-        default_factory: DefFactory | None
 
-        try:
-            kt, vt = tp.args
-            default_factory = getattr(vt, '__origin__', vt)
-        except ValueError:
-            # Annotated without two arguments,
-            # e.g. like `defaultdict[str]` or `defaultdict`
-            kt = vt = Any
-            default_factory = NoneType
-
-        result = cls._build_dict_comp(
+        return cls._build_dict_comp(
             tp, v, i_next, k_next, v_next, kt, vt, extras)
 
-        return tp.wrap_dd(default_factory, result, extras)
+    dump_from_defaultdict = dump_from_dict
 
     @classmethod
     @setup_recursive_safe_function(prefix='dump')
@@ -379,9 +381,9 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
         _locals['tag_key'] = tag_key
 
         type_checks = []
-        try_parse_at_end = []
         dataclass_and_line = []
         has_dataclass = False
+        num_simple_types = 0
 
         for possible_tp in args:
 
@@ -396,8 +398,10 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
                 continue
 
             if is_dataclass(possible_tp):
-                has_dataclass = True
                 # we see a dataclass in `Union` declaration
+                has_dataclass = True
+                string = cls.dump_dispatcher_for_annotation(tp_new, extras)
+
                 meta = get_meta(possible_tp)
                 cls_name = possible_tp.__name__
 
@@ -412,50 +416,28 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
                         meta.tag = cls_name
 
                 if tag:
-                    string = cls.dump_dispatcher_for_annotation(tp_new, extras)
                     dataclass_and_line.append(
                         (possible_tp, cls_name, tag,
                          f'result = {string}; result[tag_key] = {tag!r}; return result'))
-                    continue
+                else:
+                    dataclass_and_line.append(
+                        (possible_tp, cls_name, tag,
+                         f'return {string}'))
 
-                # elif not config.v1_unsafe_parse_dataclass_in_union:
-                #     e = ValueError('Cannot parse dataclass types in a Union without '
-                #                    'one of the following `Meta` settings:\n\n'
-                #                    '  * `auto_assign_tags = True`\n'
-                #                    f'    - Set on class `{extras["cls_name"]}`.\n\n'
-                #                    f'  * `tag = "{cls_name}"`\n'
-                #                    f'    - Set on class `{possible_tp.__qualname__}`.\n\n'
-                #                    '  * `v1_unsafe_parse_dataclass_in_union = True`\n'
-                #                    f'    - Set on class `{extras["cls_name"]}`\n\n'
-                #                    'For more information, refer to:\n'
-                #                    '  https://dcw.ritviknag.com/en/latest/common_use_cases/dataclasses_in_union_types.html')
-                #     raise e from None
+            elif _is_simple_type(possible_tp):
+                num_simple_types += 1
 
-            string = cls.dump_dispatcher_for_annotation(tp_new, extras)
-
-            try_parse_lines = [
-                'try:',
-                f'  return {string}',
-                'except Exception:',
-                '  pass',
-            ]
-
-            # TODO disable for dataclasses
-
-            if (possible_tp in SIMPLE_TYPES
-                or is_subclass_safe(
-                    get_origin_v2(possible_tp), SIMPLE_TYPES)):
-
+            else:
+                string = cls.dump_dispatcher_for_annotation(tp_new, extras)
                 tn = tp_new.type_name(extras)
                 type_checks.extend([
                     f'if tp is {tn}:',
-                    f'  return {v}'
+                    f'  return {string}'
                 ])
-                list_to_add = try_parse_at_end
-            else:
-                list_to_add = type_checks
 
-            list_to_add.extend(try_parse_lines)
+        # all simple types
+        if len(args) == num_simple_types:
+            fn_gen.add_line(f'return {v}')
 
         fn_gen.add_line(f'tp = type({v})')
 
@@ -465,7 +447,7 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
             for field_i, (dataclass, name, tag, line) in enumerate(dataclass_and_line, start=1):
                 cls_name = f'C{field_i}'
                 var_to_dataclass[cls_name] = dataclass
-                with fn_gen.if_(f'tp is {cls_name}', comment=f'{name} -> {tag!r}'):
+                with fn_gen.if_(f'tp is {cls_name}', comment=f'{name} -> {tag!r}' if tag else name):
                     fn_gen.add_line(line)
 
             tp.ensure_in_locals(extras, **var_to_dataclass)
@@ -482,8 +464,8 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
         if type_checks:
             fn_gen.add_lines(*type_checks)
 
-        if try_parse_at_end:
-            fn_gen.add_lines(*try_parse_at_end)
+        if num_simple_types > 0:
+            fn_gen.add_line(f'return {v}')
 
         # Invalid type for Union
         fn_gen.add_line("raise ParseError("
@@ -627,8 +609,12 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
 
         # -> Union[x]
         elif is_union(origin):
-            dump_hook = cls.dump_from_union
             args = get_args(type_ann)
+
+            if _all_simple_types(args):
+                return tp.v()
+
+            dump_hook = cls.dump_from_union
 
             # Special case for Optional[x], which is actually Union[x, None]
             if len(args) == 2 and NoneType in args:

@@ -49,7 +49,7 @@
    transforms, and support for nested dataclasses. ``DataclassWizard``
    also auto-applies ``@dataclass`` to subclasses.
 
-.. important::
+.. tip::
 
    A new **v1 engine** is available as an opt-in, offering explicit
    environment precedence, nested dataclass support, and improved performance.
