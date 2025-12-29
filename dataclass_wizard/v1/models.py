@@ -196,6 +196,14 @@ class TypeInfo:
                           for slot in TypeInfo.__slots__
                           if not slot.startswith('_')}
 
+
+        if ((new_idx := changes.get('index')) is not None
+            and (curr_idx := current_values['index']) is not None):
+            if isinstance(curr_idx, (int, str)):
+                changes['index'] = (curr_idx, new_idx)
+            else:
+                changes['index'] = curr_idx + (new_idx, )
+
         # Apply the changes
         current_values.update(changes)
 
@@ -234,8 +242,13 @@ class TypeInfo:
         val_name = self.val_name
         if val_name is None:
             val_name = f'{self.prefix}{self.i}'
-        return (val_name if (idx := self.index) is None
-                else f'{val_name}[{idx}]')
+        idx = self.index
+        if idx is None:
+            return val_name
+        else:
+            if isinstance(idx, (int, str)):
+                return f'{val_name}[{idx}]'
+            return f"{val_name}{''.join(f'[{i}]' for i in idx)}"
 
     def v_for_def(self):
         """

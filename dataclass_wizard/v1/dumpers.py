@@ -167,8 +167,7 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
             is_variadic = args[-1] is ...
         else:
             # Annotated without args, as simply `tuple`
-            args = (Any, ...)
-            is_variadic = True
+            return f'list({tp.v()})'
 
         if is_variadic:
             # Logic that handles the variadic form of :class:`Tuple`'s,
@@ -186,22 +185,21 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
             string = cls.dump_dispatcher_for_annotation(
                 tp.replace(origin=args[0], i=i_next, index=None, val_name=None), extras)
 
+            if string == v_next:
+                return f'list({v})'
+
             result = f'[{string} for {v_next} in {v}]'
 
-            # Wrap because we need to create a tuple from list comprehension
-            force_wrap = True
         else:
             string = ', '.join([
                 str(cls.dump_dispatcher_for_annotation(
-                    tp.replace(origin=arg, index=k, val_name=None),
+                    tp.replace(origin=arg, index=k),
                     extras))
                 for k, arg in enumerate(args)])
 
-            result = f'({string}, )'
+            result = f'[{string}]'
 
-            force_wrap = False
-
-        return tp.wrap(result, extras, force=force_wrap)
+        return result
 
     @classmethod
     @setup_recursive_safe_function(prefix='dump')

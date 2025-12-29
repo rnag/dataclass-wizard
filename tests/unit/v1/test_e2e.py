@@ -10,6 +10,7 @@ import pytest
 from dataclass_wizard import asdict, fromdict, DataclassWizard, CatchAll
 from dataclass_wizard.errors import ParseError
 from dataclass_wizard.v1 import Alias
+from .utils_env import assert_unordered_equal
 from ..._typing import *
 
 
@@ -37,7 +38,7 @@ def test_nested_union_with_complex_types_in_containers():
 
     new_dict = asdict(c)
     assert new_dict == {
-        'Boolean-Dict': {'test': (None, True, None)},
+        'Boolean-Dict': {'test': [None, True, None]},
         'nestedUnionWithClass': ['123', {'test': 'value', '__tag__': 'Sub'}]
     }
 
@@ -75,7 +76,7 @@ def test_named_tuples_with_optionals_in_container():
     new_dict = asdict(c)
     assert new_dict == {
         'NtAllOpts': {
-            'k': {NTAllOptionals()},
+            'k': [NTAllOptionals()],
         },
         'NtOneOpt': [
             NTOneOptional(my_int=123, my_bool=False)
@@ -115,7 +116,7 @@ def test_typed_dict_with_optionals_and_read_only_in_container():
     assert c == MyClass(my_td={'test': (True, deque([{'a': 1, 'c': False, 'd': 23.0}]))})
 
     new_dict = asdict(c)
-    assert new_dict == {'my_td': {'test': (True, deque([{'a': 1, 'c': False, 'd': 23.0}]))}}
+    assert new_dict == {'my_td': {'test': [True, [{'a': 1, 'c': False, 'd': 23.0}]]}}
 
 
 def test_literal_in_container():
@@ -134,7 +135,7 @@ def test_literal_in_container():
     assert c == MyClass(my_literal_dict={'test': (123, frozenset({'Aa', 'Bb'}))})
 
     new_dict = c.to_dict()
-    assert new_dict == {'my_literal_dict': {'test': (123, {'Aa', 'Bb'})}}
+    assert_unordered_equal(new_dict, {'my_literal_dict': {'test': [123, ['Aa', 'Bb']]}})
 
 
 def test_decode_date_and_datetime_from_numeric_and_string_timestamp_and_iso_format():

@@ -54,8 +54,8 @@ class TypeInfo:
     # prefix of value in assignment (prepended to `i`),
     # defaults to 'v' if not specified.
     prefix: str = 'v'
-    # index of assignment (ex. `2 -> v1[2]`, *or* a string `"key" -> v4["key"]`)
-    index: int | None = None
+    # index / indices of assignment (ex. `2, 0 -> v1[2][0]`, *or* a string `"key" -> v4["key"]`)
+    index: int | str | tuple[int | str, ...] | None = None
     # explicit value name (overrides prefix + index)
     val_name: str | None = None
     # indicates if we are currently in Optional,

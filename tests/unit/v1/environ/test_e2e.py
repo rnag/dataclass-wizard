@@ -9,7 +9,7 @@ from dataclass_wizard import DataclassWizard, CatchAll
 from dataclass_wizard.errors import ParseError, MissingVars
 from dataclass_wizard.v1 import Alias, EnvWizard, env_config, AliasPath
 
-from ..utils_env import envsafe, from_env
+from ..utils_env import envsafe, from_env, assert_unordered_equal
 from ...._typing import *
 
 
@@ -155,7 +155,7 @@ def test_literal_in_container():
     assert c == MyClass(my_literal_dict={'test': (123, frozenset({'Aa', 'Bb'}))})
 
     new_dict = c.to_dict()
-    assert new_dict == {'my_literal_dict': {'test': (123, {'Aa', 'Bb'})}}
+    assert_unordered_equal(new_dict, {'my_literal_dict': {'test': [123, ['Aa', 'Bb']]}})
 
 
 def test_decode_date_and_datetime_from_numeric_and_string_timestamp_and_iso_format():
