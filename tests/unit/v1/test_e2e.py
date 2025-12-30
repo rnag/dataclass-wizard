@@ -76,11 +76,11 @@ def test_named_tuples_with_optionals_in_container():
     new_dict = asdict(c)
     assert new_dict == {
         'NtAllOpts': {
-            'k': [NTAllOptionals()],
+            'k': [['test', 1, True]]
         },
         'NtOneOpt': [
-            NTOneOptional(my_int=123, my_bool=False)
-        ],
+            [123, False]
+        ]
     }
 
 

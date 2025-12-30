@@ -202,68 +202,23 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
         return result
 
     @classmethod
-    @setup_recursive_safe_function(prefix='dump')
     def dump_from_named_tuple(cls, tp: TypeInfo, extras: Extras):
-        fn_gen = extras['fn_gen']
         nt_tp = cast(NamedTuple, tp.origin)
+        fields = nt_tp._fields  # field names in order
+        ann = nt_tp.__annotations__
 
-        _locals = extras['locals']
-        _locals['cls'] = nt_tp
-        _locals['msg'] = "`dict` input is not supported for NamedTuple, use a dataclass instead."
+        field_to_assign = {
+            name: str(
+                cls.dump_dispatcher_for_annotation(
+                    tp.replace(origin=ann.get(name, Any), index=i),
+                    extras,
+                )
+            )
+            for i, name in enumerate(fields)
+        }
 
-        req_field_to_assign = {}
-        field_assigns = []
-        # noinspection PyProtectedMember
-        optional_fields = set(nt_tp._field_defaults)
-        has_optionals = True if optional_fields else False
-        only_optionals = has_optionals and len(optional_fields) == len(nt_tp.__annotations__)
-        num_fields = 0
-        v = tp.v_for_def()
-
-        for field, field_tp in nt_tp.__annotations__.items():
-            string = cls.dump_dispatcher_for_annotation(
-                tp.replace(origin=field_tp, index=num_fields, val_name=None), extras)
-
-            if has_optionals and field in optional_fields:
-                field_assigns.append(string)
-            else:
-                req_field_to_assign[f'__{field}'] = string
-
-            num_fields += 1
-
-        params = ', '.join(req_field_to_assign)
-
-        with fn_gen.try_():
-
-            for field, string in req_field_to_assign.items():
-                fn_gen.add_line(f'{field} = {string}')
-
-            if has_optionals:
-                opt_start = len(req_field_to_assign)
-                fn_gen.add_line(f'L = len({v}); has_opt = L > {opt_start}')
-                with fn_gen.if_(f'has_opt'):
-                    fn_gen.add_line(f'fields = [{field_assigns.pop(0)}]')
-                    for i, string in enumerate(field_assigns, start=opt_start + 1):
-                        fn_gen.add_line(f'if L > {i}: fields.append({string})')
-
-                    if only_optionals:
-                        fn_gen.add_line(f'return cls(*fields)')
-                    else:
-                        fn_gen.add_line(f'return cls({params}, *fields)')
-
-            fn_gen.add_line(f'return cls({params})')
-
-        with fn_gen.except_(Exception, 'e'):
-            with fn_gen.if_('(e_cls := e.__class__) is IndexError'):
-                # raise `MissingFields`, as required NamedTuple fields
-                # are not present in the input object `o`.
-                fn_gen.add_line(f'raise_missing_fields(locals(), {v}, cls, None)')
-            with fn_gen.if_(f'e_cls is KeyError and type({v}) is dict'):
-                # Input object is a `dict`
-                # TODO should we support dict for namedtuple?
-                fn_gen.add_line('raise TypeError(msg) from None')
-            # re-raise
-            fn_gen.add_line('raise e from None')
+        params = ', '.join(field_to_assign.values())
+        return f'[{params}]'
 
     @classmethod
     def dump_from_named_tuple_untyped(cls, tp: TypeInfo, extras: Extras):
