@@ -61,7 +61,7 @@ def test_load_to_tuple_and_named_tuple():
 
     assert c.to_dict() == {'my_nt': [1.23, 'string'],
                            'my_tup': [1, 2, 3],
-                           'my_untyped_nt': untyped_tup(a='hello', b='world', c='123')}
+                           'my_untyped_nt': ['hello', 'world', '123']}
 
 
 def test_load_to_dataclass():

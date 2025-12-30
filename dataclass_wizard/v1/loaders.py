@@ -363,9 +363,15 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         # Assuming `Point` is a `namedtuple`, this performs
         # the equivalent logic as:
         #   Point(**x) if isinstance(x, dict) else Point(*x)
+        def raise_():
+            raise TypeError('Expected list/tuple for NamedTuple field') from None
+
+        tp.ensure_in_locals(extras, raise_=raise_)
+
         v = tp.v()
-        star, dbl_star = tp.multi_wrap(extras, 'nt_', f'*{v}', f'**{v}')
-        return f'{dbl_star} if isinstance({v}, dict) else {star}'
+        star = tp.wrap(f'*{v}', extras, prefix='nt_')
+        # star, dbl_star = tp.multi_wrap(extras, 'nt_', f'*{v}', f'**{v}')
+        return f'{star} if (tp := type({v})) is list or tp is tuple else raise_()'
 
     @classmethod
     def _build_dict_comp(cls, tp, v, i_next, k_next, v_next, kt, vt, extras):
@@ -996,21 +1002,21 @@ def check_and_raise_missing_fields(
         **kwargs,
 ):
 
-    if fields is None:  # named tuple
+    if fields is None:  # `typing.NamedTuple` or `collections.namedtuple`
         nt_tp = cast(NamedTuple, cls)
-        # noinspection PyProtectedMember
         field_to_default = nt_tp._field_defaults
+        field_names = nt_tp._fields
 
         fields = tuple([
             dataclasses.field(
                 default=field_to_default.get(field, MISSING),
             )
-            for field in cls.__annotations__])
+            for field in field_names])
 
-        for field, name in zip(fields, cls.__annotations__):
+        for field, name in zip(fields, field_names):
             field.name = name
 
-        missing_fields = [f for f in cls.__annotations__
+        missing_fields = [f for f in field_names
                           if f'__{f}' not in _locals
                           and f not in field_to_default]
 
@@ -1465,30 +1471,37 @@ def re_raise(e, cls, o, fields, field, value):
 
     # noinspection PyUnboundLocalVariable
     if (isinstance(e, ParseError)
-            # if the type is `typing.NamedTuple`
+            # `typing.NamedTuple` or `collections.namedtuple`
             and (origin := e.ann_type) is not None
             and is_subclass_safe(origin, tuple)
-            and (_fields := getattr(origin, '_fields', None))
-            and getattr(origin, '__annotations__', None)):
+            and (_fields := getattr(origin, '_fields', None))):
         # TODO
         # meta = get_meta(cls)
 
+        nt_tp = cast(NamedTuple, origin)
+        min_fields = len(_fields) - len(nt_tp._field_defaults)
+
         e_cls = getattr(e.base_error, '__class__', None)
 
-        if e_cls is IndexError:
+        if e_cls in (IndexError, TypeError):
             # raise `MissingFields`, as required NamedTuple fields
             # are not present in the input object `o`.
-            try:
+            if isinstance(value, (list, tuple)):
                 # noinspection PyUnboundLocalVariable
                 _locals = {f'__{f}' for f in _fields[:len(value)]}
-            except (IndexError, ValueError, TypeError):
-                _locals = {}
+            elif isinstance(value, dict):
+                _locals = {f'__{f}' for f in _fields if f in value}
+            else:
+                _locals = _fields
+
             if cls and field:
                 kwargs = {'field': f'{ParseError.name(cls)}.{field}'}
             else:
                 kwargs = {}
-            check_and_raise_missing_fields(
-                _locals, value, origin, None, **kwargs)
+
+            if len(_locals) < min_fields:
+                check_and_raise_missing_fields(
+                    _locals, value, origin, None, **kwargs)
 
         if e_cls is KeyError and type(o) is dict:
             e.kwargs['resolution'] = (

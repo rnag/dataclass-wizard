@@ -2559,8 +2559,8 @@ def test_named_tuple_recursive():
         ),
         (
             {'my_str': 'test', 'my_int': 2, 'my_bool': True},
-            does_not_raise(),
-            {'my_str': 'test', 'my_int': 2, 'my_bool': True}
+            pytest.raises(ParseError),
+            None,
         ),
     ]
 )

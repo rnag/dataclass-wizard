@@ -222,14 +222,9 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
 
     @classmethod
     def dump_from_named_tuple_untyped(cls, tp: TypeInfo, extras: Extras):
-        # Check if input object is `dict` or `list`.
-        #
-        # Assuming `Point` is a `namedtuple`, this performs
-        # the equivalent logic as:
-        #   Point(**x) if isinstance(x, dict) else Point(*x)
-        v = tp.v()
-        star, dbl_star = tp.multi_wrap(extras, 'nt_', f'*{v}', f'**{v}')
-        return f'{dbl_star} if isinstance({v}, dict) else {star}'
+        # nt_tp = cast(NamedTuple, tp.origin)
+        # fields = nt_tp._fields  # field names in order
+        return f'list({tp.v()})'
 
     @classmethod
     def _build_dict_comp(cls, tp, v, i_next, k_next, v_next, kt, vt, extras):
