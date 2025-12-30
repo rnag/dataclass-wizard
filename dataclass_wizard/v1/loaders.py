@@ -992,7 +992,9 @@ def setup_default_loader(cls=LoadMixin):
 
 def check_and_raise_missing_fields(
         _locals, o, cls,
-        fields: tuple[Field, ...] | None):
+        fields: tuple[Field, ...] | None,
+        **kwargs,
+):
 
     if fields is None:  # named tuple
         nt_tp = cast(NamedTuple, cls)
@@ -1026,7 +1028,7 @@ def check_and_raise_missing_fields(
 
     raise MissingFields(
         None, o, cls, fields, None, missing_fields,
-        missing_keys
+        missing_keys, **kwargs,
     ) from None
 
 
@@ -1466,12 +1468,29 @@ def re_raise(e, cls, o, fields, field, value):
             # if the type is `typing.NamedTuple`
             and (origin := e.ann_type) is not None
             and is_subclass_safe(origin, tuple)
-            and hasattr(origin, '_fields')
+            and (_fields := getattr(origin, '_fields', None))
             and getattr(origin, '__annotations__', None)):
         # TODO
         # meta = get_meta(cls)
 
-        if isinstance(o, dict):
+        e_cls = getattr(e.base_error, '__class__', None)
+
+        if e_cls is IndexError:
+            # raise `MissingFields`, as required NamedTuple fields
+            # are not present in the input object `o`.
+            try:
+                # noinspection PyUnboundLocalVariable
+                _locals = {f'__{f}' for f in _fields[:len(value)]}
+            except (IndexError, ValueError, TypeError):
+                _locals = {}
+            if cls and field:
+                kwargs = {'field': f'{ParseError.name(cls)}.{field}'}
+            else:
+                kwargs = {}
+            check_and_raise_missing_fields(
+                _locals, value, origin, None, **kwargs)
+
+        if e_cls is KeyError and type(o) is dict:
             e.kwargs['resolution'] = (
                 'dict input is not supported for NamedTuple '
                 'in list mode; pass a list/tuple or enable '

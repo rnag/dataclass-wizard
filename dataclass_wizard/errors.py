@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from dataclasses import Field, MISSING
+from dataclasses import Field, MISSING, is_dataclass
 from typing import (Any, Type, Dict, Tuple, ClassVar,
                     Optional, Union, Iterable, Callable, Collection, Sequence)
 
@@ -285,7 +285,8 @@ class MissingFields(JSONWizardError):
         # see https://github.com/rnag/dataclass-wizard/issues/54 for more info
 
         normalized_json_keys = [normalize(key) for key in obj]
-        if next((f for f in self.missing_fields if normalize(f) in normalized_json_keys), None):
+        if (is_dataclass(self.parent_cls) and
+            next((f for f in self.missing_fields if normalize(f) in normalized_json_keys), None)):
             from .enums import LetterCase
             from .v1.enums import KeyCase
             from .loader_selection import get_loader
