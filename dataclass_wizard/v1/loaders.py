@@ -277,84 +277,127 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         if nt_tp._field_defaults:  # has optionals
             return cls._load_to_named_tuple_fn(tp, extras)
 
-        fields = nt_tp._fields  # field names in order
+        fields_in_order = nt_tp._fields  # field names in order
         ann = nt_tp.__annotations__
 
-        field_to_assign = {
-            name: str(
-                cls.load_dispatcher_for_annotation(
-                    tp.replace(origin=ann.get(name, Any), index=i),
-                    extras,
+        if extras['config'].v1_namedtuple_as_dict:
+            values_in_order = tuple(
+                str(
+                    cls.load_dispatcher_for_annotation(
+                        tp.replace(origin=ann.get(name, Any), index=repr(name)),
+                        extras,
+                    )
                 )
+                for name in fields_in_order
             )
-            for i, name in enumerate(fields)
-        }
+        else:
+            values_in_order = tuple(
+                str(
+                    cls.load_dispatcher_for_annotation(
+                        tp.replace(origin=ann.get(name, Any), index=i),
+                        extras,
+                    )
+                )
+                for i, name in enumerate(fields_in_order)
+            )
 
-        params = ', '.join(field_to_assign.values())
+        params = ', '.join(values_in_order)
         return tp.wrap(params, extras)
 
     @classmethod
     @setup_recursive_safe_function
     def _load_to_named_tuple_fn(cls, tp: TypeInfo, extras: Extras):
         fn_gen = extras['fn_gen']
-
-        nt_tp = cast(NamedTuple, tp.origin)
-        fields = nt_tp._fields  # field names in order
-        ann = nt_tp.__annotations__
-        optional_fields = set(nt_tp._field_defaults)
-
         _locals = extras['locals']
-        _locals['cls'] = nt_tp
-        _locals['msg'] = "`dict` input is not supported for NamedTuple, use a dataclass instead."
 
-        req_field_to_assign = {}
-        field_assigns = []
+        nt_tp = _locals['cls'] = cast(NamedTuple, tp.origin)
+        fields_in_order = nt_tp._fields  # field names in order
+        field_to_default = nt_tp._field_defaults
+        ann = nt_tp.__annotations__
 
-        only_optionals = len(optional_fields) == len(fields)
+        req_field_to_value = {}
+        opt_field_to_value = {}
+
+        all_optionals = len(field_to_default) == len(fields_in_order)
         v = tp.v_for_def()
 
-        for i, name in enumerate(fields):
-            field_tp = ann.get(name, Any)
-            string = cls.load_dispatcher_for_annotation(
-                tp.replace(origin=field_tp, index=i), extras)
+        if extras['config'].v1_namedtuple_as_dict:
+            i_next = tp.i + 1
+            v_next = f'{tp.prefix}{i_next}'
 
-            if name in optional_fields:
-                field_assigns.append(string)
-            else:
-                req_field_to_assign[f'__{name}'] = string
-
-        params = ', '.join(req_field_to_assign)
-
-        with fn_gen.try_():
-
-            for field, string in req_field_to_assign.items():
-                fn_gen.add_line(f'{field} = {string}')
-
-            opt_start = len(req_field_to_assign)
-            fn_gen.add_line(f'L = len({v}); has_opt = L > {opt_start}')
-            with fn_gen.if_(f'has_opt'):
-                fn_gen.add_line(f'fields = [{field_assigns.pop(0)}]')
-                for i, string in enumerate(field_assigns, start=opt_start + 1):
-                    fn_gen.add_line(f'if L > {i}: fields.append({string})')
-
-                if only_optionals:
-                    fn_gen.add_line(f'return cls(*fields)')
+            for name in fields_in_order:
+                field_tp = ann.get(name, Any)
+                if name in field_to_default:
+                    _locals[f'_dflt_{name}'] = field_to_default[name]
+                    new_tp = tp.replace(origin=field_tp, i=i_next,
+                                        index=None, val_name=None)
+                    value = cls.load_dispatcher_for_annotation(new_tp, extras)
+                    opt_field_to_value[name] = value
                 else:
-                    fn_gen.add_line(f'return cls({params}, *fields)')
+                    new_tp = tp.replace(origin=field_tp, index=repr(name))
+                    value = cls.load_dispatcher_for_annotation(new_tp, extras)
+                    req_field_to_value[f'__{name}'] = value
 
-            fn_gen.add_line(f'return cls({params})')
+            req_args = ', '.join(req_field_to_value)
+            opt_args = ', '.join(f'__{f}' for f in opt_field_to_value)
 
-        with fn_gen.except_(Exception, 'e'):
-            with fn_gen.if_('(e_cls := e.__class__) is IndexError'):
-                # raise `MissingFields`, as required NamedTuple fields
-                # are not present in the input object `o`.
-                fn_gen.add_line(f'raise_missing_fields(locals(), {v}, cls, None)')
-            with fn_gen.if_(f'e_cls is KeyError and type({v}) is dict'):
-                # Input object is a `dict`
-                # TODO should we support dict for namedtuple?
-                fn_gen.add_line('raise TypeError(msg) from None')
-            # re-raise
-            fn_gen.add_line('raise e from None')
+            if all_optionals:  # NamedTuple has no required fields
+                ret_value_with_input = f'return cls({opt_args})'
+            else:
+                ret_value_with_input = f'return cls({req_args}, {opt_args})'
+                for name, value in req_field_to_value.items():
+                    fn_gen.add_line(f'{name} = {value}')
+
+            # it's guaranteed the NamedTuple has at least one default field
+            with fn_gen.if_(f'not {v}'):
+                fn_gen.add_line('return cls()')
+
+            for name, value in opt_field_to_value.items():
+                with fn_gen.if_(f'({v_next} := {v}.get({name!r}, MISSING)) is MISSING'):
+                    fn_gen.add_line(f'__{name} = _dflt_{name}')
+                with fn_gen.else_():
+                    fn_gen.add_line(f'__{name} = {value}')
+
+            fn_gen.add_line(ret_value_with_input)
+
+        else:  # list mode
+            for i, name in enumerate(fields_in_order):
+                field_tp = ann.get(name, Any)
+                value = cls.load_dispatcher_for_annotation(
+                    tp.replace(origin=field_tp, index=i), extras)
+
+                if name in field_to_default:
+                    opt_field_to_value[name] = value
+                else:
+                    req_field_to_value[f'__{name}'] = value
+
+            req_args = ', '.join(req_field_to_value)
+            opt_fields_start_i = len(req_field_to_value)
+
+            if all_optionals:  # NamedTuple has no required fields
+                len_condition = 'n'
+                ret_value_with_input = f'return cls(*args)'
+            else:
+                len_condition = f'n > {opt_fields_start_i}'
+                ret_value_with_input = f'return cls({req_args}, *args)'
+
+                for name, value in req_field_to_value.items():
+                    fn_gen.add_line(f'{name} = {value}')
+
+            # it's guaranteed the NamedTuple has at least one default field
+            fn_gen.add_line(f'n = len({v})')
+
+            with fn_gen.if_(len_condition):
+                opt_values = list(opt_field_to_value.values())
+                fn_gen.add_line(f'args = [{opt_values.pop(0)}]')
+
+                for i, value in enumerate(opt_values, start=opt_fields_start_i + 1):
+                    with fn_gen.if_(f'n > {i}'):
+                        fn_gen.add_line(f'args.append({value})')
+
+                fn_gen.add_line(ret_value_with_input)
+
+            fn_gen.add_line(f'return cls({req_args})')
 
     @classmethod
     def load_to_named_tuple_untyped(cls, tp: TypeInfo, extras: Extras):
@@ -363,14 +406,20 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         # Assuming `Point` is a `namedtuple`, this performs
         # the equivalent logic as:
         #   Point(**x) if isinstance(x, dict) else Point(*x)
+        #
+        # star, dbl_star = tp.multi_wrap(extras, 'nt_', f'*{v}', f'**{v}')
+
+        v = tp.v()
+
+        if extras['config'].v1_namedtuple_as_dict:
+            return tp.wrap(f'**{v}', extras, prefix='nt_')
+
         def raise_():
             raise TypeError('Expected list/tuple for NamedTuple field') from None
 
         tp.ensure_in_locals(extras, raise_=raise_)
 
-        v = tp.v()
         star = tp.wrap(f'*{v}', extras, prefix='nt_')
-        # star, dbl_star = tp.multi_wrap(extras, 'nt_', f'*{v}', f'**{v}')
         return f'{star} if (tp := type({v})) is list or tp is tuple else raise_()'
 
     @classmethod
@@ -871,7 +920,7 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
             load_hook = cls.default_load_to
 
         elif is_subclass_safe(origin, tuple) and hasattr(origin, '_fields'):
-            container_tp = tuple
+            container_tp = dict if config.v1_namedtuple_as_dict else tuple
             if getattr(origin, '__annotations__', None):
                 # Annotated as a `typing.NamedTuple` subtype
                 load_hook = cls.load_to_named_tuple
@@ -1201,8 +1250,8 @@ def load_func_for_dataclass(
         if pre_assign:
             fn_gen.add_line('i = 0')
 
-        vars_for_fields = []
-        kwargs_for_fields = []
+        args = []
+        kwargs = []
 
         if cls_init_fields:
 
@@ -1324,9 +1373,9 @@ def load_func_for_dataclass(
 
                     else:
                         if name in cls_init_kw_only_field_names:
-                            kwargs_for_fields.append(f'{name}={var}')
+                            kwargs.append(f'{name}={var}')
                         else:
-                            vars_for_fields.append(var)
+                            args.append(var)
 
                         with fn_gen.if_(val_is_found):
                             fn_gen.add_line(f'{pre_assign}{var} = {string}')
@@ -1347,9 +1396,9 @@ def load_func_for_dataclass(
                 fn_gen.add_line(f'{var} = {{}} if len(o) == i else {catch_all_def}')
 
                 if catch_all_field_stripped in cls_init_kw_only_field_names:
-                    kwargs_for_fields.append(f'{catch_all_field_stripped}={var}')
+                    kwargs.append(f'{catch_all_field_stripped}={var}')
                 else:
-                    vars_for_fields.insert(catch_all_idx, var)
+                    args.insert(catch_all_idx, var)
 
         elif set_aliases:  # warn / raise on unknown key
             line = 'extra_keys = set(o) - aliases'
@@ -1373,12 +1422,11 @@ def load_func_for_dataclass(
         # we raise them here.
 
         if has_defaults:
-            vars_for_fields.append('**init_kwargs')
-        if kwargs_for_fields:
-            vars_for_fields.extend(kwargs_for_fields)
-        init_parts = ', '.join(vars_for_fields)
+            args.append('**init_kwargs')
+        if kwargs:
+            args.extend(kwargs)
         with fn_gen.try_():
-            fn_gen.add_line(f"return cls({init_parts})")
+            fn_gen.add_line(f'return cls({", ".join(args)})')
         with fn_gen.except_(UnboundLocalError):
             # raise `MissingFields`, as required dataclass fields
             # are not present in the input object `o`.
@@ -1475,40 +1523,53 @@ def re_raise(e, cls, o, fields, field, value):
             and (origin := e.ann_type) is not None
             and is_subclass_safe(origin, tuple)
             and (_fields := getattr(origin, '_fields', None))):
-        # TODO
-        # meta = get_meta(cls)
 
+        meta = get_meta(cls)
         nt_tp = cast(NamedTuple, origin)
-        min_fields = len(_fields) - len(nt_tp._field_defaults)
+        field_to_default = nt_tp._field_defaults
+        num_req_fields = len(_fields) - len(field_to_default)
 
         e_cls = getattr(e.base_error, '__class__', None)
 
-        if e_cls in (IndexError, TypeError):
+        if e_cls in (IndexError, KeyError, TypeError):
             # raise `MissingFields`, as required NamedTuple fields
             # are not present in the input object `o`.
             if isinstance(value, (list, tuple)):
                 # noinspection PyUnboundLocalVariable
                 _locals = {f'__{f}' for f in _fields[:len(value)]}
+                num_req_fields_provided = min(len(value), num_req_fields)
             elif isinstance(value, dict):
                 _locals = {f'__{f}' for f in _fields if f in value}
+                num_req_fields_provided = len(
+                    [f for f in _fields
+                     if f in value and f not in field_to_default]
+                )
             else:
                 _locals = _fields
+                num_req_fields_provided = num_req_fields
 
-            if cls and field:
-                kwargs = {'field': f'{ParseError.name(cls)}.{field}'}
-            else:
-                kwargs = {}
-
-            if len(_locals) < min_fields:
+            if num_req_fields_provided < num_req_fields:
                 check_and_raise_missing_fields(
-                    _locals, value, origin, None, **kwargs)
+                    _locals, value, origin, None,
+                    **(
+                        {'field': f'{ParseError.name(cls)}.{field}'}
+                        if cls and field
+                        else {}
+                    ))
 
-        if e_cls is KeyError and type(o) is dict:
-            e.kwargs['resolution'] = (
-                'dict input is not supported for NamedTuple '
-                'in list mode; pass a list/tuple or enable '
-                'NamedTuple dict mode.'
-            )
-            e.kwargs['unsupported_type'] = dict
+        if meta.v1_namedtuple_as_dict:
+            if e_cls is TypeError and type(value) is not dict:
+                e.kwargs['resolution'] = (
+                    'List/tuple input is not supported for NamedTuple fields in dict mode. '
+                    'Pass a dict, or set Meta.v1_namedtuple_as_dict = False.'
+                )
+                e.kwargs['unsupported_type'] = type(value)
+        else:
+            if e_cls is KeyError and type(value) is dict:
+                e.kwargs['resolution'] = (
+                    'Dict input is not supported for NamedTuple fields in list mode. '
+                    'Pass a list/tuple, or set Meta.v1_namedtuple_as_dict = True.'
+                )
+                e.kwargs['unsupported_type'] = dict
 
     raise e from None

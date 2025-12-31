@@ -217,14 +217,17 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
             for i, name in enumerate(fields)
         }
 
+        if extras['config'].v1_namedtuple_as_dict:
+            params = [f'{field!r}: {value}' for field, value in field_to_assign.items()]
+            return f'{{{", ".join(params)}}}'
+
         params = ', '.join(field_to_assign.values())
         return f'[{params}]'
 
     @classmethod
     def dump_from_named_tuple_untyped(cls, tp: TypeInfo, extras: Extras):
-        # nt_tp = cast(NamedTuple, tp.origin)
-        # fields = nt_tp._fields  # field names in order
-        return f'list({tp.v()})'
+        as_dict = extras['config'].v1_namedtuple_as_dict
+        return f'{tp.v()}._asdict()' if as_dict else f'list({tp.v()})'
 
     @classmethod
     def _build_dict_comp(cls, tp, v, i_next, k_next, v_next, kt, vt, extras):

@@ -423,6 +423,21 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
     # deserialization.
     v1_assume_naive_datetime_tz: ClassVar[tzinfo | None] = None
 
+    # Controls how `typing.NamedTuple` and `collections.namedtuple`
+    # fields are loaded and serialized.
+    #
+    # - False (DEFAULT): load from list/tuple and serialize
+    #                     as a positional list.
+    # - True: load from mapping and serialize as a dict
+    #           keyed by field name.
+    #
+    # In strict mode, inputs that do not match the selected mode
+    # raise TypeError.
+    #
+    # Note:
+    #   This option enforces strict shape matching for performance reasons.
+    v1_namedtuple_as_dict: bool = None
+
     # noinspection PyMethodParameters
     @cached_class_property
     def all_fields(cls) -> FrozenKeys:
@@ -711,6 +726,21 @@ class AbstractEnvMeta(metaclass=ABCOrAndMeta):
     # This setting applies to serialization only and does not affect
     # deserialization.
     v1_assume_naive_datetime_tz: ClassVar[tzinfo | None] = None
+
+    # Controls how `typing.NamedTuple` and `collections.namedtuple`
+    # fields are loaded and serialized.
+    #
+    # - False (DEFAULT): load from list/tuple and serialize
+    #                     as a positional list.
+    # - True: load from mapping and serialize as a dict
+    #           keyed by field name.
+    #
+    # In strict mode, inputs that do not match the selected mode
+    # raise TypeError.
+    #
+    # Note:
+    #   This option enforces strict shape matching for performance reasons.
+    v1_namedtuple_as_dict: bool = None
 
     # noinspection PyMethodParameters
     @cached_class_property

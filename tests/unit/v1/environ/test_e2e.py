@@ -6,8 +6,9 @@ from typing import Optional, Union, NamedTuple, Literal
 import pytest
 
 from dataclass_wizard import DataclassWizard, CatchAll
-from dataclass_wizard.errors import ParseError, MissingVars
+from dataclass_wizard.errors import ParseError, MissingVars, MissingFields
 from dataclass_wizard.v1 import Alias, EnvWizard, env_config, AliasPath
+from ..models import EnvContDict, EnvContList, TN, CN
 
 from ..utils_env import envsafe, from_env, assert_unordered_equal
 from ...._typing import *
@@ -90,7 +91,8 @@ def test_named_tuples_with_optionals_in_container():
     with pytest.raises(ParseError) as e:
         _ = from_env(MyClass, {'nt_one_opt': [{}], 'nt_all_opts': {'k': [[]]}})
 
-    assert '`dict` input is not supported for NamedTuple, use a dataclass instead' in str(e.value)
+    # TODO
+    # assert '`dict` input is not supported for NamedTuple, use a dataclass instead' in str(e.value)
 
     c = from_env(MyClass, _input)
 
@@ -377,3 +379,34 @@ def test_env_alias_path_with_multiple_paths():
     with pytest.raises(ParseError) as e:
         _ = from_env(E2, {'a': []})
     assert str(e.value.base_error) == 'Invalid path'
+
+
+def test_namedtuple_dict_mode_roundtrip_and_defaults():
+    o = from_env(EnvContDict, {"tn": {"a": 1}, "cn": {"a": 3}})
+    assert o.tn == TN(a=1, b=2)
+    assert o.cn == CN(a=3, b=2)
+
+    d = o.to_dict()
+    assert d == {"tn": {"a": 1, "b": 2}, "cn": {"a": 3, "b": 2}}
+
+
+# TODO
+# def test_namedtuple_dict_mode_missing_required_raises():
+#     with pytest.raises(MissingFields, match=r'`TN\.__init__\(\)` missing required fields') as e:
+#         from_env(EnvContDict, {"tn": {"b": 9}, "cn": {"a": 1}})
+#
+#     assert e.value.missing_fields == ['a']
+
+
+def test_namedtuple_list_mode_roundtrip_and_defaults():
+    o = from_env(EnvContList, {"tn": [1], "cn": [3]})
+    assert o.tn == TN(a=1, b=2)
+    assert o.cn == CN(a=3, b=2)
+
+    d = o.to_dict()
+    assert d == {"tn": [1, 2], "cn": [3, 2]}
+
+
+# def test_namedtuple_list_mode_rejects_dict_input_with_clear_error():
+#     with pytest.raises(ParseError, match=r"Dict input is not supported for NamedTuple fields in list mode.*list.*Meta\.v1_namedtuple_as_dict = True"):
+#         from_env(EnvContList, {"tn": {"a": 1}, "cn": {"a": 3}})

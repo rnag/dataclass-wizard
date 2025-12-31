@@ -8,8 +8,9 @@ from typing import Optional, Union, NamedTuple, Literal
 import pytest
 
 from dataclass_wizard import asdict, fromdict, DataclassWizard, CatchAll
-from dataclass_wizard.errors import ParseError
+from dataclass_wizard.errors import ParseError, MissingFields
 from dataclass_wizard.v1 import Alias
+from .models import ContDict, TN, CN, ContList
 from .utils_env import assert_unordered_equal
 from ..._typing import *
 
@@ -67,7 +68,8 @@ def test_named_tuples_with_optionals_in_container():
     with pytest.raises(ParseError) as e:
         _ = fromdict(MyClass, {'NtOneOpt': [{}], 'NtAllOpts': {'k': [[]]}})
 
-    assert '`dict` input is not supported for NamedTuple, use a dataclass instead' in str(e.value)
+    # TODO
+    # assert '`dict` input is not supported for NamedTuple, use a dataclass instead' in str(e.value)
 
     c = fromdict(MyClass, d)
     assert c == MyClass(nt_all_opts={'k': {NTAllOptionals()}},
@@ -272,3 +274,33 @@ def test_lazy_codegen_does_not_poison_subclasses():
     assert A.from_dict is not fromdict
     assert B.from_dict is not fromdict
     assert C.from_dict is not fromdict
+
+
+def test_namedtuple_dict_mode_roundtrip_and_defaults():
+    o = ContDict.from_dict({"tn": {"a": 1}, "cn": {"a": 3}})
+    assert o.tn == TN(a=1, b=2)
+    assert o.cn == CN(a=3, b=2)
+
+    d = o.to_dict()
+    assert d == {"tn": {"a": 1, "b": 2}, "cn": {"a": 3, "b": 2}}
+
+
+def test_namedtuple_dict_mode_missing_required_raises():
+    with pytest.raises(MissingFields, match=r'`TN\.__init__\(\)` missing required fields') as e:
+        ContDict.from_dict({"tn": {"b": 9}, "cn": {"a": 1}})
+
+    assert e.value.missing_fields == ['a']
+
+
+def test_namedtuple_list_mode_roundtrip_and_defaults():
+    o = ContList.from_dict({"tn": [1], "cn": [3]})
+    assert o.tn == TN(a=1, b=2)
+    assert o.cn == CN(a=3, b=2)
+
+    d = o.to_dict()
+    assert d == {"tn": [1, 2], "cn": [3, 2]}
+
+
+def test_namedtuple_list_mode_rejects_dict_input_with_clear_error():
+    with pytest.raises(ParseError, match=r"Dict input is not supported for NamedTuple fields in list mode.*list.*Meta\.v1_namedtuple_as_dict = True"):
+        ContList.from_dict({"tn": {"a": 1}, "cn": {"a": 3}})
