@@ -38,6 +38,8 @@ _BUILTIN_COLLECTION_TYPES = frozenset({
     frozenset,
 })
 
+# FIXME: Python 3.9 doesn't have `types.EllipsisType`
+ELLIPSIS_TP = getattr(types, 'EllipsisType', type(Ellipsis))
 
 LEAF_TYPES_NO_BYTES = frozenset({
     # Common JSON Serializable types
@@ -50,7 +52,7 @@ LEAF_TYPES_NO_BYTES = frozenset({
     complex,
     # exclude bytes, since the serialization process is slightly different
     # Other types that are also unaffected by deepcopy
-    types.EllipsisType,
+    ELLIPSIS_TP,
     types.NotImplementedType,
     types.CodeType,
     types.BuiltinFunctionType,
