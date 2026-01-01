@@ -33,8 +33,7 @@ def get_zoneinfo(key: str) -> ZoneInfo: ...
 def ensure_type_ref(extras: 'Extras', tp: type, *,
                     name: str | None = None,
                     prefix: str = '',
-                    is_builtin: bool = False,
-                    field_i: int = 0) -> str: ...
+                    is_builtin: bool = False) -> str: ...
 
 
 @dataclass(order=True)
@@ -96,7 +95,7 @@ class Extras(TypedDict):
     fn_gen: FunctionBuilder
     locals: dict[str, Any]
     pattern: NotRequired[PatternBase]
-    recursion_guard: dict[type, str]
+    recursion_guard: dict[Any, str]
 
 
 class PatternBase:

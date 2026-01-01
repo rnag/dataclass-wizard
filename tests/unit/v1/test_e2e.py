@@ -10,7 +10,7 @@ import pytest
 from dataclass_wizard import asdict, fromdict, DataclassWizard, CatchAll
 from dataclass_wizard.errors import ParseError, MissingFields
 from dataclass_wizard.v1 import Alias
-from .models import ContDict, TN, CN, ContList, ContTF, ContTT, ContAllReq
+from .models import ContDict, TN, CN, ContList, ContTF, ContTT, ContAllReq, Sub2
 from .utils_env import assert_unordered_equal
 from ..._typing import *
 
@@ -339,3 +339,30 @@ def test_typeddict_all_required_e2e_inline_path():
 
     with pytest.raises(Exception):
         ContAllReq.from_dict({"td": {"x": 1}})  # missing y
+
+
+def test_v1_union_codegen_cache_nested_union_roundtrip_and_dump_error():
+    class MyClass(DataclassWizard):
+        class _(DataclassWizard.Meta):
+            v1_unsafe_parse_dataclass_in_union = True
+
+        complex_tp: list[int | Sub2] | list[int | str]
+
+    # First: pick the arm list[int|Sub2]
+    o1 = MyClass.from_dict({"complex_tp": [{"my_float": "123."}, 7]})
+    assert o1 == MyClass(complex_tp=[Sub2(my_float=123.0), 7])
+
+    d1 = o1.to_dict()
+    assert d1 == {"complex_tp": [{"my_float": 123.0}, 7]}
+
+    # Second: pick the other arm list[int|str]
+    # If inner-union codegen caching is wrong, this is where it tends to misbehave.
+    o2 = MyClass.from_dict({"complex_tp": ["hello", 9]})
+    assert o2 == MyClass(complex_tp=["hello", 9])
+
+    d2 = o2.to_dict()
+    assert d2 == {"complex_tp": ["hello", 9]}
+
+    o1.complex_tp = '123'
+    with pytest.raises(ParseError, match=r"Failed to dump field `complex_tp` in class `.*MyClass`"):
+        _ = o1.to_dict()

@@ -98,7 +98,7 @@ def get_zoneinfo(key: str) -> ZoneInfo:
         raise
 
 
-def ensure_type_ref(extras, tp, *, name=None, prefix='', is_builtin=False, field_i=0) -> str:
+def ensure_type_ref(extras, tp, *, name=None, prefix='', is_builtin=False) -> str:
     """
     Return a safe symbol name for `tp` to use in generated code.
 
@@ -137,7 +137,7 @@ def ensure_type_ref(extras, tp, *, name=None, prefix='', is_builtin=False, field
 
     # Collision: create a unique alias.
     # TODO might need to handle `var_name`
-    alias = f'{prefix}{name}_{field_i}'
+    alias = f'{prefix}{name}'
     LOG.debug('Adding %s=%s', alias, name)
     _locals.setdefault(alias, tp)
 
@@ -329,7 +329,6 @@ class TypeInfo:
                 name=name,
                 prefix=prefix,
                 is_builtin=is_builtin,
-                field_i=self.field_i,
             )
 
         return name if return_name else None

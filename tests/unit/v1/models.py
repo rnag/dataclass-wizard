@@ -1,4 +1,5 @@
 from collections import namedtuple
+from dataclasses import dataclass
 from typing import NamedTuple
 
 from dataclass_wizard import DataclassWizard
@@ -88,3 +89,8 @@ class ContAllReq(DataclassWizard):
 
 class EnvContAllReq(EnvWizard):
     td: TD_AllReq
+
+
+@dataclass
+class Sub2:
+    my_float: float

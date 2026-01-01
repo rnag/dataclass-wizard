@@ -8,7 +8,7 @@ import pytest
 from dataclass_wizard import DataclassWizard, CatchAll
 from dataclass_wizard.errors import ParseError, MissingVars, MissingFields
 from dataclass_wizard.v1 import Alias, EnvWizard, env_config, AliasPath
-from ..models import EnvContDict, EnvContList, TN, CN, EnvContTF, EnvContTT, EnvContAllReq
+from ..models import EnvContDict, EnvContList, TN, CN, EnvContTF, EnvContTT, EnvContAllReq, Sub2
 
 from ..utils_env import envsafe, from_env, assert_unordered_equal
 from ...._typing import *
@@ -445,3 +445,30 @@ def test_typeddict_all_required_e2e_inline_path():
 
     with pytest.raises(Exception):
         from_env(EnvContAllReq, {"td": {"x": 1}})  # missing y
+
+
+def test_v1_union_codegen_cache_nested_union_roundtrip_and_dump_error():
+    class MyClass(EnvWizard):
+        class _(EnvWizard.Meta):
+            v1_unsafe_parse_dataclass_in_union = True
+
+        complex_tp: list[int | Sub2] | list[int | str]
+
+    # First: pick the arm list[int|Sub2]
+    o1 = from_env(MyClass, {"complex_tp": [{"my_float": "123."}, 7]})
+    assert o1 == MyClass(complex_tp=[Sub2(my_float=123.0), 7])
+
+    d1 = o1.to_dict()
+    assert d1 == {"complex_tp": [{"my_float": 123.0}, 7]}
+
+    # Second: pick the other arm list[int|str]
+    # If inner-union codegen caching is wrong, this is where it tends to misbehave.
+    o2 = from_env(MyClass, {"complex_tp": ["hello", 9]})
+    assert o2 == MyClass(complex_tp=["hello", 9])
+
+    d2 = o2.to_dict()
+    assert d2 == {"complex_tp": ["hello", 9]}
+
+    o1.complex_tp = '123'
+    with pytest.raises(ParseError, match=r"Failed to dump field `complex_tp` in class `.*MyClass`"):
+        _ = o1.to_dict()

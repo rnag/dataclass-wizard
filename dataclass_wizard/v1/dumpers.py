@@ -327,7 +327,7 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
         fn_gen.add_line('return result')
 
     @classmethod
-    @setup_recursive_safe_function_for_generic(None, prefix='dump')
+    @setup_recursive_safe_function_for_generic(prefix='dump', per_class_cache=True)
     def dump_from_union(cls, tp: TypeInfo, extras: Extras):
         fn_gen = extras['fn_gen']
         config = extras['config']
@@ -343,10 +343,9 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
         auto_assign_tags = config.auto_assign_tags
         leaf_handling_as_subclass = config.v1_leaf_handling == 'issubclass'
 
-        fields = f'fields_{field_i}'
         in_optional = NoneType in args
 
-        _locals[fields] = args
+        _locals['fields'] = args
         _locals['tag_key'] = tag_key
 
         leaf_types = []
@@ -402,31 +401,20 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
         fn_gen.add_line(f't = {v}.__class__')
 
         if leaf_types:
-            _locals['leaf_types'] = leaf_types
+            # a good heuristic: use tuples for smaller unions, else frozenset
+            container = tuple if len(leaf_types) <= 6 else frozenset
+            _locals['leaf_types'] = container(leaf_types)
             leaf_type_names = ', '.join(getattr(t, '__name__', None) or str(t)
                                for t in leaf_types)
-            with fn_gen.if_('t in leaf_types', comment=f'({leaf_type_names})'):
+            with fn_gen.if_('t in leaf_types', comment=f'{{{leaf_type_names}}}'):
                 fn_gen.add_line(f'return {v}')
 
         if has_dataclass:
-            var_to_dataclass = {}
 
             for field_i, (dataclass, name, tag, line) in enumerate(dataclass_and_line, start=1):
-                cls_name = f'C{field_i}'
-                var_to_dataclass[cls_name] = dataclass
-                with fn_gen.if_(f't is {cls_name}', comment=f'{name} -> {tag!r}' if tag else name):
+                cls_name = TypeInfo(dataclass).type_name(extras)
+                with fn_gen.if_(f't is {cls_name}', comment=f'{tag!r}' if tag else ''):
                     fn_gen.add_line(line)
-
-            tp.ensure_in_locals(extras, **var_to_dataclass)
-
-            # fn_gen.add_line(
-            #     "raise ParseError("
-            #     "TypeError('Object with tag was not in any of Union types'),"
-            #     f"v1,{fields},"
-            #     "input_tag=tag,"
-            #     "tag_key=tag_key,"
-            #     f"valid_tags={list(dataclass_tag_to_lines)})"
-            # )
 
         for string in try_parse_lines:
             with fn_gen.try_():
@@ -437,7 +425,7 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
         # Invalid type for Union
         fn_gen.add_line("raise ParseError("
                         "TypeError('Object was not in any of Union types'),"
-                        f"{v},{fields},'dump',"
+                        f"{v},fields,'dump',"
                         "tag_key=tag_key"
                         ")")
 
@@ -499,6 +487,7 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
 
     @staticmethod
     @setup_recursive_safe_function(
+        prefix='dump',
         fn_name=f'__{PACKAGE_NAME}_to_dict_{{cls_name}}__')
     def dump_from_dataclass(tp: TypeInfo, extras: Extras):
         dump_func_for_dataclass(tp.origin, extras)

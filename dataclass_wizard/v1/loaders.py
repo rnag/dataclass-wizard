@@ -285,7 +285,7 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         return tp.wrap(params, extras)
 
     @classmethod
-    @setup_recursive_safe_function
+    @setup_recursive_safe_function(per_class_cache=True)
     def _load_to_named_tuple_fn(cls, tp: TypeInfo, extras: Extras):
         fn_gen = extras['fn_gen']
         _locals = extras['locals']
@@ -518,7 +518,7 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
             fn_gen.add_line(f"raise ParseError(e, {v}, {{}}, 'load') from None")
 
     @classmethod
-    @setup_recursive_safe_function_for_generic(per_field_cache=True)
+    @setup_recursive_safe_function_for_generic(per_class_cache=True)
     def load_to_union(cls, tp: TypeInfo, extras: Extras):
         fn_gen = extras['fn_gen']
         config = extras['config']
@@ -528,14 +528,11 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         auto_assign_tags = config.auto_assign_tags
         leaf_handling_as_subclass = config.v1_leaf_handling == 'issubclass'
 
-        field_i = tp.field_i
-        fields = f'fields_{field_i}'
-
         args = tp.args
         in_optional = NoneType in args
 
         _locals = extras['locals']
-        _locals[fields] = args
+        _locals['fields'] = args
         _locals['tag_key'] = tag_key
 
         dataclass_tag_to_lines: dict[str, list] = {}
@@ -544,6 +541,10 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         i = tp.i
         v = tp.v_for_def()
 
+        # TODO:
+        #   Union handling here assumes `i == 1` (EnvWizard). If
+        #   reused for multiple Union fields, cache/function-name
+        #   collisions are possible.
         # noinspection PyUnboundLocalVariable
         if (has_dataclass
                 and (pre_decoder := config.v1_pre_decoder) is not None
@@ -566,7 +567,7 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
 
             possible_tp = eval_forward_ref_if_needed(possible_tp, actual_cls)
 
-            tp_new = TypeInfo(possible_tp, field_i=field_i, i=i)
+            tp_new = TypeInfo(possible_tp, i=i)
             tp_new.in_optional = in_optional
 
             if possible_tp is NoneType:
@@ -654,7 +655,7 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
                 fn_gen.add_line(
                     "raise ParseError("
                     "TypeError('Object with tag was not in any of Union types'),"
-                    f"{v},{fields},'load',"
+                    f"{v},fields,'load',"
                     "input_tag=tag,"
                     "tag_key=tag_key,"
                     f"valid_tags={list(dataclass_tag_to_lines)})"
@@ -671,7 +672,7 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         # Invalid type for Union
         fn_gen.add_line("raise ParseError("
                         "TypeError('Object was not in any of Union types'),"
-                        f"{v},{fields},'load',"
+                        f"{v},fields,'load',"
                         "tag_key=tag_key"
                         ")")
 
@@ -680,19 +681,18 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
     def load_to_literal(tp: TypeInfo, extras: Extras):
         fn_gen = extras['fn_gen']
 
-        fields = f'fields_{tp.field_i}'
         v = tp.v_for_def()
 
         _locals = extras['locals']
-        _locals[fields] = frozenset(tp.args)
+        _locals['fields'] = frozenset(tp.args)
 
-        with fn_gen.if_(f'{v} in {fields}', comment=repr(tp.args)):
+        with fn_gen.if_(f'{v} in fields', comment=repr(tp.args)):
             fn_gen.add_line(f'return {v}')
 
         # No such Literal with the value of `o`
         fn_gen.add_line("e = ValueError('Value not in expected Literal values')")
-        fn_gen.add_line(f"raise ParseError(e, {v}, {fields}, 'load', "
-                        f'allowed_values=list({fields}))')
+        fn_gen.add_line(f"raise ParseError(e, {v}, fields, 'load', "
+                        f'allowed_values=list(fields))')
 
         # TODO Checks for Literal equivalence, as mentioned here:
         #   https://www.python.org/dev/peps/pep-0586/#equivalence-of-two-literals
