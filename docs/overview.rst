@@ -154,11 +154,14 @@ Special Cases
 
    However, here a few special cases that are worth going over.
 
-* ``str`` - Effortlessly converts inputs to strings. If already a string,
-  it remains unchanged. Non-strings are converted to their string
-  representation, and ``None`` becomes an empty string.
+* ``str`` - Converts inputs to strings. If already a string, it remains unchanged.
+  Non-strings are converted to their string representation.
 
-      *Examples*: ``123`` → ``'123'``, ``None`` → ``''``
+  By default in **v1**, ``None`` is converted using ``str(None)`` (i.e. ``'None'``)
+  for ``str`` fields, and preserved as ``None`` for ``Optional[str]`` fields.
+  Set ``Meta.v1_coerce_none_to_empty_str = True`` to coerce ``None`` to ``''`` instead.
+
+      *Examples*: ``123`` → ``'123'``, ``None`` → ``'None'`` (or ``''`` with opt-in)
 
 * ``bool`` - JSON values that appear as strings or integers will be de-serialized
   to a ``bool`` using a case-insensitive search that matches against the following

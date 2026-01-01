@@ -40,8 +40,10 @@ New v1 features:
 - Environment precedence is now configurable and explicit
 - Support for nested ``EnvWizard`` dataclasses
 - New aliasing model:
+
   - ``v1_field_to_env_load`` (load-only)
   - ``v1_field_to_alias_dump`` (dump-only)
+
 - Added ``Env(...)`` and ``Alias(env=...)`` helpers for field-level env configuration
 - Added ``v1_pre_decoder`` to decode JSON or delimited strings into ``dict`` / ``list``
 - Cached secrets and dotenv paths for improved performance
@@ -64,10 +66,12 @@ Internal Changes and Fixes
 - Improved Windows timezone handling via ``tz`` extra (``tzdata`` / ``ZoneInfo``)
 - Improved caching behavior for ``Union`` loaders
 - Fixed multiple codegen and caching edge cases:
+
   - ``to_dict`` caching on subclasses
   - empty dataclass dumpers
   - ``kw_only`` field handling
   - FunctionBuilder globals merging
+
 - Added extensive v1 test coverage (90%+)
 - No breaking changes without explicit v1 opt-in
 

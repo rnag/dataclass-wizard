@@ -1384,6 +1384,22 @@ What's New in v1.0
             print(MyModel(my_field="value").to_dict())
             # Output: {'my_field': 'value'}
 
+    - **String Coercion Change (None Handling)**
+
+      Starting with **v1.0**, ``None`` values for fields annotated as ``str`` are
+      converted using ``str(None)`` (i.e. ``'None'``) instead of being silently
+      coerced to the empty string.
+
+      ``Optional[str]`` fields continue to preserve ``None`` by default.
+
+      To restore the previous behavior and coerce ``None`` to ``''``, set:
+
+      .. code-block:: python3
+
+            class _(Meta):
+                v1 = True
+                v1_coerce_none_to_empty_str = True
+
 - **Default __str__() Behavior Change**
 
       Starting with **v1.0.0**, we no longer pretty-print the serialized JSON value with keys in ``camelCase``.
