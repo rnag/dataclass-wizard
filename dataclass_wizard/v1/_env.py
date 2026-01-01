@@ -655,8 +655,8 @@ class LoadMixin(V1LoadMixin):
         # could add support for b64-encoded strings later:
         # bytes(__b64decode(o)) if (o.__class__ is str and __env_b64)
         o = tp.v()
-        return (f"{o} if (tp := {o}.__class__) is bytes "
-                f"else {o}.encode('utf-8') if tp is str "
+        return (f"{o} if (t := {o}.__class__) is bytes "
+                f"else {o}.encode('utf-8') if t is str "
                 f"else bytes({o})")
 
     @classmethod

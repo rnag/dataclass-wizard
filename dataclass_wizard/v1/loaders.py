@@ -144,11 +144,13 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         o = tp.v()
         tp.ensure_in_locals(extras, as_int=as_int_v1)
 
-        return (f"{o} if (tp := {o}.__class__) is {tn} "
-                f"else {tn}("
-                f"f if '.' in {o} and (f := float({o})).is_integer() else {o}"
-                ") if tp is str "
-                f"else as_int({o},tp,{tn})")
+        return (
+            f'{o} '
+            f'if (t := {o}.__class__) is {tn} '
+            f"else {tn}(f if '.' in {o} and (f := float({o})).is_integer() else {o}) "
+            'if t is str '
+            f'else as_int({o}, t, {tn})'
+        )
 
         # TODO when `in_union`, we already know `o.__class__`
         #  is not `tn`, and we already have a variable `tp`.
@@ -171,14 +173,14 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
     def load_to_bytes(tp: TypeInfo, extras: Extras):
         tp.ensure_in_locals(extras, b64decode)
         o = tp.v()
-        return (f'{o} if (tp := {o}.__class__) is bytes '
-                f'else bytes({o}) if tp is bytearray '
+        return (f'{o} if (t := {o}.__class__) is bytes '
+                f'else bytes({o}) if t is bytearray '
                 f'else b64decode({o})')
 
     @classmethod
     def load_to_bytearray(cls, tp: TypeInfo, extras: Extras):
         # micro-optimization: avoid copying when already a bytearray
-        # return f'{o} if (tp := {o}.__class__) is bytearray else bytearray({o} if tp is bytes else b64decode({o}))'
+        # return f'{o} if (t := {o}.__class__) is bytearray else bytearray({o} if t is bytes else b64decode({o}))'
         as_bytes = cls.load_to_bytes(tp, extras)
         return tp.wrap_builtin(bytearray, as_bytes, extras)
 
@@ -421,7 +423,7 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         tp.ensure_in_locals(extras, raise_=raise_)
 
         star = tp.wrap(f'*{v}', extras, prefix='nt_')
-        return f'{star} if (tp := type({v})) is list or tp is tuple else raise_()'
+        return f'{star} if (t := type({v})) is list or t is tuple else raise_()'
 
     @classmethod
     def _build_dict_comp(cls, tp, v, i_next, k_next, v_next, kt, vt, extras):
