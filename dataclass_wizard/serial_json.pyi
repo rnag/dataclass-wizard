@@ -72,7 +72,7 @@ class JSONPyWizard(JSONSerializable, SerializerHookMixin):
     """Helper for JSONWizard that ensures dumping to JSON keeps keys as-is."""
 
 
-class JSONSerializable(DataclassWizard, SerializerHookMixin): ...
+class JSONSerializable(AbstractJSONWizard, SerializerHookMixin): ...
 
 
 @dataclass_transform()

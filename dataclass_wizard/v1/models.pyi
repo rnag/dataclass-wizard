@@ -15,9 +15,8 @@ from ..utils.object_path import PathType
 # Type for a string or a collection of strings.
 _STR_COLLECTION: TypeAlias = str | Collection[str]
 
-SIMPLE_TYPES: tuple[type, ...]
-SCALAR_TYPES: tuple[type, ...]
-
+LEAF_TYPES: frozenset[type]
+LEAF_TYPES_NO_BYTES: frozenset[type]
 SEQUENCE_ORIGINS: frozenset[type]
 MAPPING_ORIGINS: frozenset[type]
 
@@ -64,7 +63,7 @@ class TypeInfo:
 
     def replace(self, **changes) -> TypeInfo: ...
     @staticmethod
-    def ensure_in_locals(extras: Extras, *tps: Callable | type, **name_to_tp: Callable[..., Any] | object) -> None: ...
+    def ensure_in_locals(extras: Extras, *tps: Callable | type, **name_to_tp: Callable[..., Any] | object) -> list[str]: ...
     def type_name(self, extras: Extras,
                   *, bound: type | None = None) -> str: ...
     def v(self) -> str: ...

@@ -17,7 +17,7 @@ from .decorators import (process_patterned_date_time,
                          setup_recursive_safe_function,
                          setup_recursive_safe_function_for_generic)
 from .enums import KeyAction, KeyCase
-from .models import Extras, PatternBase, TypeInfo, SIMPLE_TYPES, UTC
+from .models import Extras, PatternBase, TypeInfo, LEAF_TYPES, UTC
 from .type_conv import (
     as_datetime_v1, as_date_v1, as_int_v1,
     as_time_v1, as_timedelta, TRUTHY_VALUES,
@@ -526,6 +526,7 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
 
         tag_key = config.tag_key or TAG
         auto_assign_tags = config.auto_assign_tags
+        leaf_handling_as_subclass = config.v1_leaf_handling == 'issubclass'
 
         field_i = tp.field_i
         fields = f'fields_{field_i}'
@@ -619,11 +620,13 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
                 '  pass',
             ]
 
-            # TODO disable for dataclasses
+            if (possible_tp in LEAF_TYPES or (
+                    leaf_handling_as_subclass
+                    and is_subclass_safe(
+                        get_origin_v2(possible_tp), LEAF_TYPES)
+                    )):
 
-            if (possible_tp in SIMPLE_TYPES
-                or is_subclass_safe(
-                    get_origin_v2(possible_tp), SIMPLE_TYPES)):
+                # TODO disable for dataclasses
 
                 tn = tp_new.type_name(extras)
                 type_checks.extend([
@@ -830,6 +833,7 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         config = extras['config']
         pre_decoder = config.v1_pre_decoder
         type_hooks = config.v1_type_to_load_hook
+        leaf_handling_as_subclass = config.v1_leaf_handling == 'issubclass'
 
         # type_ann = tp.origin
         type_ann = eval_forward_ref_if_needed(tp.origin, extras['cls'])
@@ -875,7 +879,9 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
 
         # -> Atomic, immutable types which don't require
         #    any iterative / recursive handling.
-        elif origin in SIMPLE_TYPES or is_subclass_safe(origin, SIMPLE_TYPES):
+        elif origin in LEAF_TYPES or (
+                leaf_handling_as_subclass
+                and is_subclass_safe(origin, LEAF_TYPES)):
             load_hook = hooks.get(origin)
 
         elif (type_hooks is not None
@@ -979,7 +985,9 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         if load_hook is None:
             # TODO END
             for t in hooks:
-                if issubclass(origin, (t,)):
+                if (not leaf_handling_as_subclass) and (t in LEAF_TYPES):
+                    continue
+                if issubclass(origin, t):
                     container_tp = t
                     load_hook = hooks[t]
                     break

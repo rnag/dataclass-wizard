@@ -4,7 +4,7 @@ import types
 from collections import defaultdict, deque
 from dataclasses import MISSING, Field as _Field
 from datetime import datetime, date, time, tzinfo, timezone, timedelta
-from typing import TYPE_CHECKING, Any, TypedDict, cast, Literal
+from typing import TYPE_CHECKING, Any, TypedDict, cast
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from .decorators import setup_recursive_safe_function
@@ -38,7 +38,8 @@ _BUILTIN_COLLECTION_TYPES = frozenset({
     frozenset,
 })
 
-SCALAR_TYPES = (
+
+LEAF_TYPES_NO_BYTES = frozenset({
     # Common JSON Serializable types
     NoneType,
     bool,
@@ -47,6 +48,7 @@ SCALAR_TYPES = (
     str,
     # Other common types
     complex,
+    # exclude bytes, since the serialization process is slightly different
     # Other types that are also unaffected by deepcopy
     types.EllipsisType,
     types.NotImplementedType,
@@ -56,11 +58,13 @@ SCALAR_TYPES = (
     type,
     range,
     property,
-)
+})
 
 # Atomic immutable types which don't require any recursive handling and for which deepcopy
 # returns the same object. We can provide a fast-path for these types in asdict and astuple.
-SIMPLE_TYPES = SCALAR_TYPES + (bytes, )
+#
+# Credits: `_ATOMIC_TYPES` from `dataclasses.py`
+LEAF_TYPES = LEAF_TYPES_NO_BYTES | {bytes}
 
 SEQUENCE_ORIGINS = frozenset({
     list,
@@ -79,7 +83,7 @@ MAPPING_ORIGINS = frozenset({
 def get_zoneinfo(key: str) -> ZoneInfo:
     try:
         return ZoneInfo(key)
-    except ZoneInfoNotFoundError as e:
+    except ZoneInfoNotFoundError:
         if sys.platform.startswith('win'):
             try:
                 import tzdata  # noqa: F401

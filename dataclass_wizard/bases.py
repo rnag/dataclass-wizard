@@ -444,6 +444,19 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
     # for str fields.
     v1_coerce_none_to_empty_str: bool = None
 
+    # Controls how leaf (non-recursive) types are detected during serialization.
+    #
+    # - "exact" (DEFAULT): only exact built-in leaf types are treated as leaf values.
+    # - "issubclass": subclasses of leaf types are also treated as leaf values.
+    #
+    # Leaf types are returned without recursive traversal. Bytes are still
+    # handled separately according to their serialization rules.
+    #
+    # Note:
+    #     The default "exact" mode avoids treating third-party scalar-like
+    #     objects (e.g. NumPy scalars) as built-in leaf types.
+    v1_leaf_handling: Literal['exact', 'issubclass'] = None
+
     # noinspection PyMethodParameters
     @cached_class_property
     def all_fields(cls) -> FrozenKeys:
@@ -753,6 +766,19 @@ class AbstractEnvMeta(metaclass=ABCOrAndMeta):
     # None is preserved for Optional[str] fields and rejected
     # for str fields.
     v1_coerce_none_to_empty_str: bool = None
+
+    # Controls how leaf (non-recursive) types are detected during serialization.
+    #
+    # - "exact" (DEFAULT): only exact built-in leaf types are treated as leaf values.
+    # - "issubclass": subclasses of leaf types are also treated as leaf values.
+    #
+    # Leaf types are returned without recursive traversal. Bytes are still
+    # handled separately according to their serialization rules.
+    #
+    # Note:
+    #     The default "exact" mode avoids treating third-party scalar-like
+    #     objects (e.g. NumPy scalars) as built-in leaf types.
+    v1_leaf_handling: Literal['exact', 'issubclass'] = None
 
     # noinspection PyMethodParameters
     @cached_class_property

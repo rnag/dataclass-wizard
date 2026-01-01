@@ -11,23 +11,31 @@ from enum import Enum
 from pathlib import Path
 # noinspection PyUnresolvedReferences,PyProtectedMember
 from typing import (
-    Any, Type, Dict, List, Tuple, Iterable, Sequence, Union,
-    NamedTupleMeta,
-    SupportsFloat, AnyStr, Text, Callable, Optional, cast, Literal, Annotated, NamedTuple
+    cast, Any, Type, Dict, List, Tuple, Iterable, Sequence, Union,
+    NamedTupleMeta, SupportsFloat, AnyStr, Text, Callable, Optional,
+    Literal, Annotated, NamedTuple,
 )
 from uuid import UUID
 
-from .decorators import setup_recursive_safe_function, setup_recursive_safe_function_for_generic
+from .decorators import (setup_recursive_safe_function,
+                         setup_recursive_safe_function_for_generic)
 from .enums import KeyCase, DateTimeTo
-from .models import Extras, TypeInfo, SIMPLE_TYPES, PatternBase, UTC, ZERO, SCALAR_TYPES
+from .models import (Extras, TypeInfo, PatternBase,
+                     LEAF_TYPES, LEAF_TYPES_NO_BYTES, UTC, ZERO)
 from .type_conv import datetime_to_timestamp
 from ..abstractions import AbstractDumperGenerator
 from ..bases import AbstractMeta, BaseDumpHook, META
 from ..class_helper import (
-    v1_dataclass_field_to_alias_for_dump, dataclass_fields, get_meta, is_subclass_safe,
+    CLASS_TO_DUMP_FUNC,
     DATACLASS_FIELD_TO_ALIAS_PATH_FOR_DUMP,
-    dataclass_field_to_default, create_meta, CLASS_TO_DUMP_FUNC,
-    dataclass_field_names, dataclass_field_to_skip_if,
+    create_meta,
+    get_meta,
+    is_subclass_safe,
+    v1_dataclass_field_to_alias_for_dump,
+    dataclass_fields,
+    dataclass_field_to_default,
+    dataclass_field_names,
+    dataclass_field_to_skip_if,
 )
 from ..constants import CATCH_ALL, TAG, PACKAGE_NAME
 from ..errors import (ParseError, MissingFields, MissingData, JSONWizardError)
@@ -35,7 +43,7 @@ from ..loader_selection import get_dumper, asdict
 from ..log import LOG
 from ..models import get_skip_if_condition, finalize_skip_if
 from ..type_def import (
-    DefFactory, NoneType, JSONObject,
+    NoneType, JSONObject,
     PyLiteralString,
     T, ExplicitNull
 )
@@ -50,20 +58,21 @@ from ..utils.typing_compat import (
 )
 
 
-def _is_simple_type(arg, origin=None):
-    # optional simple type: (str, int, float, bool, Literal, Any)
+def _type_returns_value_unchanged(arg, leaf_handling_as_subclass, origin=None):
+    # scalar type:
+    # (str, int, float, bool, complex, type, Literal, Any)
     if origin is None:
         origin = get_origin_v2(arg)
-
     return (origin is Any
             or origin is Literal
-            or origin in SCALAR_TYPES
-            or is_subclass_safe(origin, SCALAR_TYPES))
+            or origin in LEAF_TYPES_NO_BYTES
+            or (leaf_handling_as_subclass
+                and is_subclass_safe(origin, LEAF_TYPES_NO_BYTES)))
 
 
-def _all_simple_types(args):
+def _all_return_value_unchanged(args, leaf_handling_as_subclass):
     for arg in args:
-        if not _is_simple_type(arg):
+        if not _type_returns_value_unchanged(arg, leaf_handling_as_subclass):
             return False
     return True
 
@@ -326,6 +335,7 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
 
         tag_key = config.tag_key or TAG
         auto_assign_tags = config.auto_assign_tags
+        leaf_handling_as_subclass = config.v1_leaf_handling == 'issubclass'
 
         v = tp.v_for_def()
 
@@ -384,14 +394,15 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
                         (possible_tp, cls_name, tag,
                          f'return {string}'))
 
-            elif _is_simple_type(possible_tp):
+            elif _type_returns_value_unchanged(
+                    possible_tp, leaf_handling_as_subclass):
                 num_simple_types += 1
 
             else:
                 string = cls.dump_dispatcher_for_annotation(tp_new, extras)
                 tn = tp_new.type_name(extras)
                 type_checks.extend([
-                    f'if tp is {tn}:',
+                    f'if t is {tn}:',
                     f'  return {string}'
                 ])
 
@@ -399,7 +410,7 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
         if len(args) == num_simple_types:
             fn_gen.add_line(f'return {v}')
 
-        fn_gen.add_line(f'tp = type({v})')
+        fn_gen.add_line(f't = {v}.__class__')
 
         if has_dataclass:
             var_to_dataclass = {}
@@ -407,7 +418,7 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
             for field_i, (dataclass, name, tag, line) in enumerate(dataclass_and_line, start=1):
                 cls_name = f'C{field_i}'
                 var_to_dataclass[cls_name] = dataclass
-                with fn_gen.if_(f'tp is {cls_name}', comment=f'{name} -> {tag!r}' if tag else name):
+                with fn_gen.if_(f't is {cls_name}', comment=f'{name} -> {tag!r}' if tag else name):
                     fn_gen.add_line(line)
 
             tp.ensure_in_locals(extras, **var_to_dataclass)
@@ -502,7 +513,9 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
                                        extras):
 
         hooks = cls.__DUMP_HOOKS__
-        type_hooks = extras['config'].v1_type_to_dump_hook
+        config = extras['config']
+        type_hooks = config.v1_type_to_dump_hook
+        leaf_handling_as_subclass = config.v1_leaf_handling == 'issubclass'
 
         # type_ann = tp.origin
         type_ann = eval_forward_ref_if_needed(tp.origin, extras['cls'])
@@ -545,7 +558,9 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
 
         # -> Atomic, immutable types which don't require
         #    any iterative / recursive handling.
-        elif origin in SIMPLE_TYPES or is_subclass_safe(origin, SIMPLE_TYPES):
+        elif origin in LEAF_TYPES or (
+                leaf_handling_as_subclass
+                and is_subclass_safe(origin, LEAF_TYPES)):
             dump_hook = hooks.get(origin)
 
         elif (type_hooks is not None
@@ -571,7 +586,8 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
         elif is_union(origin):
             args = get_args(type_ann)
 
-            if _all_simple_types(args):
+            # all args in `Union[...]` are simple types
+            if _all_return_value_unchanged(args, leaf_handling_as_subclass):
                 return tp.v()
 
             dump_hook = cls.dump_from_union
@@ -579,24 +595,20 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
             # Special case for Optional[x], which is actually Union[x, None]
             if len(args) == 2 and NoneType in args:
                 origin = args[0]
-                # optional simple type: (str, int, float, bool, Literal, Any)
-                is_simple_type = origin in SCALAR_TYPES or origin is Any or origin is Literal
 
-                val_name = None
-                o = tp.v()
-
-                if is_simple_type:
-                    val_name = tp.val_name
-                    o = tp.v()
-                elif tp.val_name:
+                if tp.val_name:
                     val_name = 'v0'
-                    o = f'(v0 := {tp.v()})'
+                    o = f'({val_name} := {tp.v()})'
+                else:
+                    val_name = None
+                    o = tp.v()
+
                 new_tp = tp.replace(origin=origin, args=None, name=None, val_name=val_name)
                 new_tp.in_optional = True
 
                 string = cls.dump_dispatcher_for_annotation(new_tp, extras)
 
-                return string if is_simple_type else f'None if {o} is None else {string}'
+                return f'None if {o} is None else {string}'
 
         # -> Literal[X, Y, ...]
         elif origin is Literal:
@@ -674,7 +686,9 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
         if dump_hook is None:
             # TODO END
             for t in hooks:
-                if issubclass(origin, (t,)):
+                if (not leaf_handling_as_subclass) and (t in LEAF_TYPES):
+                    continue
+                if issubclass(origin, t):
                     dump_hook = hooks[t]
                     break
 
@@ -802,6 +816,7 @@ def dump_func_for_dataclass(
             'fields': cls_fields,
         }
 
+        # noinspection PyTypeChecker
         extras: Extras = {
             'config': config,
             'cls': cls,
@@ -871,7 +886,6 @@ def dump_func_for_dataclass(
 
     skip_defaults = True if meta.skip_defaults else False
     skip_if = True if field_to_skip_if or skip_if_condition else False
-    skip_any = True if skip_if or skip_defaults else False
 
     # Fix for using `auto_assign_tags` and `raise_on_unknown_json_key` together
     # See https://github.com/rnag/dataclass-wizard/issues/137
