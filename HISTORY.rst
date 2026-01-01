@@ -2,6 +2,32 @@
 History
 =======
 
+0.39.0 (2026-01-01)
+-------------------
+
+**v1 Improvements & Fixes**
+
+* Optimized v1 dump and encode logic for recursive types. Dumpers now return **JSON-compatible values only** (``dict``, ``list``, ``tuple``, and scalar primitives), improving correctness and performance for deeply nested structures.
+
+* Fixed an issue where nested index assignments were not fully preserved during dump/encode. Index paths such as ``x[0][1]`` are now retained correctly instead of being truncated to ``x[0]``.
+
+* Fixed a bug in v1 nested ``Union`` handling where internal collisions could occur. Union resolution now incorporates a **hash with a salt derived from the Union arguments**, ensuring stable behavior for nested Unions.
+
+**Configuration**
+
+* Added ``Meta.v1_namedtuple_as_dict`` (*default*: ``False``)
+    - When enabled, named tuples are dumped as dictionaries instead of positional tuples.
+
+* Added ``Meta.v1_coerce_none_to_empty_str`` (*default*: ``False``)
+    - When enabled, ``None`` values are coerced to empty strings for ``str`` fields during dump/encode.
+
+* Added ``Meta.v1_leaf_handling`` (*default*: ``'exact'``)
+    - Controls how leaf values are handled during serialization.
+
+**Internal Changes**
+
+* Renamed internal codegen variable ``tp`` to ``t`` for clarity and consistency. This is an internal refactor with no user-facing impact.
+
 0.38.2 (2025-12-27)
 -------------------
 
