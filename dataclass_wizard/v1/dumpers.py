@@ -266,18 +266,17 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
             return cls._dump_from_typed_dict_fn(tp, extras)
         ann = tp.origin.__annotations__
 
-        field_to_value = {
-            name: str(
+        dict_body = ', '.join(
+            f"""{name!r}: {
                 cls.dump_dispatcher_for_annotation(
                     tp.replace(origin=ann.get(name, Any), index=repr(name)),
                     extras,
                 )
-            )
-            for i, name in enumerate(req_keys)
-        }
+            }"""
+            for name in req_keys
+        )
 
-        params = [f'{field!r}: {value}' for field, value in field_to_value.items()]
-        return f'{{{", ".join(params)}}}'
+        return f'{{{dict_body}}}'
 
     @classmethod
     @setup_recursive_safe_function(prefix='dump')

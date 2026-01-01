@@ -59,29 +59,6 @@ from ..utils.typing_compat import (eval_forward_ref_if_needed,
                                    is_union)
 
 
-def _classify_hook(fn):
-    if not callable(fn):
-        raise TypeError('hook must be callable')
-
-    code = getattr(fn, '__code__', None) or fn.__init__.__code__
-
-    # Disallow *args / **kwargs (they hide mistakes)
-    if code.co_flags & 0x04 or code.co_flags & 0x08:
-        raise TypeError('hook must not use *args or **kwargs')
-
-    argc = code.co_argcount
-
-    if argc == 1:
-        return 'runtime'     # fn(value)
-    elif argc == 2:
-        return 'v1_codegen'  # fn(TypeInfo, Extras)
-    else:
-        raise TypeError(
-            'hook must accept either 1 argument (runtime) '
-            'or 2 arguments (TypeInfo, Extras)'
-        )
-
-
 class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
     """
     This Mixin class derives its name from the eponymous `json.loads`
@@ -478,18 +455,17 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
 
         ann = tp.origin.__annotations__
 
-        key_and_value = tuple(
+        dict_body = ', '.join(
             f"""{name!r}: {
                 cls.load_dispatcher_for_annotation(
-                    tp.replace(origin=ann.get(name, Any), index=repr(name))
-                    ,extras
+                    tp.replace(origin=ann.get(name, Any), index=repr(name)),
+                    extras,
                 )
             }"""
             for name in req_keys
-    )
+        )
 
-        params = ', '.join(key_and_value)
-        return f'{{{params}}}'
+        return f'{{{dict_body}}}'
 
     @classmethod
     @setup_recursive_safe_function
