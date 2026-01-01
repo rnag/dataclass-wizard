@@ -2,6 +2,32 @@
 History
 =======
 
+0.39.0 (2026-01-01)
+-------------------
+
+**v1 Improvements & Fixes**
+
+* Optimized v1 dump and encode logic for recursive types. Dumpers now return **JSON-compatible values only** (``dict``, ``list``, ``tuple``, and scalar primitives), improving correctness and performance for deeply nested structures.
+
+* Fixed an issue where nested index assignments were not fully preserved during dump/encode. Index paths such as ``x[0][1]`` are now retained correctly instead of being truncated to ``x[0]``.
+
+* Fixed a bug in v1 nested ``Union`` handling where internal collisions could occur. Union resolution now incorporates a **hash with a salt derived from the Union arguments**, ensuring stable behavior for nested Unions.
+
+**Configuration**
+
+* Added ``Meta.v1_namedtuple_as_dict`` (*default*: ``False``)
+    - When enabled, named tuples are dumped as dictionaries instead of positional tuples.
+
+* Added ``Meta.v1_coerce_none_to_empty_str`` (*default*: ``False``)
+    - When enabled, ``None`` values are coerced to empty strings for ``str`` fields during dump/encode.
+
+* Added ``Meta.v1_leaf_handling`` (*default*: ``'exact'``)
+    - Controls how leaf values are handled during serialization.
+
+**Internal Changes**
+
+* Renamed internal codegen variable ``tp`` to ``t`` for clarity and consistency. This is an internal refactor with no user-facing impact.
+
 0.38.2 (2025-12-27)
 -------------------
 
@@ -40,8 +66,10 @@ New v1 features:
 - Environment precedence is now configurable and explicit
 - Support for nested ``EnvWizard`` dataclasses
 - New aliasing model:
+
   - ``v1_field_to_env_load`` (load-only)
   - ``v1_field_to_alias_dump`` (dump-only)
+
 - Added ``Env(...)`` and ``Alias(env=...)`` helpers for field-level env configuration
 - Added ``v1_pre_decoder`` to decode JSON or delimited strings into ``dict`` / ``list``
 - Cached secrets and dotenv paths for improved performance
@@ -64,10 +92,12 @@ Internal Changes and Fixes
 - Improved Windows timezone handling via ``tz`` extra (``tzdata`` / ``ZoneInfo``)
 - Improved caching behavior for ``Union`` loaders
 - Fixed multiple codegen and caching edge cases:
+
   - ``to_dict`` caching on subclasses
   - empty dataclass dumpers
   - ``kw_only`` field handling
   - FunctionBuilder globals merging
+
 - Added extensive v1 test coverage (90%+)
 - No breaking changes without explicit v1 opt-in
 

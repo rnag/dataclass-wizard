@@ -68,15 +68,7 @@ class SerializerHookMixin(Protocol):
         ...
 
 
-class JSONPyWizard(JSONSerializable, SerializerHookMixin):
-    """Helper for JSONWizard that ensures dumping to JSON keeps keys as-is."""
-
-
-class JSONSerializable(DataclassWizard, SerializerHookMixin): ...
-
-
-@dataclass_transform()
-class DataclassWizard(AbstractJSONWizard, SerializerHookMixin):
+class JSONWizardImpl(AbstractJSONWizard, SerializerHookMixin):
     """
     Mixin class to allow a `dataclass` sub-class to be easily converted
     to and from JSON.
@@ -201,9 +193,22 @@ class DataclassWizard(AbstractJSONWizard, SerializerHookMixin):
         ...
 
 
+@dataclass_transform()
+class DataclassWizard(JSONWizardImpl):
+    ...
+
+
+class JSONPyWizard(JSONWizardImpl):
+    """Helper for JSONWizard that ensures dumping to JSON keeps keys as-is."""
+
+
+class JSONSerializable(JSONWizardImpl): ...
+
+
 def _str_fn() -> Callable[[W], str]:
     """
     Converts the dataclass instance to a *prettified* JSON string
     representation, when the `str()` method is invoked.
     """
     ...
+

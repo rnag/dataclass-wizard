@@ -92,7 +92,10 @@ def LoadMeta(*,
              v1_case: KeyCase | str | None = MISSING,
              v1_field_to_alias: Mapping[str, str | Sequence[str]] = MISSING,
              v1_on_unknown_key: KeyAction | str | None = KeyAction.IGNORE,
-             v1_unsafe_parse_dataclass_in_union: bool = MISSING) -> T | META:
+             v1_unsafe_parse_dataclass_in_union: bool = MISSING,
+             v1_namedtuple_as_dict: bool = MISSING,
+             v1_coerce_none_to_empty_str: bool = MISSING,
+             v1_leaf_handling: Literal['exact', 'issubclass'] = MISSING) -> T | META:
     ...
 
 
@@ -114,7 +117,9 @@ def DumpMeta(*,
              v1_case: KeyCase | str | None = MISSING,
              v1_field_to_alias: Mapping[str, str | Sequence[str]] = MISSING,
              v1_dump_date_time_as: V1DateTimeTo | str = MISSING,
-             v1_assume_naive_datetime_tz: tzinfo | None = MISSING) -> T | META:
+             v1_assume_naive_datetime_tz: tzinfo | None = MISSING,
+             v1_namedtuple_as_dict: bool = MISSING,
+             v1_leaf_handling: Literal['exact', 'issubclass'] = MISSING) -> T | META:
     ...
 
 
@@ -148,5 +153,8 @@ def EnvMeta(*, debug_enabled: 'bool | int | str' = MISSING,
             # v1_on_unknown_key: KeyAction | str | None = KeyAction.IGNORE,
             v1_unsafe_parse_dataclass_in_union: bool = MISSING,
             v1_dump_date_time_as: V1DateTimeTo | str = MISSING,
-            v1_assume_naive_datetime_tz: tzinfo | None = MISSING) -> META:
+            v1_assume_naive_datetime_tz: tzinfo | None = MISSING,
+            v1_namedtuple_as_dict: bool = MISSING,
+            v1_coerce_none_to_empty_str: bool = MISSING,
+            v1_leaf_handling: Literal['exact', 'issubclass'] = MISSING) -> META:
     ...

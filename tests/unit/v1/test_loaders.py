@@ -224,7 +224,9 @@ def test_alias_with_multiple_mappings():
 
     instance = MyClass.from_json(string)
     assert instance == MyClass(my_str='20', is_active_tuple=(True, False, True), list_of_int=[1, 2, 3], other_int=2)
-    assert instance.to_dict() == {'my_str': '20', 'IsActiveTuple': (True, False, True), 'myIntList': [1, 2, 3],
+    assert instance.to_dict() == {'my_str': '20',
+                                  'IsActiveTuple': [True, False, True],
+                                  'myIntList': [1, 2, 3],
                                   'other_int': 2}
 
     string = """
@@ -238,7 +240,9 @@ def test_alias_with_multiple_mappings():
 
     instance = MyClass.from_json(string)
     assert instance == MyClass(my_str='21', is_active_tuple=(False, True, False), list_of_int=[3, 2, 1], other_int=1)
-    assert instance.to_dict() == {'my_str': '21', 'IsActiveTuple': (False, True, False), 'myIntList': [3, 2, 1],
+    assert instance.to_dict() == {'my_str': '21',
+                                  'IsActiveTuple': [False, True, False],
+                                  'myIntList': [3, 2, 1],
                                   'other_int': 1}
 
     string = """
@@ -250,7 +254,10 @@ def test_alias_with_multiple_mappings():
 
     instance = MyClass.from_json(string)
     assert instance == MyClass(my_str='14', is_active_tuple=(False, True, True), list_of_int=[], other_int=2)
-    assert instance.to_dict() == {'my_str': '14', 'IsActiveTuple': (False, True, True), 'myIntList': [], 'other_int': 2}
+    assert instance.to_dict() == {'my_str': '14',
+                                  'IsActiveTuple': [False, True, True],
+                                  'myIntList': [],
+                                  'other_int': 2}
 
 
     string = """
@@ -1419,8 +1426,30 @@ def test_optional(input, expectation, expected):
 
         assert result.my_opt_str == expected
         if input is None:
-            assert result.my_str == '', \
-                'expected `my_str` to be set to an empty string'
+            assert result.my_str == 'None', \
+                'expected `my_str` to be set to the str() value of None'
+
+
+def test_coerce_none_to_empty_str():
+    @dataclass
+    class MyClass(JSONWizard):
+
+        class _(JSONWizard.Meta):
+            v1 = True
+            v1_case = 'P'
+            v1_coerce_none_to_empty_str = True
+
+        my_str: str
+        my_opt_str: Optional[str]
+
+    d = {'MyStr': None, 'MyOptStr': None}
+
+    result = MyClass.from_dict(d)
+    log.debug('Parsed object: %r', result)
+
+    assert result.my_opt_str is None
+    assert result.my_str == '', \
+        'expected `my_str` to be set to an empty string'
 
 
 @pytest.mark.parametrize(
@@ -2552,8 +2581,8 @@ def test_named_tuple_recursive():
         ),
         (
             {'my_str': 'test', 'my_int': 2, 'my_bool': True},
-            does_not_raise(),
-            {'my_str': 'test', 'my_int': 2, 'my_bool': True}
+            pytest.raises(ParseError),
+            None,
         ),
     ]
 )
@@ -3219,7 +3248,7 @@ def test_from_dict_with_multiple_nested_object_alias_paths():
         'ace': {'in': {'hole': {0: {1: 'value'}}}},
         'this': {'Other': {'Int 1.23': 2}},
         1: {2: {3: 123}},
-        'IsActiveTuple': (True, False, True),
+        'IsActiveTuple': [True, False, True],
         'ListOfInt': [1, 2, 3],
     }
 
@@ -3241,7 +3270,7 @@ def test_from_dict_with_multiple_nested_object_alias_paths():
         'ace': {'in': {'hole': {0: {1: 'Fact!'}}}},
         'this': {'Other': {'Int 1.23': 321}},
         1: {2: {3: 789}},
-        'IsActiveTuple': (False, True, False),
+        'IsActiveTuple': [False, True, False],
         'ListOfInt': [3, 2, 1]
     }
 
@@ -3257,7 +3286,7 @@ def test_from_dict_with_multiple_nested_object_alias_paths():
     assert instance.to_dict() == {
         'ace': {'in': {'hole': {0: {1: '14'}}}},
         'this': {'Other': {'Int 1.23': 2}},
-        'IsActiveTuple': (False, True, True),
+        'IsActiveTuple': [False, True, True],
         1: {2: {3: 123}},
         'ListOfInt': []
     }

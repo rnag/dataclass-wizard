@@ -1,5 +1,6 @@
 import hashlib
 import sys
+import types
 from collections import defaultdict, deque
 from dataclasses import MISSING, Field as _Field
 from datetime import datetime, date, time, tzinfo, timezone, timedelta
@@ -37,9 +38,11 @@ _BUILTIN_COLLECTION_TYPES = frozenset({
     frozenset,
 })
 
-# Atomic immutable types which don't require any recursive handling and for which deepcopy
-# returns the same object. We can provide a fast-path for these types in asdict and astuple.
-SIMPLE_TYPES = (
+# FIXME: Python 3.9 doesn't have `types.EllipsisType` or `types.NotImplementedType`
+EllipsisType = getattr(types, 'EllipsisType', type(Ellipsis))
+NotImplementedType = getattr(types, 'NotImplementedType', type(NotImplemented))
+
+LEAF_TYPES_NO_BYTES = frozenset({
     # Common JSON Serializable types
     NoneType,
     bool,
@@ -48,25 +51,23 @@ SIMPLE_TYPES = (
     str,
     # Other common types
     complex,
-    bytes,
-    # TODO support
+    # exclude bytes, since the serialization process is slightly different
     # Other types that are also unaffected by deepcopy
-    # types.EllipsisType,
-    # types.NotImplementedType,
-    # types.CodeType,
-    # types.BuiltinFunctionType,
-    # types.FunctionType,
-    # type,
-    # range,
-    # property,
-)
+    EllipsisType,
+    NotImplementedType,
+    types.CodeType,
+    types.BuiltinFunctionType,
+    types.FunctionType,
+    type,
+    range,
+    property,
+})
 
-SCALAR_TYPES = (
-    str,
-    int,
-    float,
-    bool,
-)
+# Atomic immutable types which don't require any recursive handling and for which deepcopy
+# returns the same object. We can provide a fast-path for these types in asdict and astuple.
+#
+# Credits: `_ATOMIC_TYPES` from `dataclasses.py`
+LEAF_TYPES = LEAF_TYPES_NO_BYTES | {bytes}
 
 SEQUENCE_ORIGINS = frozenset({
     list,
@@ -85,7 +86,7 @@ MAPPING_ORIGINS = frozenset({
 def get_zoneinfo(key: str) -> ZoneInfo:
     try:
         return ZoneInfo(key)
-    except ZoneInfoNotFoundError as e:
+    except ZoneInfoNotFoundError:
         if sys.platform.startswith('win'):
             try:
                 import tzdata  # noqa: F401
@@ -100,7 +101,7 @@ def get_zoneinfo(key: str) -> ZoneInfo:
         raise
 
 
-def ensure_type_ref(extras, tp, *, name=None, prefix='', is_builtin=False, field_i=0) -> str:
+def ensure_type_ref(extras, tp, *, name=None, prefix='', is_builtin=False) -> str:
     """
     Return a safe symbol name for `tp` to use in generated code.
 
@@ -139,7 +140,7 @@ def ensure_type_ref(extras, tp, *, name=None, prefix='', is_builtin=False, field
 
     # Collision: create a unique alias.
     # TODO might need to handle `var_name`
-    alias = f'{prefix}{name}_{field_i}'
+    alias = f'{prefix}{name}'
     LOG.debug('Adding %s=%s', alias, name)
     _locals.setdefault(alias, tp)
 
@@ -202,6 +203,14 @@ class TypeInfo:
                           for slot in TypeInfo.__slots__
                           if not slot.startswith('_')}
 
+
+        if ((new_idx := changes.get('index')) is not None
+            and (curr_idx := current_values['index']) is not None):
+            if isinstance(curr_idx, (int, str)):
+                changes['index'] = (curr_idx, new_idx)
+            else:
+                changes['index'] = curr_idx + (new_idx, )
+
         # Apply the changes
         current_values.update(changes)
 
@@ -240,8 +249,13 @@ class TypeInfo:
         val_name = self.val_name
         if val_name is None:
             val_name = f'{self.prefix}{self.i}'
-        return (val_name if (idx := self.index) is None
-                else f'{val_name}[{idx}]')
+        idx = self.index
+        if idx is None:
+            return val_name
+        else:
+            if isinstance(idx, (int, str)):
+                return f'{val_name}[{idx}]'
+            return f"{val_name}{''.join(f'[{i}]' for i in idx)}"
 
     def v_for_def(self):
         """
@@ -252,7 +266,7 @@ class TypeInfo:
 
     def v_and_next(self):
         next_i = self.i + 1
-        return self.v(), f'v{next_i}', next_i
+        return self.v(), f'{self.prefix}{next_i}', next_i
 
     def v_and_next_k_v(self):
         next_i = self.i + 1
@@ -318,7 +332,6 @@ class TypeInfo:
                 name=name,
                 prefix=prefix,
                 is_builtin=is_builtin,
-                field_i=self.field_i,
             )
 
         return name if return_name else None

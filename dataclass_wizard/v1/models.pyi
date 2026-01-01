@@ -15,9 +15,8 @@ from ..utils.object_path import PathType
 # Type for a string or a collection of strings.
 _STR_COLLECTION: TypeAlias = str | Collection[str]
 
-SIMPLE_TYPES: tuple[type, ...]
-SCALAR_TYPES: tuple[type, ...]
-
+LEAF_TYPES: frozenset[type]
+LEAF_TYPES_NO_BYTES: frozenset[type]
 SEQUENCE_ORIGINS: frozenset[type]
 MAPPING_ORIGINS: frozenset[type]
 
@@ -34,8 +33,7 @@ def get_zoneinfo(key: str) -> ZoneInfo: ...
 def ensure_type_ref(extras: 'Extras', tp: type, *,
                     name: str | None = None,
                     prefix: str = '',
-                    is_builtin: bool = False,
-                    field_i: int = 0) -> str: ...
+                    is_builtin: bool = False) -> str: ...
 
 
 @dataclass(order=True)
@@ -54,8 +52,8 @@ class TypeInfo:
     # prefix of value in assignment (prepended to `i`),
     # defaults to 'v' if not specified.
     prefix: str = 'v'
-    # index of assignment (ex. `2 -> v1[2]`, *or* a string `"key" -> v4["key"]`)
-    index: int | None = None
+    # index / indices of assignment (ex. `2, 0 -> v1[2][0]`, *or* a string `"key" -> v4["key"]`)
+    index: int | str | tuple[int | str, ...] | None = None
     # explicit value name (overrides prefix + index)
     val_name: str | None = None
     # indicates if we are currently in Optional,
@@ -64,7 +62,7 @@ class TypeInfo:
 
     def replace(self, **changes) -> TypeInfo: ...
     @staticmethod
-    def ensure_in_locals(extras: Extras, *tps: Callable | type, **name_to_tp: Callable[..., Any] | object) -> None: ...
+    def ensure_in_locals(extras: Extras, *tps: Callable | type, **name_to_tp: Callable[..., Any] | object) -> list[str]: ...
     def type_name(self, extras: Extras,
                   *, bound: type | None = None) -> str: ...
     def v(self) -> str: ...
@@ -97,7 +95,7 @@ class Extras(TypedDict):
     fn_gen: FunctionBuilder
     locals: dict[str, Any]
     pattern: NotRequired[PatternBase]
-    recursion_guard: dict[type, str]
+    recursion_guard: dict[Any, str]
 
 
 class PatternBase:

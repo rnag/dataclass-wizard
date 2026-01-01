@@ -106,7 +106,7 @@ bench = [
     "jsons==1.6.3",
     "dataclass-factory==2.16",  # pyup: ignore
     "dacite==1.8.1",
-    "mashumaro==3.15",
+    "mashumaro==3.17",
     "pydantic==2.10.3; python_version<'3.14'",
     "attrs==24.3.0",
 ]
@@ -156,7 +156,7 @@ all = [
     "jsons==1.6.3",
     "dataclass-factory==2.16",
     "dacite==1.8.1",
-    "mashumaro==3.15",
+    "mashumaro==3.17",
     "pydantic==2.10.3; python_version<'3.14'",
     "attrs==24.3.0",
 ]

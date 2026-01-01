@@ -11,23 +11,31 @@ from enum import Enum
 from pathlib import Path
 # noinspection PyUnresolvedReferences,PyProtectedMember
 from typing import (
-    Any, Type, Dict, List, Tuple, Iterable, Sequence, Union,
-    NamedTupleMeta,
-    SupportsFloat, AnyStr, Text, Callable, Optional, cast, Literal, Annotated, NamedTuple
+    cast, Any, Type, Dict, List, Tuple, Iterable, Sequence, Union,
+    NamedTupleMeta, SupportsFloat, AnyStr, Text, Callable, Optional,
+    Literal, Annotated, NamedTuple,
 )
 from uuid import UUID
 
-from .decorators import setup_recursive_safe_function, setup_recursive_safe_function_for_generic
+from .decorators import (setup_recursive_safe_function,
+                         setup_recursive_safe_function_for_generic)
 from .enums import KeyCase, DateTimeTo
-from .models import Extras, TypeInfo, SIMPLE_TYPES, PatternBase, UTC, ZERO, SCALAR_TYPES
+from .models import (Extras, TypeInfo, PatternBase,
+                     LEAF_TYPES, LEAF_TYPES_NO_BYTES, UTC, ZERO)
 from .type_conv import datetime_to_timestamp
 from ..abstractions import AbstractDumperGenerator
 from ..bases import AbstractMeta, BaseDumpHook, META
 from ..class_helper import (
-    v1_dataclass_field_to_alias_for_dump, dataclass_fields, get_meta, is_subclass_safe,
+    CLASS_TO_DUMP_FUNC,
     DATACLASS_FIELD_TO_ALIAS_PATH_FOR_DUMP,
-    dataclass_field_to_default, create_meta, CLASS_TO_DUMP_FUNC,
-    dataclass_field_names, dataclass_field_to_skip_if,
+    create_meta,
+    get_meta,
+    is_subclass_safe,
+    v1_dataclass_field_to_alias_for_dump,
+    dataclass_fields,
+    dataclass_field_to_default,
+    dataclass_field_names,
+    dataclass_field_to_skip_if,
 )
 from ..constants import CATCH_ALL, TAG, PACKAGE_NAME
 from ..errors import (ParseError, MissingFields, MissingData, JSONWizardError)
@@ -35,7 +43,7 @@ from ..loader_selection import get_dumper, asdict
 from ..log import LOG
 from ..models import get_skip_if_condition, finalize_skip_if
 from ..type_def import (
-    DefFactory, NoneType, JSONObject,
+    NoneType, JSONObject,
     PyLiteralString,
     T, ExplicitNull
 )
@@ -48,6 +56,25 @@ from ..utils.typing_compat import (
     eval_forward_ref_if_needed, get_origin_v2, is_union,
     get_keys_for_typed_dict, is_typed_dict_type_qualifier,
 )
+
+
+def _type_returns_value_unchanged(arg, leaf_handling_as_subclass, origin=None):
+    # scalar type:
+    # (str, int, float, bool, complex, type, Literal, Any)
+    if origin is None:
+        origin = get_origin_v2(arg)
+    return (origin is Any
+            or origin is Literal
+            or origin in LEAF_TYPES_NO_BYTES
+            or (leaf_handling_as_subclass
+                and is_subclass_safe(origin, LEAF_TYPES_NO_BYTES)))
+
+
+def _all_return_value_unchanged(args, leaf_handling_as_subclass):
+    for arg in args:
+        if not _type_returns_value_unchanged(arg, leaf_handling_as_subclass):
+            return False
+    return True
 
 
 class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
@@ -118,6 +145,11 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
         v, v_next, i_next = tp.v_and_next()
         gorg = tp.origin
 
+        if v_next[0] == 'k':
+            # raise same error as `json` (not serializable)
+            raise TypeError('keys must be str, int, float, bool or None, '
+                            f'not {gorg.__qualname__}') from None
+
         # noinspection PyBroadException
         try:
             elem_type = tp.args[0]
@@ -127,16 +159,10 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
         string = cls.dump_dispatcher_for_annotation(
             tp.replace(origin=elem_type, i=i_next, index=None, val_name=None), extras)
 
-        if issubclass(gorg, (set, frozenset)):
-            start_char = '{'
-            end_char = '}'
-        else:
-            start_char = '['
-            end_char = ']'
+        if string == v_next:
+            return f'{v}.copy()' if issubclass(gorg, list) else f'list({v})'
 
-        result = f'{start_char}{string} for {v_next} in {v}{end_char}'
-
-        return tp.wrap(result, extras)
+        return f'[{string} for {v_next} in {v}]'
 
     @classmethod
     def dump_from_tuple(cls, tp: TypeInfo, extras: Extras):
@@ -150,8 +176,7 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
             is_variadic = args[-1] is ...
         else:
             # Annotated without args, as simply `tuple`
-            args = (Any, ...)
-            is_variadic = True
+            return f'list({tp.v()})'
 
         if is_variadic:
             # Logic that handles the variadic form of :class:`Tuple`'s,
@@ -169,97 +194,49 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
             string = cls.dump_dispatcher_for_annotation(
                 tp.replace(origin=args[0], i=i_next, index=None, val_name=None), extras)
 
+            if string == v_next:
+                return f'list({v})'
+
             result = f'[{string} for {v_next} in {v}]'
 
-            # Wrap because we need to create a tuple from list comprehension
-            force_wrap = True
         else:
             string = ', '.join([
                 str(cls.dump_dispatcher_for_annotation(
-                    tp.replace(origin=arg, index=k, val_name=None),
+                    tp.replace(origin=arg, index=k),
                     extras))
                 for k, arg in enumerate(args)])
 
-            result = f'({string}, )'
+            result = f'[{string}]'
 
-            force_wrap = False
-
-        return tp.wrap(result, extras, force=force_wrap)
+        return result
 
     @classmethod
-    @setup_recursive_safe_function(prefix='dump')
     def dump_from_named_tuple(cls, tp: TypeInfo, extras: Extras):
-        fn_gen = extras['fn_gen']
         nt_tp = cast(NamedTuple, tp.origin)
+        fields = nt_tp._fields  # field names in order
+        ann = nt_tp.__annotations__
 
-        _locals = extras['locals']
-        _locals['cls'] = nt_tp
-        _locals['msg'] = "`dict` input is not supported for NamedTuple, use a dataclass instead."
+        field_to_value = {
+            name: str(
+                cls.dump_dispatcher_for_annotation(
+                    tp.replace(origin=ann.get(name, Any), index=i),
+                    extras,
+                )
+            )
+            for i, name in enumerate(fields)
+        }
 
-        req_field_to_assign = {}
-        field_assigns = []
-        # noinspection PyProtectedMember
-        optional_fields = set(nt_tp._field_defaults)
-        has_optionals = True if optional_fields else False
-        only_optionals = has_optionals and len(optional_fields) == len(nt_tp.__annotations__)
-        num_fields = 0
-        v = tp.v_for_def()
+        if extras['config'].v1_namedtuple_as_dict:
+            params = [f'{field!r}: {value}' for field, value in field_to_value.items()]
+            return f'{{{", ".join(params)}}}'
 
-        for field, field_tp in nt_tp.__annotations__.items():
-            string = cls.dump_dispatcher_for_annotation(
-                tp.replace(origin=field_tp, index=num_fields, val_name=None), extras)
-
-            if has_optionals and field in optional_fields:
-                field_assigns.append(string)
-            else:
-                req_field_to_assign[f'__{field}'] = string
-
-            num_fields += 1
-
-        params = ', '.join(req_field_to_assign)
-
-        with fn_gen.try_():
-
-            for field, string in req_field_to_assign.items():
-                fn_gen.add_line(f'{field} = {string}')
-
-            if has_optionals:
-                opt_start = len(req_field_to_assign)
-                fn_gen.add_line(f'L = len({v}); has_opt = L > {opt_start}')
-                with fn_gen.if_(f'has_opt'):
-                    fn_gen.add_line(f'fields = [{field_assigns.pop(0)}]')
-                    for i, string in enumerate(field_assigns, start=opt_start + 1):
-                        fn_gen.add_line(f'if L > {i}: fields.append({string})')
-
-                    if only_optionals:
-                        fn_gen.add_line(f'return cls(*fields)')
-                    else:
-                        fn_gen.add_line(f'return cls({params}, *fields)')
-
-            fn_gen.add_line(f'return cls({params})')
-
-        with fn_gen.except_(Exception, 'e'):
-            with fn_gen.if_('(e_cls := e.__class__) is IndexError'):
-                # raise `MissingFields`, as required NamedTuple fields
-                # are not present in the input object `o`.
-                fn_gen.add_line(f'raise_missing_fields(locals(), {v}, cls, None)')
-            with fn_gen.if_(f'e_cls is KeyError and type({v}) is dict'):
-                # Input object is a `dict`
-                # TODO should we support dict for namedtuple?
-                fn_gen.add_line('raise TypeError(msg) from None')
-            # re-raise
-            fn_gen.add_line('raise e from None')
+        params = ', '.join(field_to_value.values())
+        return f'[{params}]'
 
     @classmethod
     def dump_from_named_tuple_untyped(cls, tp: TypeInfo, extras: Extras):
-        # Check if input object is `dict` or `list`.
-        #
-        # Assuming `Point` is a `namedtuple`, this performs
-        # the equivalent logic as:
-        #   Point(**x) if isinstance(x, dict) else Point(*x)
-        v = tp.v()
-        star, dbl_star = tp.multi_wrap(extras, 'nt_', f'*{v}', f'**{v}')
-        return f'{dbl_star} if isinstance({v}, dict) else {star}'
+        as_dict = extras['config'].v1_namedtuple_as_dict
+        return f'{tp.v()}._asdict()' if as_dict else f'list({tp.v()})'
 
     @classmethod
     def _build_dict_comp(cls, tp, v, i_next, k_next, v_next, kt, vt, extras):
@@ -269,54 +246,56 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
         tp_v_next = tp.replace(origin=vt, i=i_next, prefix='v', index=None, val_name=None)
         string_v = cls.dump_dispatcher_for_annotation(tp_v_next, extras)
 
+        if k_next == string_k and v_next == string_v:
+            # Easy path; shallow copy
+            return f'{v}.copy()'
+
         return f'{{{string_k}: {string_v} for {k_next}, {v_next} in {v}.items()}}'
 
     @classmethod
     def dump_from_dict(cls, tp: TypeInfo, extras: Extras):
-        v, k_next, v_next, i_next = tp.v_and_next_k_v()
-
         try:
             kt, vt = tp.args
         except ValueError:
             # Annotated without two arguments,
             # e.g. like `dict[str]` or `dict`
-            kt = vt = Any
+            return f'{tp.v()}.copy()'
 
-        result = cls._build_dict_comp(
+        v, k_next, v_next, i_next = tp.v_and_next_k_v()
+
+        return cls._build_dict_comp(
             tp, v, i_next, k_next, v_next, kt, vt, extras)
 
-        return tp.wrap(result, extras)
+    dump_from_defaultdict = dump_from_dict
 
     @classmethod
-    def dump_from_defaultdict(cls, tp: TypeInfo, extras: Extras):
-        v, k_next, v_next, i_next = tp.v_and_next_k_v()
-        default_factory: DefFactory | None
+    def dump_from_typed_dict(cls, tp: TypeInfo, extras: Extras):
+        req_keys, opt_keys = get_keys_for_typed_dict(tp.origin)
+        if opt_keys:
+            return cls._dump_from_typed_dict_fn(tp, extras)
+        ann = tp.origin.__annotations__
 
-        try:
-            kt, vt = tp.args
-            default_factory = getattr(vt, '__origin__', vt)
-        except ValueError:
-            # Annotated without two arguments,
-            # e.g. like `defaultdict[str]` or `defaultdict`
-            kt = vt = Any
-            default_factory = NoneType
+        dict_body = ', '.join(
+            f"""{name!r}: {
+                cls.dump_dispatcher_for_annotation(
+                    tp.replace(origin=ann.get(name, Any), index=repr(name)),
+                    extras,
+                )
+            }"""
+            for name in req_keys
+        )
 
-        result = cls._build_dict_comp(
-            tp, v, i_next, k_next, v_next, kt, vt, extras)
-
-        return tp.wrap_dd(default_factory, result, extras)
+        return f'{{{dict_body}}}'
 
     @classmethod
     @setup_recursive_safe_function(prefix='dump')
-    def dump_from_typed_dict(cls, tp: TypeInfo, extras: Extras):
+    def _dump_from_typed_dict_fn(cls, tp: TypeInfo, extras: Extras):
         fn_gen = extras['fn_gen']
-
         req_keys, opt_keys = get_keys_for_typed_dict(tp.origin)
-
-        result_list = []
-        v = tp.v_for_def()
-        # TODO set __annotations__?
         td_annotations = tp.origin.__annotations__
+
+        v = tp.v_for_def()
+        result_list = []
 
         # Set required keys for the `TypedDict`
         for k in req_keys:
@@ -329,57 +308,48 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
 
             result_list.append(f'{field_name}: {string}')
 
-        with fn_gen.try_():
-            fn_gen.add_lines('result = {',
-                             *(f'  {r},' for r in result_list),
-                             '}')
+        fn_gen.add_lines('result = {',
+                         *(f'  {r},' for r in result_list),
+                         '}')
 
-            # Set optional keys for the `TypedDict` (if they exist)
-            next_i = tp.i + 1
-            new_tp = tp.replace(i=next_i, index=None, val_name=None)
-            v_next = new_tp.v()
+        # Set optional keys for the `TypedDict` (if they exist)
+        next_i = tp.i + 1
+        new_tp = tp.replace(i=next_i, index=None, val_name=None)
+        v_next = new_tp.v()
 
-            for k in opt_keys:
-                field_tp = td_annotations[k]
-                field_name = repr(k)
-                string = cls.dump_dispatcher_for_annotation(
-                    new_tp.replace(origin=field_tp), extras)
-                with fn_gen.if_(f'({v_next} := {v}.get({field_name}, MISSING)) is not MISSING'):
-                    fn_gen.add_line(f'result[{field_name}] = {string}')
-            fn_gen.add_line('return result')
-
-        with fn_gen.except_(Exception, 'e'):
-            with fn_gen.if_('type(e) is KeyError'):
-                fn_gen.add_line('name = e.args[0]; e = KeyError(f"Missing required key: {name!r}")')
-            with fn_gen.elif_(f'not isinstance({v}, dict)'):
-                fn_gen.add_line('e = TypeError("Incorrect type for object")')
-            fn_gen.add_line(f'raise ParseError(e, {v}, {{}}, "dump") from None')
+        for k in opt_keys:
+            field_tp = td_annotations[k]
+            field_name = repr(k)
+            string = cls.dump_dispatcher_for_annotation(
+                new_tp.replace(origin=field_tp), extras)
+            with fn_gen.if_(f'({v_next} := {v}.get({field_name}, MISSING)) is not MISSING'):
+                fn_gen.add_line(f'result[{field_name}] = {string}')
+        fn_gen.add_line('return result')
 
     @classmethod
-    @setup_recursive_safe_function_for_generic(None, prefix='dump')
+    @setup_recursive_safe_function_for_generic(prefix='dump', per_class_cache=True)
     def dump_from_union(cls, tp: TypeInfo, extras: Extras):
         fn_gen = extras['fn_gen']
         config = extras['config']
         actual_cls = extras['cls']
+        _locals = extras['locals']
+
+        args = tp.args
+        field_i = tp.field_i
+        i = tp.i
+        v = tp.v_for_def()
 
         tag_key = config.tag_key or TAG
         auto_assign_tags = config.auto_assign_tags
+        leaf_handling_as_subclass = config.v1_leaf_handling == 'issubclass'
 
-        v = tp.v_for_def()
-
-        field_i = tp.field_i
-        i = tp.i
-        fields = f'fields_{field_i}'
-
-        args = tp.args
         in_optional = NoneType in args
 
-        _locals = extras['locals']
-        _locals[fields] = args
+        _locals['fields'] = args
         _locals['tag_key'] = tag_key
 
-        type_checks = []
-        try_parse_at_end = []
+        leaf_types = []
+        try_parse_lines = []
         dataclass_and_line = []
         has_dataclass = False
 
@@ -390,14 +360,18 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
             tp_new = TypeInfo(possible_tp, field_i=field_i, i=i)
             tp_new.in_optional = in_optional
 
-            if possible_tp is NoneType:
-                with fn_gen.if_(f'{v} is None'):
-                    fn_gen.add_line('return None')
-                continue
+            if _type_returns_value_unchanged(
+                    possible_tp, leaf_handling_as_subclass):
+                leaf_types.append(possible_tp)
 
-            if is_dataclass(possible_tp):
-                has_dataclass = True
+        # if num_leaf_types_no_bytes > 0:
+        #     fn_gen.add_line(f'return {v}')
+
+            elif is_dataclass(possible_tp):
                 # we see a dataclass in `Union` declaration
+                has_dataclass = True
+                string = cls.dump_dispatcher_for_annotation(tp_new, extras)
+
                 meta = get_meta(possible_tp)
                 cls_name = possible_tp.__name__
 
@@ -412,83 +386,46 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
                         meta.tag = cls_name
 
                 if tag:
-                    string = cls.dump_dispatcher_for_annotation(tp_new, extras)
                     dataclass_and_line.append(
                         (possible_tp, cls_name, tag,
                          f'result = {string}; result[tag_key] = {tag!r}; return result'))
-                    continue
+                else:
+                    dataclass_and_line.append(
+                        (possible_tp, cls_name, tag,
+                         f'return {string}'))
 
-                # elif not config.v1_unsafe_parse_dataclass_in_union:
-                #     e = ValueError('Cannot parse dataclass types in a Union without '
-                #                    'one of the following `Meta` settings:\n\n'
-                #                    '  * `auto_assign_tags = True`\n'
-                #                    f'    - Set on class `{extras["cls_name"]}`.\n\n'
-                #                    f'  * `tag = "{cls_name}"`\n'
-                #                    f'    - Set on class `{possible_tp.__qualname__}`.\n\n'
-                #                    '  * `v1_unsafe_parse_dataclass_in_union = True`\n'
-                #                    f'    - Set on class `{extras["cls_name"]}`\n\n'
-                #                    'For more information, refer to:\n'
-                #                    '  https://dcw.ritviknag.com/en/latest/common_use_cases/dataclasses_in_union_types.html')
-                #     raise e from None
-
-            string = cls.dump_dispatcher_for_annotation(tp_new, extras)
-
-            try_parse_lines = [
-                'try:',
-                f'  return {string}',
-                'except Exception:',
-                '  pass',
-            ]
-
-            # TODO disable for dataclasses
-
-            if (possible_tp in SIMPLE_TYPES
-                or is_subclass_safe(
-                    get_origin_v2(possible_tp), SIMPLE_TYPES)):
-
-                tn = tp_new.type_name(extras)
-                type_checks.extend([
-                    f'if tp is {tn}:',
-                    f'  return {v}'
-                ])
-                list_to_add = try_parse_at_end
             else:
-                list_to_add = type_checks
+                try_parse_lines.append(
+                    cls.dump_dispatcher_for_annotation(tp_new, extras))
 
-            list_to_add.extend(try_parse_lines)
+        fn_gen.add_line(f't = {v}.__class__')
 
-        fn_gen.add_line(f'tp = type({v})')
+        if leaf_types:
+            # a good heuristic: use tuples for smaller unions, else frozenset
+            container = tuple if len(leaf_types) <= 6 else frozenset
+            _locals['leaf_types'] = container(leaf_types)
+            leaf_type_names = ', '.join(getattr(t, '__name__', None) or str(t)
+                               for t in leaf_types)
+            with fn_gen.if_('t in leaf_types', comment=f'{{{leaf_type_names}}}'):
+                fn_gen.add_line(f'return {v}')
 
         if has_dataclass:
-            var_to_dataclass = {}
 
             for field_i, (dataclass, name, tag, line) in enumerate(dataclass_and_line, start=1):
-                cls_name = f'C{field_i}'
-                var_to_dataclass[cls_name] = dataclass
-                with fn_gen.if_(f'tp is {cls_name}', comment=f'{name} -> {tag!r}'):
+                cls_name = TypeInfo(dataclass).type_name(extras)
+                with fn_gen.if_(f't is {cls_name}', comment=f'{tag!r}' if tag else ''):
                     fn_gen.add_line(line)
 
-            tp.ensure_in_locals(extras, **var_to_dataclass)
-
-            # fn_gen.add_line(
-            #     "raise ParseError("
-            #     "TypeError('Object with tag was not in any of Union types'),"
-            #     f"v1,{fields},"
-            #     "input_tag=tag,"
-            #     "tag_key=tag_key,"
-            #     f"valid_tags={list(dataclass_tag_to_lines)})"
-            # )
-
-        if type_checks:
-            fn_gen.add_lines(*type_checks)
-
-        if try_parse_at_end:
-            fn_gen.add_lines(*try_parse_at_end)
+        for string in try_parse_lines:
+            with fn_gen.try_():
+                fn_gen.add_line(f'return {string}')
+            with fn_gen.except_(Exception):
+                fn_gen.add_line('pass')
 
         # Invalid type for Union
         fn_gen.add_line("raise ParseError("
                         "TypeError('Object was not in any of Union types'),"
-                        f"{v},{fields},'dump',"
+                        f"{v},fields,'dump',"
                         "tag_key=tag_key"
                         ")")
 
@@ -550,6 +487,7 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
 
     @staticmethod
     @setup_recursive_safe_function(
+        prefix='dump',
         fn_name=f'__{PACKAGE_NAME}_to_dict_{{cls_name}}__')
     def dump_from_dataclass(tp: TypeInfo, extras: Extras):
         dump_func_for_dataclass(tp.origin, extras)
@@ -560,7 +498,9 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
                                        extras):
 
         hooks = cls.__DUMP_HOOKS__
-        type_hooks = extras['config'].v1_type_to_dump_hook
+        config = extras['config']
+        type_hooks = config.v1_type_to_dump_hook
+        leaf_handling_as_subclass = config.v1_leaf_handling == 'issubclass'
 
         # type_ann = tp.origin
         type_ann = eval_forward_ref_if_needed(tp.origin, extras['cls'])
@@ -603,7 +543,9 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
 
         # -> Atomic, immutable types which don't require
         #    any iterative / recursive handling.
-        elif origin in SIMPLE_TYPES or is_subclass_safe(origin, SIMPLE_TYPES):
+        elif origin in LEAF_TYPES or (
+                leaf_handling_as_subclass
+                and is_subclass_safe(origin, LEAF_TYPES)):
             dump_hook = hooks.get(origin)
 
         elif (type_hooks is not None
@@ -627,30 +569,31 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
 
         # -> Union[x]
         elif is_union(origin):
-            dump_hook = cls.dump_from_union
             args = get_args(type_ann)
+
+            # all args in `Union[...]` are simple types
+            if _all_return_value_unchanged(args, leaf_handling_as_subclass):
+                return tp.v()
+
+            dump_hook = cls.dump_from_union
 
             # Special case for Optional[x], which is actually Union[x, None]
             if len(args) == 2 and NoneType in args:
                 origin = args[0]
-                # optional simple type: (str, int, float, bool, Literal, Any)
-                is_simple_type = origin in SCALAR_TYPES or origin is Any or origin is Literal
 
-                val_name = None
-                o = tp.v()
-
-                if is_simple_type:
-                    val_name = tp.val_name
-                    o = tp.v()
-                elif tp.val_name:
+                if tp.val_name:
                     val_name = 'v0'
-                    o = f'(v0 := {tp.v()})'
+                    o = f'({val_name} := {tp.v()})'
+                else:
+                    val_name = None
+                    o = tp.v()
+
                 new_tp = tp.replace(origin=origin, args=None, name=None, val_name=val_name)
                 new_tp.in_optional = True
 
                 string = cls.dump_dispatcher_for_annotation(new_tp, extras)
 
-                return string if is_simple_type else f'None if {o} is None else {string}'
+                return f'None if {o} is None else {string}'
 
         # -> Literal[X, Y, ...]
         elif origin is Literal:
@@ -728,7 +671,9 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
         if dump_hook is None:
             # TODO END
             for t in hooks:
-                if issubclass(origin, (t,)):
+                if (not leaf_handling_as_subclass) and (t in LEAF_TYPES):
+                    continue
+                if issubclass(origin, t):
                     dump_hook = hooks[t]
                     break
 
@@ -856,6 +801,7 @@ def dump_func_for_dataclass(
             'fields': cls_fields,
         }
 
+        # noinspection PyTypeChecker
         extras: Extras = {
             'config': config,
             'cls': cls,
@@ -925,7 +871,6 @@ def dump_func_for_dataclass(
 
     skip_defaults = True if meta.skip_defaults else False
     skip_if = True if field_to_skip_if or skip_if_condition else False
-    skip_any = True if skip_if or skip_defaults else False
 
     # Fix for using `auto_assign_tags` and `raise_on_unknown_json_key` together
     # See https://github.com/rnag/dataclass-wizard/issues/137
@@ -1273,6 +1218,13 @@ def re_raise(e, cls, o, fields, field, value):
         else:
             tp = getattr(next((f for f in fields if f.name == field), None), 'type', Any)
             e = ParseError(e, value, tp, 'dump')
+
+    # If field name is missing or not known, make a "best effort"
+    # to resolve it.
+    if field == '<UNK>' and cls and fields:
+        if len((names := [f.name for f in fields
+                         if getattr(o, f.name, MISSING) == e.obj])) == 1:
+            field = e.field_name = names[0]
 
     # We run into a parsing error while dumping the field value;
     # Add additional info on the Exception object before re-raising it.

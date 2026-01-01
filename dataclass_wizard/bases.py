@@ -423,6 +423,43 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
     # deserialization.
     v1_assume_naive_datetime_tz: ClassVar[tzinfo | None] = None
 
+    # Controls how `typing.NamedTuple` and `collections.namedtuple`
+    # fields are loaded and serialized.
+    #
+    # - False (DEFAULT): load from list/tuple and serialize
+    #                     as a positional list.
+    # - True: load from mapping and serialize as a dict
+    #           keyed by field name.
+    #
+    # In strict mode, inputs that do not match the selected mode
+    # raise TypeError.
+    #
+    # Note:
+    #   This option enforces strict shape matching for performance reasons.
+    v1_namedtuple_as_dict: bool = None
+
+    # If True (default: False), ``None`` is coerced to an empty string (``""``)
+    # when loading ``str`` fields.
+    #
+    # When False, ``None`` is coerced using ``str(value)``, so ``None`` becomes
+    # the literal string ``'None'`` for ``str`` fields.
+    #
+    # For ``Optional[str]`` fields, ``None`` is preserved by default.
+    v1_coerce_none_to_empty_str: bool = None
+
+    # Controls how leaf (non-recursive) types are detected during serialization.
+    #
+    # - "exact" (DEFAULT): only exact built-in leaf types are treated as leaf values.
+    # - "issubclass": subclasses of leaf types are also treated as leaf values.
+    #
+    # Leaf types are returned without recursive traversal. Bytes are still
+    # handled separately according to their serialization rules.
+    #
+    # Note:
+    #     The default "exact" mode avoids treating third-party scalar-like
+    #     objects (e.g. NumPy scalars) as built-in leaf types.
+    v1_leaf_handling: Literal['exact', 'issubclass'] = None
+
     # noinspection PyMethodParameters
     @cached_class_property
     def all_fields(cls) -> FrozenKeys:
@@ -711,6 +748,43 @@ class AbstractEnvMeta(metaclass=ABCOrAndMeta):
     # This setting applies to serialization only and does not affect
     # deserialization.
     v1_assume_naive_datetime_tz: ClassVar[tzinfo | None] = None
+
+    # Controls how `typing.NamedTuple` and `collections.namedtuple`
+    # fields are loaded and serialized.
+    #
+    # - False (DEFAULT): load from list/tuple and serialize
+    #                     as a positional list.
+    # - True: load from mapping and serialize as a dict
+    #           keyed by field name.
+    #
+    # In strict mode, inputs that do not match the selected mode
+    # raise TypeError.
+    #
+    # Note:
+    #   This option enforces strict shape matching for performance reasons.
+    v1_namedtuple_as_dict: bool = None
+
+    # If True (default: False), ``None`` is coerced to an empty string (``""``)
+    # when loading ``str`` fields.
+    #
+    # When False, ``None`` is coerced using ``str(value)``, so ``None`` becomes
+    # the literal string ``'None'`` for ``str`` fields.
+    #
+    # For ``Optional[str]`` fields, ``None`` is preserved by default.
+    v1_coerce_none_to_empty_str: bool = None
+
+    # Controls how leaf (non-recursive) types are detected during serialization.
+    #
+    # - "exact" (DEFAULT): only exact built-in leaf types are treated as leaf values.
+    # - "issubclass": subclasses of leaf types are also treated as leaf values.
+    #
+    # Leaf types are returned without recursive traversal. Bytes are still
+    # handled separately according to their serialization rules.
+    #
+    # Note:
+    #     The default "exact" mode avoids treating third-party scalar-like
+    #     objects (e.g. NumPy scalars) as built-in leaf types.
+    v1_leaf_handling: Literal['exact', 'issubclass'] = None
 
     # noinspection PyMethodParameters
     @cached_class_property
