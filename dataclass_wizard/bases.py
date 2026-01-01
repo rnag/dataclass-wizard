@@ -438,10 +438,13 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
     #   This option enforces strict shape matching for performance reasons.
     v1_namedtuple_as_dict: bool = None
 
-    # If True (Default: False), None values are coerced to an
-    # empty string ('') when loading string fields. If False,
-    # None is preserved for Optional[str] fields and rejected
-    # for str fields.
+    # If True (default: False), ``None`` is coerced to an empty string (``""``)
+    # when loading ``str`` fields.
+    #
+    # When False, ``None`` is coerced using ``str(value)``, so ``None`` becomes
+    # the literal string ``'None'`` for ``str`` fields.
+    #
+    # For ``Optional[str]`` fields, ``None`` is preserved by default.
     v1_coerce_none_to_empty_str: bool = None
 
     # Controls how leaf (non-recursive) types are detected during serialization.
@@ -761,10 +764,13 @@ class AbstractEnvMeta(metaclass=ABCOrAndMeta):
     #   This option enforces strict shape matching for performance reasons.
     v1_namedtuple_as_dict: bool = None
 
-    # If True (Default: False), None values are coerced to an
-    # empty string ('') when loading string fields. If False,
-    # None is preserved for Optional[str] fields and rejected
-    # for str fields.
+    # If True (default: False), ``None`` is coerced to an empty string (``""``)
+    # when loading ``str`` fields.
+    #
+    # When False, ``None`` is coerced using ``str(value)``, so ``None`` becomes
+    # the literal string ``'None'`` for ``str`` fields.
+    #
+    # For ``Optional[str]`` fields, ``None`` is preserved by default.
     v1_coerce_none_to_empty_str: bool = None
 
     # Controls how leaf (non-recursive) types are detected during serialization.
