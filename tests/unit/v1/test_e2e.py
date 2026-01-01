@@ -10,7 +10,7 @@ import pytest
 from dataclass_wizard import asdict, fromdict, DataclassWizard, CatchAll
 from dataclass_wizard.errors import ParseError, MissingFields
 from dataclass_wizard.v1 import Alias
-from .models import ContDict, TN, CN, ContList
+from .models import ContDict, TN, CN, ContList, ContTF, ContTT, ContAllReq
 from .utils_env import assert_unordered_equal
 from ..._typing import *
 
@@ -304,3 +304,38 @@ def test_namedtuple_list_mode_roundtrip_and_defaults():
 def test_namedtuple_list_mode_rejects_dict_input_with_clear_error():
     with pytest.raises(ParseError, match=r"Dict input is not supported for NamedTuple fields in list mode.*list.*Meta\.v1_namedtuple_as_dict = True"):
         ContList.from_dict({"tn": {"a": 1}, "cn": {"a": 3}})
+
+
+def test_typeddict_total_false_e2e_dict_roundtrip():
+    o = ContTF.from_dict({"td": {"a": 1, "ro": 9}})
+    assert o.td == {"a": 1, "ro": 9}
+
+    d = o.to_dict()
+    assert d == {"td": {"a": 1, "ro": 9}}
+
+
+def test_typeddict_total_false_missing_required_raises():
+    with pytest.raises(Exception):  # swap to MissingFields/TypeError etc
+        ContTF.from_dict({"td": {"b": 2}})
+
+
+def test_typeddict_total_true_e2e_optional_and_required_keys():
+    o = ContTT.from_dict({"td": {"a": 1, "ro": 9}})
+    assert o.td == {"a": 1, "ro": 9}
+
+    d = o.to_dict()
+    assert d == {"td": {"a": 1, "ro": 9}}
+
+    with pytest.raises(Exception):
+        ContTT.from_dict({"td": {"a": 1}})   # missing ro
+
+
+def test_typeddict_all_required_e2e_inline_path():
+    o = ContAllReq.from_dict({"td": {"x": 1, "y": "ok"}})
+    assert o.td == {"x": 1, "y": "ok"}
+
+    d = o.to_dict()
+    assert d == {"td": {"x": 1, "y": "ok"}}
+
+    with pytest.raises(Exception):
+        ContAllReq.from_dict({"td": {"x": 1}})  # missing y

@@ -8,7 +8,7 @@ import pytest
 from dataclass_wizard import DataclassWizard, CatchAll
 from dataclass_wizard.errors import ParseError, MissingVars, MissingFields
 from dataclass_wizard.v1 import Alias, EnvWizard, env_config, AliasPath
-from ..models import EnvContDict, EnvContList, TN, CN
+from ..models import EnvContDict, EnvContList, TN, CN, EnvContTF, EnvContTT, EnvContAllReq
 
 from ..utils_env import envsafe, from_env, assert_unordered_equal
 from ...._typing import *
@@ -410,3 +410,38 @@ def test_namedtuple_list_mode_roundtrip_and_defaults():
 # def test_namedtuple_list_mode_rejects_dict_input_with_clear_error():
 #     with pytest.raises(ParseError, match=r"Dict input is not supported for NamedTuple fields in list mode.*list.*Meta\.v1_namedtuple_as_dict = True"):
 #         from_env(EnvContList, {"tn": {"a": 1}, "cn": {"a": 3}})
+
+
+def test_typeddict_total_false_e2e_dict_roundtrip():
+    o = from_env(EnvContTF, {"td": {"a": 1, "ro": 9}})
+    assert o.td == {"a": 1, "ro": 9}
+
+    d = o.to_dict()
+    assert d == {"td": {"a": 1, "ro": 9}}
+
+
+def test_typeddict_total_false_missing_required_raises():
+    with pytest.raises(Exception):  # swap to MissingFields/TypeError etc
+        from_env(EnvContTF, {"td": {"b": 2}})
+
+
+def test_typeddict_total_true_e2e_optional_and_required_keys():
+    o = from_env(EnvContTT, {"td": {"a": 1, "ro": 9}})
+    assert o.td == {"a": 1, "ro": 9}
+
+    d = o.to_dict()
+    assert d == {"td": {"a": 1, "ro": 9}}
+
+    with pytest.raises(Exception):
+        from_env(EnvContTT, {"td": {"a": 1}})   # missing ro
+
+
+def test_typeddict_all_required_e2e_inline_path():
+    o = from_env(EnvContAllReq, {"td": {"x": 1, "y": "ok"}})
+    assert o.td == {"x": 1, "y": "ok"}
+
+    d = o.to_dict()
+    assert d == {"td": {"x": 1, "y": "ok"}}
+
+    with pytest.raises(Exception):
+        from_env(EnvContAllReq, {"td": {"x": 1}})  # missing y

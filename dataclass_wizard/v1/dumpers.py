@@ -207,7 +207,7 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
         fields = nt_tp._fields  # field names in order
         ann = nt_tp.__annotations__
 
-        field_to_assign = {
+        field_to_value = {
             name: str(
                 cls.dump_dispatcher_for_annotation(
                     tp.replace(origin=ann.get(name, Any), index=i),
@@ -218,10 +218,10 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
         }
 
         if extras['config'].v1_namedtuple_as_dict:
-            params = [f'{field!r}: {value}' for field, value in field_to_assign.items()]
+            params = [f'{field!r}: {value}' for field, value in field_to_value.items()]
             return f'{{{", ".join(params)}}}'
 
-        params = ', '.join(field_to_assign.values())
+        params = ', '.join(field_to_value.values())
         return f'[{params}]'
 
     @classmethod
@@ -260,16 +260,34 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
     dump_from_defaultdict = dump_from_dict
 
     @classmethod
-    @setup_recursive_safe_function(prefix='dump')
     def dump_from_typed_dict(cls, tp: TypeInfo, extras: Extras):
-        fn_gen = extras['fn_gen']
-
         req_keys, opt_keys = get_keys_for_typed_dict(tp.origin)
+        if opt_keys:
+            return cls._dump_from_typed_dict_fn(tp, extras)
+        ann = tp.origin.__annotations__
 
-        result_list = []
-        v = tp.v_for_def()
-        # TODO set __annotations__?
+        field_to_value = {
+            name: str(
+                cls.dump_dispatcher_for_annotation(
+                    tp.replace(origin=ann.get(name, Any), index=repr(name)),
+                    extras,
+                )
+            )
+            for i, name in enumerate(req_keys)
+        }
+
+        params = [f'{field!r}: {value}' for field, value in field_to_value.items()]
+        return f'{{{", ".join(params)}}}'
+
+    @classmethod
+    @setup_recursive_safe_function(prefix='dump')
+    def _dump_from_typed_dict_fn(cls, tp: TypeInfo, extras: Extras):
+        fn_gen = extras['fn_gen']
+        req_keys, opt_keys = get_keys_for_typed_dict(tp.origin)
         td_annotations = tp.origin.__annotations__
+
+        v = tp.v_for_def()
+        result_list = []
 
         # Set required keys for the `TypedDict`
         for k in req_keys:
@@ -282,31 +300,23 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
 
             result_list.append(f'{field_name}: {string}')
 
-        with fn_gen.try_():
-            fn_gen.add_lines('result = {',
-                             *(f'  {r},' for r in result_list),
-                             '}')
+        fn_gen.add_lines('result = {',
+                         *(f'  {r},' for r in result_list),
+                         '}')
 
-            # Set optional keys for the `TypedDict` (if they exist)
-            next_i = tp.i + 1
-            new_tp = tp.replace(i=next_i, index=None, val_name=None)
-            v_next = new_tp.v()
+        # Set optional keys for the `TypedDict` (if they exist)
+        next_i = tp.i + 1
+        new_tp = tp.replace(i=next_i, index=None, val_name=None)
+        v_next = new_tp.v()
 
-            for k in opt_keys:
-                field_tp = td_annotations[k]
-                field_name = repr(k)
-                string = cls.dump_dispatcher_for_annotation(
-                    new_tp.replace(origin=field_tp), extras)
-                with fn_gen.if_(f'({v_next} := {v}.get({field_name}, MISSING)) is not MISSING'):
-                    fn_gen.add_line(f'result[{field_name}] = {string}')
-            fn_gen.add_line('return result')
-
-        with fn_gen.except_(Exception, 'e'):
-            with fn_gen.if_('type(e) is KeyError'):
-                fn_gen.add_line('name = e.args[0]; e = KeyError(f"Missing required key: {name!r}")')
-            with fn_gen.elif_(f'not isinstance({v}, dict)'):
-                fn_gen.add_line('e = TypeError("Incorrect type for object")')
-            fn_gen.add_line(f'raise ParseError(e, {v}, {{}}, "dump") from None')
+        for k in opt_keys:
+            field_tp = td_annotations[k]
+            field_name = repr(k)
+            string = cls.dump_dispatcher_for_annotation(
+                new_tp.replace(origin=field_tp), extras)
+            with fn_gen.if_(f'({v_next} := {v}.get({field_name}, MISSING)) is not MISSING'):
+                fn_gen.add_line(f'result[{field_name}] = {string}')
+        fn_gen.add_line('return result')
 
     @classmethod
     @setup_recursive_safe_function_for_generic(None, prefix='dump')

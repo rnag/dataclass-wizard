@@ -468,8 +468,29 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         return tp.wrap_dd(default_factory, result, extras)
 
     @classmethod
-    @setup_recursive_safe_function
     def load_to_typed_dict(cls, tp: TypeInfo, extras: Extras):
+        req_keys, opt_keys = get_keys_for_typed_dict(tp.origin)
+        if opt_keys:  # has optionals
+            return cls._load_to_typed_dict_fn(tp, extras)
+
+        ann = tp.origin.__annotations__
+
+        key_and_value = tuple(
+            f"""{name!r}: {
+                cls.load_dispatcher_for_annotation(
+                    tp.replace(origin=ann.get(name, Any), index=repr(name))
+                    ,extras
+                )
+            }"""
+            for name in req_keys
+    )
+
+        params = ', '.join(key_and_value)
+        return f'{{{params}}}'
+
+    @classmethod
+    @setup_recursive_safe_function
+    def _load_to_typed_dict_fn(cls, tp: TypeInfo, extras: Extras):
         fn_gen = extras['fn_gen']
 
         req_keys, opt_keys = get_keys_for_typed_dict(tp.origin)
@@ -543,6 +564,7 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         i = tp.i
         v = tp.v_for_def()
 
+        # noinspection PyUnboundLocalVariable
         if (has_dataclass
                 and (pre_decoder := config.v1_pre_decoder) is not None
                 and (new_v := pre_decoder(cls, dict, tp, extras).v()) != v):
