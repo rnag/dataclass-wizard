@@ -332,28 +332,27 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
         fn_gen = extras['fn_gen']
         config = extras['config']
         actual_cls = extras['cls']
+        _locals = extras['locals']
+
+        args = tp.args
+        field_i = tp.field_i
+        i = tp.i
+        v = tp.v_for_def()
 
         tag_key = config.tag_key or TAG
         auto_assign_tags = config.auto_assign_tags
         leaf_handling_as_subclass = config.v1_leaf_handling == 'issubclass'
 
-        v = tp.v_for_def()
-
-        field_i = tp.field_i
-        i = tp.i
         fields = f'fields_{field_i}'
-
-        args = tp.args
         in_optional = NoneType in args
 
-        _locals = extras['locals']
         _locals[fields] = args
         _locals['tag_key'] = tag_key
 
-        type_checks = []
+        leaf_types = []
+        try_parse_lines = []
         dataclass_and_line = []
         has_dataclass = False
-        num_simple_types = 0
 
         for possible_tp in args:
 
@@ -362,12 +361,14 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
             tp_new = TypeInfo(possible_tp, field_i=field_i, i=i)
             tp_new.in_optional = in_optional
 
-            if possible_tp is NoneType:
-                with fn_gen.if_(f'{v} is None'):
-                    fn_gen.add_line('return None')
-                continue
+            if _type_returns_value_unchanged(
+                    possible_tp, leaf_handling_as_subclass):
+                leaf_types.append(possible_tp)
 
-            if is_dataclass(possible_tp):
+        # if num_leaf_types_no_bytes > 0:
+        #     fn_gen.add_line(f'return {v}')
+
+            elif is_dataclass(possible_tp):
                 # we see a dataclass in `Union` declaration
                 has_dataclass = True
                 string = cls.dump_dispatcher_for_annotation(tp_new, extras)
@@ -394,23 +395,18 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
                         (possible_tp, cls_name, tag,
                          f'return {string}'))
 
-            elif _type_returns_value_unchanged(
-                    possible_tp, leaf_handling_as_subclass):
-                num_simple_types += 1
-
             else:
-                string = cls.dump_dispatcher_for_annotation(tp_new, extras)
-                tn = tp_new.type_name(extras)
-                type_checks.extend([
-                    f'if t is {tn}:',
-                    f'  return {string}'
-                ])
-
-        # all simple types
-        if len(args) == num_simple_types:
-            fn_gen.add_line(f'return {v}')
+                try_parse_lines.append(
+                    cls.dump_dispatcher_for_annotation(tp_new, extras))
 
         fn_gen.add_line(f't = {v}.__class__')
+
+        if leaf_types:
+            _locals['leaf_types'] = leaf_types
+            leaf_type_names = ', '.join(getattr(t, '__name__', None) or str(t)
+                               for t in leaf_types)
+            with fn_gen.if_('t in leaf_types', comment=f'({leaf_type_names})'):
+                fn_gen.add_line(f'return {v}')
 
         if has_dataclass:
             var_to_dataclass = {}
@@ -432,11 +428,11 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
             #     f"valid_tags={list(dataclass_tag_to_lines)})"
             # )
 
-        if type_checks:
-            fn_gen.add_lines(*type_checks)
-
-        if num_simple_types > 0:
-            fn_gen.add_line(f'return {v}')
+        for string in try_parse_lines:
+            with fn_gen.try_():
+                fn_gen.add_line(f'return {string}')
+            with fn_gen.except_(Exception):
+                fn_gen.add_line('pass')
 
         # Invalid type for Union
         fn_gen.add_line("raise ParseError("
@@ -1233,6 +1229,13 @@ def re_raise(e, cls, o, fields, field, value):
         else:
             tp = getattr(next((f for f in fields if f.name == field), None), 'type', Any)
             e = ParseError(e, value, tp, 'dump')
+
+    # If field name is missing or not known, make a "best effort"
+    # to resolve it.
+    if field == '<UNK>' and cls and fields:
+        if len((names := [f.name for f in fields
+                         if getattr(o, f.name, MISSING) == e.obj])) == 1:
+            field = e.field_name = names[0]
 
     # We run into a parsing error while dumping the field value;
     # Add additional info on the Exception object before re-raising it.
