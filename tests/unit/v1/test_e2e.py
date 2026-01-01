@@ -390,7 +390,7 @@ def test_v1_union_codegen_cache_nested_union_roundtrip_and_dump_error():
         class _(DataclassWizard.Meta):
             v1_unsafe_parse_dataclass_in_union = True
 
-        complex_tp: list[int | Sub2] | list[int | str]
+        complex_tp: 'list[int | Sub2] | list[int | str]'
 
     # First: pick the arm list[int|Sub2]
     o1 = MyClass.from_dict({"complex_tp": [{"my_float": "123."}, 7]})
