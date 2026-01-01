@@ -8,43 +8,17 @@ from dataclass_wizard.v1 import EnvWizard
 from ..._typing import Required, NotRequired, ReadOnly, TypedDict
 
 
+class TNReq(NamedTuple):
+    a: int
+    b: int
+
+
 class TN(NamedTuple):
     a: int
     b: int = 2
 
 
 CN = namedtuple("CN", "a b", defaults=(2,))
-
-
-class ContDict(DataclassWizard):
-    class _(DataclassWizard.Meta):
-        v1_namedtuple_as_dict = True
-
-    tn: TN
-    cn: CN
-
-class ContList(DataclassWizard):
-    class _(DataclassWizard.Meta):
-        v1_namedtuple_as_dict = False
-
-    tn: TN
-    cn: CN
-
-
-class EnvContDict(EnvWizard):
-    class _(EnvWizard.Meta):
-        v1_namedtuple_as_dict = True
-
-    tn: TN
-    cn: CN
-
-
-class EnvContList(EnvWizard):
-    class _(EnvWizard.Meta):
-        v1_namedtuple_as_dict = False
-
-    tn: TN
-    cn: CN
 
 
 # 1) total=False + Required/NotRequired/ReadOnly, E2E

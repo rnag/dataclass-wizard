@@ -10,7 +10,7 @@ import pytest
 from dataclass_wizard import asdict, fromdict, DataclassWizard, CatchAll
 from dataclass_wizard.errors import ParseError, MissingFields
 from dataclass_wizard.v1 import Alias
-from .models import ContDict, TN, CN, ContList, ContTF, ContTT, ContAllReq, Sub2
+from .models import TN, CN, ContTF, ContTT, ContAllReq, Sub2, TNReq
 from .utils_env import assert_unordered_equal
 from ..._typing import *
 
@@ -276,6 +276,21 @@ def test_lazy_codegen_does_not_poison_subclasses():
     assert C.from_dict is not fromdict
 
 
+class ContDict(DataclassWizard):
+    class _(DataclassWizard.Meta):
+        v1_namedtuple_as_dict = True
+
+    tn: TN
+    cn: CN
+
+
+class ContDictReq(DataclassWizard):
+    class _(DataclassWizard.Meta):
+        v1_namedtuple_as_dict = True
+
+    tn: TNReq
+
+
 def test_namedtuple_dict_mode_roundtrip_and_defaults():
     o = ContDict.from_dict({"tn": {"a": 1}, "cn": {"a": 3}})
     assert o.tn == TN(a=1, b=2)
@@ -285,11 +300,35 @@ def test_namedtuple_dict_mode_roundtrip_and_defaults():
     assert d == {"tn": {"a": 1, "b": 2}, "cn": {"a": 3, "b": 2}}
 
 
+def test_namedtuple_no_field_defaults_dict_mode_roundtrip():
+    o = ContDictReq.from_dict({"tn": {"b": 1, "a": 3}})
+
+    assert o.tn == TN(a=3, b=1)
+
+    d = o.to_dict()
+    assert d == {'tn': {'a': 3, 'b': 1}}
+
+
+def test_namedtuple_no_field_defaults_dict_mode_missing_required_raises():
+    with pytest.raises(MissingFields, match=r'`TNReq.__init__\(\)` missing required fields') as e:
+        _ = ContDictReq.from_dict({"tn": {"a": 1}})
+
+    assert e.value.missing_fields == ['b']
+
+
 def test_namedtuple_dict_mode_missing_required_raises():
     with pytest.raises(MissingFields, match=r'`TN\.__init__\(\)` missing required fields') as e:
         ContDict.from_dict({"tn": {"b": 9}, "cn": {"a": 1}})
 
     assert e.value.missing_fields == ['a']
+
+
+class ContList(DataclassWizard):
+    class _(DataclassWizard.Meta):
+        v1_namedtuple_as_dict = False
+
+    tn: TN
+    cn: CN
 
 
 def test_namedtuple_list_mode_roundtrip_and_defaults():
@@ -304,6 +343,11 @@ def test_namedtuple_list_mode_roundtrip_and_defaults():
 def test_namedtuple_list_mode_rejects_dict_input_with_clear_error():
     with pytest.raises(ParseError, match=r"Dict input is not supported for NamedTuple fields in list mode.*list.*Meta\.v1_namedtuple_as_dict = True"):
         ContList.from_dict({"tn": {"a": 1}, "cn": {"a": 3}})
+
+
+def test_namedtuple_dict_mode_rejects_dict_input_with_clear_error():
+    with pytest.raises(ParseError, match=r"List/tuple input is not supported for NamedTuple fields in dict mode.*dict.*Meta\.v1_namedtuple_as_dict = False"):
+        ContDict.from_dict({"tn": ['test'], "cn": {"a": 3}})
 
 
 def test_typeddict_total_false_e2e_dict_roundtrip():

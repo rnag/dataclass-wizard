@@ -8,7 +8,7 @@ import pytest
 from dataclass_wizard import DataclassWizard, CatchAll
 from dataclass_wizard.errors import ParseError, MissingVars, MissingFields
 from dataclass_wizard.v1 import Alias, EnvWizard, env_config, AliasPath
-from ..models import EnvContDict, EnvContList, TN, CN, EnvContTF, EnvContTT, EnvContAllReq, Sub2
+from ..models import TN, CN, EnvContTF, EnvContTT, EnvContAllReq, Sub2
 
 from ..utils_env import envsafe, from_env, assert_unordered_equal
 from ...._typing import *
@@ -382,6 +382,13 @@ def test_env_alias_path_with_multiple_paths():
 
 
 def test_namedtuple_dict_mode_roundtrip_and_defaults():
+    class EnvContDict(EnvWizard):
+        class _(EnvWizard.Meta):
+            v1_namedtuple_as_dict = True
+
+        tn: TN
+        cn: CN
+
     o = from_env(EnvContDict, {"tn": {"a": 1}, "cn": {"a": 3}})
     assert o.tn == TN(a=1, b=2)
     assert o.cn == CN(a=3, b=2)
@@ -399,6 +406,13 @@ def test_namedtuple_dict_mode_roundtrip_and_defaults():
 
 
 def test_namedtuple_list_mode_roundtrip_and_defaults():
+    class EnvContList(EnvWizard):
+        class _(EnvWizard.Meta):
+            v1_namedtuple_as_dict = False
+
+        tn: TN
+        cn: CN
+
     o = from_env(EnvContList, {"tn": [1], "cn": [3]})
     assert o.tn == TN(a=1, b=2)
     assert o.cn == CN(a=3, b=2)
