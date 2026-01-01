@@ -438,6 +438,12 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
     #   This option enforces strict shape matching for performance reasons.
     v1_namedtuple_as_dict: bool = None
 
+    # If True (Default: False), None values are coerced to an
+    # empty string ('') when loading string fields. If False,
+    # None is preserved for Optional[str] fields and rejected
+    # for str fields.
+    v1_coerce_none_to_empty_str: bool = None
+
     # noinspection PyMethodParameters
     @cached_class_property
     def all_fields(cls) -> FrozenKeys:
@@ -741,6 +747,12 @@ class AbstractEnvMeta(metaclass=ABCOrAndMeta):
     # Note:
     #   This option enforces strict shape matching for performance reasons.
     v1_namedtuple_as_dict: bool = None
+
+    # If True (Default: False), None values are coerced to an
+    # empty string ('') when loading string fields. If False,
+    # None is preserved for Optional[str] fields and rejected
+    # for str fields.
+    v1_coerce_none_to_empty_str: bool = None
 
     # noinspection PyMethodParameters
     @cached_class_property

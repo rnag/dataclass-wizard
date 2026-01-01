@@ -1426,8 +1426,30 @@ def test_optional(input, expectation, expected):
 
         assert result.my_opt_str == expected
         if input is None:
-            assert result.my_str == '', \
-                'expected `my_str` to be set to an empty string'
+            assert result.my_str == 'None', \
+                'expected `my_str` to be set to the str() value of None'
+
+
+def test_coerce_none_to_empty_str():
+    @dataclass
+    class MyClass(JSONWizard):
+
+        class _(JSONWizard.Meta):
+            v1 = True
+            v1_case = 'P'
+            v1_coerce_none_to_empty_str = True
+
+        my_str: str
+        my_opt_str: Optional[str]
+
+    d = {'MyStr': None, 'MyOptStr': None}
+
+    result = MyClass.from_dict(d)
+    log.debug('Parsed object: %r', result)
+
+    assert result.my_opt_str is None
+    assert result.my_str == '', \
+        'expected `my_str` to be set to an empty string'
 
 
 @pytest.mark.parametrize(

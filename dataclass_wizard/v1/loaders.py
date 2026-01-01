@@ -116,7 +116,8 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         tn = tp.type_name(extras)
         o = tp.v()
 
-        if tp.in_optional:  # str(v)
+        # str(v)
+        if not extras['config'].v1_coerce_none_to_empty_str or tp.in_optional:
             return f'{tn}({o})'
 
         # '' if v is None else str(v)
