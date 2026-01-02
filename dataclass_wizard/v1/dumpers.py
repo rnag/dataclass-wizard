@@ -858,21 +858,6 @@ def dump_func_for_dataclass(
     skip_defaults = True if meta.skip_defaults else False
     skip_if = True if field_to_skip_if or skip_if_condition else False
 
-    # Fix for using `auto_assign_tags` and `raise_on_unknown_json_key` together
-    # See https://github.com/rnag/dataclass-wizard/issues/137
-    # has_tag_assigned = meta.tag is not None
-    # if (has_tag_assigned and
-    #     # Ensure `tag_key` isn't a dataclass field,
-    #     # to avoid issues with our logic.
-    #     # See https://github.com/rnag/dataclass-wizard/issues/148
-    #     meta.tag_key not in cls_field_names):
-    #         expect_tag_as_unknown_key = True
-    # else:
-    #     expect_tag_as_unknown_key = False
-
-    # Tag key to populate when a dataclass is in a `Union` with other types.
-    # tag_key = meta.tag_key or TAG
-
     catch_all_name: 'str | None' = field_to_alias.pop(CATCH_ALL, None)
     has_catch_all = catch_all_name is not None
 
