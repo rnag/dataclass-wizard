@@ -15,6 +15,7 @@ import mashumaro
 
 from dataclass_wizard import JSONWizard, LoadMeta
 from dataclass_wizard.class_helper import create_new_class
+from dataclass_wizard.constants import PY314_OR_ABOVE
 from dataclass_wizard.utils.string_conv import to_snake_case
 from dataclass_wizard.utils.type_conv import as_datetime, as_date
 
@@ -231,8 +232,9 @@ def test_load(request, data, n):
     log.info('dataclass-wizard     %f',
              timeit('MyClassWizard.from_dict(data)', globals=g, number=n))
 
-    log.info('dataclass-factory    %f',
-             timeit('factory.load(data, Data1)', globals=g, number=n))
+    if not PY314_OR_ABOVE:  # breaks on Python 3.14+
+        log.info('dataclass-factory    %f',
+                 timeit('factory.load(data, Data1)', globals=g, number=n))
 
     log.info('dataclasses-json     %f',
              timeit('MyClassDJ.from_dict(data)', globals=g, number=n))
@@ -257,14 +259,18 @@ def test_load(request, data, n):
              timeit('MyClassJsons.load(data, strict=True)', globals=g, number=n))
 
     c1 = MyClassWizard.from_dict(data)
-    c2 = factory.load(data, Data1)
+    if not PY314_OR_ABOVE:  # breaks on Python 3.14+
+        c2 = factory.load(data, Data1)
     c3 = MyClassDJ.from_dict(data)
     c4 = MyClassJsons.load(data)
     c5 = MyClassMashumaro.from_dict(data)
     # c6 = dacite_from_dict(MyClass, data)
     c7 = MyClassPydantic(**data)
 
-    assert c1.__dict__ == c2.__dict__ == c3.__dict__ == c4.__dict__ == c5.__dict__ == c7.__dict__ # == c6.__dict__
+    assert c1.__dict__ == c3.__dict__ == c4.__dict__ == c5.__dict__ == c7.__dict__ # == c6.__dict__
+
+    if not PY314_OR_ABOVE:  # breaks on Python 3.14+
+        assert c1.__dict__ == c2.__dict__
 
 
 def test_dump(request, data, n):
@@ -281,7 +287,8 @@ def test_dump(request, data, n):
     INFO     benchmarks.nested:nested.py:282 jsons (strict)       44.051063
     """
     c1 = MyClassWizard.from_dict(data)
-    c2 = factory.load(data, Data1)
+    if not PY314_OR_ABOVE:  # breaks on Python 3.14+
+        c2 = factory.load(data, Data1)
     c3 = MyClassDJ.from_dict(data)
     c4 = MyClassJsons.load(data)
     c5 = MyClassMashumaro.from_dict(data)
@@ -296,8 +303,9 @@ def test_dump(request, data, n):
     log.info('asdict (dataclasses) %f',
              timeit('asdict(c1)', globals=g, number=n))
 
-    log.info('dataclass-factory    %f',
-             timeit('factory.dump(c2, Data1)', globals=g, number=n))
+    if not PY314_OR_ABOVE:  # breaks on Python 3.14+
+        log.info('dataclass-factory    %f',
+                 timeit('factory.dump(c2, Data1)', globals=g, number=n))
 
     log.info('dataclasses-json     %f',
              timeit('c3.to_dict()', globals=g, number=n))

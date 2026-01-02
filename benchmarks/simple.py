@@ -15,6 +15,7 @@ import mashumaro
 
 from dataclass_wizard import JSONWizard, LoadMeta
 from dataclass_wizard.class_helper import create_new_class
+from dataclass_wizard.constants import PY314_OR_ABOVE
 from dataclass_wizard.utils.string_conv import to_snake_case
 
 log = logging.getLogger(__name__)
@@ -97,8 +98,9 @@ def test_load(data, n):
     # Add dacite and pydantic benchmarks
     log.info("dataclass-wizard     %f",
              timeit("MyClassWizard.from_dict(data)", globals=g, number=n))
-    log.info("dataclass-factory    %f",
-             timeit("factory.load(data, MyClass)", globals=g, number=n))
+    if not PY314_OR_ABOVE:  # breaks on Python 3.14+
+        log.info("dataclass-factory    %f",
+                 timeit("factory.load(data, MyClass)", globals=g, number=n))
     log.info("dataclasses-json     %f",
              timeit("MyClassDJ.from_dict(data)", globals=g, number=n))
     log.info("jsons                %f",
@@ -116,7 +118,8 @@ def test_load(data, n):
 
     # Assert the dataclass instances have the same values for all fields.
     c1 = MyClassWizard.from_dict(data)
-    c2 = factory.load(data, MyClass)
+    if not PY314_OR_ABOVE:  # breaks on Python 3.14+
+        c2 = factory.load(data, MyClass)
     c3 = MyClassDJ.from_dict(data)
     c4 = MyClassJsons.load(data)
     c5 = dacite_from_dict(MyClass, data)
@@ -125,7 +128,11 @@ def test_load(data, n):
     c8 = MyClassAttrs(**data)
     c9 = MyClassMashumaro.from_dict(data)
 
-    assert c1.__dict__ == c2.__dict__ == c3.__dict__ == c4.__dict__ == c5.__dict__ == c6.model_dump() == c7 == c8.__dict__ == c9.to_dict()
+    assert c1.__dict__ == c3.__dict__ == c4.__dict__ == c5.__dict__ == c6.model_dump() == c7 == c8.__dict__ == c9.to_dict()
+
+    if not PY314_OR_ABOVE:  # breaks on Python 3.14+
+        assert c1.__dict__ == c2.__dict__
+
 
 def test_dump(data, n):
     """
@@ -144,7 +151,8 @@ def test_dump(data, n):
     """
 
     c1 = MyClassWizard.from_dict(data)
-    c2 = factory.load(data, MyClass)
+    if not PY314_OR_ABOVE:  # breaks on Python 3.14+
+        c2 = factory.load(data, MyClass)
     c3 = MyClassDJ.from_dict(data)
     c4 = MyClassJsons.load(data)
     c5 = dacite_from_dict(MyClass, data)
@@ -160,8 +168,9 @@ def test_dump(data, n):
              timeit("c1.to_dict()", globals=g, number=n))
     log.info("asdict (dataclasses) %f",
              timeit("asdict(c1)", globals=g, number=n))
-    log.info("dataclass-factory    %f",
-             timeit("factory.dump(c2, MyClass)", globals=g, number=n))
+    if not PY314_OR_ABOVE:  # breaks on Python 3.14+
+        log.info("dataclass-factory    %f",
+                 timeit("factory.dump(c2, MyClass)", globals=g, number=n))
     log.info("dataclasses-json     %f",
              timeit("c3.to_dict()", globals=g, number=n))
     log.info("jsons                %f",
@@ -179,4 +188,7 @@ def test_dump(data, n):
     # Assert the dict objects which are the result of `to_dict` are all equal.
     c1_dict = {to_snake_case(f): fval for f, fval in c1.to_dict().items()}
 
-    assert c1_dict == factory.dump(c2, MyClass) == c3.to_dict() == c4.dump() == c6.model_dump() == attr.asdict(c8) == c9.to_dict()
+    assert c1_dict == c3.to_dict() == c4.dump() == c6.model_dump() == attr.asdict(c8) == c9.to_dict()
+
+    if not PY314_OR_ABOVE:  # breaks on Python 3.14+
+        assert c1_dict == factory.dump(c2, MyClass)

@@ -18,6 +18,7 @@ import mashumaro
 
 from dataclass_wizard import JSONWizard, LoadMeta
 from dataclass_wizard.class_helper import create_new_class
+from dataclass_wizard.constants import PY314_OR_ABOVE
 from dataclass_wizard.utils.string_conv import to_snake_case
 from dataclass_wizard.utils.type_conv import as_datetime
 
@@ -234,8 +235,9 @@ def test_load(request, data, data_2, data_dacite, n):
     log.info('dataclass-wizard     %f',
              timeit('MyClassWizard.from_dict(data)', globals=g, number=n))
 
-    log.info('dataclass-factory    %f',
-             timeit('factory.load(data_2, MyClass)', globals=g, number=n))
+    if not PY314_OR_ABOVE:  # breaks on Python 3.14+
+        log.info('dataclass-factory    %f',
+                 timeit('factory.load(data_2, MyClass)', globals=g, number=n))
 
     log.info('dacite               %f',
              timeit('dacite_from_dict(MyClassDacite, data_dacite, config=dacite_cfg)',
@@ -249,7 +251,8 @@ def test_load(request, data, data_2, data_dacite, n):
 
     # Assert the dataclass instances have the same values for all fields.
     c1 = MyClassWizard.from_dict(data)
-    c2 = factory.load(data_2, MyClass)
+    if not PY314_OR_ABOVE:  # breaks on Python 3.14+
+        c2 = factory.load(data_2, MyClass)
     c3 = MyClassDJ.from_dict(data_2)
     c4 = MyClassJsons.load(data)
     c5 = MyClassMashumaro.from_dict(data)
@@ -286,7 +289,8 @@ def test_dump(request, data, data_2, data_dacite, n):
     benchmarks.complex.complex - [INFO] jsons (strict)       31.578708
     """
     c1 = MyClassWizard.from_dict(data)
-    c2 = factory.load(data_2, MyClass)
+    if not PY314_OR_ABOVE:  # breaks on Python 3.14+
+        c2 = factory.load(data_2, MyClass)
     c3 = MyClassDJ.from_dict(data_2)
     c4 = MyClassJsons.load(data)
     c5 = MyClassMashumaro.from_dict(data)
@@ -301,8 +305,9 @@ def test_dump(request, data, data_2, data_dacite, n):
     log.info('asdict (dataclasses) %f',
              timeit('asdict(c1)', globals=g, number=n))
 
-    log.info('dataclass-factory    %f',
-             timeit('factory.dump(c2, MyClass)', globals=g, number=n))
+    if not PY314_OR_ABOVE:  # breaks on Python 3.14+
+        log.info('dataclass-factory    %f',
+                 timeit('factory.dump(c2, MyClass)', globals=g, number=n))
 
     log.info('dataclasses-json     %f',
              timeit('c3.to_dict()', globals=g, number=n))
