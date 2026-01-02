@@ -96,25 +96,15 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
     transform_dataclass_field = None
 
     @staticmethod
-    def default_dump_from(tp: TypeInfo, extras: Extras):
+    def dump_fallback(tp: TypeInfo, _extras: Extras):
         # identity: o
         return tp.v()
 
-    @staticmethod
-    def dump_from_str(tp: TypeInfo, extras: Extras):
-        return tp.v()
-
-    @staticmethod
-    def dump_from_int(tp: TypeInfo, extras: Extras):
-        return tp.v()
-
-    @staticmethod
-    def dump_from_float(tp: TypeInfo, extras: Extras):
-        return tp.v()
-
-    @staticmethod
-    def dump_from_bool(tp: TypeInfo, extras: Extras):
-        return tp.v()
+    dump_from_str     = dump_fallback
+    dump_from_int     = dump_fallback
+    dump_from_float   = dump_fallback
+    dump_from_bool    = dump_fallback
+    dump_from_literal = dump_fallback
 
     @staticmethod
     def dump_from_bytes(tp: TypeInfo, extras: Extras):
@@ -430,10 +420,6 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
                         ")")
 
     @staticmethod
-    def dump_from_literal(tp: TypeInfo, extras: Extras):
-        return tp.v()
-
-    @staticmethod
     def dump_from_decimal(tp: TypeInfo, extras: Extras):
         return f'str({tp.v()})'
 
@@ -602,7 +588,7 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
 
         # https://stackoverflow.com/questions/76520264/dataclasswizard-after-upgrading-to-python3-11-is-not-working-as-expected
         elif origin is Any:
-            dump_hook = cls.default_dump_from
+            dump_hook = cls.dump_fallback
 
         elif is_subclass_safe(origin, tuple) and hasattr(origin, '_fields'):
 
@@ -1140,9 +1126,9 @@ def dump_func_for_dataclass(
                     fn_gen.globals['__asdict_inner__'] = __dataclasses_asdict_inner__
                     fn_gen.add_line('result[k] = __asdict_inner__(v,dict_factory)')
 
-        with fn_gen.if_('exclude is not None'):
+        with fn_gen.if_('exclude'):
             with fn_gen.for_('k in exclude'):
-                fn_gen.add_line('del result[k]')
+                fn_gen.add_line('result.pop(k, None)')
 
         if has_paths:
             fn_gen.add_line('result.update(paths)')

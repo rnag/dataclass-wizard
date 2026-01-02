@@ -80,7 +80,7 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
     transform_json_field = None
 
     @staticmethod
-    def default_load_to(tp: TypeInfo, extras: Extras):
+    def load_fallback(tp: TypeInfo, extras: Extras):
         # identity: o
         return tp.v()
 
@@ -924,7 +924,7 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
 
         # https://stackoverflow.com/questions/76520264/dataclasswizard-after-upgrading-to-python3-11-is-not-working-as-expected
         elif origin is Any:
-            load_hook = cls.default_load_to
+            load_hook = cls.load_fallback
 
         elif is_subclass_safe(origin, tuple) and hasattr(origin, '_fields'):
             container_tp = dict if config.v1_namedtuple_as_dict else tuple
