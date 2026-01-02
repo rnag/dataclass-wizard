@@ -870,14 +870,6 @@ def dump_func_for_dataclass(
     else:
         catch_all_name_stripped = None
 
-    # if on_unknown_key is not None:
-    #     should_raise = on_unknown_key is KeyAction.RAISE
-    #     should_warn = on_unknown_key is KeyAction.WARN
-    #     if should_warn or should_raise:
-    #         pre_assign = 'i+=1; '
-    # else:
-    #     should_raise = should_warn = None
-
     cls_name = cls.__name__
 
     with fn_gen.function(
