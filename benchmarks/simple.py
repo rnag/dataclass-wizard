@@ -80,17 +80,18 @@ def data():
 
 def test_load(data, n):
     """
-    [ RESULTS ON MAC OS X ]
+    [ RESULTS]
+    platform darwin -- Python 3.13.11, pytest-8.3.4, pluggy-1.6.0
 
-    benchmarks.simple.simple - [INFO] dataclass-wizard     0.030784
-    benchmarks.simple.simple - [INFO] dataclass-factory    0.103156
-    benchmarks.simple.simple - [INFO] dataclasses-json     3.512702
-    benchmarks.simple.simple - [INFO] jsons                4.709339
-    benchmarks.simple.simple - [INFO] dacite               0.468830
-    benchmarks.simple.simple - [INFO] pydantic             0.071347
-    benchmarks.simple.simple - [INFO] marshmallow          2.155037
-    benchmarks.simple.simple - [INFO] attrs                0.020167
-    benchmarks.simple.simple - [INFO] mashumaro            0.041291
+    benchmarks.simple.simple - [INFO] dataclass-wizard     0.029298
+    benchmarks.simple.simple - [INFO] dataclass-factory    0.100123
+    benchmarks.simple.simple - [INFO] dataclasses-json     3.530623
+    benchmarks.simple.simple - [INFO] jsons                4.920980
+    benchmarks.simple.simple - [INFO] dacite               0.612328
+    benchmarks.simple.simple - [INFO] pydantic             0.063677
+    benchmarks.simple.simple - [INFO] marshmallow          2.197097
+    benchmarks.simple.simple - [INFO] attrs                0.020192
+    benchmarks.simple.simple - [INFO] mashumaro            0.040619
     """
     g = globals().copy()
     g.update(locals())
@@ -136,18 +137,19 @@ def test_load(data, n):
 
 def test_dump(data, n):
     """
-    [ RESULTS ON MAC OS X ]
+    [ RESULTS]
+    platform darwin -- Python 3.13.11, pytest-8.3.4, pluggy-1.6.0
 
-    benchmarks.simple.simple - [INFO] dataclass-wizard     0.024619
-    benchmarks.simple.simple - [INFO] asdict (dataclasses) 0.093137
-    benchmarks.simple.simple - [INFO] dataclass-factory    0.188235
-    benchmarks.simple.simple - [INFO] dataclasses-json     1.294685
-    benchmarks.simple.simple - [INFO] jsons                6.913666
+    benchmarks.simple.simple - [INFO] dataclass-wizard     0.011408
+    benchmarks.simple.simple - [INFO] asdict (dataclasses) 0.086086
+    benchmarks.simple.simple - [INFO] dataclass-factory    0.071082
+    benchmarks.simple.simple - [INFO] dataclasses-json     1.255266
+    benchmarks.simple.simple - [INFO] jsons                6.014154
     benchmarks.simple.simple - [INFO] dacite (not applicable) -- skipped
-    benchmarks.simple.simple - [INFO] pydantic             0.066996
-    benchmarks.simple.simple - [INFO] marshmallow          0.000519
-    benchmarks.simple.simple - [INFO] attrs                0.122752
-    benchmarks.simple.simple - [INFO] mashumaro            0.008702
+    benchmarks.simple.simple - [INFO] pydantic             0.068561
+    benchmarks.simple.simple - [INFO] marshmallow          0.000523
+    benchmarks.simple.simple - [INFO] attrs                0.049471
+    benchmarks.simple.simple - [INFO] mashumaro            0.009123
     """
 
     c1 = MyClassWizard.from_dict(data)

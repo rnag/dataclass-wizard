@@ -218,16 +218,17 @@ dacite_cfg = dacite.Config(
 
 def test_load(request, data, data_2, data_dacite, n):
     """
-    [ RESULTS ON MAC OS X ]
+    [ RESULTS]
+    platform darwin -- Python 3.13.11, pytest-8.3.4, pluggy-1.6.0
 
-    benchmarks.complex.complex - [INFO] dataclass-wizard     0.317641
-    benchmarks.complex.complex - [INFO] dataclass-factory    0.751124
-    benchmarks.complex.complex - [INFO] dacite               6.350958
-    benchmarks.complex.complex - [INFO] mashumaro            0.343612
-    benchmarks.complex.complex - [INFO] pydantic             0.538801
-    benchmarks.complex.complex - [INFO] dataclasses-json     28.214992
-    benchmarks.complex.complex - [INFO] jsons                31.735730
-    benchmarks.complex.complex - [INFO] jsons (strict)       34.855084
+    benchmarks.complex.complex - [INFO] dataclass-wizard     0.312827
+    benchmarks.complex.complex - [INFO] dataclass-factory    0.759241
+    benchmarks.complex.complex - [INFO] dacite               7.918317
+    benchmarks.complex.complex - [INFO] mashumaro            0.344386
+    benchmarks.complex.complex - [INFO] pydantic             0.510155
+    benchmarks.complex.complex - [INFO] dataclasses-json     28.365398
+    benchmarks.complex.complex - [INFO] jsons                29.601413
+    benchmarks.complex.complex - [INFO] jsons (strict)       34.682349
     """
     g = globals().copy()
     g.update(locals())
@@ -277,16 +278,17 @@ def test_load(request, data, data_2, data_dacite, n):
 
 def test_dump(request, data, data_2, data_dacite, n):
     """
-    [ RESULTS ON MAC OS X ]
+    [ RESULTS]
+    platform darwin -- Python 3.13.11, pytest-8.3.4, pluggy-1.6.0
 
-    benchmarks.complex.complex - [INFO] dataclass-wizard     0.405688
-    benchmarks.complex.complex - [INFO] asdict (dataclasses) 1.727631
-    benchmarks.complex.complex - [INFO] dataclass-factory    0.831178
-    benchmarks.complex.complex - [INFO] dataclasses-json     11.072727
-    benchmarks.complex.complex - [INFO] mashumaro            0.248298
-    benchmarks.complex.complex - [INFO] pydantic             0.316203
-    benchmarks.complex.complex - [INFO] jsons                37.361450
-    benchmarks.complex.complex - [INFO] jsons (strict)       31.578708
+    benchmarks.complex.complex - [INFO] dataclass-wizard     0.281029
+    benchmarks.complex.complex - [INFO] asdict (dataclasses) 1.754579
+    benchmarks.complex.complex - [INFO] dataclass-factory    0.835645
+    benchmarks.complex.complex - [INFO] dataclasses-json     11.026273
+    benchmarks.complex.complex - [INFO] mashumaro            0.246893
+    benchmarks.complex.complex - [INFO] pydantic             0.267847
+    benchmarks.complex.complex - [INFO] jsons                35.417559
+    benchmarks.complex.complex - [INFO] jsons (strict)       30.918420
     """
     c1 = MyClassWizard.from_dict(data)
     if not PY314_OR_ABOVE:  # breaks on Python 3.14+
