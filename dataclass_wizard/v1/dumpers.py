@@ -1054,61 +1054,6 @@ def dump_func_for_dataclass(
         else:
             fn_gen.add_line('result = {}')
 
-        # TODO
-        # if has_catch_all:
-        #     if expect_tag_as_unknown_key:
-        #         # add an alias for the tag key, so we don't capture it
-        #         field_to_alias['...'] = meta.tag_key
-        #
-        #     if 'f2k' in _locals:
-        #         # If this is the case, then `AUTO` key transform mode is enabled
-        #         # line = 'extra_keys = o.keys() - f2k.values()'
-        #         aliases_var = 'f2k.values()'
-        #
-        #     else:
-        #         aliases_var = 'aliases'
-        #         _locals['aliases'] = set(field_to_alias.values())
-        #
-        #     catch_all_def = f'{{k: o[k] for k in o if k not in {aliases_var}}}'
-        #
-        #     if catch_all_field.endswith('?'):  # Default value
-        #         with fn_gen.if_('len(o) != i'):
-        #             fn_gen.add_line(f'init_kwargs[{catch_all_field_stripped!r}] = {catch_all_def}')
-        #     else:
-        #         var = f'__{catch_all_field_stripped}'
-        #         fn_gen.add_line(f'{var} = {{}} if len(o) == i else {catch_all_def}')
-        #         vars_for_fields.insert(catch_all_idx, var)
-        #
-        # elif should_warn or should_raise:
-        #     if expect_tag_as_unknown_key:
-        #         # add an alias for the tag key, so we don't raise an error when we see it
-        #         field_to_alias['...'] = meta.tag_key
-        #
-        #     if 'f2k' in _locals:
-        #         # If this is the case, then `AUTO` key transform mode is enabled
-        #         line = 'extra_keys = o.keys() - f2k.values()'
-        #     else:
-        #         _locals['aliases'] = set(field_to_alias.values())
-        #         line = 'extra_keys = set(o) - aliases'
-        #
-        #     with fn_gen.if_('len(o) != i'):
-        #         fn_gen.add_line(line)
-        #         if should_raise:
-        #             # Raise an error here (if needed)
-        #             _locals['UnknownKeysError'] = UnknownKeysError
-        #             fn_gen.add_line("raise UnknownKeysError(extra_keys, o, cls, fields) from None")
-        #         elif should_warn:
-        #             # Show a warning here
-        #             _locals['LOG'] = LOG
-        #             fn_gen.add_line(r"LOG.warning('Found %d unknown keys %r not mapped to the dataclass schema.\n"
-        #                                 r"  Class: %r\n  Dataclass fields: %r', len(extra_keys), extra_keys, cls.__qualname__, [f.name for f in fields])")
-
-        # Now pass the arguments to the dict_factory method, and return
-        # the new dict_factory instance.
-
-        # if has_defaults:
-        #     vars_for_fields.append('**init_kwargs')
-
         if has_catch_all:
             # noinspection PyUnresolvedReferences,PyProtectedMember
             from dataclasses import _asdict_inner as __dataclasses_asdict_inner__
@@ -1133,14 +1078,9 @@ def dump_func_for_dataclass(
         if has_paths:
             fn_gen.add_line('result.update(paths)')
 
+        # Now pass the arguments to the dict_factory method, and return
+        # the new dict_factory instance.
         fn_gen.add_line(f'return result if dict_factory is dict else dict_factory(result)')
-
-        # with fn_gen.try_():
-        #     fn_gen.add_line(f"return cls({init_parts})")
-        # with fn_gen.except_(UnboundLocalError):
-        #     # raise `MissingFields`, as required dataclass fields
-        #     # are not present in the input object `o`.
-        #     fn_gen.add_line("raise_missing_fields(locals(), o, cls, fields)")
 
     # Save the dump function for the main dataclass, so we don't need to run
     # this logic each time.
