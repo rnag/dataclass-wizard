@@ -931,13 +931,13 @@ def dump_func_for_dataclass(
                         if (_skip_condition := field_to_skip_if.get(name)) is not None:
                             _skip_if = get_skip_if_condition(
                                 _skip_condition, new_locals, condition_i=i)
-                            _final_skip_if = finalize_skip_if(_skip_condition, 'v1', _skip_if)
+                            _final_skip_if = finalize_skip_if(_skip_condition, '{}', _skip_if)
                             name_to_skip_condition[name] = f'not ({_final_skip_if})'
 
                         # If Meta `skip_if` has a value
                         elif skip_if_condition:
                             _final_skip_if = finalize_skip_if(
-                                meta.skip_if, 'v1', skip_if_condition)
+                                meta.skip_if, '{}', skip_if_condition)
                             name_to_skip_condition[name] = f'not ({_final_skip_if})'
 
                         # # Else, proceed as normal
@@ -949,37 +949,30 @@ def dump_func_for_dataclass(
                     if has_paths and (
                         path := field_to_path.get(name)
                     ) is not None:  # AliasPath(...)
-
+                        lvalue = f"paths{''.join(f'[{p!r}]' for p in path)}"
                         if has_default:
-                            # with fn_gen.if_(val_is_found):
-                            # with fn_gen.if_(f'{val} is not MISSING'):
                             new_locals[default_value] = default
                             string = generate_field_code(cls_dumper, extras, f, i)
-                            key_part = ''.join(f'[{p!r}]' for p in path)
-                            line = f'paths{key_part} = {string}'
-                            default_assigns.append((name, key, default_value, line))
+                            default_assigns.append((name, key, default_value, lvalue, string))
                         else:
-                            key_part = ''.join(f'[{p!r}]' for p in path)
                             var_name = 'v1' if has_skip_if else f'o.{name}'
                             string = generate_field_code(cls_dumper, extras, f, i, var_name)
-                            path_assigns.append((name, f'paths{key_part} = {string}'))
+                            path_assigns.append((name, f"{lvalue} = {string}"))
 
                         continue
 
                     if has_default:
-                        # with fn_gen.if_(val_is_found):
-                        # with fn_gen.if_(f'{val} is not MISSING'):
                         new_locals[default_value] = default
                         string = generate_field_code(cls_dumper, extras, f, i)
-                        line = f'result[{key!r}] = {string}'
-                        default_assigns.append((name, key, default_value, line))
+                        lvalue = f'result[{key!r}]'
+                        default_assigns.append((name, key, default_value, lvalue, string))
                     else:
                         # TODO confirm this is ok
                         # vars_for_fields.append(f'{name}={var}')
                         if has_skip_if:
                             string = generate_field_code(cls_dumper, extras, f, i, 'v1')
-                            line = f'result[{key!r}] = {string}'
-                            default_assigns.append((name, ExplicitNull, ExplicitNull, line))
+                            lvalue = f'result[{key!r}]'
+                            default_assigns.append((name, ExplicitNull, ExplicitNull, lvalue, string))
                         else:
                             string = generate_field_code(cls_dumper, extras, f, i, f'o.{name}')
                             required_field_assigns.append((name, key, string))
@@ -988,7 +981,7 @@ def dump_func_for_dataclass(
                 for (name, line) in path_assigns:
                     if (condition := name_to_skip_condition.get(name)) is not None:
                         fn_gen.add_line(f'v1 = o.{name}')
-                        with fn_gen.if_(condition):
+                        with fn_gen.if_(condition.format('v1')):
                             fn_gen.add_line(line)
                     else:
                         fn_gen.add_line(line)
@@ -1000,23 +993,34 @@ def dump_func_for_dataclass(
                 fn_gen.add_line('}')
 
                 # Add default (optional) dataclass field assignments
-                for (name, key, default_name, line) in default_assigns:
-                    fn_gen.add_line(f'v1 = o.{name}')
-                    def_condition = f'add_defaults or v1 != {default_name}'
+                for (name, key, default_name, lvalue, rvalue) in default_assigns:
+                    var_name = 'v1'
+                    if rvalue == var_name:  # and default_name is not ExplicitNull:
+                        var_name = rvalue = f'o.{name}'
+                    else:
+                        fn_gen.add_line(f'{var_name} = o.{name}')
+
+                    line = f'{lvalue} = {rvalue}'
+                    def_condition = f'add_defaults or {var_name} != {default_name}'
 
                     if skip_defaults_if_condition:
                         _final_skip_if = finalize_skip_if(
-                            meta.skip_defaults_if, 'v1', skip_defaults_if_condition)
+                            meta.skip_defaults_if, var_name, skip_defaults_if_condition)
                         # TODO missing skip individual condition!!
-                        with fn_gen.if_(f'(add_defaults or v1 != {default_name}) and not ({_final_skip_if})'):
+                        with fn_gen.if_(
+                                f'(add_defaults or {var_name} != {default_name}) '
+                                f'and not ({_final_skip_if})'):
                             fn_gen.add_line(line)
 
                     elif (condition := name_to_skip_condition.get(name)) is not None:
+                        condition = condition.format(var_name)
                         if default_name is ExplicitNull:  # Required field with skip condition
                             with fn_gen.if_(condition):
                                 fn_gen.add_line(line)
                         else:
-                            with fn_gen.if_(f'(add_defaults or v1 != {default_name}) and {condition}'):
+                            with fn_gen.if_(
+                                    f'(add_defaults or {var_name} != {default_name}) '
+                                    f'and {condition}'):
                                 fn_gen.add_line(line)
 
                     else:
