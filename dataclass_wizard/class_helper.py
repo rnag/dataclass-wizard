@@ -42,9 +42,6 @@ CLASS_TO_V1_DUMPER = {}
 # on an initial run.
 IS_V1_CONFIG_SETUP = set()
 
-# A cached mapping, per dataclass, of instance field name to JSON path
-DATACLASS_FIELD_TO_JSON_PATH = defaultdict(dict)
-
 # V1 Load: A cached mapping, per dataclass, of instance field name to alias path
 DATACLASS_FIELD_TO_ALIAS_PATH_FOR_LOAD = defaultdict(dict)
 
@@ -65,9 +62,6 @@ DATACLASS_FIELD_TO_ALIAS = defaultdict(dict)
 
 # A cached mapping, per dataclass, of instance field name to `SkipIf` condition
 DATACLASS_FIELD_TO_SKIP_IF = defaultdict(dict)
-
-# A cached mapping, per `EnvWizard` subclass, of field name to env variable
-FIELD_TO_ENV_VAR = defaultdict(dict)
 
 # A mapping of dataclass name to its Meta initializer (defined in
 # :class:`bases.BaseJSONWizardMeta`), which is only set when the
@@ -100,11 +94,6 @@ def set_class_dumper(cls_to_dumper, class_or_instance, dumper):
     return dumper_cls
 
 
-def dataclass_field_to_json_path(cls):
-
-    return DATACLASS_FIELD_TO_JSON_PATH[cls]
-
-
 def dataclass_field_to_json_field(cls):
 
     return DATACLASS_FIELD_TO_ALIAS[cls]
@@ -115,13 +104,6 @@ def dataclass_field_to_skip_if(cls):
     return DATACLASS_FIELD_TO_SKIP_IF[cls]
 
 
-def field_to_env_var(cls):
-    """
-    Returns a mapping of field in the `EnvWizard` subclass to env variable.
-    """
-    return FIELD_TO_ENV_VAR[cls]
-
-
 def v1_dataclass_field_to_alias_for_dump(cls):
 
     if cls not in IS_V1_CONFIG_SETUP:
@@ -130,12 +112,7 @@ def v1_dataclass_field_to_alias_for_dump(cls):
     return DATACLASS_FIELD_TO_ALIAS_FOR_DUMP[cls]
 
 
-def v1_dataclass_field_to_alias_for_load(
-    cls,
-    # cls_loader,
-    # config,
-    # save=True
-):
+def v1_dataclass_field_to_alias_for_load(cls):
 
     if cls not in IS_V1_CONFIG_SETUP:
         _setup_v1_config_for_cls(cls)

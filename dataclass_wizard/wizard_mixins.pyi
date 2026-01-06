@@ -5,12 +5,12 @@ __all__ = ['JSONListWizard',
 
 import json
 from os import PathLike
-from typing import AnyStr, TextIO, BinaryIO, Union, TypeAlias
+from typing import AnyStr, TextIO, BinaryIO, TypeAlias
 
 from .abstractions import W
-from .enums import LetterCase
+from .enums import KeyCase
 from .models import Container
-from .serial_json import JSONSerializable, SerializerHookMixin
+from .serial_json import JSONWizard, SerializerHookMixin
 from .type_def import (T, ListOfJSONObject,
                        Encoder, Decoder, FileDecoder, FileEncoder, ParseFloat)
 
@@ -21,7 +21,7 @@ from .type_def import (T, ListOfJSONObject,
 FileType: TypeAlias = str | bytes | PathLike
 
 
-class JSONListWizard(JSONSerializable, str=False):
+class JSONListWizard(JSONWizard, str=False):
 
     @classmethod
     def from_json(cls: type[W], string: AnyStr, *,
@@ -51,7 +51,7 @@ class JSONFileWizard(SerializerHookMixin):
 
 class TOMLWizard(SerializerHookMixin):
 
-    def __init_subclass__(cls, key_transform=LetterCase.NONE):
+    def __init_subclass__(cls, key_transform=None):
         ...
 
     @classmethod
@@ -94,7 +94,7 @@ class TOMLWizard(SerializerHookMixin):
 
 class YAMLWizard(SerializerHookMixin):
 
-    def __init_subclass__(cls, key_transform=LetterCase.LISP):
+    def __init_subclass__(cls, key_transform=KeyCase.KEBAB):
         ...
 
     @classmethod

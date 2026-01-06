@@ -3,7 +3,7 @@ import logging
 from dataclasses import dataclass, MISSING
 
 from .abstractions import AbstractJSONWizard
-from .bases_meta import BaseJSONWizardMeta, LoadMeta, DumpMeta, register_type
+from .bases_meta import BaseJSONWizardMeta, LoadMeta, register_type
 from .class_helper import call_meta_initializer_if_needed
 from .constants import PACKAGE_NAME
 from .loader_selection import asdict, fromdict, fromlist
@@ -51,7 +51,7 @@ def _set_from_dict_and_to_dict_if_needed(cls):
 
 # noinspection PyShadowingBuiltins
 def _configure_wizard_class(cls,
-                            str=True,
+                            str=False,
                             debug=False,
                             case=None,
                             dump_case=None,
@@ -173,7 +173,7 @@ class JSONWizard(DataclassWizard):
 
     # noinspection PyShadowingBuiltins
     def __init_subclass__(cls,
-                          str=True,
+                          str=False,
                           debug=False,
                           case=None,
                           dump_case=None,

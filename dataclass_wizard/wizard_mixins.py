@@ -231,7 +231,7 @@ class YAMLWizard:
         >>>     ...
 
     """
-    def __init_subclass__(cls, dump_case='LISP'):
+    def __init_subclass__(cls, dump_case='KEBAB'):
         """Allow easy setup of common config, such as key casing transform."""
         # Only add the key transform if Meta config has not been specified
         # for the dataclass.

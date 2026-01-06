@@ -35,9 +35,6 @@ CLASS_TO_V1_DUMPER: dict[type, type[AbstractDumperGenerator]] = {}
 # on an initial run.
 IS_V1_CONFIG_SETUP: set[type] = set()
 
-# A cached mapping, per dataclass, of instance field name to JSON path
-DATACLASS_FIELD_TO_JSON_PATH: dict[type, dict[str, PathType]] = defaultdict(dict)
-
 # V1: A cached mapping, per dataclass, of instance field name to JSON path
 DATACLASS_FIELD_TO_ALIAS_PATH_FOR_LOAD: dict[type, dict[str, Sequence[PathType]]] = defaultdict(dict)
 
@@ -58,9 +55,6 @@ DATACLASS_FIELD_TO_ALIAS: dict[type, dict[str, str]] = defaultdict(dict)
 
 # A cached mapping, per dataclass, of instance field name to `SkipIf` condition
 DATACLASS_FIELD_TO_SKIP_IF: dict[type, dict[str, Condition]] = defaultdict(dict)
-
-# A cached mapping, per `EnvWizard` subclass, of field name to env variable
-FIELD_TO_ENV_VAR: dict[type, dict[str, str]] = defaultdict(dict)
 
 # A mapping of dataclass name to its Meta initializer (defined in
 # :class:`bases.BaseJSONWizardMeta`), which is only set when the
@@ -84,33 +78,15 @@ def set_class_dumper(cls: type, dumper: type[AbstractDumper]):
     """
 
 
-def dataclass_field_to_json_path(cls: type) -> dict[str, PathType]:
-    """
-    Returns a mapping of dataclass field to JSON path.
-    """
-
-
 def dataclass_field_to_json_field(cls: type) -> dict[str, str]:
     """
     Returns a mapping of dataclass field to JSON field.
     """
 
 
-def dataclass_field_to_alias_for_load(cls: type) -> dict[str, str]:
-    """
-    V1: Returns a mapping of dataclass field to alias or JSON key.
-    """
-
-
 def dataclass_field_to_skip_if(cls: type) -> dict[str, Condition]:
     """
     Returns a mapping of dataclass field to SkipIf condition.
-    """
-
-
-def field_to_env_var(cls: type[E]) -> dict[str, str]:
-    """
-    Returns a mapping of field in the `EnvWizard` subclass to env variable.
     """
 
 
