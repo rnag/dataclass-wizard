@@ -290,7 +290,7 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
     #
     #  Pre-decoder signature:
     #   (cls, container_tp, tp, extras) -> new_tp
-    v1_pre_decoder: V1PreDecoder | None = None
+    v1_pre_decoder: ClassVar[V1PreDecoder] = None
 
     # Specifies the letter case to use for JSON keys when both loading and dumping.
     #
@@ -436,7 +436,7 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
     #
     # Note:
     #   This option enforces strict shape matching for performance reasons.
-    v1_namedtuple_as_dict: bool = None
+    v1_namedtuple_as_dict: ClassVar[bool] = None
 
     # If True (default: False), ``None`` is coerced to an empty string (``""``)
     # when loading ``str`` fields.
@@ -445,7 +445,7 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
     # the literal string ``'None'`` for ``str`` fields.
     #
     # For ``Optional[str]`` fields, ``None`` is preserved by default.
-    v1_coerce_none_to_empty_str: bool = None
+    v1_coerce_none_to_empty_str: ClassVar[bool] = None
 
     # Controls how leaf (non-recursive) types are detected during serialization.
     #
@@ -458,7 +458,7 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
     # Note:
     #     The default "exact" mode avoids treating third-party scalar-like
     #     objects (e.g. NumPy scalars) as built-in leaf types.
-    v1_leaf_handling: Literal['exact', 'issubclass'] = None
+    v1_leaf_handling: ClassVar[Literal['exact', 'issubclass']] = None
 
     # noinspection PyMethodParameters
     @cached_class_property
@@ -666,7 +666,7 @@ class AbstractEnvMeta(metaclass=ABCOrAndMeta):
     #
     #  Pre-decoder signature:
     #   (cls, container_tp, tp, extras) -> new_tp
-    v1_pre_decoder: V1PreDecoder = None
+    v1_pre_decoder: ClassVar[V1PreDecoder] = None
 
     # The key lookup strategy to use for Env Var Names.
     #
@@ -762,7 +762,7 @@ class AbstractEnvMeta(metaclass=ABCOrAndMeta):
     #
     # Note:
     #   This option enforces strict shape matching for performance reasons.
-    v1_namedtuple_as_dict: bool = None
+    v1_namedtuple_as_dict: ClassVar[bool] = None
 
     # If True (default: False), ``None`` is coerced to an empty string (``""``)
     # when loading ``str`` fields.
@@ -771,7 +771,7 @@ class AbstractEnvMeta(metaclass=ABCOrAndMeta):
     # the literal string ``'None'`` for ``str`` fields.
     #
     # For ``Optional[str]`` fields, ``None`` is preserved by default.
-    v1_coerce_none_to_empty_str: bool = None
+    v1_coerce_none_to_empty_str: ClassVar[bool] = None
 
     # Controls how leaf (non-recursive) types are detected during serialization.
     #
@@ -784,7 +784,7 @@ class AbstractEnvMeta(metaclass=ABCOrAndMeta):
     # Note:
     #     The default "exact" mode avoids treating third-party scalar-like
     #     objects (e.g. NumPy scalars) as built-in leaf types.
-    v1_leaf_handling: Literal['exact', 'issubclass'] = None
+    v1_leaf_handling: ClassVar[Literal['exact', 'issubclass']] = None
 
     # noinspection PyMethodParameters
     @cached_class_property

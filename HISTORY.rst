@@ -2,6 +2,22 @@
 History
 =======
 
+0.39.1 (2026-01-05)
+-------------------
+
+**Maintenance and Fixes**
+
+- General code cleanup and minor internal refactoring.
+- Minor optimization in v1 code generation for ``dump``:
+
+  - For fields with defaults, the generated code now uses the field name directly
+    when the value is unchanged.
+  - Avoids assigning to the temporary ``v1`` variable when it is not required,
+    resulting in slightly leaner generated output.
+
+- Updated results under ``benchmarks/`` to reflect the latest changes.
+- Fixed **mypy** errors in ``serial_json.py`` (fixes :issue:`237`).
+
 0.39.0 (2026-01-01)
 -------------------
 
