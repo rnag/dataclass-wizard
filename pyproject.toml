@@ -65,6 +65,7 @@ dev = [
     # TODO It seems `pip-upgrader` does not support Python 3.11+
     # pip-upgrader==1.4.15
     "tzdata>=2024.1; platform_system == 'Windows'",
+    "mypy>=1.19,<2",
     "flake8>=3",  # pyup: ignore
     "tox==4.23.2",
     # Extras
@@ -127,6 +128,7 @@ all = [
 
     # Dev dependencies (excluding CI-specific or tool-specific packages)
     "tzdata>=2024.1; platform_system == 'Windows'",
+    "mypy>=1.19,<2",
     "flake8>=3",
     "tox==4.23.2",
     "pytimeparse==1.1.8",

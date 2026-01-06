@@ -113,7 +113,7 @@ class AbstractJSONWizard(ABC):
     def to_json(self: W, *,
                 encoder: Encoder = json.dumps,
                 indent=None,
-                **encoder_kwargs) -> AnyStr:
+                **encoder_kwargs) -> str:
         """
         Converts the dataclass instance to a JSON `string` representation.
         """
@@ -123,8 +123,7 @@ class AbstractJSONWizard(ABC):
     def list_to_json(cls: type[W],
                      instances: list[W],
                      encoder: Encoder = json.dumps,
-                     indent=None,
-                     **encoder_kwargs) -> AnyStr:
+                     **encoder_kwargs) -> str:
         """
         Converts a ``list`` of dataclass instances to a JSON `string`
         representation.
