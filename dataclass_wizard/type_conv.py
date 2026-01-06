@@ -10,6 +10,7 @@ __all__ = ['TRUTHY_VALUES',
            'as_collection_v1',
            'as_list_v1',
            'as_dict_v1',
+           'as_enum',
            ]
 
 import csv
@@ -17,10 +18,11 @@ import csv
 from collections.abc import Callable
 from datetime import datetime, time, date, timedelta, timezone, tzinfo
 from json import loads, JSONDecodeError
-from typing import Union, Any
+from typing import Union, Any, AnyStr
 
+from .errors import ParseError
 from .lazy_imports import pytimeparse
-from .type_def import N, NUMBERS
+from .type_def import E, N, NUMBERS
 from .models import ZERO, UTC
 
 
@@ -429,3 +431,65 @@ def as_dict_v1(
                 continue
             out[k] = ''
     return out
+
+
+def as_enum(o: AnyStr | N,
+            base_type: type[E],
+            lookup_func=lambda base_type, o: base_type[o],
+            transform_func=lambda o: o.upper().replace(' ', '_'),
+            raise_=True
+            ) -> E | None:
+    """
+    Return `o` if it's already an :class:`Enum` of type `base_type`. If `o` is
+    None or an empty string, return None.
+
+    Otherwise, attempt to convert the object `o` to a :type:`base_type` using
+    the below logic:
+
+        * If `o` is a string, we'll put it through our `transform_func` before
+          a lookup. The default one upper-cases the string and replaces spaces
+          with underscores, since that's typically how we define `Enum` names.
+
+        * Then, convert to a :type:`base_type` using the `lookup_func`. The
+          one looks up by the Enum ``name`` field.
+
+    :raises ParseError: If the lookup for the Enum member fails, and the
+      `raise_` flag is enabled.
+
+    """
+    if isinstance(o, base_type):
+        return o
+
+    if o is None:
+        return o
+
+    if o == '':
+        return None
+
+    key = transform_func(o) if isinstance(o, str) else o
+
+    try:
+        return lookup_func(base_type, key)
+
+    except KeyError:
+
+        if raise_:
+            from inspect import getsource
+
+            enum_cls_name = getattr(base_type, '__qualname__', base_type)
+            valid_values = getattr(base_type, '_member_names_', None)
+            # TODO this is to get the source code for the lambda function.
+            #   Might need to refactor into a helper func when time allows.
+            lookup_func_src = getsource(lookup_func).strip('\n, ').split(
+                'lookup_func=', 1)[-1]
+
+            e = ValueError(
+                f'as_enum: Unable to convert value to type {enum_cls_name!r}')
+
+            raise ParseError(e, o, base_type, 'load',
+                             valid_values=valid_values,
+                             lookup_key=key,
+                             lookup_func=lookup_func_src)
+
+        else:
+            return None

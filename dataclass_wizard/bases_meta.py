@@ -21,7 +21,8 @@ from .errors import ParseError
 from .loader_selection import get_dumper, get_loader
 from .log import LOG
 from .type_def import E
-from .utils.type_conv import as_enum
+from .type_conv import as_enum
+
 
 ALLOWED_MODES = ('runtime', 'v1_codegen')
 

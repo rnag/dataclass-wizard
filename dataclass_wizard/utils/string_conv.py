@@ -11,7 +11,7 @@ import re
 from typing import Iterable, Dict, List, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from ..v1.enums import EnvKeyStrategy
+    from ..enums import EnvKeyStrategy
 
 
 def normalize(string: str) -> str:
@@ -85,7 +85,7 @@ def possible_env_vars(field: str, lookup_strat: 'EnvKeyStrategy') -> list[str]:
     Returns:
         list[str]: The possible JSON keys for the given field.
     """
-    from ..v1.enums import EnvKeyStrategy
+    from ..enums import EnvKeyStrategy
 
     _is_field_first = lookup_strat is EnvKeyStrategy.FIELD_FIRST
     possible_keys = [field] if _is_field_first else []
