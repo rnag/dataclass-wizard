@@ -26,8 +26,8 @@ BROWSER := python -c "$$BROWSER_PYSCRIPT"
 help:
 	@python -c "$$PRINT_HELP_PYSCRIPT" < $(MAKEFILE_LIST)
 
-init: ## install all dev dependencies for this project
-	pip install -e .[dev]
+init: ## install all dev + test dependencies for this project
+	pip install -e .[bench,dev,docs,test]
 	python -m pip install pre-commit build twine
 	pre-commit install
 

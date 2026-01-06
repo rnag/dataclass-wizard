@@ -18,6 +18,7 @@ import mashumaro
 
 from dataclass_wizard import JSONWizard, LoadMeta
 from dataclass_wizard.class_helper import create_new_class
+from dataclass_wizard.constants import PY314_OR_ABOVE
 from dataclass_wizard.utils.string_conv import to_snake_case
 from dataclass_wizard.utils.type_conv import as_datetime
 
@@ -217,16 +218,17 @@ dacite_cfg = dacite.Config(
 
 def test_load(request, data, data_2, data_dacite, n):
     """
-    [ RESULTS ON MAC OS X ]
+    [ RESULTS]
+    platform darwin -- Python 3.13.11, pytest-8.3.4, pluggy-1.6.0
 
-    benchmarks.complex.complex - [INFO] dataclass-wizard     0.317641
-    benchmarks.complex.complex - [INFO] dataclass-factory    0.751124
-    benchmarks.complex.complex - [INFO] dacite               6.350958
-    benchmarks.complex.complex - [INFO] mashumaro            0.343612
-    benchmarks.complex.complex - [INFO] pydantic             0.538801
-    benchmarks.complex.complex - [INFO] dataclasses-json     28.214992
-    benchmarks.complex.complex - [INFO] jsons                31.735730
-    benchmarks.complex.complex - [INFO] jsons (strict)       34.855084
+    benchmarks.complex.complex - [INFO] dataclass-wizard     0.312827
+    benchmarks.complex.complex - [INFO] dataclass-factory    0.759241
+    benchmarks.complex.complex - [INFO] dacite               7.918317
+    benchmarks.complex.complex - [INFO] mashumaro            0.344386
+    benchmarks.complex.complex - [INFO] pydantic             0.510155
+    benchmarks.complex.complex - [INFO] dataclasses-json     28.365398
+    benchmarks.complex.complex - [INFO] jsons                29.601413
+    benchmarks.complex.complex - [INFO] jsons (strict)       34.682349
     """
     g = globals().copy()
     g.update(locals())
@@ -234,8 +236,9 @@ def test_load(request, data, data_2, data_dacite, n):
     log.info('dataclass-wizard     %f',
              timeit('MyClassWizard.from_dict(data)', globals=g, number=n))
 
-    log.info('dataclass-factory    %f',
-             timeit('factory.load(data_2, MyClass)', globals=g, number=n))
+    if not PY314_OR_ABOVE:  # breaks on Python 3.14+
+        log.info('dataclass-factory    %f',
+                 timeit('factory.load(data_2, MyClass)', globals=g, number=n))
 
     log.info('dacite               %f',
              timeit('dacite_from_dict(MyClassDacite, data_dacite, config=dacite_cfg)',
@@ -249,7 +252,8 @@ def test_load(request, data, data_2, data_dacite, n):
 
     # Assert the dataclass instances have the same values for all fields.
     c1 = MyClassWizard.from_dict(data)
-    c2 = factory.load(data_2, MyClass)
+    if not PY314_OR_ABOVE:  # breaks on Python 3.14+
+        c2 = factory.load(data_2, MyClass)
     c3 = MyClassDJ.from_dict(data_2)
     c4 = MyClassJsons.load(data)
     c5 = MyClassMashumaro.from_dict(data)
@@ -274,19 +278,21 @@ def test_load(request, data, data_2, data_dacite, n):
 
 def test_dump(request, data, data_2, data_dacite, n):
     """
-    [ RESULTS ON MAC OS X ]
+    [ RESULTS]
+    platform darwin -- Python 3.13.11, pytest-8.3.4, pluggy-1.6.0
 
-    benchmarks.complex.complex - [INFO] dataclass-wizard     0.405688
-    benchmarks.complex.complex - [INFO] asdict (dataclasses) 1.727631
-    benchmarks.complex.complex - [INFO] dataclass-factory    0.831178
-    benchmarks.complex.complex - [INFO] dataclasses-json     11.072727
-    benchmarks.complex.complex - [INFO] mashumaro            0.248298
-    benchmarks.complex.complex - [INFO] pydantic             0.316203
-    benchmarks.complex.complex - [INFO] jsons                37.361450
-    benchmarks.complex.complex - [INFO] jsons (strict)       31.578708
+    benchmarks.complex.complex - [INFO] dataclass-wizard     0.272646
+    benchmarks.complex.complex - [INFO] asdict (dataclasses) 1.726522
+    benchmarks.complex.complex - [INFO] dataclass-factory    0.802548
+    benchmarks.complex.complex - [INFO] dataclasses-json     11.040730
+    benchmarks.complex.complex - [INFO] mashumaro            0.246202
+    benchmarks.complex.complex - [INFO] pydantic             0.267089
+    benchmarks.complex.complex - [INFO] jsons                35.417559
+    benchmarks.complex.complex - [INFO] jsons (strict)       30.918420
     """
     c1 = MyClassWizard.from_dict(data)
-    c2 = factory.load(data_2, MyClass)
+    if not PY314_OR_ABOVE:  # breaks on Python 3.14+
+        c2 = factory.load(data_2, MyClass)
     c3 = MyClassDJ.from_dict(data_2)
     c4 = MyClassJsons.load(data)
     c5 = MyClassMashumaro.from_dict(data)
@@ -301,8 +307,9 @@ def test_dump(request, data, data_2, data_dacite, n):
     log.info('asdict (dataclasses) %f',
              timeit('asdict(c1)', globals=g, number=n))
 
-    log.info('dataclass-factory    %f',
-             timeit('factory.dump(c2, MyClass)', globals=g, number=n))
+    if not PY314_OR_ABOVE:  # breaks on Python 3.14+
+        log.info('dataclass-factory    %f',
+                 timeit('factory.dump(c2, MyClass)', globals=g, number=n))
 
     log.info('dataclasses-json     %f',
              timeit('c3.to_dict()', globals=g, number=n))

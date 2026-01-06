@@ -96,25 +96,15 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
     transform_dataclass_field = None
 
     @staticmethod
-    def default_dump_from(tp: TypeInfo, extras: Extras):
+    def dump_fallback(tp: TypeInfo, _extras: Extras):
         # identity: o
         return tp.v()
 
-    @staticmethod
-    def dump_from_str(tp: TypeInfo, extras: Extras):
-        return tp.v()
-
-    @staticmethod
-    def dump_from_int(tp: TypeInfo, extras: Extras):
-        return tp.v()
-
-    @staticmethod
-    def dump_from_float(tp: TypeInfo, extras: Extras):
-        return tp.v()
-
-    @staticmethod
-    def dump_from_bool(tp: TypeInfo, extras: Extras):
-        return tp.v()
+    dump_from_str     = dump_fallback
+    dump_from_int     = dump_fallback
+    dump_from_float   = dump_fallback
+    dump_from_bool    = dump_fallback
+    dump_from_literal = dump_fallback
 
     @staticmethod
     def dump_from_bytes(tp: TypeInfo, extras: Extras):
@@ -430,10 +420,6 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
                         ")")
 
     @staticmethod
-    def dump_from_literal(tp: TypeInfo, extras: Extras):
-        return tp.v()
-
-    @staticmethod
     def dump_from_decimal(tp: TypeInfo, extras: Extras):
         return f'str({tp.v()})'
 
@@ -602,7 +588,7 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
 
         # https://stackoverflow.com/questions/76520264/dataclasswizard-after-upgrading-to-python3-11-is-not-working-as-expected
         elif origin is Any:
-            dump_hook = cls.default_dump_from
+            dump_hook = cls.dump_fallback
 
         elif is_subclass_safe(origin, tuple) and hasattr(origin, '_fields'):
 
@@ -872,21 +858,6 @@ def dump_func_for_dataclass(
     skip_defaults = True if meta.skip_defaults else False
     skip_if = True if field_to_skip_if or skip_if_condition else False
 
-    # Fix for using `auto_assign_tags` and `raise_on_unknown_json_key` together
-    # See https://github.com/rnag/dataclass-wizard/issues/137
-    # has_tag_assigned = meta.tag is not None
-    # if (has_tag_assigned and
-    #     # Ensure `tag_key` isn't a dataclass field,
-    #     # to avoid issues with our logic.
-    #     # See https://github.com/rnag/dataclass-wizard/issues/148
-    #     meta.tag_key not in cls_field_names):
-    #         expect_tag_as_unknown_key = True
-    # else:
-    #     expect_tag_as_unknown_key = False
-
-    # Tag key to populate when a dataclass is in a `Union` with other types.
-    # tag_key = meta.tag_key or TAG
-
     catch_all_name: 'str | None' = field_to_alias.pop(CATCH_ALL, None)
     has_catch_all = catch_all_name is not None
 
@@ -898,14 +869,6 @@ def dump_func_for_dataclass(
         del cls_fields_list[catch_all_idx]
     else:
         catch_all_name_stripped = None
-
-    # if on_unknown_key is not None:
-    #     should_raise = on_unknown_key is KeyAction.RAISE
-    #     should_warn = on_unknown_key is KeyAction.WARN
-    #     if should_warn or should_raise:
-    #         pre_assign = 'i+=1; '
-    # else:
-    #     should_raise = should_warn = None
 
     cls_name = cls.__name__
 
@@ -968,13 +931,13 @@ def dump_func_for_dataclass(
                         if (_skip_condition := field_to_skip_if.get(name)) is not None:
                             _skip_if = get_skip_if_condition(
                                 _skip_condition, new_locals, condition_i=i)
-                            _final_skip_if = finalize_skip_if(_skip_condition, 'v1', _skip_if)
+                            _final_skip_if = finalize_skip_if(_skip_condition, '{}', _skip_if)
                             name_to_skip_condition[name] = f'not ({_final_skip_if})'
 
                         # If Meta `skip_if` has a value
                         elif skip_if_condition:
                             _final_skip_if = finalize_skip_if(
-                                meta.skip_if, 'v1', skip_if_condition)
+                                meta.skip_if, '{}', skip_if_condition)
                             name_to_skip_condition[name] = f'not ({_final_skip_if})'
 
                         # # Else, proceed as normal
@@ -986,37 +949,30 @@ def dump_func_for_dataclass(
                     if has_paths and (
                         path := field_to_path.get(name)
                     ) is not None:  # AliasPath(...)
-
+                        lvalue = f"paths{''.join(f'[{p!r}]' for p in path)}"
                         if has_default:
-                            # with fn_gen.if_(val_is_found):
-                            # with fn_gen.if_(f'{val} is not MISSING'):
                             new_locals[default_value] = default
                             string = generate_field_code(cls_dumper, extras, f, i)
-                            key_part = ''.join(f'[{p!r}]' for p in path)
-                            line = f'paths{key_part} = {string}'
-                            default_assigns.append((name, key, default_value, line))
+                            default_assigns.append((name, key, default_value, lvalue, string))
                         else:
-                            key_part = ''.join(f'[{p!r}]' for p in path)
                             var_name = 'v1' if has_skip_if else f'o.{name}'
                             string = generate_field_code(cls_dumper, extras, f, i, var_name)
-                            path_assigns.append((name, f'paths{key_part} = {string}'))
+                            path_assigns.append((name, f"{lvalue} = {string}"))
 
                         continue
 
                     if has_default:
-                        # with fn_gen.if_(val_is_found):
-                        # with fn_gen.if_(f'{val} is not MISSING'):
                         new_locals[default_value] = default
                         string = generate_field_code(cls_dumper, extras, f, i)
-                        line = f'result[{key!r}] = {string}'
-                        default_assigns.append((name, key, default_value, line))
+                        lvalue = f'result[{key!r}]'
+                        default_assigns.append((name, key, default_value, lvalue, string))
                     else:
                         # TODO confirm this is ok
                         # vars_for_fields.append(f'{name}={var}')
                         if has_skip_if:
                             string = generate_field_code(cls_dumper, extras, f, i, 'v1')
-                            line = f'result[{key!r}] = {string}'
-                            default_assigns.append((name, ExplicitNull, ExplicitNull, line))
+                            lvalue = f'result[{key!r}]'
+                            default_assigns.append((name, ExplicitNull, ExplicitNull, lvalue, string))
                         else:
                             string = generate_field_code(cls_dumper, extras, f, i, f'o.{name}')
                             required_field_assigns.append((name, key, string))
@@ -1025,7 +981,7 @@ def dump_func_for_dataclass(
                 for (name, line) in path_assigns:
                     if (condition := name_to_skip_condition.get(name)) is not None:
                         fn_gen.add_line(f'v1 = o.{name}')
-                        with fn_gen.if_(condition):
+                        with fn_gen.if_(condition.format('v1')):
                             fn_gen.add_line(line)
                     else:
                         fn_gen.add_line(line)
@@ -1037,23 +993,34 @@ def dump_func_for_dataclass(
                 fn_gen.add_line('}')
 
                 # Add default (optional) dataclass field assignments
-                for (name, key, default_name, line) in default_assigns:
-                    fn_gen.add_line(f'v1 = o.{name}')
-                    def_condition = f'add_defaults or v1 != {default_name}'
+                for (name, key, default_name, lvalue, rvalue) in default_assigns:
+                    var_name = 'v1'
+                    if rvalue == var_name:  # and default_name is not ExplicitNull:
+                        var_name = rvalue = f'o.{name}'
+                    else:
+                        fn_gen.add_line(f'{var_name} = o.{name}')
+
+                    line = f'{lvalue} = {rvalue}'
+                    def_condition = f'add_defaults or {var_name} != {default_name}'
 
                     if skip_defaults_if_condition:
                         _final_skip_if = finalize_skip_if(
-                            meta.skip_defaults_if, 'v1', skip_defaults_if_condition)
+                            meta.skip_defaults_if, var_name, skip_defaults_if_condition)
                         # TODO missing skip individual condition!!
-                        with fn_gen.if_(f'(add_defaults or v1 != {default_name}) and not ({_final_skip_if})'):
+                        with fn_gen.if_(
+                                f'(add_defaults or {var_name} != {default_name}) '
+                                f'and not ({_final_skip_if})'):
                             fn_gen.add_line(line)
 
                     elif (condition := name_to_skip_condition.get(name)) is not None:
+                        condition = condition.format(var_name)
                         if default_name is ExplicitNull:  # Required field with skip condition
                             with fn_gen.if_(condition):
                                 fn_gen.add_line(line)
                         else:
-                            with fn_gen.if_(f'(add_defaults or v1 != {default_name}) and {condition}'):
+                            with fn_gen.if_(
+                                    f'(add_defaults or {var_name} != {default_name}) '
+                                    f'and {condition}'):
                                 fn_gen.add_line(line)
 
                     else:
@@ -1067,61 +1034,6 @@ def dump_func_for_dataclass(
 
         else:
             fn_gen.add_line('result = {}')
-
-        # TODO
-        # if has_catch_all:
-        #     if expect_tag_as_unknown_key:
-        #         # add an alias for the tag key, so we don't capture it
-        #         field_to_alias['...'] = meta.tag_key
-        #
-        #     if 'f2k' in _locals:
-        #         # If this is the case, then `AUTO` key transform mode is enabled
-        #         # line = 'extra_keys = o.keys() - f2k.values()'
-        #         aliases_var = 'f2k.values()'
-        #
-        #     else:
-        #         aliases_var = 'aliases'
-        #         _locals['aliases'] = set(field_to_alias.values())
-        #
-        #     catch_all_def = f'{{k: o[k] for k in o if k not in {aliases_var}}}'
-        #
-        #     if catch_all_field.endswith('?'):  # Default value
-        #         with fn_gen.if_('len(o) != i'):
-        #             fn_gen.add_line(f'init_kwargs[{catch_all_field_stripped!r}] = {catch_all_def}')
-        #     else:
-        #         var = f'__{catch_all_field_stripped}'
-        #         fn_gen.add_line(f'{var} = {{}} if len(o) == i else {catch_all_def}')
-        #         vars_for_fields.insert(catch_all_idx, var)
-        #
-        # elif should_warn or should_raise:
-        #     if expect_tag_as_unknown_key:
-        #         # add an alias for the tag key, so we don't raise an error when we see it
-        #         field_to_alias['...'] = meta.tag_key
-        #
-        #     if 'f2k' in _locals:
-        #         # If this is the case, then `AUTO` key transform mode is enabled
-        #         line = 'extra_keys = o.keys() - f2k.values()'
-        #     else:
-        #         _locals['aliases'] = set(field_to_alias.values())
-        #         line = 'extra_keys = set(o) - aliases'
-        #
-        #     with fn_gen.if_('len(o) != i'):
-        #         fn_gen.add_line(line)
-        #         if should_raise:
-        #             # Raise an error here (if needed)
-        #             _locals['UnknownKeysError'] = UnknownKeysError
-        #             fn_gen.add_line("raise UnknownKeysError(extra_keys, o, cls, fields) from None")
-        #         elif should_warn:
-        #             # Show a warning here
-        #             _locals['LOG'] = LOG
-        #             fn_gen.add_line(r"LOG.warning('Found %d unknown keys %r not mapped to the dataclass schema.\n"
-        #                                 r"  Class: %r\n  Dataclass fields: %r', len(extra_keys), extra_keys, cls.__qualname__, [f.name for f in fields])")
-
-        # Now pass the arguments to the dict_factory method, and return
-        # the new dict_factory instance.
-
-        # if has_defaults:
-        #     vars_for_fields.append('**init_kwargs')
 
         if has_catch_all:
             # noinspection PyUnresolvedReferences,PyProtectedMember
@@ -1140,21 +1052,16 @@ def dump_func_for_dataclass(
                     fn_gen.globals['__asdict_inner__'] = __dataclasses_asdict_inner__
                     fn_gen.add_line('result[k] = __asdict_inner__(v,dict_factory)')
 
-        with fn_gen.if_('exclude is not None'):
+        with fn_gen.if_('exclude'):
             with fn_gen.for_('k in exclude'):
-                fn_gen.add_line('del result[k]')
+                fn_gen.add_line('result.pop(k, None)')
 
         if has_paths:
             fn_gen.add_line('result.update(paths)')
 
+        # Now pass the arguments to the dict_factory method, and return
+        # the new dict_factory instance.
         fn_gen.add_line(f'return result if dict_factory is dict else dict_factory(result)')
-
-        # with fn_gen.try_():
-        #     fn_gen.add_line(f"return cls({init_parts})")
-        # with fn_gen.except_(UnboundLocalError):
-        #     # raise `MissingFields`, as required dataclass fields
-        #     # are not present in the input object `o`.
-        #     fn_gen.add_line("raise_missing_fields(locals(), o, cls, fields)")
 
     # Save the dump function for the main dataclass, so we don't need to run
     # this logic each time.

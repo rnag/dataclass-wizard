@@ -200,7 +200,7 @@ class Encoder(PyProtocol):
     def __call__(self, obj: Union[JSONObject, JSONList],
                  /,
                  *args,
-                 **kwargs) -> AnyStr:
+                 **kwargs) -> str:
         ...
 
 

@@ -113,7 +113,7 @@ class AbstractJSONWizard(ABC):
     def to_json(self: W, *,
                 encoder: Encoder = json.dumps,
                 indent=None,
-                **encoder_kwargs) -> AnyStr:
+                **encoder_kwargs) -> str:
         """
         Converts the dataclass instance to a JSON `string` representation.
         """
@@ -123,8 +123,7 @@ class AbstractJSONWizard(ABC):
     def list_to_json(cls: type[W],
                      instances: list[W],
                      encoder: Encoder = json.dumps,
-                     indent=None,
-                     **encoder_kwargs) -> AnyStr:
+                     **encoder_kwargs) -> str:
         """
         Converts a ``list`` of dataclass instances to a JSON `string`
         representation.
@@ -451,10 +450,12 @@ class AbstractLoaderGenerator(ABC):
 
     @staticmethod
     @abstractmethod
-    def default_load_to(tp: TypeInfo, extras: V1Extras) -> str:
+    def load_fallback(tp: TypeInfo, extras: V1Extras) -> str:
         """
-        Generate code for the default load function if no other types match.
-        Generally, this will be a stub load method.
+        Generate code for the fallback load handler when no specialized type matches.
+
+        The default fallback implementation is typically an identity / passthrough,
+        but subclasses may override this behavior.
         """
 
     @staticmethod
@@ -664,10 +665,12 @@ class AbstractDumperGenerator(ABC):
 
     @staticmethod
     @abstractmethod
-    def default_dump_from(tp: TypeInfo, extras: V1Extras) -> str:
+    def dump_fallback(tp: TypeInfo, extras: V1Extras) -> str:
         """
-        Generate code for the default dump function if no other types match.
-        Generally, this will be a stub dump method.
+        Generate code for the fallback dump handler when no specialized type matches.
+
+        The default fallback implementation is typically an identity / passthrough,
+        but subclasses may override this behavior.
         """
 
     @staticmethod

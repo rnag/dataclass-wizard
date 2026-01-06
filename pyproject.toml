@@ -65,6 +65,7 @@ dev = [
     # TODO It seems `pip-upgrader` does not support Python 3.11+
     # pip-upgrader==1.4.15
     "tzdata>=2024.1; platform_system == 'Windows'",
+    "mypy>=1.19,<2",
     "flake8>=3",  # pyup: ignore
     "tox==4.23.2",
     # Extras
@@ -105,10 +106,10 @@ bench = [
     "dataclasses-json==0.6.7",
     "jsons==1.6.3",
     "dataclass-factory==2.16",  # pyup: ignore
-    "dacite==1.8.1",
+    "dacite==1.9.2",
     "mashumaro==3.17",
-    "pydantic==2.10.3; python_version<'3.14'",
-    "attrs==24.3.0",
+    "pydantic==2.12.5",
+    "attrs==25.4.0",
 ]
 all = [
     # Dotenv dependencies
@@ -127,6 +128,7 @@ all = [
 
     # Dev dependencies (excluding CI-specific or tool-specific packages)
     "tzdata>=2024.1; platform_system == 'Windows'",
+    "mypy>=1.19,<2",
     "flake8>=3",
     "tox==4.23.2",
     "pytimeparse==1.1.8",
@@ -155,10 +157,10 @@ all = [
     "dataclasses-json==0.6.7",
     "jsons==1.6.3",
     "dataclass-factory==2.16",
-    "dacite==1.8.1",
+    "dacite==1.9.2",
     "mashumaro==3.17",
-    "pydantic==2.10.3; python_version<'3.14'",
-    "attrs==24.3.0",
+    "pydantic==2.12.5",
+    "attrs==25.4.0",
 ]
 
 [tool.setuptools]

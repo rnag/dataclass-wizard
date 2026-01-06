@@ -15,6 +15,7 @@ import mashumaro
 
 from dataclass_wizard import JSONWizard, LoadMeta
 from dataclass_wizard.class_helper import create_new_class
+from dataclass_wizard.constants import PY314_OR_ABOVE
 from dataclass_wizard.utils.string_conv import to_snake_case
 
 log = logging.getLogger(__name__)
@@ -79,17 +80,18 @@ def data():
 
 def test_load(data, n):
     """
-    [ RESULTS ON MAC OS X ]
+    [ RESULTS]
+    platform darwin -- Python 3.13.11, pytest-8.3.4, pluggy-1.6.0
 
-    benchmarks.simple.simple - [INFO] dataclass-wizard     0.030784
-    benchmarks.simple.simple - [INFO] dataclass-factory    0.103156
-    benchmarks.simple.simple - [INFO] dataclasses-json     3.512702
-    benchmarks.simple.simple - [INFO] jsons                4.709339
-    benchmarks.simple.simple - [INFO] dacite               0.468830
-    benchmarks.simple.simple - [INFO] pydantic             0.071347
-    benchmarks.simple.simple - [INFO] marshmallow          2.155037
-    benchmarks.simple.simple - [INFO] attrs                0.020167
-    benchmarks.simple.simple - [INFO] mashumaro            0.041291
+    benchmarks.simple.simple - [INFO] dataclass-wizard     0.029298
+    benchmarks.simple.simple - [INFO] dataclass-factory    0.100123
+    benchmarks.simple.simple - [INFO] dataclasses-json     3.530623
+    benchmarks.simple.simple - [INFO] jsons                4.920980
+    benchmarks.simple.simple - [INFO] dacite               0.612328
+    benchmarks.simple.simple - [INFO] pydantic             0.063677
+    benchmarks.simple.simple - [INFO] marshmallow          2.197097
+    benchmarks.simple.simple - [INFO] attrs                0.020192
+    benchmarks.simple.simple - [INFO] mashumaro            0.040619
     """
     g = globals().copy()
     g.update(locals())
@@ -97,8 +99,9 @@ def test_load(data, n):
     # Add dacite and pydantic benchmarks
     log.info("dataclass-wizard     %f",
              timeit("MyClassWizard.from_dict(data)", globals=g, number=n))
-    log.info("dataclass-factory    %f",
-             timeit("factory.load(data, MyClass)", globals=g, number=n))
+    if not PY314_OR_ABOVE:  # breaks on Python 3.14+
+        log.info("dataclass-factory    %f",
+                 timeit("factory.load(data, MyClass)", globals=g, number=n))
     log.info("dataclasses-json     %f",
              timeit("MyClassDJ.from_dict(data)", globals=g, number=n))
     log.info("jsons                %f",
@@ -116,7 +119,8 @@ def test_load(data, n):
 
     # Assert the dataclass instances have the same values for all fields.
     c1 = MyClassWizard.from_dict(data)
-    c2 = factory.load(data, MyClass)
+    if not PY314_OR_ABOVE:  # breaks on Python 3.14+
+        c2 = factory.load(data, MyClass)
     c3 = MyClassDJ.from_dict(data)
     c4 = MyClassJsons.load(data)
     c5 = dacite_from_dict(MyClass, data)
@@ -125,26 +129,32 @@ def test_load(data, n):
     c8 = MyClassAttrs(**data)
     c9 = MyClassMashumaro.from_dict(data)
 
-    assert c1.__dict__ == c2.__dict__ == c3.__dict__ == c4.__dict__ == c5.__dict__ == c6.model_dump() == c7 == c8.__dict__ == c9.to_dict()
+    assert c1.__dict__ == c3.__dict__ == c4.__dict__ == c5.__dict__ == c6.model_dump() == c7 == c8.__dict__ == c9.to_dict()
+
+    if not PY314_OR_ABOVE:  # breaks on Python 3.14+
+        assert c1.__dict__ == c2.__dict__
+
 
 def test_dump(data, n):
     """
-    [ RESULTS ON MAC OS X ]
+    [ RESULTS]
+    platform darwin -- Python 3.13.11, pytest-8.3.4, pluggy-1.6.0
 
-    benchmarks.simple.simple - [INFO] dataclass-wizard     0.024619
-    benchmarks.simple.simple - [INFO] asdict (dataclasses) 0.093137
-    benchmarks.simple.simple - [INFO] dataclass-factory    0.188235
-    benchmarks.simple.simple - [INFO] dataclasses-json     1.294685
-    benchmarks.simple.simple - [INFO] jsons                6.913666
+    benchmarks.simple.simple - [INFO] dataclass-wizard     0.010870
+    benchmarks.simple.simple - [INFO] asdict (dataclasses) 0.085224
+    benchmarks.simple.simple - [INFO] dataclass-factory    0.070084
+    benchmarks.simple.simple - [INFO] dataclasses-json     1.272380
+    benchmarks.simple.simple - [INFO] jsons                5.980036
     benchmarks.simple.simple - [INFO] dacite (not applicable) -- skipped
-    benchmarks.simple.simple - [INFO] pydantic             0.066996
-    benchmarks.simple.simple - [INFO] marshmallow          0.000519
-    benchmarks.simple.simple - [INFO] attrs                0.122752
-    benchmarks.simple.simple - [INFO] mashumaro            0.008702
+    benchmarks.simple.simple - [INFO] pydantic             0.079050
+    benchmarks.simple.simple - [INFO] marshmallow          0.000489
+    benchmarks.simple.simple - [INFO] attrs                0.054118
+    benchmarks.simple.simple - [INFO] mashumaro            0.008982
     """
 
     c1 = MyClassWizard.from_dict(data)
-    c2 = factory.load(data, MyClass)
+    if not PY314_OR_ABOVE:  # breaks on Python 3.14+
+        c2 = factory.load(data, MyClass)
     c3 = MyClassDJ.from_dict(data)
     c4 = MyClassJsons.load(data)
     c5 = dacite_from_dict(MyClass, data)
@@ -160,8 +170,9 @@ def test_dump(data, n):
              timeit("c1.to_dict()", globals=g, number=n))
     log.info("asdict (dataclasses) %f",
              timeit("asdict(c1)", globals=g, number=n))
-    log.info("dataclass-factory    %f",
-             timeit("factory.dump(c2, MyClass)", globals=g, number=n))
+    if not PY314_OR_ABOVE:  # breaks on Python 3.14+
+        log.info("dataclass-factory    %f",
+                 timeit("factory.dump(c2, MyClass)", globals=g, number=n))
     log.info("dataclasses-json     %f",
              timeit("c3.to_dict()", globals=g, number=n))
     log.info("jsons                %f",
@@ -179,4 +190,7 @@ def test_dump(data, n):
     # Assert the dict objects which are the result of `to_dict` are all equal.
     c1_dict = {to_snake_case(f): fval for f, fval in c1.to_dict().items()}
 
-    assert c1_dict == factory.dump(c2, MyClass) == c3.to_dict() == c4.dump() == c6.model_dump() == attr.asdict(c8) == c9.to_dict()
+    assert c1_dict == c3.to_dict() == c4.dump() == c6.model_dump() == attr.asdict(c8) == c9.to_dict()
+
+    if not PY314_OR_ABOVE:  # breaks on Python 3.14+
+        assert c1_dict == factory.dump(c2, MyClass)

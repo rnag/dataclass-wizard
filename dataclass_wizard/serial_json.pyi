@@ -46,25 +46,25 @@ class SerializerHookMixin(Protocol):
     def _pre_dict(self):
         # noinspection PyDunderSlots, PyUnresolvedReferences
         """
-                Optional hook that runs before the dataclass instance is processed and
-                before it is converted to a dictionary object via :meth:`to_dict`.
+        Optional hook that runs before the dataclass instance is processed and
+        before it is converted to a dictionary object via :meth:`to_dict`.
 
-                To override this, subclasses need to extend from :class:`DumpMixIn`
-                and implement this method. A simple example is shown below:
+        To override this, subclasses need to extend from :class:`DumpMixIn`
+        and implement this method. A simple example is shown below:
 
-                >>> from dataclasses import dataclass
-                >>> from dataclass_wizard import JSONWizard
-                >>>
-                >>>
-                >>> @dataclass
-                >>> class MyClass(JSONWizard):
-                >>>     my_str: str
-                >>>
-                >>>     def _pre_dict(self):
-                >>>         self.my_str = self.my_str.swapcase()
-                >>>
-                >>> assert MyClass('test').to_dict() == {'myStr': 'TEST'}
-                """
+        >>> from dataclasses import dataclass
+        >>> from dataclass_wizard import JSONWizard
+        >>>
+        >>>
+        >>> @dataclass
+        >>> class MyClass(JSONWizard):
+        >>>     my_str: str
+        >>>
+        >>>     def _pre_dict(self):
+        >>>         self.my_str = self.my_str.swapcase()
+        >>>
+        >>> assert MyClass('test').to_dict() == {'myStr': 'TEST'}
+        """
         ...
 
 
@@ -152,7 +152,7 @@ class JSONWizardImpl(AbstractJSONWizard, SerializerHookMixin):
 
     def to_json(self: W, *,
                 encoder: Encoder = json.dumps,
-                **encoder_kwargs) -> AnyStr:
+                **encoder_kwargs) -> str:
         """
         Converts the dataclass instance to a JSON `string` representation.
         """
@@ -162,7 +162,7 @@ class JSONWizardImpl(AbstractJSONWizard, SerializerHookMixin):
     def list_to_json(cls: type[W],
                      instances: list[W],
                      encoder: Encoder = json.dumps,
-                     **encoder_kwargs) -> AnyStr:
+                     **encoder_kwargs) -> str:
         """
         Converts a ``list`` of dataclass instances to a JSON `string`
         representation.

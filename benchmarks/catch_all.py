@@ -5,7 +5,7 @@ from typing import Any
 import pytest
 
 from dataclasses_json import (dataclass_json, Undefined, CatchAll as CatchAllDJ)
-from dataclass_wizard import (JSONWizard, CatchAll as CatchAllWizard)
+from dataclass_wizard import (DataclassWizard, CatchAll as CatchAllWizard)
 
 
 log = logging.getLogger(__name__)
@@ -23,11 +23,11 @@ class DontCareAPIDumpDJ(DontCareAPIDump):
     unknown_things: CatchAllDJ
 
 
-@dataclass()
-class DontCareAPIDumpWizard(DontCareAPIDump, JSONWizard):
+class DontCareAPIDumpWizard(DontCareAPIDump, DataclassWizard):
 
-    class _(JSONWizard.Meta):
-        v1 = True
+    # `v1=True` is the default with `DataclassWizard`
+    # class _(JSONWizard.Meta):
+    #     v1 = True
 
     unknown_things: CatchAllWizard
 
