@@ -10,17 +10,16 @@ import json
 
 from .bases_meta import DumpMeta
 from .class_helper import _META
-from .enums import LetterCase
 from .lazy_imports import toml, toml_w, yaml
 from .loader_selection import asdict, fromdict, fromlist
 from .models import Container
-from .serial_json import JSONSerializable
+from .serial_json import JSONWizard
 
 
-class JSONListWizard(JSONSerializable, str=False):
+class JSONListWizard(JSONWizard, str=False):
     """
-    A Mixin class that extends :class:`JSONSerializable` (JSONWizard)
-    to return :class:`Container` - instead of `list` - objects.
+    A Mixin class that extends :class:`JSONWizard` to return
+    :class:`Container` - instead of `list` - objects.
 
     Note that `Container` objects are simply convenience wrappers around a
     collection of dataclass instances. For all intents and purposes, they
@@ -63,7 +62,7 @@ class JSONFileWizard:
     """
     A Mixin class that makes it easier to interact with JSON files.
 
-    This can be paired with the :class:`JSONSerializable` (JSONWizard) Mixin
+    This can be paired with the :class:`JSONWizard` Mixin
     class for more complete extensibility.
 
     """
@@ -108,12 +107,14 @@ class TOMLWizard:
         >>>     ...
 
     """
-    def __init_subclass__(cls, key_transform=LetterCase.NONE):
+    def __init_subclass__(cls): # key_transform=LetterCase.NONE):
         """Allow easy setup of common config, such as key casing transform."""
         # Only add the key transform if Meta config has not been specified
         # for the dataclass.
-        if key_transform and cls not in _META:
-            DumpMeta(key_transform=key_transform).bind_to(cls)
+        # TODO
+        ...
+        # if key_transform and cls not in _META:
+        #     DumpMeta(key_transform=key_transform).bind_to(cls)
 
     @classmethod
     def from_toml(cls,
@@ -230,12 +231,12 @@ class YAMLWizard:
         >>>     ...
 
     """
-    def __init_subclass__(cls, key_transform=LetterCase.LISP):
+    def __init_subclass__(cls, dump_case='LISP'):
         """Allow easy setup of common config, such as key casing transform."""
         # Only add the key transform if Meta config has not been specified
         # for the dataclass.
-        if key_transform and cls not in _META:
-            DumpMeta(key_transform=key_transform).bind_to(cls)
+        if dump_case and cls not in _META:
+            DumpMeta(v1_case=dump_case).bind_to(cls)
 
     @classmethod
     def from_yaml(cls,

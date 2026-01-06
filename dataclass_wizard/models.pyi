@@ -1,15 +1,18 @@
 import json
-from dataclasses import MISSING, Field
-from datetime import date, datetime, time
+from dataclasses import MISSING, Field as _Field, dataclass
+from datetime import datetime, date, time, tzinfo, timezone, timedelta
 from typing import (Collection, Callable,
-                    Generic, Mapping, TypeAlias)
-from typing import TypedDict, overload, Any, NotRequired
+                    Generic, Sequence, TypeAlias, Mapping)
+from typing import TypedDict, overload, Any, NotRequired, Self
+from zoneinfo import ZoneInfo
 
-from .bases import META
 from .decorators import cached_property
-from .type_def import T, DT, Encoder, FileEncoder
+from .type_def import FileEncoder, Encoder
+from .bases import META
+from .models import Condition
+from .type_def import DefFactory, DT, T
 from .utils.function_builder import FunctionBuilder
-from .utils.object_path import PathPart, PathType
+from .utils.object_path import PathType
 
 
 # Define a simple type (alias) for the `CatchAll` field
@@ -18,194 +21,646 @@ CatchAll: TypeAlias = Mapping | None
 # Type for a string or a collection of strings.
 _STR_COLLECTION: TypeAlias = str | Collection[str]
 
+LEAF_TYPES: frozenset[type]
+LEAF_TYPES_NO_BYTES: frozenset[type]
+SEQUENCE_ORIGINS: frozenset[type]
+MAPPING_ORIGINS: frozenset[type]
+
+# UTC Time Zone
+UTC: timezone
+
+# UTC time zone (no offset)
+ZERO: timedelta
+
+
+def get_zoneinfo(key: str) -> ZoneInfo: ...
+
+
+def ensure_type_ref(extras: 'Extras', tp: type, *,
+                    name: str | None = None,
+                    prefix: str = '',
+                    is_builtin: bool = False) -> str: ...
+
+
+@dataclass(order=True)
+class TypeInfo:
+    __slots__ = ...
+    # type origin (ex. `List[str]` -> `List`)
+    origin: type
+    # type arguments (ex. `Dict[str, int]` -> `(str, int)`)
+    args: tuple[type, ...] | None = None
+    # name of type origin (ex. `List[str]` -> 'list')
+    name: str | None = None
+    # index of iteration, *only* unique within the scope of a field assignment!
+    i: int = 1
+    # index of field within the dataclass, *guaranteed* to be unique.
+    field_i: int = 1
+    # prefix of value in assignment (prepended to `i`),
+    # defaults to 'v' if not specified.
+    prefix: str = 'v'
+    # index / indices of assignment (ex. `2, 0 -> v1[2][0]`, *or* a string `"key" -> v4["key"]`)
+    index: int | str | tuple[int | str, ...] | None = None
+    # explicit value name (overrides prefix + index)
+    val_name: str | None = None
+    # indicates if we are currently in Optional,
+    # e.g. `typing.Optional[...]` *or* `typing.Union[T, ...*T2, None]`
+    in_optional: bool = False
+
+    def replace(self, **changes) -> TypeInfo: ...
+    @staticmethod
+    def ensure_in_locals(extras: Extras, *tps: Callable | type, **name_to_tp: Callable[..., Any] | object) -> list[str]: ...
+    def type_name(self, extras: Extras,
+                  *, bound: type | None = None) -> str: ...
+    def v(self) -> str: ...
+    def v_for_def(self) -> str: ...
+    def v_and_next(self) -> tuple[str, str, int]: ...
+    def v_and_next_k_v(self) -> tuple[str, str, str, int]: ...
+    def multi_wrap(self, extras, prefix='', *result, force=False) -> list[str]: ...
+    def wrap(self, result: str,
+             extras: Extras,
+             force=False,
+             prefix='',
+             *, bound: type | None = None) -> Self: ...
+    def wrap_builtin(self, bound: type, result: str, extras: Extras) -> Self: ...
+    def wrap_dd(self, default_factory: DefFactory, result: str, extras: Extras) -> Self: ...
+    def _wrap_inner(self, extras: Extras,
+                    tp: type | DefFactory | None = None,
+                    prefix: str = '',
+                    is_builtin: bool = False,
+                    force=False,
+                    bound: type | None = None) -> str | None: ...
+
 
 class Extras(TypedDict):
     """
     "Extra" config that can be used in the load / dump process.
     """
-    config: NotRequired[META]
+    config: META
     cls: type
     cls_name: str
     fn_gen: FunctionBuilder
     locals: dict[str, Any]
-    pattern: NotRequired[PatternedDT]
+    pattern: NotRequired[PatternBase]
+    recursion_guard: dict[Any, str]
 
 
-def json_key(*keys: str, all=False, dump=True):
+class PatternBase:
+
+    # base type for pattern, a type (or subtype) of `DT`
+    base: type[DT]
+
+    # a sequence of custom (non-ISO format) date string patterns
+    patterns: tuple[str, ...]
+
+    tz_info: tzinfo | Ellipsis
+
+    def __init__(self, base: type[DT],
+                 patterns: tuple[str, ...] = None,
+                 tz_info: tzinfo | Ellipsis | None = None): ...
+
+    def with_tz(self, tz_info: tzinfo | Ellipsis) -> Self: ...
+
+    def __getitem__(self, patterns: tuple[str, ...]) -> type[DT]: ...
+
+    def __call__(self, *patterns: str) -> type[DT]: ...
+
+    def load_to_pattern(self, tp: TypeInfo, extras: Extras): ...
+
+
+class Pattern(PatternBase):
     """
-    Represents a mapping of one or more JSON key names for a dataclass field.
+    Base class for custom patterns used in date, time, or datetime parsing.
 
-    This is only in *addition* to the default key transform; for example, a
-    JSON key appearing as "myField", "MyField" or "my-field" will already map
-    to a dataclass field "my_field" by default (assuming the key transform
-    converts to snake case).
+    Parameters
+    ----------
+    pattern : str
+        The string pattern used for parsing, e.g., '%m-%d-%y'.
 
-    The mapping to each JSON key name is case-sensitive, so passing "myfield"
-    will not match a "myField" key in a JSON string or a Python dict object.
+    Examples
+    --------
+    Using Pattern with `Annotated` inside a dataclass:
 
-    :param keys: A list of one of more JSON keys to associate with the
-      dataclass field.
-    :param all: True to also associate the reverse mapping, i.e. from
-      dataclass field to JSON key. If multiple JSON keys are passed in, it
-      uses the first one provided in this case. This mapping is then used when
-      `to_dict` or `to_json` is called, instead of the default key transform.
-    :param dump: False to skip this field in the serialization process to
-      JSON. By default, this field and its value is included.
+    >>> from typing import Annotated
+    >>> from datetime import date
+    >>> from dataclasses import dataclass
+    >>> from dataclass_wizard import LoadMeta
+    >>> from dataclass_wizard.v1 import Pattern
+    >>> @dataclass
+    ... class MyClass:
+    ...     my_date_field: Annotated[date, Pattern('%m-%d-%y')]
+    >>> LoadMeta(v1=True).bind_to(MyClass)
     """
-    ...
+    __class_getitem__ = __getitem__ = __init__
+    # noinspection PyInitNewSignature
+    def __init__(self, pattern): ...
+
+
+class AwarePattern(PatternBase):
+    """
+    Pattern class for timezone-aware parsing of time and datetime objects.
+
+    Parameters
+    ----------
+    timezone : str
+        The timezone to use, e.g., 'US/Eastern'.
+    pattern : str
+        The string pattern used for parsing, e.g., '%H:%M:%S'.
+
+    Examples
+    --------
+    Using AwarePattern with `Annotated` inside a dataclass:
+
+    >>> from typing import Annotated
+    >>> from datetime import time
+    >>> from dataclasses import dataclass
+    >>> from dataclass_wizard import LoadMeta
+    >>> from dataclass_wizard.v1 import AwarePattern
+    >>> @dataclass
+    ... class MyClass:
+    ...     my_time_field: Annotated[list[time], AwarePattern('US/Eastern', '%H:%M:%S')]
+    >>> LoadMeta(v1=True).bind_to(MyClass)
+    """
+    __class_getitem__ = __getitem__ = __init__
+    # noinspection PyInitNewSignature
+    def __init__(self, timezone, pattern): ...
+
+
+class UTCPattern(PatternBase):
+    """
+    Pattern class for UTC parsing of time and datetime objects.
+
+    Parameters
+    ----------
+    pattern : str
+        The string pattern used for parsing, e.g., '%Y-%m-%d %H:%M:%S'.
+
+    Examples
+    --------
+    Using UTCPattern with `Annotated` inside a dataclass:
+
+    >>> from typing import Annotated
+    >>> from datetime import datetime
+    >>> from dataclasses import dataclass
+    >>> from dataclass_wizard import LoadMeta
+    >>> from dataclass_wizard.v1 import UTCPattern
+    >>> @dataclass
+    ... class MyClass:
+    ...     my_utc_field: Annotated[datetime, UTCPattern('%Y-%m-%d %H:%M:%S')]
+    >>> LoadMeta(v1=True).bind_to(MyClass)
+    """
+    __class_getitem__ = __getitem__ = __init__
+    # noinspection PyInitNewSignature
+    def __init__(self, pattern): ...
+
+
+class AwareTimePattern(time, Generic[T]):
+    """
+    Pattern class for timezone-aware parsing of time objects.
+
+    Parameters
+    ----------
+    timezone : str
+        The timezone to use, e.g., 'Europe/London'.
+    pattern : str
+        The string pattern used for parsing, e.g., '%H:%M:%Z'.
+
+    Examples
+    --------
+    Using ``AwareTimePattern`` inside a dataclass:
+
+    >>> from dataclasses import dataclass
+    >>> from dataclass_wizard import LoadMeta
+    >>> from dataclass_wizard.v1 import AwareTimePattern
+    >>> @dataclass
+    ... class MyClass:
+    ...     my_aware_dt_field: AwareTimePattern['Europe/London', '%H:%M:%Z']
+    >>> LoadMeta(v1=True).bind_to(MyClass)
+    """
+    __getitem__ = __init__
+    # noinspection PyInitNewSignature
+    def __init__(self, timezone, pattern): ...
+
+
+class AwareDateTimePattern(datetime, Generic[T]):
+    """
+    Pattern class for timezone-aware parsing of datetime objects.
+
+    Parameters
+    ----------
+    timezone : str
+        The timezone to use, e.g., 'Asia/Tokyo'.
+    pattern : str
+        The string pattern used for parsing, e.g., '%m-%Y-%H:%M-%Z'.
+
+    Examples
+    --------
+    Using ``AwareDateTimePattern`` inside a dataclass:
+
+    >>> from dataclasses import dataclass
+    >>> from dataclass_wizard import LoadMeta
+    >>> from dataclass_wizard.v1 import AwareDateTimePattern
+    >>> @dataclass
+    ... class MyClass:
+    ...     my_aware_dt_field: AwareDateTimePattern['Asia/Tokyo', '%m-%Y-%H:%M-%Z']
+    >>> LoadMeta(v1=True).bind_to(MyClass)
+    """
+    __getitem__ = __init__
+    # noinspection PyInitNewSignature
+    def __init__(self, timezone, pattern): ...
+
+
+class DatePattern(date, Generic[T]):
+    """
+    An annotated type representing a date pattern (i.e. format string). Upon
+    de-serialization, the resolved type will be a ``date`` instead.
+
+    Parameters
+    ----------
+    pattern : str
+        The string pattern used for parsing, e.g., '%Y/%m/%d'.
+
+    Examples
+    --------
+    Using ``DatePattern`` inside a dataclass:
+
+    >>> from dataclasses import dataclass
+    >>> from dataclass_wizard import LoadMeta
+    >>> from dataclass_wizard.v1 import DatePattern
+    >>> @dataclass
+    ... class MyClass:
+    ...     my_date_field: DatePattern['%Y/%m/%d']
+    >>> LoadMeta(v1=True).bind_to(MyClass)
+    """
+    __getitem__ = __init__
+    # noinspection PyInitNewSignature
+    def __init__(self, pattern): ...
+
+
+class TimePattern(time, Generic[T]):
+    """
+    An annotated type representing a time pattern (i.e. format string). Upon
+    de-serialization, the resolved type will be a ``time`` instead.
+
+    Parameters
+    ----------
+    pattern : str
+        The string pattern used for parsing, e.g., '%H:%M:%S'.
+
+    Examples
+    --------
+    Using ``TimePattern`` inside a dataclass:
+
+    >>> from dataclasses import dataclass
+    >>> from dataclass_wizard import LoadMeta
+    >>> from dataclass_wizard.v1 import TimePattern
+    >>> @dataclass
+    ... class MyClass:
+    ...     my_time_field: TimePattern['%H:%M:%S']
+    >>> LoadMeta(v1=True).bind_to(MyClass)
+    """
+    __getitem__ = __init__
+    # noinspection PyInitNewSignature
+    def __init__(self, pattern): ...
+
+
+class DateTimePattern(datetime, Generic[T]):
+    """
+    An annotated type representing a datetime pattern (i.e. format string). Upon
+    de-serialization, the resolved type will be a ``datetime`` instead.
+
+    Parameters
+    ----------
+    pattern : str
+        The string pattern used for parsing, e.g., '%d, %b, %Y %I:%M:%S %p'.
+
+    Examples
+    --------
+    Using DateTimePattern with `Annotated` inside a dataclass:
+
+    >>> from dataclasses import dataclass
+    >>> from dataclass_wizard import LoadMeta
+    >>> from dataclass_wizard.v1 import DateTimePattern
+    >>> @dataclass
+    ... class MyClass:
+    ...     my_time_field: DateTimePattern['%d, %b, %Y %I:%M:%S %p']
+    >>> LoadMeta(v1=True).bind_to(MyClass)
+    """
+    __getitem__ = __init__
+    # noinspection PyInitNewSignature
+    def __init__(self, pattern): ...
+
+
+class UTCTimePattern(time, Generic[T]):
+    """
+    Pattern class for UTC parsing of time objects.
+
+    Parameters
+    ----------
+    pattern : str
+        The string pattern used for parsing, e.g., '%H:%M:%S'.
+
+    Examples
+    --------
+    Using ``UTCTimePattern`` inside a dataclass:
+
+    >>> from dataclasses import dataclass
+    >>> from dataclass_wizard import LoadMeta
+    >>> from dataclass_wizard.v1 import UTCTimePattern
+    >>> @dataclass
+    ... class MyClass:
+    ...     my_utc_time_field: UTCTimePattern['%H:%M:%S']
+    >>> LoadMeta(v1=True).bind_to(MyClass)
+    """
+    __getitem__ = __init__
+    # noinspection PyInitNewSignature
+    def __init__(self, pattern): ...
+
+
+class UTCDateTimePattern(datetime, Generic[T]):
+    """
+    Pattern class for UTC parsing of datetime objects.
+
+    Parameters
+    ----------
+    pattern : str
+        The string pattern used for parsing, e.g., '%Y-%m-%d %H:%M:%S'.
+
+    Examples
+    --------
+    Using ``UTCDateTimePattern`` inside a dataclass:
+
+    >>> from dataclasses import dataclass
+    >>> from dataclass_wizard import LoadMeta
+    >>> from dataclass_wizard.v1 import UTCDateTimePattern
+    >>> @dataclass
+    ... class MyClass:
+    ...     my_utc_datetime_field: UTCDateTimePattern['%Y-%m-%d %H:%M:%S']
+    >>> LoadMeta(v1=True).bind_to(MyClass)
+    """
+    __getitem__ = __init__
+    # noinspection PyInitNewSignature
+    def __init__(self, pattern): ...
 
 
 # noinspection PyPep8Naming
-def KeyPath(keys: PathType | str, all: bool = True, dump: bool = True):
-    """
-    Represents a mapping of one or more "nested" key names in JSON
-    for a dataclass field.
-
-    This is only in *addition* to the default key transform; for example, a
-    JSON key appearing as "myField", "MyField" or "my-field" will already map
-    to a dataclass field "my_field" by default (assuming the key transform
-    converts to snake case).
-
-    The mapping to each JSON key name is case-sensitive, so passing "myfield"
-    will not match a "myField" key in a JSON string or a Python dict object.
-
-    :param keys: A list of one of more "nested" JSON keys to associate
-      with the dataclass field.
-    :param all: True to also associate the reverse mapping, i.e. from
-      dataclass field to "nested" JSON key. If multiple JSON keys are passed in, it
-      uses the first one provided in this case. This mapping is then used when
-      `to_dict` or `to_json` is called, instead of the default key transform.
-    :param dump: False to skip this field in the serialization process to
-      JSON. By default, this field and its value is included.
-
-    Example:
-
-    >>> from typing import Annotated
-    >>> my_str: Annotated[str, KeyPath('my."7".nested.path.-321')]
-    >>> # where path.keys == ('my', '7', 'nested', 'path', -321)
-    """
-    ...
-
-
-def env_field(keys: _STR_COLLECTION, *,
-              all=False, dump=True,
-              default=MISSING,
+def AliasPath(*all: PathType | str,
+              load: PathType | str | None = None,
+              dump: PathType | str | None = None,
+              env: PathType | str | bool | None = None,
+              skip: bool = False,
+              default: Any = MISSING,
               default_factory: Callable[[], MISSING] = MISSING,
-              init=True, repr=True,
-              hash=None, compare=True, metadata=None):
-    """
-    This is a helper function that sets the same defaults for keyword
-    arguments as the ``dataclasses.field`` function. It can be thought of as
-    an alias to ``dataclasses.field(...)``, but one which also represents
-    a mapping of one or more environment variable (env var) names to
-    a dataclass field.
-
-    This is only in *addition* to the default key transform; for example, an
-    env var appearing as "myField", "MyField" or "my-field" will already map
-    to a dataclass field "my_field" by default (assuming the key transform
-    converts to snake case).
-
-    `keys` is a string, or a collection (list, tuple, etc.) of strings. It
-    represents one of more env vars to associate with the dataclass field.
-
-    When `all` is passed as True (default is False), it will also associate
-    the reverse mapping, i.e. from dataclass field to env var. If multiple
-    env vars are passed in, it uses the first one provided in this case.
-    This mapping is then used when ``to_dict`` or ``to_json`` is called,
-    instead of the default key transform.
-
-    When `dump` is passed as False (default is True), this field will be
-    skipped, or excluded, in the serialization process to JSON.
-    """
-    ...
-
-
-def json_field(keys: _STR_COLLECTION, *,
-               all=False, dump=True,
-               default=MISSING,
-               default_factory: Callable[[], MISSING] = MISSING,
-               init=True, repr=True,
-               hash=None, compare=True, metadata=None):
-    """
-    This is a helper function that sets the same defaults for keyword
-    arguments as the ``dataclasses.field`` function. It can be thought of as
-    an alias to ``dataclasses.field(...)``, but one which also represents
-    a mapping of one or more JSON key names to a dataclass field.
-
-    This is only in *addition* to the default key transform; for example, a
-    JSON key appearing as "myField", "MyField" or "my-field" will already map
-    to a dataclass field "my_field" by default (assuming the key transform
-    converts to snake case).
-
-    The mapping to each JSON key name is case-sensitive, so passing "myfield"
-    will not match a "myField" key in a JSON string or a Python dict object.
-
-    `keys` is a string, or a collection (list, tuple, etc.) of strings. It
-    represents one of more JSON keys to associate with the dataclass field.
-
-    When `all` is passed as True (default is False), it will also associate
-    the reverse mapping, i.e. from dataclass field to JSON key. If multiple
-    JSON keys are passed in, it uses the first one provided in this case.
-    This mapping is then used when ``to_dict`` or ``to_json`` is called,
-    instead of the default key transform.
-
-    When `dump` is passed as False (default is True), this field will be
-    skipped, or excluded, in the serialization process to JSON.
-    """
-    ...
-
-
-def path_field(keys: _STR_COLLECTION, *,
-               all=True, dump=True,
-               default=MISSING,
-               default_factory: Callable[[], MISSING] = MISSING,
-               init=True, repr=True,
-               hash=None, compare=True, metadata=None):
+              init: bool = True,
+              repr: bool = True,
+              hash: bool | None = None,
+              compare: bool = True,
+              metadata: Mapping[Any, Any] | None = None,
+              kw_only: bool = False) -> Field:
     """
     Creates a dataclass field mapped to one or more nested JSON paths.
 
-    This function is an alias for ``dataclasses.field(...)``, with additional
-    logic for associating a field with one or more JSON key paths, including
-    nested structures. It can be used to specify custom mappings between
-    dataclass fields and complex, nested JSON key names.
+    This function acts as an alias for ``dataclasses.field(...)``, with additional
+    functionality to associate a field with one or more nested JSON paths,
+    including complex or deeply nested structures.
 
-    This mapping is **case-sensitive** and applies to the provided JSON keys
-    or nested paths. For example, passing "myField" will not match "myfield"
-    in JSON, and vice versa.
+    The mapping is case-sensitive, meaning that JSON keys must match exactly
+    (e.g., "myField" will not match "myfield"). Nested paths can include dot
+    notations or bracketed syntax for accessing specific indices or keys.
 
-    `keys` represents one or more nested JSON keys (as strings or a collection of strings)
-    to associate with the dataclass field. The keys can include paths like `a.b.c`
-    or even more complex nested paths such as `a["nested"]["key"]`.
+    :param all: One or more nested JSON paths to associate with
+        the dataclass field (e.g., ``a.b.c`` or ``a["nested"]["key"]``).
+    :type all: PathType | str
+    :param load: Path(s) to use for deserialization. Defaults to ``all`` if not specified.
+    :type load: PathType | str | None
+    :param dump: Path(s) to use for serialization. Defaults to ``all`` if not specified.
+    :type dump: PathType | str | None
+    :param skip: If True, the field is excluded during serialization. Defaults to False.
+    :type skip: bool
+    :param default: Default value for the field. Cannot be used with ``default_factory``.
+    :type default: Any
+    :param default_factory: A callable to generate the default value. Cannot be used with ``default``.
+    :type default_factory: Callable[[], Any]
+    :param init: Whether the field is included in the generated ``__init__`` method. Defaults to True.
+    :type init: bool
+    :param repr: Whether the field appears in the ``__repr__`` output. Defaults to True.
+    :type repr: bool
+    :param hash: Whether the field is included in the ``__hash__`` method. Defaults to None.
+    :type hash: bool
+    :param compare: Whether the field is included in comparison methods. Defaults to True.
+    :type compare: bool
+    :param metadata: Additional metadata for the field. Defaults to None.
+    :type metadata: dict
+    :param kw_only: If True, the field is keyword-only. Defaults to False.
+    :type kw_only: bool
+    :return: A dataclass field with additional mapping to one or more nested JSON paths.
+    :rtype: Field
 
-    Arguments:
-        keys (_STR_COLLECTION): The JSON key(s) or nested path(s) to associate with the dataclass field.
-        all (bool): If True (default), it also associates the reverse mapping
-                    (from dataclass field to JSON path) for serialization.
-                    This reverse mapping is used during `to_dict` or `to_json` instead
-                    of the default key transform.
-        dump (bool): If False (default is True), excludes this field from
-                     serialization to JSON.
-        default (Any): The default value for the field. Mutually exclusive with `default_factory`.
-        default_factory (Callable[[], Any]): A callable to generate the default value.
-                                             Mutually exclusive with `default`.
-        init (bool): Include the field in the generated `__init__` method. Defaults to True.
-        repr (bool): Include the field in the `__repr__` output. Defaults to True.
-        hash (bool): Include the field in the `__hash__` method. Defaults to None.
-        compare (bool): Include the field in comparison methods. Defaults to True.
-        metadata (dict): Metadata to associate with the field. Defaults to None.
+    **Examples**
 
-    Returns:
-        JSONField: A dataclass field with logic for mapping to one or more nested JSON paths.
+    **Example 1** -- Mapping multiple nested paths to a field::
 
-    Example:
-        >>> from dataclasses import dataclass
-        >>> @dataclass
-        >>> class Example:
-        >>>     my_str: str = path_field(['a.b.c.1', 'x.y["-1"].z'], default=42)
-        >>> # Maps nested paths ('a', 'b', 'c', 1) and ('x', 'y', '-1', 'z')
-        >>> # to the `my_str` attribute.
+        from dataclasses import dataclass
+
+        from dataclass_wizard import fromdict, LoadMeta
+        from dataclass_wizard.v1 import AliasPath
+
+        @dataclass
+        class Example:
+            my_str: str = AliasPath('a.b.c.1', 'x.y["-1"].z', default="default_value")
+
+        LoadMeta(v1=True).bind_to(Example)
+
+        # Maps nested paths ('a', 'b', 'c', 1) and ('x', 'y', '-1', 'z')
+        # to the `my_str` attribute. '-1' is treated as a literal string key,
+        # not an index, for the second path.
+
+        print(fromdict(Example, {'x': {'y': {'-1': {'z': 'some_value'}}}}))
+        #> Example(my_str='some_value')
+
+    **Example 2** -- Using Annotated::
+
+        from dataclasses import dataclass
+        from typing import Annotated
+
+        from dataclass_wizard import JSONPyWizard
+        from dataclass_wizard.v1 import AliasPath
+
+        @dataclass
+        class Example(JSONPyWizard):
+            class _(JSONPyWizard.Meta):
+                v1 = True
+
+            my_str: Annotated[str, AliasPath('my."7".nested.path.-321')]
+
+
+        ex = Example.from_dict({'my': {'7': {'nested': {'path': {-321: 'Test'}}}}})
+        print(ex)  #> Example(my_str='Test')
     """
-    ...
+
+
+# noinspection PyPep8Naming
+def Alias(*all: str,
+          load: str | Sequence[str] | None = None,
+          dump: str | None = None,
+          env: str | Sequence[str] | None = None,
+          skip: bool = False,
+          default=MISSING,
+          default_factory: Callable[[], MISSING] = MISSING,
+          init=True, repr=True,
+          hash=None, compare=True, metadata=None, kw_only=False):
+    """
+    Maps one or more JSON key names to a dataclass field.
+
+    This function acts as an alias for ``dataclasses.field(...)``, with additional
+    support for associating a field with one or more JSON keys. It customizes
+    serialization and deserialization behavior, including handling keys with
+    varying cases or alternative names.
+
+    The mapping is case-sensitive; JSON keys must match exactly (e.g., ``myField``
+    will not match ``myfield``). If multiple keys are provided, the first one
+    is used as the default for serialization.
+
+    :param all: One or more JSON key names to associate with the dataclass field.
+    :type all: str
+    :param load: Key(s) to use for deserialization. Defaults to ``all`` if not specified.
+    :type load: str | Sequence[str] | None
+    :param dump: Key to use for serialization. Defaults to the first key in ``all``.
+    :type dump: str | None
+    :param env: Environment variable(s) to use for deserialization.
+    :type env: str | Sequence[str] | None
+    :param skip: If ``True``, the field is excluded during serialization. Defaults to ``False``.
+    :type skip: bool
+    :param default: Default value for the field. Cannot be used with ``default_factory``.
+    :type default: Any
+    :param default_factory: Callable to generate the default value. Cannot be used with ``default``.
+    :type default_factory: Callable[[], Any]
+    :param init: Whether the field is included in the generated ``__init__`` method. Defaults to ``True``.
+    :type init: bool
+    :param repr: Whether the field appears in the ``__repr__`` output. Defaults to ``True``.
+    :type repr: bool
+    :param hash: Whether the field is included in the ``__hash__`` method. Defaults to ``None``.
+    :type hash: bool
+    :param compare: Whether the field is included in comparison methods. Defaults to ``True``.
+    :type compare: bool
+    :param metadata: Additional metadata for the field. Defaults to ``None``.
+    :type metadata: dict
+    :param kw_only: If ``True``, the field is keyword-only. Defaults to ``False``.
+    :type kw_only: bool
+    :return: A dataclass field with additional mappings to one or more JSON keys.
+    :rtype: Field
+
+    **Examples**
+
+    **Example 1** -- Mapping multiple key names to a field::
+
+        from dataclasses import dataclass
+
+        from dataclass_wizard import LoadMeta, fromdict
+        from dataclass_wizard.v1 import Alias
+
+        @dataclass
+        class Example:
+            my_field: str = Alias('key1', 'key2', default="default_value")
+
+        LoadMeta(v1=True).bind_to(Example)
+
+        print(fromdict(Example, {'key2': 'a value!'}))
+        #> Example(my_field='a value!')
+
+    **Example 2** -- Skipping a field during serialization::
+
+        from dataclasses import dataclass
+
+        from dataclass_wizard import JSONPyWizard
+        from dataclass_wizard.v1 import Alias
+
+        @dataclass
+        class Example(JSONPyWizard):
+            class _(JSONPyWizard.Meta):
+                v1 = True
+
+            my_field: str = Alias('key', skip=True)
+
+        ex = Example.from_dict({'key': 'some value'})
+        print(ex)                  #> Example(my_field='a value!')
+        assert ex.to_dict() == {}  #> True
+    """
+
+
+# noinspection PyPep8Naming
+def Env(*load: str,
+        default=MISSING,
+        default_factory: Callable[[], MISSING] = MISSING,
+        init=True, repr=True,
+        hash=None, compare=True, metadata=None, kw_only=False):
+    """
+    Maps one or more Environment Variable names to a dataclass field.
+
+    This function acts as an alias for ``dataclasses.field(...)``, with additional
+    support for associating a field with one or more env vars. It customizes
+    serialization and deserialization behavior, including handling env vars with
+    varying cases or alternative names.
+
+    The mapping is case-sensitive; env vars must match exactly (e.g., ``myField``
+    will not match ``myfield``).
+
+    :param load: Env vars(s) to use for deserialization.
+    :type load: str
+    :param default: Default value for the field. Cannot be used with ``default_factory``.
+    :type default: Any
+    :param default_factory: Callable to generate the default value. Cannot be used with ``default``.
+    :type default_factory: Callable[[], Any]
+    :param init: Whether the field is included in the generated ``__init__`` method. Defaults to ``True``.
+    :type init: bool
+    :param repr: Whether the field appears in the ``__repr__`` output. Defaults to ``True``.
+    :type repr: bool
+    :param hash: Whether the field is included in the ``__hash__`` method. Defaults to ``None``.
+    :type hash: bool
+    :param compare: Whether the field is included in comparison methods. Defaults to ``True``.
+    :type compare: bool
+    :param metadata: Additional metadata for the field. Defaults to ``None``.
+    :type metadata: dict
+    :param kw_only: If ``True``, the field is keyword-only. Defaults to ``False``.
+    :type kw_only: bool
+    :return: A dataclass field with additional mappings to one or more JSON keys.
+    :rtype: Field
+
+    **Examples**
+
+    **Example 1** -- Mapping multiple key names to a field::
+
+        from dataclasses import dataclass
+
+        from dataclass_wizard import LoadMeta, fromdict
+        from dataclass_wizard.v1 import Alias
+
+        @dataclass
+        class Example:
+            my_field: str = Alias('key1', 'key2', default="default_value")
+
+        LoadMeta(v1=True).bind_to(Example)
+
+        print(fromdict(Example, {'key2': 'a value!'}))
+        #> Example(my_field='a value!')
+
+    **Example 2** -- Skipping a field during serialization::
+
+        from dataclasses import dataclass
+
+        from dataclass_wizard import JSONPyWizard
+        from dataclass_wizard.v1 import Alias
+
+        @dataclass
+        class Example(JSONPyWizard):
+            class _(JSONPyWizard.Meta):
+                v1 = True
+
+            my_field: str = Alias('key', skip=True)
+
+        ex = Example.from_dict({'key': 'some value'})
+        print(ex)                  #> Example(my_field='a value!')
+        assert ex.to_dict() == {}  #> True
+    """
 
 
 def skip_if_field(condition: Condition, *,
@@ -246,153 +701,64 @@ def skip_if_field(condition: Condition, *,
     """
 
 
-class JSON:
-    """
-    Represents one or more mappings of JSON keys.
-
-    See the docs on the :func:`json_key` function for more info.
-    """
-    __slots__ = ('keys',
-                 'all',
-                 'dump',
-                 'path')
-
-    keys: tuple[str, ...] | PathType
-    all: bool
-    dump: bool
-    path: bool
-
-    def __init__(self, *keys: str | PathPart, all=False, dump=True, path=False):
-        ...
-
-
-class JSONField(Field):
+class Field(_Field):
     """
     Alias to a :class:`dataclasses.Field`, but one which also represents a
     mapping of one or more JSON key names to a dataclass field.
 
-    See the docs on the :func:`json_field` function for more info.
+    See the docs on the :func:`Alias` and :func:`AliasPath` for more info.
     """
-    __slots__ = ('json', )
+    __slots__ = ('load_alias',
+                 'dump_alias',
+                 'env_vars',
+                 'skip',
+                 'path')
 
-    json: JSON
+    load_alias: str | None
+    dump_alias: str | None
+    env_vars: str | None
+    skip: bool
+    path: PathType | None
+
+    # In Python 3.14, dataclasses adds a new parameter to the :class:`Field`
+    # constructor: `doc`
+    #
+    # Ref: https://docs.python.org/3.14/library/dataclasses.html#dataclasses.field
+    @overload
+    def __init__(self,
+                 load_alias: str | None,
+                 dump_alias: str | None,
+                 env_vars: str | None,
+                 skip: bool,
+                 path: PathType | None,
+                 default, default_factory, init, repr, hash, compare,
+                 metadata, kw_only, doc):
+        ...
 
     # In Python 3.10, dataclasses adds a new parameter to the :class:`Field`
     # constructor: `kw_only`
     #
     # Ref: https://docs.python.org/3.10/library/dataclasses.html#dataclasses.dataclass
     @overload
-    def __init__(self, keys: _STR_COLLECTION, all: bool, dump: bool,
+    def __init__(self,
+                 load_alias: str | None,
+                 dump_alias: str | None,
+                 env_vars: str | None,
+                 skip: bool,
+                 path: PathType | None,
                  default, default_factory, init, repr, hash, compare,
-                 metadata, path: bool = False):
+                 metadata, kw_only):
         ...
 
     @overload
-    def __init__(self, keys: _STR_COLLECTION, all: bool, dump: bool,
+    def __init__(self,
+                 load_alias: str | None,
+                 dump_alias: str | None,
+                 env_vars: str | None,
+                 skip: bool,
+                 path: PathType | None,
                  default, default_factory, init, repr, hash, compare,
-                 metadata, path: bool = False):
-        ...
-
-
-# noinspection PyPep8Naming
-def Pattern(pattern: str):
-    """
-    Represents a pattern (i.e. format string) for a date / time / datetime
-    type or subtype. For example, a custom pattern like below::
-
-        %d, %b, %Y %H:%M:%S.%f
-
-    A sample usage of ``Pattern``, using a subclass of :class:`time`::
-
-        time_field: Annotated[List[MyTime], Pattern('%I:%M %p')]
-
-    :param pattern: A format string to be passed in to `datetime.strptime`
-    """
-    ...
-
-
-class _PatternBase:
-    """Base "subscriptable" pattern for date/time/datetime."""
-    __slots__ = ()
-
-    def __class_getitem__(cls, pattern: str) -> PatternedDT[date | time | datetime]:
-        ...
-
-    __getitem__ = _PatternBase.__class_getitem__
-
-
-class DatePattern(date, _PatternBase):
-    """
-    An annotated type representing a date pattern (i.e. format string). Upon
-    de-serialization, the resolved type will be a :class:`date` instead.
-
-    See the docs on :func:`Pattern` for more info.
-    """
-    __slots__ = ()
-
-
-class TimePattern(time, _PatternBase):
-    """
-    An annotated type representing a time pattern (i.e. format string). Upon
-    de-serialization, the resolved type will be a :class:`time` instead.
-
-    See the docs on :func:`Pattern` for more info.
-    """
-    __slots__ = ()
-
-
-class DateTimePattern(datetime, _PatternBase):
-    """
-    An annotated type representing a datetime pattern (i.e. format string). Upon
-    de-serialization, the resolved type will be a :class:`datetime` instead.
-
-    See the docs on :func:`Pattern` for more info.
-    """
-    __slots__ = ()
-
-
-class PatternedDT(Generic[DT]):
-    """
-    Base class for pattern matching using :meth:`datetime.strptime` when
-    loading (de-serializing) a string to a date / time / datetime object.
-    """
-
-    # `cls` is the date/time/datetime type or subclass.
-    # `pattern` is the format string to pass in to `datetime.strptime`.
-    __slots__ = ('cls',
-                 'pattern')
-
-    cls: type[DT] | None
-    pattern: str
-
-    def __init__(self, pattern: str, cls: type[DT] | None = None):
-        ...
-
-    def get_transform_func(self) -> Callable[[str], DT]:
-        """
-        Build and return a load function which takes a `date_string` as an
-        argument, and returns a new object of type :attr:`cls`.
-
-        We try to parse the input string to a `cls` object in the following
-        order:
-            - In case it's an ISO-8601 format string, or a numeric timestamp,
-              we first parse with the default load function (ex. as_datetime).
-              We parse strings using the builtin :meth:`fromisoformat` method,
-              as this is much faster than :meth:`datetime.strptime` - see link
-              below for more details.
-            - Next, we parse with :meth:`datetime.strptime` by passing in the
-              :attr:`pattern` to match against. If the pattern is invalid, the
-              method raises a ValueError, which is re-raised by our
-              `Parser` implementation.
-
-        Ref: https://stackoverflow.com/questions/13468126/a-faster-strptime
-
-        :raises ValueError: If the input date string does not match the
-          pre-defined pattern.
-        """
-        ...
-
-    def __repr__(self):
+                 metadata):
         ...
 
 

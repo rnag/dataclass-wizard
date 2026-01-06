@@ -1,13 +1,271 @@
+from __future__ import annotations
+
+import hashlib
+from dataclasses import MISSING
 from functools import wraps
-from typing import Any, Dict, Type, Callable, Union, TypeVar, cast
+from typing import TYPE_CHECKING, Callable, Union, cast
 
-from .constants import SINGLE_ARG_ALIAS, IDENTITY
-from .errors import ParseError
+from .type_def import DT
+from .utils.function_builder import FunctionBuilder
+from .utils.typing_compat import is_union
+
+if TYPE_CHECKING:  # pragma: no cover
+    from .models import Extras, TypeInfo
 
 
-T = TypeVar('T')
+def process_patterned_date_time(func: Callable) -> Callable:
+    """
+    Decorator for processing patterned date and time data.
+
+    If the 'pattern' key exists in the `extras` dictionary, it updates
+    the base and origin of the type information and processes the
+    pattern before calling the original function.
+
+    Supports both class methods and static methods.
+
+    Args:
+        func (Callable): The function to decorate, either a class method
+        or static method.
+
+    Returns:
+        Callable: The wrapped function with pattern processing applied.
+    """
+
+    # Determine if the function is a class method
+    # noinspection PyUnresolvedReferences
+    is_class_method = func.__code__.co_argcount == 3
+
+    if is_class_method:
+
+        @wraps(func)
+        def class_method_wrapper(cls, tp: TypeInfo, extras: Extras):
+            # Process pattern if it exists in extras
+            if (pb := extras.get('pattern')) is not None:
+                pb.base = cast(type[DT], tp.origin)
+                tp.origin = cast(type, pb)
+                return pb.load_to_pattern(tp, extras)
+
+            # Fallback to the original method
+            return func(cls, tp, extras)
+
+        return class_method_wrapper
+    else:
+
+        @wraps(func)
+        def static_method_wrapper(tp: TypeInfo, extras: Extras):
+            # Process pattern if it exists in extras
+            if (pb := extras.get('pattern')) is not None:
+                pb.base = cast(type[DT], tp.origin)
+                tp.origin = cast(type, pb)
+                return pb.load_to_pattern(tp, extras)
+
+            # Fallback to the original method
+            return func(tp, extras)
+
+        return static_method_wrapper
 
 
+def _type_id(t) -> str:
+    # stable-ish identifier for hashing purposes
+    mod = getattr(t, '__module__', None)
+    qn = getattr(t, '__qualname__', None)
+    if mod and qn:
+        return f'{mod}.{qn}'
+    return repr(t)
+
+
+def _generic_sig_str(name, args) -> str:
+    args = _canonical_union_args(args)  # Union[..]: flattened, de-duped, sorted
+    return f'{name}[{",".join(_type_id(a) for a in args)}]'
+
+
+def _union_args(x):
+    # get args similarly to typing.get_args but without importing it everywhere
+    return getattr(x, '__args__', ())
+
+
+def _flatten_union_args(args):
+    out = []
+    for a in args:
+        if is_union(a):
+            out.extend(_flatten_union_args(_union_args(a)))
+        else:
+            out.append(a)
+    return out
+
+
+def _canonical_union_args(args):
+    flat = _flatten_union_args(args)
+    seen = set()
+    uniq = []
+    for a in flat:
+        k = _type_id(a)
+        if k not in seen:
+            seen.add(k)
+            uniq.append(a)
+    uniq.sort(key=_type_id)
+    return tuple(uniq)
+
+
+def setup_recursive_safe_function(
+    func: Callable = None,
+    *,
+    fn_name: Union[str, None] = None,
+    is_generic: bool = False,
+    add_cls: bool = True,
+    prefix: str = 'load',
+    per_class_cache: bool = False,
+) -> Callable:
+    """
+    A decorator to ensure recursion safety and facilitate dynamic function generation
+    with `FunctionBuilder`, supporting both generic and non-generic types.
+
+    The decorated function can define the logic for dynamically generated functions.
+    If `fn_name` is provided, the decorator assumes that the function generation
+    context (e.g., `with fn_gen.function(...)`) has already been handled externally
+    and will not apply it again.
+
+    :param func: The function to decorate. If None, the decorator is applied with arguments.
+    :type func: Callable, optional
+    :param fn_name: A format string for dynamically generating function names, or None.
+    :type fn_name: str, optional
+    :param is_generic: Whether the function deals with generic types.
+    :type is_generic: bool, optional
+    :param add_cls: Whether the class should be added to the function locals
+      for `FunctionBuilder`.
+    :type add_cls: bool, optional
+    :return: The decorated function with recursion safety and dynamic function generation.
+    :rtype: Callable
+    """
+
+    if func is None:
+        return lambda f: setup_recursive_safe_function(
+            f,
+            fn_name=fn_name,
+            is_generic=is_generic,
+            add_cls=add_cls,
+            prefix=prefix,
+            per_class_cache=per_class_cache,
+        )
+
+    def _wrapper_logic(tp: TypeInfo, extras: Extras, _cls=None) -> str:
+        """
+        Shared logic for both class and regular methods. Ensures recursion safety
+        and integrates `FunctionBuilder` to dynamically create functions.
+
+        :param tp: The type or generic type being processed.
+        :param extras: A context dictionary containing auxiliary information like
+                       recursion guards and function builders.
+        :type extras: dict
+        :param _cls: The class context for class methods. Defaults to None.
+        :return: The generated function call expression as a string.
+        :rtype: str
+        """
+        name = tp.name
+        if is_generic:
+            ann_tp_or_args = (name, _canonical_union_args(tp.args))
+        else:
+            ann_tp_or_args = tp.origin
+
+        recursion_guard = extras['recursion_guard']
+
+        # new function: drop indices and explicit name
+        tp_for_func = tp.replace(index=None, val_name=None)
+
+        if per_class_cache:
+            key = (prefix, extras['cls'], ann_tp_or_args)
+        else:
+            key = (prefix, ann_tp_or_args)
+
+        if (_fn_name := recursion_guard.get(key)) is None:
+            cls_name = extras['cls_name']
+            tp_name = func.__name__.split('_', 2)[-1]
+
+            # Generate the function name
+            if fn_name:
+                _fn_name = fn_name.format(cls_name=name)
+            else:
+                cls_part = f'_{cls_name}' if per_class_cache else ''
+                if is_generic:
+                    sig_src = _generic_sig_str(name, ann_tp_or_args).encode('utf-8')
+                    # noinspection PyTypeChecker
+                    sig_hash = hashlib.blake2s(sig_src, digest_size=6).hexdigest()
+                    _fn_name = f'_{prefix}{cls_part}_{tp_name}_{sig_hash}'
+                else:
+                    _fn_name = f'_{prefix}{cls_part}_{tp_name}_{name}'
+
+            recursion_guard[key] = _fn_name
+
+            # Retrieve the main FunctionBuilder
+            main_fn_gen = extras['fn_gen']
+
+            # Prepare a new FunctionBuilder for this function
+            updated_extras = extras.copy()
+            updated_extras['locals'] = _locals = {'cls': ann_tp_or_args} if add_cls else {}
+            updated_extras['fn_gen'] = new_fn_gen = FunctionBuilder()
+
+            # Apply the decorated function logic
+            if fn_name:
+                # Assume `with fn_gen.function(...)` is already handled
+                func(_cls, tp_for_func, updated_extras) if _cls else func(tp_for_func, updated_extras)
+            else:
+                # Apply `with fn_gen.function(...)` explicitly
+                with new_fn_gen.function(_fn_name, [tp_for_func.v_for_def()], MISSING, _locals):
+                    func(_cls, tp_for_func, updated_extras) if _cls else func(tp_for_func, updated_extras)
+
+            # Merge the new FunctionBuilder into the main one
+            main_fn_gen |= new_fn_gen
+
+        return f'{_fn_name}({tp.v()})'
+
+    # Determine if the function is a class method
+    # noinspection PyUnresolvedReferences
+    is_class_method = func.__code__.co_argcount == 3
+
+    if is_class_method:
+        def wrapper_class_method(_cls, tp, extras) -> str:
+            """
+            Wrapper logic for class methods. Passes the class context to `_wrapper_logic`.
+
+            :param _cls: The class instance.
+            :param tp: The type or generic type being processed.
+            :param extras: A context dictionary with auxiliary information.
+            :type extras: dict
+            :return: The generated function call expression as a string.
+            :rtype: str
+            """
+            return _wrapper_logic(tp, extras, _cls)
+
+        wrapper = wraps(func)(wrapper_class_method)
+    else:
+        wrapper = wraps(func)(_wrapper_logic)
+
+    return wrapper
+
+
+def setup_recursive_safe_function_for_generic(func: Callable = None,
+                                              prefix='load',
+                                              per_class_cache: bool = False) -> Callable:
+    """
+    A helper decorator to handle generic types using
+    `setup_recursive_safe_function`.
+
+    Parameters
+    ----------
+    func : Callable
+        The function to be decorated, responsible for returning the
+        generated function name.
+
+    Returns
+    -------
+    Callable
+        A wrapped function ensuring recursion safety for generic types.
+    """
+    return setup_recursive_safe_function(func, is_generic=True, prefix=prefix,
+                                         per_class_cache=per_class_cache)
+
+
+# TODO see if we can remove this
 # noinspection PyPep8Naming
 class cached_class_property(object):
     """
@@ -52,201 +310,3 @@ class cached_property(object):
         setattr(instance, self.__attr_name__, attr)
 
         return attr
-
-
-def try_with_load(load_fn: Callable):
-    """Try to call a load hook, catch and re-raise errors as a ParseError.
-
-    Note: this function will be recursively called on all load hooks for a
-    dataclass, when `debug_mode` is enabled for the dataclass.
-
-    :param load_fn: The load hook, can be a regular callable, a single-arg
-      alias, or an identity function.
-    :return: The decorated load hook.
-    """
-    try:  # Check if it's a single-argument function, ex. float(...)
-        single_arg_alias_func = getattr(load_fn, SINGLE_ARG_ALIAS)
-
-    except AttributeError:
-        # Check if it's an identity function, ex. lambda o: o
-        if hasattr(load_fn, IDENTITY):
-            # These are basically do-nothing callables, so we don't need to
-            # decorate them.
-            return load_fn
-
-        @wraps(load_fn)
-        def new_func(o: Any, base_type: Type, *args, **kwargs):
-            try:
-                return load_fn(o, base_type, *args, **kwargs)
-
-            except ParseError as e:
-                # This means that a nested load hook raised an exception.
-                # Therefore, to help with debugging we should print the name
-                # of the outer load hook and the original object.
-                e.kwargs['load_hook'] = load_fn.__name__
-                e.obj = o
-                # Re-raise the original error
-                raise
-
-            except Exception as e:
-                raise ParseError(e, o, base_type, 'load', load_hook=load_fn.__name__)
-
-        return new_func
-
-    else:
-        # fix: avoid re-decoration when DEBUG mode is enabled multiple
-        # times (i.e. on more than one class)
-        if hasattr(load_fn, '__decorated__'):
-            return load_fn
-
-        # If it's a string value, we don't know the name of the load hook
-        # function (method) beforehand.
-        if isinstance(single_arg_alias_func, str):
-            alias = single_arg_alias_func
-            f_locals = {}
-        else:
-            alias = single_arg_alias_func.__name__
-            f_locals = {alias: single_arg_alias_func}
-
-        wrapped_fn = f'{try_with_load_with_single_arg.__name__}' \
-                     f'(original_fn, {alias}, base_type)'
-
-        setattr(load_fn, '__decorated__', True)
-        setattr(load_fn, SINGLE_ARG_ALIAS, wrapped_fn)
-        setattr(load_fn, 'f_locals', f_locals)
-
-        return load_fn
-
-
-def try_with_load_with_single_arg(original_fn: Callable,
-                                  single_arg_load_fn: Callable,
-                                  base_type: Type):
-    """Similar to :func:`try_with_load`, but for single-arg alias functions.
-
-    :param original_fn: The original load hook (function)
-    :param single_arg_load_fn: The single-argument load hook
-    :param base_type: The annotated (or desired) type
-    :return: The decorated load hook.
-    """
-    @wraps(single_arg_load_fn)
-    def new_func(o: Any):
-        try:
-            return single_arg_load_fn(o)
-
-        except ParseError as e:
-            # This means that a nested load hook raised an exception.
-            # Therefore, to help with debugging we should print the name
-            # of the outer load hook and the original object.
-            e.kwargs['load_hook'] = original_fn.__name__
-            e.obj = o
-            # Re-raise the original error
-            raise
-
-        except Exception as e:
-            raise ParseError(e, o, base_type, 'load', load_hook=original_fn.__name__)
-
-    return new_func
-
-
-def _alias(default: Callable) -> Callable[[T], T]:
-    """
-    Decorator which re-assigns a function `_f` to point to `default` instead.
-    Since global function calls in Python are somewhat expensive, this is
-    mainly done to reduce a bit of overhead involved in the functions calls.
-
-    For example, consider the below example::
-
-        def f2(o):
-            return o
-
-        def f1(o):
-            return f2(o)
-
-    Calling function `f1` will incur some additional overhead, as opposed to
-    simply calling `f2`.
-
-    Now assume we wrap `f1` with the `_alias` decorator::
-
-        def f2(o):
-            return o
-
-        @_alias(f2)
-        def f1(o):
-            ...
-
-    This will essentially perform the assignment of `f1 = f2`, so calling
-    `f1()` in this case has no additional function overhead, as opposed to
-    just calling `f2()`.
-    """
-
-    def new_func(_f: T) -> T:
-        return cast(T, default)
-
-    return new_func
-
-
-def _single_arg_alias(alias_func: Union[Callable, str] = None):
-    """
-    Decorator which wraps a function to set the :attr:`SINGLE_ARG_ALIAS` on
-    a function `f`, which is an alias function that takes only one argument.
-    This is useful mainly so that other functions can access this attribute,
-    and can opt to call it instead of function `f`.
-    """
-
-    def new_func(f):
-        setattr(f, SINGLE_ARG_ALIAS, alias_func)
-        return f
-
-    return new_func
-
-
-def _identity(_f: Callable = None, id: Union[object, str] = None):
-    """
-    Decorator which wraps a function to set the :attr:`IDENTITY` on a function
-    `f`, indicating that this is an identity function that returns its first
-    argument. This is useful mainly so that other functions can access this
-    attribute, and can opt to call it instead of function `f`.
-    """
-
-    def new_func(f):
-        setattr(f, IDENTITY, id)
-        return f
-
-    return new_func(_f) if _f else new_func
-
-
-def resolve_alias_func(f: Callable,
-                       _locals: Dict = None,
-                       raise_=False) -> Callable:
-    """
-    Resolve the underlying single-arg alias function for `f`, using the
-    provided function locals (which will be a dict). If `f` does not have an
-    associated alias function, we return `f` itself.
-
-    :raises AttributeError: If `raise_` is true and `f` is not a single-arg
-      alias function.
-    """
-
-    try:
-        single_arg_alias_func = getattr(f, SINGLE_ARG_ALIAS)
-
-    except AttributeError:
-        if raise_:
-            raise
-        return f
-
-    else:
-        if isinstance(single_arg_alias_func, str) and _locals is not None:
-            try:
-                return _locals[single_arg_alias_func]
-            except KeyError:
-                # This is only the case when debug mode is enabled, so the
-                # string will be like 'try_with_load_with_single_arg(...)'
-                _locals['original_fn'] = f
-                f_locals = getattr(f, 'f_locals', None)
-                if f_locals:
-                    _locals.update(f_locals)
-
-                return eval(single_arg_alias_func, globals(), _locals)
-
-        return single_arg_alias_func

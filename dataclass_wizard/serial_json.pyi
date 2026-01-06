@@ -3,13 +3,8 @@ from typing import AnyStr, Collection, Callable, Protocol, dataclass_transform
 
 from .abstractions import AbstractJSONWizard, W
 from .bases_meta import BaseJSONWizardMeta, V1HookFn
-from .enums import LetterCase
-from .v1.enums import KeyCase
+from .enums import KeyCase
 from .type_def import Decoder, Encoder, JSONObject, ListOfJSONObject
-
-
-# A handy alias in case it comes in useful to anyone :)
-JSONWizard = JSONSerializable
 
 
 class SerializerHookMixin(Protocol):
@@ -175,8 +170,6 @@ class JSONWizardImpl(AbstractJSONWizard, SerializerHookMixin):
                           case: KeyCase | str | None = None,
                           dump_case: KeyCase | str | None = None,
                           load_case: KeyCase | str | None = None,
-                          _key_transform: LetterCase | str | None = None,
-                          _v1_default: bool = True,
                           _apply_dataclass: bool = True,
                           **dc_kwargs):
         """
@@ -198,11 +191,7 @@ class DataclassWizard(JSONWizardImpl):
     ...
 
 
-class JSONPyWizard(JSONWizardImpl):
-    """Helper for JSONWizard that ensures dumping to JSON keeps keys as-is."""
-
-
-class JSONSerializable(JSONWizardImpl): ...
+class JSONWizard(JSONWizardImpl): ...
 
 
 def _str_fn() -> Callable[[W], str]:

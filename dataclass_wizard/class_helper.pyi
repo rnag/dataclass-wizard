@@ -25,34 +25,16 @@ CLASS_TO_LOAD_FUNC: dict[type, Any] = {}
 # Mapping of main dataclass to its `dump` function.
 CLASS_TO_DUMP_FUNC: dict[type, Any] = {}
 
-# A mapping of dataclass to its loader.
-CLASS_TO_LOADER: dict[type, type[AbstractLoader]] = {}
-
 # V1: A mapping of dataclass to its loader.
 CLASS_TO_V1_LOADER: dict[type, type[AbstractLoaderGenerator]] = {}
 
-# A mapping of dataclass to its dumper.
-CLASS_TO_DUMPER: dict[type, type[AbstractDumper]] = {}
-
 # V1: A mapping of dataclass to its dumper.
 CLASS_TO_V1_DUMPER: dict[type, type[AbstractDumperGenerator]] = {}
-
-# A cached mapping of a dataclass to each of its case-insensitive field names
-# and load hook.
-FIELD_NAME_TO_LOAD_PARSER: dict[type, DictWithLowerStore[str, AbstractParser]] = {}
 
 # Since the load process in V1 doesn't use Parsers currently, we use a sentinel
 # mapping to confirm if we need to setup the load config for a dataclass
 # on an initial run.
 IS_V1_CONFIG_SETUP: set[type] = set()
-
-# Since the dump process doesn't use Parsers currently, we use a sentinel
-# mapping to confirm if we need to setup the dump config for a dataclass
-# on an initial run.
-IS_DUMP_CONFIG_SETUP: dict[type, bool] = {}
-
-# A cached mapping, per dataclass, of JSON field to instance field name
-JSON_FIELD_TO_DATACLASS_FIELD: dict[type, dict[str, str | ExplicitNullType]] = defaultdict(dict)
 
 # A cached mapping, per dataclass, of instance field name to JSON path
 DATACLASS_FIELD_TO_JSON_PATH: dict[type, dict[str, PathType]] = defaultdict(dict)
@@ -91,12 +73,6 @@ META_INITIALIZER: dict[str, Callable[[type[W]], None]] = {}
 _META: dict[type, META] = {}
 
 
-def dataclass_to_dumper(cls: type) -> type[AbstractDumper]:
-    """
-    Returns the dumper for a dataclass.
-    """
-
-
 def set_class_loader(cls_to_loader, class_or_instance, loader: type[AbstractLoader]):
     """
     Set (and return) the loader for a dataclass.
@@ -106,12 +82,6 @@ def set_class_loader(cls_to_loader, class_or_instance, loader: type[AbstractLoad
 def set_class_dumper(cls: type, dumper: type[AbstractDumper]):
     """
     Set (and return) the dumper for a dataclass.
-    """
-
-
-def json_field_to_dataclass_field(cls: type) -> dict[str, str | ExplicitNullType]:
-    """
-    Returns a mapping of JSON field to dataclass field.
     """
 
 
@@ -144,64 +114,6 @@ def field_to_env_var(cls: type[E]) -> dict[str, str]:
     Returns a mapping of field in the `EnvWizard` subclass to env variable.
     """
 
-
-def dataclass_field_to_load_parser(
-        cls_loader: type[AbstractLoader],
-        cls: type,
-        config: META,
-        save: bool = True) -> DictWithLowerStore[str, AbstractParser]:
-    """
-    Returns a mapping of each lower-cased field name to its annotated type.
-    """
-
-
-def _setup_load_config_for_cls(cls_loader: type[AbstractLoader],
-                               cls: type,
-                               config: META,
-                               save: bool = True
-                               ) -> DictWithLowerStore[str, AbstractParser]:
-    """
-    This function processes a class `cls` on an initial run, and sets up the
-    load process for `cls` by iterating over each dataclass field. For each
-    field, it performs the following tasks:
-
-        * Lookup the Parser (dispatcher) for the field based on its type
-          annotation, and then cache it so we don't need to lookup each time.
-
-        * Check if the field's annotation is of type ``Annotated``. If so,
-          we iterate over each ``Annotated`` argument and find any special
-          :class:`JSON` objects (this can also be set via the helper function
-          ``json_key``). Assuming we find it, the class-specific mapping of
-          JSON key to dataclass field name is then updated with the input
-          passed in to this object.
-
-        * Check if the field type is a :class:`JSONField` object (this can
-          also be set by the helper function ``json_field``). Assuming this is
-          the case, the class-specific mapping of JSON key to dataclass field
-          name is then updated with the input passed in to the :class:`JSON`
-          attribute.
-    """
-
-
-def setup_dump_config_for_cls_if_needed(cls: type) -> None:
-    """
-    This function processes a class `cls` on an initial run, and sets up the
-    dump process for `cls` by iterating over each dataclass field. For each
-    field, it performs the following tasks:
-
-        * Check if the field's annotation is of type ``Annotated``. If so,
-          we iterate over each ``Annotated`` argument and find any special
-          :class:`JSON` objects (this can also be set via the helper function
-          ``json_key``). Assuming we find it, the class-specific mapping of
-          dataclass field name to JSON key is then updated with the input
-          passed in to this object.
-
-        * Check if the field type is a :class:`JSONField` object (this can
-          also be set by the helper function ``json_field``). Assuming this is
-          the case, the class-specific mapping of dataclass field name to JSON
-          key is then updated with the input passed in to the :class:`JSON`
-          attribute.
-    """
 
 def v1_dataclass_field_to_alias_for_dump(cls: type) -> dict[str, Sequence[str]]: ...
 def v1_dataclass_field_to_alias_for_load(cls: type) -> dict[str, Sequence[str]]: ...

@@ -23,9 +23,9 @@ from .enums import KeyCase, DateTimeTo
 from .models import (Extras, TypeInfo, PatternBase,
                      LEAF_TYPES, LEAF_TYPES_NO_BYTES, UTC, ZERO)
 from .type_conv import datetime_to_timestamp
-from ..abstractions import AbstractDumperGenerator
-from ..bases import AbstractMeta, BaseDumpHook, META
-from ..class_helper import (
+from .abstractions import AbstractDumperGenerator
+from .bases import AbstractMeta, BaseDumpHook, META
+from .class_helper import (
     CLASS_TO_DUMP_FUNC,
     DATACLASS_FIELD_TO_ALIAS_PATH_FOR_DUMP,
     create_meta,
@@ -37,21 +37,21 @@ from ..class_helper import (
     dataclass_field_names,
     dataclass_field_to_skip_if,
 )
-from ..constants import CATCH_ALL, TAG, PACKAGE_NAME
-from ..errors import (ParseError, MissingFields, MissingData, JSONWizardError)
-from ..loader_selection import get_dumper, asdict
-from ..log import LOG
-from ..models import get_skip_if_condition, finalize_skip_if
-from ..type_def import (
+from dataclass_wizard.constants import CATCH_ALL, TAG, PACKAGE_NAME
+from dataclass_wizard.errors import (ParseError, MissingFields, MissingData, JSONWizardError)
+from dataclass_wizard.loader_selection import get_dumper, asdict
+from dataclass_wizard.log import LOG
+from dataclass_wizard.models import get_skip_if_condition, finalize_skip_if
+from dataclass_wizard.type_def import (
     NoneType, JSONObject,
     PyLiteralString,
     T, ExplicitNull
 )
 # noinspection PyProtectedMember
-from ..utils.dataclass_compat import _set_new_attribute
-from ..utils.dict_helper import NestedDict
-from ..utils.function_builder import FunctionBuilder
-from ..utils.typing_compat import (
+from dataclass_wizard.utils.dataclass_compat import _set_new_attribute
+from dataclass_wizard.utils.dict_helper import NestedDict
+from dataclass_wizard.utils.function_builder import FunctionBuilder
+from dataclass_wizard.utils.typing_compat import (
     is_typed_dict, get_args, is_annotated,
     eval_forward_ref_if_needed, get_origin_v2, is_union,
     get_keys_for_typed_dict, is_typed_dict_type_qualifier,
@@ -761,7 +761,7 @@ def dump_func_for_dataclass(
     cls_field_names = dataclass_field_names(cls)
 
     # Get the dumper for the class, or create a new one as needed.
-    cls_dumper = get_dumper(cls, base_cls=dumper_cls, v1=True)
+    cls_dumper = get_dumper(cls, base_cls=dumper_cls)
 
     cls_name = cls.__name__
 

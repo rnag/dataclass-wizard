@@ -19,9 +19,9 @@ from datetime import datetime, time, date, timedelta, timezone, tzinfo
 from json import loads, JSONDecodeError
 from typing import Union, Any
 
-from ..lazy_imports import pytimeparse
-from ..type_def import N, NUMBERS
-from ..v1.models import ZERO, UTC
+from .lazy_imports import pytimeparse
+from .type_def import N, NUMBERS
+from .models import ZERO, UTC
 
 
 # What values are considered "truthy" when converting to a boolean type.

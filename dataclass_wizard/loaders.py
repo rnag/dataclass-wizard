@@ -22,41 +22,41 @@ from .type_conv import (
     as_datetime_v1, as_date_v1, as_int_v1,
     as_time_v1, as_timedelta, TRUTHY_VALUES,
 )
-from ..abstractions import AbstractLoaderGenerator
-from ..bases import AbstractMeta, BaseLoadHook, META
-from ..class_helper import (create_meta,
-                            dataclass_fields,
-                            dataclass_field_to_default,
-                            dataclass_init_fields,
-                            dataclass_init_field_names,
-                            get_meta,
-                            is_subclass_safe,
-                            v1_dataclass_field_to_alias_for_load,
-                            CLASS_TO_LOAD_FUNC,
-                            DATACLASS_FIELD_TO_ALIAS_PATH_FOR_LOAD,
-                            dataclass_kw_only_init_field_names)
-from ..constants import CATCH_ALL, TAG, PY311_OR_ABOVE, PACKAGE_NAME
-from ..errors import (JSONWizardError,
-                      MissingData,
-                      MissingFields,
-                      ParseError,
-                      UnknownKeysError)
-from ..loader_selection import fromdict, get_loader
-from ..log import LOG
-from ..type_def import DefFactory, JSONObject, NoneType, PyLiteralString, T
+from .abstractions import AbstractLoaderGenerator
+from .bases import AbstractMeta, BaseLoadHook, META
+from .class_helper import (create_meta,
+                                           dataclass_fields,
+                                           dataclass_field_to_default,
+                                           dataclass_init_fields,
+                                           dataclass_init_field_names,
+                                           get_meta,
+                                           is_subclass_safe,
+                                           v1_dataclass_field_to_alias_for_load,
+                                           CLASS_TO_LOAD_FUNC,
+                                           DATACLASS_FIELD_TO_ALIAS_PATH_FOR_LOAD,
+                                           dataclass_kw_only_init_field_names)
+from .constants import CATCH_ALL, TAG, PY311_OR_ABOVE, PACKAGE_NAME
+from .errors import (JSONWizardError,
+                                     MissingData,
+                                     MissingFields,
+                                     ParseError,
+                                     UnknownKeysError)
+from .loader_selection import fromdict, get_loader
+from .log import LOG
+from .type_def import DefFactory, JSONObject, NoneType, PyLiteralString, T
 # noinspection PyProtectedMember
-from ..utils.dataclass_compat import _set_new_attribute
-from ..utils.function_builder import FunctionBuilder
-from ..utils.object_path import v1_safe_get
-from ..utils.string_conv import possible_json_keys
-from ..utils.typing_compat import (eval_forward_ref_if_needed,
-                                   get_args,
-                                   get_keys_for_typed_dict,
-                                   get_origin_v2,
-                                   is_annotated,
-                                   is_typed_dict,
-                                   is_typed_dict_type_qualifier,
-                                   is_union)
+from .utils.dataclass_compat import _set_new_attribute
+from .utils.function_builder import FunctionBuilder
+from .utils.object_path import v1_safe_get
+from .utils.string_conv import possible_json_keys
+from .utils.typing_compat import (eval_forward_ref_if_needed,
+                                  get_args,
+                                  get_keys_for_typed_dict,
+                                  get_origin_v2,
+                                  is_annotated,
+                                  is_typed_dict,
+                                  is_typed_dict_type_qualifier,
+                                  is_union)
 
 
 class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
@@ -1115,7 +1115,7 @@ def load_func_for_dataclass(
     has_defaults = True if field_to_default else False
 
     # Get the loader for the class, or create a new one as needed.
-    cls_loader = get_loader(cls, base_cls=loader_cls, v1=True)
+    cls_loader = get_loader(cls, base_cls=loader_cls)
 
     cls_name = cls.__name__
 

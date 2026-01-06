@@ -55,9 +55,7 @@ def _configure_wizard_class(cls,
                             debug=False,
                             case=None,
                             dump_case=None,
-                            load_case=None,
-                            _key_transform=None,
-                            _v1_default=False):
+                            load_case=None):
     load_meta_kwargs = {}
 
     if case is not None:
@@ -72,11 +70,8 @@ def _configure_wizard_class(cls,
         _v1_default = True
         load_meta_kwargs['v1_load_case'] = load_case
 
-    if _v1_default:
-        load_meta_kwargs['v1'] = True
-
-    if _key_transform is not None:
-        DumpMeta(key_transform=_key_transform).bind_to(cls)
+    # TODO
+    load_meta_kwargs['v1'] = True
 
     if debug:
         # minimum logging level for logs by this library
@@ -154,8 +149,6 @@ class DataclassWizard(AbstractJSONWizard):
                           case=None,
                           dump_case=None,
                           load_case=None,
-                          _key_transform=None,
-                          _v1_default=True,
                           _apply_dataclass=True,
                           **dc_kwargs):
 
@@ -170,12 +163,11 @@ class DataclassWizard(AbstractJSONWizard):
             # noinspection PyArgumentList
             dataclass(cls, **dc_kwargs)
 
-        _configure_wizard_class(cls, str, debug, case, dump_case, load_case,
-                                _key_transform, _v1_default)
+        _configure_wizard_class(cls, str, debug, case, dump_case, load_case)
 
 
 # noinspection PyAbstractClass
-class JSONSerializable(DataclassWizard):
+class JSONWizard(DataclassWizard):
 
     __slots__ = ()
 
@@ -186,13 +178,11 @@ class JSONSerializable(DataclassWizard):
                           case=None,
                           dump_case=None,
                           load_case=None,
-                          _key_transform=None,
-                          _v1_default=False,
                           _apply_dataclass=False,
                           **_):
 
         super().__init_subclass__(str, debug, case, dump_case, load_case,
-                                  _key_transform, _v1_default, _apply_dataclass)
+                                  _apply_dataclass)
 
 
 def _str_pprint_fn():
@@ -202,33 +192,3 @@ def _str_pprint_fn():
         return pformat(self, width=70)
 
     return __str__
-
-
-# A handy alias in case it comes in useful to anyone :)
-JSONWizard = JSONSerializable
-
-
-class JSONPyWizard(JSONWizard):
-    """Helper for JSONWizard that ensures dumping to JSON keeps keys as-is."""
-
-    # noinspection PyShadowingBuiltins
-    def __init_subclass__(cls,
-                          str=True,
-                          debug=False,
-                          case=None,
-                          dump_case=None,
-                          load_case=None,
-                          _key_transform=None,
-                          _v1_default=False,
-                          _apply_dataclass=False,
-                          **_):
-        """Bind child class to DumpMeta with no key transformation."""
-
-        # Call JSONSerializable.__init_subclass__()
-        # set `key_transform_with_dump` for the class's Meta
-        super().__init_subclass__(False, debug, case, dump_case, load_case, 'NONE',
-                                  _v1_default, _apply_dataclass)
-
-        # Add a `__str__` method to the subclass, if needed
-        if str:
-            _set_new_attribute(cls, '__str__', _str_pprint_fn())

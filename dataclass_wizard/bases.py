@@ -7,12 +7,11 @@ from typing import (Callable, Type, Dict, Optional, ClassVar, Union,
 
 from .constants import TAG
 from .decorators import cached_class_property
-from .enums import DateTimeTo, LetterCase, LetterCasePriority
 from .models import Condition
 
 if TYPE_CHECKING:
-    from .v1.enums import KeyAction, KeyCase, DateTimeTo as V1DateTimeTo, EnvKeyStrategy, EnvPrecedence
-    from .v1._path_util import EnvFilePaths, SecretsDirs
+    from .enums import KeyAction, KeyCase, DateTimeTo as V1DateTimeTo, EnvKeyStrategy, EnvPrecedence
+    from ._path_util import EnvFilePaths, SecretsDirs
     from .bases_meta import ALLOWED_MODES, V1HookFn, V1PreDecoder
     from .type_def import FrozenKeys
 
@@ -126,7 +125,6 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
     # attributes which will *not* be merged.
     __special_attrs__ = frozenset({
         'recursive',
-        'json_key_to_field',
         'v1_field_to_alias',
         'v1_field_to_alias_dump',
         'v1_field_to_alias_load',
@@ -174,36 +172,6 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
     # The default is to only log a "warning" for such cases, which is visible
     # when `v1_debug` is true and logging is properly configured.
     raise_on_unknown_json_key: ClassVar[bool] = False
-
-    # A customized mapping of JSON keys to dataclass fields, that is used
-    # whenever `from_dict` or `from_json` is called.
-    #
-    # Note: this is in addition to the implicit field transformations, like
-    #   "myStr" -> "my_str"
-    #
-    # If the reverse mapping is also desired (i.e. dataclass field to JSON
-    # key), then specify the "__all__" key as a truthy value. If multiple JSON
-    # keys are specified for a dataclass field, only the first one provided is
-    # used in this case.
-    json_key_to_field: ClassVar[Dict[str, str]] = None
-
-    # How should :class:`time` and :class:`datetime` objects be serialized
-    # when converted to a Python dictionary object or a JSON string.
-    marshal_date_time_as: ClassVar[Union[DateTimeTo, str]] = None
-
-    # How JSON keys should be transformed to dataclass fields.
-    #
-    # Note that this only applies to keys which are to be set on dataclass
-    # fields; other fields such as the ones for `TypedDict` or `NamedTuple`
-    # sub-classes won't be similarly transformed.
-    key_transform_with_load: ClassVar[Union[LetterCase, str]] = None
-
-    # How dataclass fields should be transformed to JSON keys.
-    #
-    # Note that this only applies to dataclass fields; other fields such as
-    # the ones for `TypedDict` or `NamedTuple` sub-classes won't be similarly
-    # transformed.
-    key_transform_with_dump: ClassVar[Union[LetterCase, str]] = None
 
     # The field name that identifies the tag for a class.
     #
@@ -558,30 +526,6 @@ class AbstractEnvMeta(metaclass=ABCOrAndMeta):
     # secrets_dir: The secret files directory or a sequence of directories. Defaults to `None`.
     secrets_dir: ClassVar[SecretsDirs] = None
 
-    # -- BEGIN Deprecated Fields --
-
-    # The nested env values delimiter. Defaults to `None`.
-    # env_nested_delimiter: ClassVar[str] = None
-
-    # A customized mapping of field in the `EnvWizard` subclass to its
-    # corresponding environment variable to search for.
-    #
-    # Note: this is in addition to the implicit field transformations, like
-    #   "myStr" -> "my_str"
-    field_to_env_var: ClassVar[Dict[str, str]] = None
-
-    # The letter casing priority to use when looking up Env Var Names.
-    #
-    # The default is `SCREAMING_SNAKE_CASE`.
-    key_lookup_with_load: ClassVar[Union[LetterCasePriority, str]] = LetterCasePriority.SCREAMING_SNAKE
-
-    # How `EnvWizard` fields (variables) should be transformed to JSON keys.
-    #
-    # The default is 'snake_case'.
-    key_transform_with_dump: ClassVar[Union[LetterCase, str]] = LetterCase.SNAKE
-
-    # -- END Deprecated Fields --
-
     # Determines whether we should we skip / omit fields with default values
     # in the serialization process.
     skip_defaults: ClassVar[bool] = False
@@ -676,7 +620,7 @@ class AbstractEnvMeta(metaclass=ABCOrAndMeta):
     # How `EnvWizard` fields (variables) should be transformed to JSON keys.
     #
     # The default is 'snake_case'.
-    v1_dump_case: ClassVar[Union[LetterCase, str]] = None
+    v1_dump_case: ClassVar[Union[KeyCase, str]] = None
 
     # Environment Precedence (order) to search for values
     # Defaults to EnvPrecedence.SECRETS_ENV_DOTENV

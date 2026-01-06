@@ -7,27 +7,21 @@ both import directly from `bases`.
 from __future__ import annotations
 
 import logging
-import warnings
-from datetime import datetime, date
 from typing import Mapping
 
 from .bases import AbstractMeta, META, AbstractEnvMeta
 from .class_helper import (
     META_INITIALIZER, _META, get_meta,
     get_outer_class_name, get_class_name, create_new_class,
-    json_field_to_dataclass_field, dataclass_field_to_json_field,
-    field_to_env_var,
     DATACLASS_FIELD_TO_ALIAS_FOR_LOAD,
     DATACLASS_FIELD_TO_ENV_FOR_LOAD,
     DATACLASS_FIELD_TO_ALIAS_FOR_DUMP,
 )
-from .decorators import try_with_load
-from .enums import DateTimeTo, LetterCase, LetterCasePriority
-from .errors import ParseError, show_deprecation_warning
+from .errors import ParseError
 from .loader_selection import get_dumper, get_loader
 from .log import LOG
 from .type_def import E
-from .utils.type_conv import date_to_timestamp, as_enum
+from .utils.type_conv import as_enum
 
 ALLOWED_MODES = ('runtime', 'v1_codegen')
 
@@ -72,7 +66,7 @@ def register_type(cls, tp, *, load=None, dump=None, mode=None) -> None:
 
 
 # use `debug_enabled` for log level if it's a str or int.
-def _enable_debug_mode_if_needed(v1, cls_loader, possible_lvl):
+def _enable_debug_mode_if_needed(possible_lvl):
     global _debug_was_enabled
     if not _debug_was_enabled:
         _debug_was_enabled = True
@@ -83,13 +77,6 @@ def _enable_debug_mode_if_needed(v1, cls_loader, possible_lvl):
         # set the logging level of this library's logger.
         LOG.setLevel(min_level)
         LOG.info('DEBUG Mode is enabled')
-
-    # Decorate all hooks so they format more helpful messages
-    # on error.
-    if not v1:
-        load_hooks = cls_loader.__LOAD_HOOKS__
-        for typ in load_hooks:
-            load_hooks[typ] = try_with_load(load_hooks[typ])
 
 
 def _as_enum_safe(cls: type, name: str, base_type: type[E]) -> 'E | None':
@@ -231,8 +218,6 @@ class BaseJSONWizardMeta(AbstractMeta):
             # Copy over global defaults to the :class:`AbstractMeta`
             for attr in AbstractMeta.fields_to_merge:
                 setattr(AbstractMeta, attr, getattr(cls, attr, None))
-            if cls.json_key_to_field:
-                AbstractMeta.json_key_to_field = cls.json_key_to_field
             if cls.v1_field_to_alias:
                 AbstractMeta.v1_field_to_alias = cls.v1_field_to_alias
             if cls.v1_field_to_alias_dump:
@@ -249,69 +234,19 @@ class BaseJSONWizardMeta(AbstractMeta):
     def bind_to(cls, dataclass: type, create=True, is_default=True,
                 base_loader=None,
                 base_dumper=None):
-        from .v1.enums import KeyAction, KeyCase, DateTimeTo as V1DateTimeTo
-        meta = get_meta(dataclass)
-        v1 = cls.v1 or meta.v1
+        # TODO
+        from .enums import KeyAction, KeyCase, DateTimeTo as V1DateTimeTo
 
         cls_loader = get_loader(dataclass, create=create,
-                                base_cls=base_loader, v1=v1)
+                                base_cls=base_loader)
         cls_dumper = get_dumper(dataclass, create=create,
-                                base_cls=base_dumper, v1=v1)
+                                base_cls=base_dumper)
 
         if cls.v1_debug:
-            _enable_debug_mode_if_needed(v1, cls_loader, cls.v1_debug)
-
-        elif cls.debug_enabled:
-            show_deprecation_warning(
-                'debug_enabled',
-                fmt="Deprecated Meta setting {name} ({reason}).",
-                reason='Use `v1_debug` instead',
-            )
-            _enable_debug_mode_if_needed(v1, cls_loader, cls.debug_enabled)
-
-        if cls.json_key_to_field is not None:
-            add_for_both = cls.json_key_to_field.pop('__all__', None)
-
-            json_field_to_dataclass_field(dataclass).update(
-                cls.json_key_to_field
-            )
-
-            if add_for_both:
-                dataclass_to_json_field = dataclass_field_to_json_field(
-                    dataclass)
-
-                # We unfortunately can't use a dict comprehension approach, as
-                # we don't know if there are multiple JSON keys mapped to a
-                # single dataclass field. So to be safe, we should only set
-                # the first JSON key mapped to each dataclass field.
-                for json_key, field in cls.json_key_to_field.items():
-                    if field not in dataclass_to_json_field:
-                        dataclass_to_json_field[field] = json_key
-
+            _enable_debug_mode_if_needed(cls.v1_debug)
 
         if cls.v1_dump_date_time_as is not None:
             cls.v1_dump_date_time_as = _as_enum_safe(cls, 'v1_dump_date_time_as', V1DateTimeTo)
-
-        if cls.marshal_date_time_as is not None:
-            enum_val = _as_enum_safe(cls, 'marshal_date_time_as', DateTimeTo)
-
-            if enum_val is DateTimeTo.TIMESTAMP:
-                # Update dump hooks for the `datetime` and `date` types
-                cls_dumper.dump_with_datetime = lambda o, *_: round(o.timestamp())
-                cls_dumper.dump_with_date = lambda o, *_: date_to_timestamp(o)
-                cls_dumper.register_dump_hook(
-                    datetime, cls_dumper.dump_with_datetime)
-                cls_dumper.register_dump_hook(
-                    date, cls_dumper.dump_with_date)
-
-            elif enum_val is DateTimeTo.ISO_FORMAT:
-                # noop; the default dump hook for `datetime` and `date`
-                # already serializes using this approach.
-                pass
-
-        if cls.key_transform_with_load is not None:
-            cls_loader.transform_json_field = _as_enum_safe(
-                cls, 'key_transform_with_load', LetterCase)
 
         if (key_case := cls.v1_case) is not None:
             cls.v1_load_case = cls.v1_dump_case = key_case
@@ -340,10 +275,6 @@ class BaseJSONWizardMeta(AbstractMeta):
                 k: (v, ) if isinstance(v, str) else v
                 for k, v in field_to_alias.items()
             })
-
-        if cls.key_transform_with_dump is not None:
-            cls_dumper.transform_dataclass_field = _as_enum_safe(
-                cls, 'key_transform_with_dump', LetterCase)
 
         if cls.v1_on_unknown_key is not None:
             cls.v1_on_unknown_key = _as_enum_safe(cls, 'v1_on_unknown_key', KeyAction)
@@ -426,74 +357,37 @@ class BaseEnvWizardMeta(AbstractEnvMeta):
             v1=v1)
 
         if cls.v1_debug:
-            _enable_debug_mode_if_needed(v1, cls_loader, cls.v1_debug)
+            _enable_debug_mode_if_needed(cls.v1_debug)
 
-        if cls.debug_enabled:
-            _enable_debug_mode_if_needed(v1, cls_loader, cls.debug_enabled)
+        if cls.v1_load_case is not None:
+            cls.v1_load_case = _as_enum_safe(
+                cls, 'v1_load_case', EnvKeyStrategy)
+        if cls.v1_env_precedence is not None:
+            cls.v1_env_precedence = _as_enum_safe(
+                cls, 'v1_env_precedence', EnvPrecedence)
 
-        if cls.field_to_env_var is not None:
-            if v1:
-                warnings.warn(
-                    '`field_to_env_var` is deprecated and will be removed in v1. '
-                    'Use `v1_field_to_env_load` instead.',
-                    FutureWarning,
-                    stacklevel=2,
-                )
-                cls.v1_field_to_env_load = cls.field_to_env_var
-            else:
-                field_to_env_var(env_class).update(
-                    cls.field_to_env_var
-                )
+        # TODO
+        cls_dumper.transform_dataclass_field = _as_enum_safe(
+            cls, 'v1_dump_case', KeyCase)
 
-        cls.key_lookup_with_load = _as_enum_safe(
-            cls, 'key_lookup_with_load', LetterCasePriority)
+        if (field_to_alias := cls.v1_field_to_alias_dump) is not None:
+            DATACLASS_FIELD_TO_ALIAS_FOR_DUMP[env_class].update(field_to_alias)
 
-        if v1:
-            from . import EnvWizard as V0EnvWizard
-            from .v1 import EnvWizard as V1EnvWizard
+        if (field_to_env := cls.v1_field_to_env_load) is not None:
+            DATACLASS_FIELD_TO_ENV_FOR_LOAD[env_class].update({
+                k: (v, ) if isinstance(v, str) else v
+                for k, v in field_to_env.items()
+            })
 
-            if issubclass(env_class, V0EnvWizard) and not issubclass(env_class, V1EnvWizard):
-                raise TypeError(
-                    f'{env_class.__qualname__} is using Meta(v1=True) but does '
-                    'not inherit from `dataclass_wizard.v1.EnvWizard`.\n\n'
-                    'Fix:\n'
-                    '    from dataclass_wizard.v1 import EnvWizard'
-                ) from None
+        # set this attribute in case of nested dataclasses (which
+        # uses codegen in `v1/loaders.py`)
+        cls.v1_on_unknown_key = None
 
-            if cls.v1_load_case is not None:
-                cls.v1_load_case = _as_enum_safe(
-                    cls, 'v1_load_case', EnvKeyStrategy)
-            if cls.v1_env_precedence is not None:
-                cls.v1_env_precedence = _as_enum_safe(
-                    cls, 'v1_env_precedence', EnvPrecedence)
+        # if cls.v1_on_unknown_key is not None:
+        #     cls.v1_on_unknown_key = _as_enum_safe(cls, 'v1_on_unknown_key', KeyAction)
 
-            # TODO
-            cls_dumper.transform_dataclass_field = _as_enum_safe(
-                cls, 'v1_dump_case', KeyCase)
-
-            if (field_to_alias := cls.v1_field_to_alias_dump) is not None:
-                DATACLASS_FIELD_TO_ALIAS_FOR_DUMP[env_class].update(field_to_alias)
-
-            if (field_to_env := cls.v1_field_to_env_load) is not None:
-                DATACLASS_FIELD_TO_ENV_FOR_LOAD[env_class].update({
-                    k: (v, ) if isinstance(v, str) else v
-                    for k, v in field_to_env.items()
-                })
-
-            # set this attribute in case of nested dataclasses (which
-            # uses codegen in `v1/loaders.py`)
-            cls.v1_on_unknown_key = None
-
-            # if cls.v1_on_unknown_key is not None:
-            #     cls.v1_on_unknown_key = _as_enum_safe(cls, 'v1_on_unknown_key', KeyAction)
-
-            _normalize_hooks(cls.v1_type_to_load_hook)
-            _normalize_hooks(cls.v1_type_to_dump_hook)
-
-        else:
-            cls_dumper.transform_dataclass_field = _as_enum_safe(
-                cls, 'key_transform_with_dump', LetterCase)
-
+        _normalize_hooks(cls.v1_type_to_load_hook)
+        _normalize_hooks(cls.v1_type_to_dump_hook)
 
         # Finally, if needed, save the meta config for the outer class. This
         # will allow us to access this config as part of the JSON load/dump

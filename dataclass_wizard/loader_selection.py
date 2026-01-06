@@ -1,9 +1,8 @@
-from typing import Callable, Collection, Optional
+from typing import Callable
 
-from .class_helper import (get_meta, CLASS_TO_LOAD_FUNC,
-                           CLASS_TO_LOADER, CLASS_TO_V1_LOADER,
-                           set_class_loader, create_new_class, CLASS_TO_DUMP_FUNC, CLASS_TO_V1_DUMPER, set_class_dumper,
-                           CLASS_TO_DUMPER)
+from .class_helper import (CLASS_TO_LOAD_FUNC,
+                           CLASS_TO_V1_LOADER,
+                           set_class_loader, create_new_class, CLASS_TO_DUMP_FUNC, CLASS_TO_V1_DUMPER, set_class_dumper)
 from .constants import _LOAD_HOOKS, _DUMP_HOOKS
 from .type_def import T, JSONObject
 
@@ -95,42 +94,28 @@ def fromlist(cls: type[T], list_of_dict: list[JSONObject]) -> list[T]:
     return [load(d) for d in list_of_dict]
 
 
-def _get_load_fn_for_dataclass(cls: type[T], v1=None) -> Callable[[JSONObject], T]:
-    meta = get_meta(cls)
-    if v1 is None:
-        v1 = getattr(meta, 'v1', False)
-
-    if v1:
-        from .v1.loaders import load_func_for_dataclass as V1_load_func_for_dataclass
-        # noinspection PyTypeChecker
-        load = V1_load_func_for_dataclass(cls)
-    else:
-        from .loaders import load_func_for_dataclass
-        load = load_func_for_dataclass(cls)
+def _get_load_fn_for_dataclass(cls: type[T]) -> Callable[[JSONObject], T]:
+    # TODO
+    from .loaders import load_func_for_dataclass as V1_load_func_for_dataclass
+    # noinspection PyTypeChecker
+    load = V1_load_func_for_dataclass(cls)
 
     # noinspection PyTypeChecker
     return load
 
 
-def _get_dump_fn_for_dataclass(cls: type[T], v1=None) -> Callable[[JSONObject], T]:
-    if v1 is None:
-        v1 = getattr(get_meta(cls), 'v1', False)
-
-    if v1:
-        from .v1.dumpers import dump_func_for_dataclass as V1_dump_func_for_dataclass
-        # noinspection PyTypeChecker
-        dump = V1_dump_func_for_dataclass(cls)
-    else:
-        from .dumpers import dump_func_for_dataclass
-        dump = dump_func_for_dataclass(cls)
+def _get_dump_fn_for_dataclass(cls: type[T]) -> Callable[[JSONObject], T]:
+    # TODO
+    from .dumpers import dump_func_for_dataclass as V1_dump_func_for_dataclass
+    # noinspection PyTypeChecker
+    dump = V1_dump_func_for_dataclass(cls)
 
     # noinspection PyTypeChecker
     return dump
 
 
 def get_dumper(class_or_instance=None, create=True,
-               base_cls: T = None,
-               v1: Optional[bool] = None) -> type[T]:
+               base_cls: T = None) -> type[T]:
     """
     Get the dumper for the class, using the following logic:
 
@@ -142,19 +127,11 @@ def get_dumper(class_or_instance=None, create=True,
           can potentially be shared by more than one dataclass.
 
     """
-    if v1 is None:
-        v1 = getattr(get_meta(class_or_instance), 'v1', False)
-
-    if v1:
-        cls_to_dumper = CLASS_TO_V1_DUMPER
-        if base_cls is None:
-            from .v1.dumpers import DumpMixin as V1_DumpMixin
-            base_cls = V1_DumpMixin
-    else:
-        cls_to_dumper = CLASS_TO_DUMPER
-        if base_cls is None:
-            from .dumpers import DumpMixin
-            base_cls = DumpMixin
+    # TODO
+    cls_to_dumper = CLASS_TO_V1_DUMPER
+    if base_cls is None:
+        from .dumpers import DumpMixin as V1_DumpMixin
+        base_cls = V1_DumpMixin
 
     try:
         return cls_to_dumper[class_or_instance]
@@ -177,7 +154,6 @@ def get_dumper(class_or_instance=None, create=True,
 
 def get_loader(class_or_instance=None, create=True,
                base_cls: T = None,
-               v1: Optional[bool] = None,
                env: bool = False) -> type[T]:
     """
     Get the loader for the class, using the following logic:
@@ -190,27 +166,15 @@ def get_loader(class_or_instance=None, create=True,
           can potentially be shared by more than one dataclass.
 
     """
-    if v1 is None:
-        v1 = getattr(get_meta(class_or_instance), 'v1', False)
-
-    if v1:
-        cls_to_loader = CLASS_TO_V1_LOADER
-        if base_cls is None:
-            if env:
-                from .v1._env import LoadMixin as V1_EnvLoadMixin
-                base_cls = V1_EnvLoadMixin
-            else:
-                from .v1.loaders import LoadMixin as V1_LoadMixin
-                base_cls = V1_LoadMixin
-    else:
-        cls_to_loader = CLASS_TO_LOADER
-        if base_cls is None:
-            if env:
-                from .environ.loaders import EnvLoader
-                base_cls = EnvLoader
-            else:
-                from .loaders import LoadMixin
-                base_cls = LoadMixin
+    # TODO
+    cls_to_loader = CLASS_TO_V1_LOADER
+    if base_cls is None:
+        if env:
+            from ._env import LoadMixin as V1_EnvLoadMixin
+            base_cls = V1_EnvLoadMixin
+        else:
+            from .loaders import LoadMixin as V1_LoadMixin
+            base_cls = V1_LoadMixin
 
     try:
         return cls_to_loader[class_or_instance]

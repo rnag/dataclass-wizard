@@ -3,7 +3,7 @@ from os.path import isabs
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from ..lazy_imports import dotenv
+from .lazy_imports import dotenv
 
 if TYPE_CHECKING:
     from ._path_util import Environ, SecretsFileMapping
