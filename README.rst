@@ -1,3 +1,9 @@
+.. admonition:: Legacy API (v0)
+
+   This documentation covers the legacy **v0** API.
+   New projects should use the **v1** API instead.
+
+   See the v1 documentation here: https://dcw.ritviknag.com/en/latest/
 
 .. image:: https://raw.githubusercontent.com/rnag/dataclass-wizard/main/images/logo.png
    :alt: Dataclass Wizard logo

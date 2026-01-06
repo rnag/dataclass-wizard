@@ -1,9 +1,3 @@
-.. warning::
-
-   This documentation covers the legacy **v0** API.
-   New projects should use the **v1** API instead.
-
-
 .. include:: readme.rst
 
 ..
