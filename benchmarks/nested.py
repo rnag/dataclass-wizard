@@ -279,12 +279,12 @@ def test_dump(request, data, n):
     [ RESULTS]
     platform darwin -- Python 3.13.11, pytest-8.3.4, pluggy-1.6.0
 
-    benchmarks.nested.nested - [INFO] dataclass-wizard     0.097571
-    benchmarks.nested.nested - [INFO] asdict (dataclasses) 0.617322
-    benchmarks.nested.nested - [INFO] dataclass-factory    0.214060
-    benchmarks.nested.nested - [INFO] dataclasses-json     5.193261
-    benchmarks.nested.nested - [INFO] mashumaro            0.077272
-    benchmarks.nested.nested - [INFO] pydantic             0.177479
+    benchmarks.nested.nested - [INFO] dataclass-wizard     0.093090
+    benchmarks.nested.nested - [INFO] asdict (dataclasses) 0.621261
+    benchmarks.nested.nested - [INFO] dataclass-factory    0.209332
+    benchmarks.nested.nested - [INFO] dataclasses-json     5.172026
+    benchmarks.nested.nested - [INFO] mashumaro            0.074544
+    benchmarks.nested.nested - [INFO] pydantic             0.174419
     benchmarks.nested.nested - [INFO] jsons                40.467886
     benchmarks.nested.nested - [INFO] jsons (strict)       36.541698
     """

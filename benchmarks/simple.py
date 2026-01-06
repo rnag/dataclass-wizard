@@ -140,16 +140,16 @@ def test_dump(data, n):
     [ RESULTS]
     platform darwin -- Python 3.13.11, pytest-8.3.4, pluggy-1.6.0
 
-    benchmarks.simple.simple - [INFO] dataclass-wizard     0.011408
-    benchmarks.simple.simple - [INFO] asdict (dataclasses) 0.086086
-    benchmarks.simple.simple - [INFO] dataclass-factory    0.071082
-    benchmarks.simple.simple - [INFO] dataclasses-json     1.255266
-    benchmarks.simple.simple - [INFO] jsons                6.014154
+    benchmarks.simple.simple - [INFO] dataclass-wizard     0.010870
+    benchmarks.simple.simple - [INFO] asdict (dataclasses) 0.085224
+    benchmarks.simple.simple - [INFO] dataclass-factory    0.070084
+    benchmarks.simple.simple - [INFO] dataclasses-json     1.272380
+    benchmarks.simple.simple - [INFO] jsons                5.980036
     benchmarks.simple.simple - [INFO] dacite (not applicable) -- skipped
-    benchmarks.simple.simple - [INFO] pydantic             0.068561
-    benchmarks.simple.simple - [INFO] marshmallow          0.000523
-    benchmarks.simple.simple - [INFO] attrs                0.049471
-    benchmarks.simple.simple - [INFO] mashumaro            0.009123
+    benchmarks.simple.simple - [INFO] pydantic             0.079050
+    benchmarks.simple.simple - [INFO] marshmallow          0.000489
+    benchmarks.simple.simple - [INFO] attrs                0.054118
+    benchmarks.simple.simple - [INFO] mashumaro            0.008982
     """
 
     c1 = MyClassWizard.from_dict(data)

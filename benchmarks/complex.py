@@ -281,12 +281,12 @@ def test_dump(request, data, data_2, data_dacite, n):
     [ RESULTS]
     platform darwin -- Python 3.13.11, pytest-8.3.4, pluggy-1.6.0
 
-    benchmarks.complex.complex - [INFO] dataclass-wizard     0.281029
-    benchmarks.complex.complex - [INFO] asdict (dataclasses) 1.754579
-    benchmarks.complex.complex - [INFO] dataclass-factory    0.835645
-    benchmarks.complex.complex - [INFO] dataclasses-json     11.026273
-    benchmarks.complex.complex - [INFO] mashumaro            0.246893
-    benchmarks.complex.complex - [INFO] pydantic             0.267847
+    benchmarks.complex.complex - [INFO] dataclass-wizard     0.272646
+    benchmarks.complex.complex - [INFO] asdict (dataclasses) 1.726522
+    benchmarks.complex.complex - [INFO] dataclass-factory    0.802548
+    benchmarks.complex.complex - [INFO] dataclasses-json     11.040730
+    benchmarks.complex.complex - [INFO] mashumaro            0.246202
+    benchmarks.complex.complex - [INFO] pydantic             0.267089
     benchmarks.complex.complex - [INFO] jsons                35.417559
     benchmarks.complex.complex - [INFO] jsons (strict)       30.918420
     """
