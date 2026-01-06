@@ -62,7 +62,8 @@ def v1_safe_get(data, path, raise_):
 
 
 def v1_env_safe_get(data, first_key, path, raise_):
-    from ..v1.type_conv import as_collection_v1
+    # TODO
+    from ..type_conv import as_collection_v1
 
     current_data = data
 
