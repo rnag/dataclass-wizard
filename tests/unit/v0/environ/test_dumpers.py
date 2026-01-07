@@ -1,6 +1,6 @@
 import os
 
-from dataclass_wizard import EnvWizard, json_field
+from dataclass_wizard.v0 import EnvWizard, json_field
 
 
 def test_dump_with_excluded_fields_and_skip_defaults():

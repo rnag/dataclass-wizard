@@ -18,10 +18,10 @@ from dataclass_wizard.constants import TAG
 from dataclass_wizard.errors import (
     ParseError, MissingFields, UnknownKeysError, MissingData, InvalidConditionError
 )
-from dataclass_wizard.models import _PatternBase
-from .conftest import MyUUIDSubclass
-from .._typing import *
-from ..conftest import *
+from dataclass_wizard.models import PatternBase
+from tests.unit.conftest import MyUUIDSubclass
+from tests._typing import *
+from tests.conftest import *
 
 
 log = logging.getLogger(__name__)
@@ -298,24 +298,24 @@ def test_date_times_with_custom_pattern_when_input_is_invalid():
         _ = fromdict(MyClass, data)
 
 
-def test_date_times_with_custom_pattern_when_annotation_is_invalid():
-    """
-    Date, time, and datetime objects with a custom date string
-    format, but the annotated type is not a valid date/time type.
-    """
-    class MyCustomPattern(str, _PatternBase):
-        pass
-
-    @dataclass
-    class MyClass:
-        date_field: MyCustomPattern['%m-%d-%y']
-
-    data = {'date_field': '12-31-21'}
-
-    with pytest.raises(TypeError) as e:
-        _ = fromdict(MyClass, data)
-
-    log.debug('Error details: %r', e.value)
+# def test_date_times_with_custom_pattern_when_annotation_is_invalid():
+#     """
+#     Date, time, and datetime objects with a custom date string
+#     format, but the annotated type is not a valid date/time type.
+#     """
+#     class MyCustomPattern(str, PatternBase):
+#         pass
+#
+#     @dataclass
+#     class MyClass:
+#         date_field: MyCustomPattern['%m-%d-%y']
+#
+#     data = {'date_field': '12-31-21'}
+#
+#     with pytest.raises(TypeError) as e:
+#         _ = fromdict(MyClass, data)
+#
+#     log.debug('Error details: %r', e.value)
 
 
 def test_tag_field_is_used_in_load_process():

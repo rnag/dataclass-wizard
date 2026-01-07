@@ -3,7 +3,7 @@ from dataclasses import MISSING
 
 import pytest
 
-from dataclass_wizard.environ.lookups import *
+from dataclass_wizard.v0.environ.lookups import *
 
 
 @pytest.mark.parametrize(

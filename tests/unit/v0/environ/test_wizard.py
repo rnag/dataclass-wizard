@@ -9,11 +9,11 @@ from typing import ClassVar, List, Dict, Union, DefaultDict, Set
 
 import pytest
 
-from dataclass_wizard import EnvWizard, env_field
-from dataclass_wizard.errors import MissingVars, ParseError, ExtraData
-import dataclass_wizard.bases_meta
+from dataclass_wizard.v0 import EnvWizard, env_field
+from dataclass_wizard.v0.errors import MissingVars, ParseError, ExtraData
+import dataclass_wizard.v0.bases_meta
 
-from ..._typing import *
+from tests._typing import *
 
 
 log = logging.getLogger(__name__)

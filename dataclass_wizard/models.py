@@ -754,6 +754,46 @@ if PY314_OR_ABOVE:
             doc,
         )
 
+    # noinspection PyShadowingBuiltins
+    def skip_if_field(
+        condition,
+        *,
+        default=MISSING,
+        default_factory=MISSING,
+        init=True,
+        repr=True,
+        hash=None,
+        compare=True,
+        metadata=None,
+        kw_only=MISSING,
+        doc=None,
+    ):
+
+        if default is not MISSING and default_factory is not MISSING:
+            raise ValueError("cannot specify both default and default_factory")
+
+        if metadata is None:
+            metadata = {}
+
+        metadata["__skip_if__"] = condition
+
+        return Field(
+            None,
+            None,
+            None,
+            False,
+            None,
+            default,
+            default_factory,
+            init,
+            repr,
+            hash,
+            compare,
+            metadata,
+            kw_only,
+            doc,
+        )
+
     class Field(_Field):
 
         __slots__ = ("load_alias", "dump_alias", "env_vars", "skip", "path")
@@ -861,6 +901,44 @@ elif PY310_OR_ABOVE:  # pragma: no cover
             kw_only,
         )
 
+    # noinspection PyShadowingBuiltins
+    def skip_if_field(
+        condition,
+        *,
+        default=MISSING,
+        default_factory=MISSING,
+        init=True,
+        repr=True,
+        hash=None,
+        compare=True,
+        metadata=None,
+        kw_only=MISSING
+    ):
+
+        if default is not MISSING and default_factory is not MISSING:
+            raise ValueError("cannot specify both default and default_factory")
+
+        if metadata is None:
+            metadata = {}
+
+        metadata["__skip_if__"] = condition
+
+        return Field(
+            None,
+            None,
+            None,
+            False,
+            None,
+            default,
+            default_factory,
+            init,
+            repr,
+            hash,
+            compare,
+            metadata,
+            kw_only,
+        )
+
     class Field(_Field):
 
         __slots__ = ('load_alias',
@@ -935,6 +1013,42 @@ else:  # pragma: no cover
             load,
             skip,
             all,
+            default,
+            default_factory,
+            init,
+            repr,
+            hash,
+            compare,
+            metadata,
+        )
+
+    # noinspection PyShadowingBuiltins
+    def skip_if_field(
+        condition,
+        *,
+        default=MISSING,
+        default_factory=MISSING,
+        init=True,
+        repr=True,
+        hash=None,
+        compare=True,
+        metadata=None
+    ):
+
+        if default is not MISSING and default_factory is not MISSING:
+            raise ValueError("cannot specify both default and default_factory")
+
+        if metadata is None:
+            metadata = {}
+
+        metadata["__skip_if__"] = condition
+
+        return Field(
+            None,
+            None,
+            None,
+            False,
+            None,
             default,
             default_factory,
             init,

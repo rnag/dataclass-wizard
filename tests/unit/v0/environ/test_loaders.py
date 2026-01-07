@@ -6,8 +6,8 @@ from typing import Tuple, NamedTuple, List
 
 import pytest
 
-from dataclass_wizard import EnvWizard
-from dataclass_wizard.environ.loaders import EnvLoader
+from dataclass_wizard.v0 import EnvWizard
+from dataclass_wizard.v0.environ.loaders import EnvLoader
 
 
 def test_load_to_bytes():

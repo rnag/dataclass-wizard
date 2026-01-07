@@ -11,11 +11,11 @@ Sample Usage:
     >>> from datetime import datetime
     >>> from typing import Optional
     >>>
-    >>> from dataclass_wizard import JSONSerializable, property_wizard
+    >>> from dataclass_wizard import JSONWizard, property_wizard
     >>>
     >>>
     >>> @dataclass
-    >>> class MyClass(JSONSerializable, metaclass=property_wizard):
+    >>> class MyClass(JSONWizard, metaclass=property_wizard):
     >>>
     >>>     my_str: Optional[str]
     >>>     list_of_int: list[int] = field(default_factory=list)
@@ -64,7 +64,7 @@ Sample Usage:
 For full documentation and more advanced usage, please see
 <https://dcw.ritviknag.com>.
 
-:copyright: (c) 2021-2025 by Ritvik Nag.
+:copyright: (c) 2021-2026 by Ritvik Nag.
 :license: Apache 2.0, see LICENSE for more details.
 """
 
@@ -148,7 +148,7 @@ from ._env import EnvWizard, env_config
 from .log import LOG
 from .models import (Alias, AliasPath, CatchAll, Container, Env,
                      SkipIf, SkipIfNone,
-                     # skip_if_field,
+                     skip_if_field,
                      AwarePattern, AwareTimePattern,AwareDateTimePattern,
                      UTCPattern, UTCTimePattern, UTCDateTimePattern,
                      Pattern, DatePattern, TimePattern, DateTimePattern,

@@ -14,8 +14,8 @@ from dataclass_wizard import *
 from dataclass_wizard.class_helper import get_meta
 from dataclass_wizard.constants import TAG
 from dataclass_wizard.errors import ParseError
-from ..conftest import *
-from .._typing import *
+from tests.conftest import *
+from tests._typing import *
 
 
 log = logging.getLogger(__name__)
