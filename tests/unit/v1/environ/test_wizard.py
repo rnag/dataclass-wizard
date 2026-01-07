@@ -13,8 +13,7 @@ import dataclass_wizard.bases_meta
 from dataclass_wizard.class_helper import get_meta
 from dataclass_wizard.constants import PY311_OR_ABOVE
 from dataclass_wizard.errors import MissingVars, ParseError, MissingFields
-from dataclass_wizard import EnvWizard as EnvWizardV0, DataclassWizard
-from dataclass_wizard.v1 import Alias, EnvWizard, Env
+from dataclass_wizard import Alias, Env, EnvWizard, DataclassWizard
 from tests._typing import PY310_OR_ABOVE
 
 from ..utils_env import from_env, envsafe
@@ -24,15 +23,6 @@ log = getLogger(__name__)
 
 # quick access to the `tests/unit` directory
 here = Path(__file__).parent
-
-
-def test_v1_enabled_with_v0_base_class_raises_error():
-    with pytest.raises(TypeError, match=r'MyClass is using Meta\(v1=True\) but does not inherit from `dataclass_wizard.v1.EnvWizard`.'):
-        class MyClass(EnvWizardV0):
-            class _(EnvWizardV0.Meta):
-                v1 = True
-
-            my_value: str
 
 
 @pytest.mark.skipif(not PY310_OR_ABOVE, reason='Requires Python 3.10 or higher')

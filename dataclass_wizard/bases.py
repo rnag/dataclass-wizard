@@ -134,21 +134,6 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
     # Class attribute which enables us to detect a `JSONWizard.Meta` subclass.
     __is_inner_meta__ = False
 
-    # Enable Debug mode for more verbose log output.
-    #
-    # This setting can be a `bool`, `int`, or `str`:
-    # - `True` enables debug mode with default verbosity.
-    # - A `str` or `int` specifies the minimum log level (e.g., 'DEBUG', 10).
-    #
-    # Debug mode provides additional helpful log messages, including:
-    # - Logging unknown JSON keys encountered during `from_dict` or `from_json`.
-    # - Detailed error messages for invalid types during unmarshalling.
-    #
-    # Note: Enabling Debug mode may have a minor performance impact.
-    #
-    # @deprecated and will be removed in V1 - Use `v1_debug` instead.
-    debug_enabled: ClassVar['bool | int | str'] = False
-
     # When enabled, a specified Meta config for the main dataclass (i.e. the
     # class on which `from_dict` and `to_dict` is called) will cascade down
     # and be merged with the Meta config for each *nested* dataclass; note
@@ -470,8 +455,7 @@ class AbstractEnvMeta(metaclass=ABCOrAndMeta):
     # attributes which will *not* be merged.
     __special_attrs__ = frozenset({
         'recursive',
-        'debug_enabled',
-        'env_var_to_field',
+        'v1_debug',
         'v1_field_to_env_load',
         'v1_field_to_alias_dump',
         'tag',
@@ -479,19 +463,6 @@ class AbstractEnvMeta(metaclass=ABCOrAndMeta):
 
     # Class attribute which enables us to detect a `EnvWizard.Meta` subclass.
     __is_inner_meta__ = False
-
-    # True to enable Debug mode for additional (more verbose) log output.
-    #
-    # For example, a message is logged with the environment variable that is
-    # mapped to each attribute.
-    #
-    # This also results in more helpful messages during error handling, which
-    # can be useful when debugging the cause when values are an invalid type
-    # (i.e. they don't match the annotation for the field) when unmarshalling
-    # a environ variable values to attributes in an EnvWizard subclass.
-    #
-    # Note there is a minor performance impact when DEBUG mode is enabled.
-    debug_enabled: ClassVar[bool] = False
 
     # When enabled, a specified Meta config for the main dataclass (i.e. the
     # class on which `from_dict` and `to_dict` is called) will cascade down

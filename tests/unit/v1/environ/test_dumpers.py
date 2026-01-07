@@ -1,4 +1,4 @@
-from dataclass_wizard.v1 import Alias, EnvWizard
+from dataclass_wizard import Alias, EnvWizard
 
 from ..utils_env import from_env
 

@@ -173,7 +173,7 @@ def load_func_for_dataclass(
     has_post_init = hasattr(cls, _POST_INIT_NAME)
 
     # Get the loader for the class, or create a new one as needed.
-    cls_loader = get_loader(cls, base_cls=loader_cls or LoadMixin, v1=True)
+    cls_loader = get_loader(cls, base_cls=loader_cls or LoadMixin)
 
     cls_name = cls.__name__
 

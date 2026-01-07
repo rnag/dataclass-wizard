@@ -5,9 +5,9 @@ from typing import Optional, Union, NamedTuple, Literal
 
 import pytest
 
-from dataclass_wizard import DataclassWizard, CatchAll
+from dataclass_wizard import (Alias, CatchAll, DataclassWizard,
+                              EnvWizard, env_config, AliasPath)
 from dataclass_wizard.errors import ParseError, MissingVars, MissingFields
-from dataclass_wizard.v1 import Alias, EnvWizard, env_config, AliasPath
 from ..models import TN, CN, EnvContTF, EnvContTT, EnvContAllReq, Sub2
 
 from ..utils_env import envsafe, from_env, assert_unordered_equal
@@ -80,7 +80,6 @@ def test_named_tuples_with_optionals_in_container():
 
     class MyClass(EnvWizard):
         class _(EnvWizard.Meta):
-            # v1 = True
             v1_load_case = 'FIELD_FIRST'
 
         nt_all_opts: dict[str, set[NTAllOptionals]]
@@ -186,17 +185,15 @@ def test_decode_date_and_datetime_from_numeric_and_string_timestamp_and_iso_form
     assert c1.to_dict() == c2.to_dict() == c3.to_dict() == expected_dict
 
 
-def test_future_warning_with_deprecated_meta_field__is_logged():
-    """Deprecated field `field_to_env_var` usage in `v1` opt-in should show user a warning."""
+def test_field_to_env_load():
+    """Meta field `v1_field_to_env_load` usage."""
 
-    with pytest.warns(FutureWarning, match=r"`field_to_env_var` is deprecated"):
-        class MyClass(EnvWizard):
-            class _(EnvWizard.Meta):
-                field_to_env_var = {'my_value': 'MyVal', 'other_key': ('INT1', 'INT2')}
+    class MyClass(EnvWizard):
+        class _(EnvWizard.Meta):
+            v1_field_to_env_load = {'my_value': 'MyVal', 'other_key': ('INT1', 'INT2')}
 
-            my_value: float
-            other_key: int = 3
-
+        my_value: float
+        other_key: int = 3
 
     env = {'MyVal': '1.23', 'INT2': '7.0'}
 

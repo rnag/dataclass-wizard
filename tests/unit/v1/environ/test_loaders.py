@@ -5,8 +5,7 @@ from typing import Tuple, NamedTuple, List
 
 import pytest
 
-from dataclass_wizard import DataclassWizard
-from dataclass_wizard.v1 import EnvWizard
+from dataclass_wizard import DataclassWizard, EnvWizard
 
 from ..utils_env import from_env
 
