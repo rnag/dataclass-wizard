@@ -287,12 +287,11 @@ class MissingFields(JSONWizardError):
         normalized_json_keys = [normalize(key) for key in obj]
         if (is_dataclass(self.parent_cls) and
             next((f for f in self.missing_fields if normalize(f) in normalized_json_keys), None)):
-            from .enums import LetterCase
-            from .v1.enums import KeyCase
+            from .enums import KeyCase
             from .loader_selection import get_loader
 
             key_transform = get_loader(self.parent_cls).transform_json_field
-            if isinstance(key_transform, (LetterCase, KeyCase)):
+            if isinstance(key_transform, KeyCase):
                 if key_transform.value is None:
                     key_transform = f'{key_transform.name}'
                 else:
@@ -303,10 +302,9 @@ class MissingFields(JSONWizardError):
             self.kwargs['Key Transform'] = key_transform
             self.kwargs['Resolution'] = 'For more details, please see https://github.com/rnag/dataclass-wizard/issues/54'
 
-        if v1:
-            self.kwargs['Resolution'] = ('Ensure that all required fields are provided in the input. '
-                                         'For more details, see:\n'
-                                         '    https://github.com/rnag/dataclass-wizard/discussions/167')
+        self.kwargs['Resolution'] = ('Ensure that all required fields are provided in the input. '
+                                     'For more details, see:\n'
+                                     '    https://github.com/rnag/dataclass-wizard/discussions/167')
 
         if self.base_error is not None:
             e = f'\n  error: {self.base_error!s}'

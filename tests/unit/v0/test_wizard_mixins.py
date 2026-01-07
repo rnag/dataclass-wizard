@@ -5,8 +5,8 @@ from typing import List, Optional, Dict
 import pytest
 from pytest_mock import MockerFixture
 
-from dataclass_wizard import Container
-from dataclass_wizard.wizard_mixins import (
+from dataclass_wizard.v0 import Container
+from dataclass_wizard.v0.wizard_mixins import (
     JSONListWizard, JSONFileWizard, TOMLWizard, YAMLWizard
 )
 from .conftest import SampleClass
@@ -34,7 +34,7 @@ class Inner:
 
 @pytest.fixture
 def mock_open(mocker: MockerFixture):
-    return mocker.patch('dataclass_wizard.wizard_mixins.open')
+    return mocker.patch('dataclass_wizard.v0.wizard_mixins.open')
 
 
 def test_json_list_wizard_methods():
@@ -87,7 +87,7 @@ def test_yaml_wizard_methods(mocker: MockerFixture):
     """
 
     # Patch open() to return a file-like object which returns our string data.
-    m = mocker.patch('dataclass_wizard.wizard_mixins.open',
+    m = mocker.patch('dataclass_wizard.v0.wizard_mixins.open',
                      mocker.mock_open(read_data=yaml_data))
 
     filename = 'my_file.yaml'
@@ -121,7 +121,7 @@ def test_yaml_wizard_methods(mocker: MockerFixture):
 def test_yaml_wizard_list_to_json():
     """Test and coverage the `list_to_json` method in YAMLWizard."""
     @dataclass
-    class MyClass(YAMLWizard, dump_case='SNAKE'):
+    class MyClass(YAMLWizard, key_transform='SNAKE'):
         my_str: str
         my_dict: Dict[int, str]
 
@@ -148,7 +148,7 @@ def test_yaml_wizard_for_branch_coverage(mocker: MockerFixture):
 
     # This is to coverage the `if` condition in the `__init_subclass__`
     @dataclass
-    class MyClass(YAMLWizard, dump_case=None):
+    class MyClass(YAMLWizard, key_transform=None):
         ...
 
     # from_yaml: To cover the case of passing in `decoder`
@@ -195,7 +195,7 @@ my_list = ["hello, world!", "123"]
     """
 
     # Mock open to return the TOML data as a string directly.
-    mock_open = mocker.patch("dataclass_wizard.wizard_mixins.open", mocker.mock_open(read_data=toml_data))
+    mock_open = mocker.patch("dataclass_wizard.v0.wizard_mixins.open", mocker.mock_open(read_data=toml_data))
 
     filename = 'my_file.toml'
 
@@ -212,7 +212,7 @@ my_list = ["hello, world!", "123"]
     # Test writing to TOML file
     # Mock open for writing to the TOML file.
     mock_open_write = mocker.mock_open()
-    mocker.patch("dataclass_wizard.wizard_mixins.open", mock_open_write)
+    mocker.patch("dataclass_wizard.v0.wizard_mixins.open", mock_open_write)
 
     obj.to_toml_file(filename)
 
@@ -222,7 +222,7 @@ my_list = ["hello, world!", "123"]
 def test_toml_wizard_list_to_toml():
     """Test and cover the `list_to_toml` method in TOMLWizard."""
     @dataclass
-    class MyClass(TOMLWizard, dump_case='SNAKE'):
+    class MyClass(TOMLWizard, key_transform='SNAKE'):
         my_str: str
         my_dict: Dict[str, str]
 
@@ -246,7 +246,7 @@ def test_toml_wizard_for_branch_coverage(mocker: MockerFixture):
 
     # This is to cover the `if` condition in the `__init_subclass__`
     @dataclass
-    class MyClass(TOMLWizard, dump_case=None):
+    class MyClass(TOMLWizard, key_transform=None):
         ...
 
     # from_toml: To cover the case of passing in `decoder`

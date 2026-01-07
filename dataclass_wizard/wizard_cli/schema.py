@@ -60,6 +60,7 @@ from collections.abc import Iterable
 from dataclasses import dataclass, field, InitVar
 from datetime import date, datetime, time
 from enum import Enum
+from numbers import Number
 from pathlib import Path
 from typing import Callable, Any, Optional, TypeVar, Type, ClassVar
 from typing import DefaultDict, Set, List
@@ -67,14 +68,14 @@ from typing import (
     Union, Dict, Sequence
 )
 
+from dataclass_wizard.models import UTC
 from .. import property_wizard
 from ..constants import PACKAGE_NAME
 from ..class_helper import get_class_name
-from ..type_def import PyDeque, JSONList, JSONObject, JSONValue, T
+from ..type_def import PyDeque, JSONList, JSONObject, JSONValue, T, NUMBERS
 from ..utils.string_conv import to_snake_case, to_pascal_case
 # noinspection PyProtectedMember
-from ..utils.type_conv import TRUTHY_VALUES
-from ..utils.type_conv import as_datetime, as_date, as_time
+from ..type_conv import TRUTHY_VALUES
 
 
 # Some unconstrained type variables.  These are used by the container types.
@@ -93,6 +94,76 @@ JSONBlobType = Union[JSONList, JSONObject]
 PyDataTypeOrSeq = Union['PyDataType', Sequence['PyDataType']]
 TypeContainerElements = Union[PyDataTypeOrSeq,
                               'PyDataclassGenerator', 'PyListGenerator']
+
+
+def _as_datetime(o: 'str | Number | datetime',
+                 base_type=datetime, default=None, raise_=True):
+    # noinspection PyBroadException
+    try:
+        # We can assume that `o` is a string, as generally this will be the
+        # case. Also, :func:`fromisoformat` does an instance check separately.
+        return base_type.fromisoformat(o.replace('Z', '+00:00', 1))
+    except Exception:
+        t = type(o)
+        if t is str:
+            # Minor performance fix: if it's a string, we don't need to run
+            # the other type checks.
+            if raise_:
+                raise
+        # Check `type` explicitly, because `bool` is a sub-class of `int`
+        elif t in NUMBERS:
+            # noinspection PyTypeChecker
+            return base_type.fromtimestamp(o, tz=UTC)
+        elif t is base_type:
+            return o
+        if raise_:
+            raise TypeError(f'Unsupported type, value={o!r}, type={t}')
+        return default
+
+
+def _as_date(o: 'str | Number | date',
+             base_type=date, default=None, raise_=True):
+    # noinspection PyBroadException
+    try:
+        # We can assume that `o` is a string, as generally this will be the
+        # case. Also, :func:`fromisoformat` does an instance check separately.
+        return base_type.fromisoformat(o)
+    except Exception:
+        t = type(o)
+        if t is str:
+            # Minor performance fix: if it's a string, we don't need to run
+            # the other type checks.
+            if raise_:
+                raise
+        # Check `type` explicitly, because `bool` is a sub-class of `int`
+        elif t in NUMBERS:
+            # noinspection PyTypeChecker
+            return base_type.fromtimestamp(o)
+        elif t is base_type:
+            return o
+        if raise_:
+            raise TypeError(f'Unsupported type, value={o!r}, type={t}')
+        return default
+
+
+def _as_time(o: 'str | time', base_type=time, default=None, raise_=True):
+    # noinspection PyBroadException
+    try:
+        # We can assume that `o` is a string, as generally this will be the
+        # case. Also, :func:`fromisoformat` does an instance check separately.
+        return base_type.fromisoformat(o.replace('Z', '+00:00', 1))
+    except Exception:
+        t = type(o)
+        if t is str:
+            # Minor performance fix: if it's a string, we don't need to run
+            # the other type checks.
+            if raise_:
+                raise
+        elif t is base_type:
+            return o
+        if raise_:
+            raise TypeError(f'Unsupported type, value={o!r}, type={t}')
+        return default
 
 
 @dataclass
@@ -631,7 +702,7 @@ def possible_types_for_string_value(string: str) -> PyDataTypeOrSeq:
     exc_types = TypeError, ValueError
 
     try:
-        _ = as_date(string)
+        _ = _as_date(string)
         return PyDataType.DATE
     except exc_types:
         pass
@@ -662,13 +733,13 @@ def possible_types_for_string_value(string: str) -> PyDataTypeOrSeq:
         return possible_types
 
     try:
-        _ = as_time(string)
+        _ = _as_time(string)
         return PyDataType.TIME
     except exc_types:
         pass
 
     try:
-        _ = as_datetime(string)
+        _ = _as_datetime(string)
         return PyDataType.DATETIME
     except exc_types:
         pass

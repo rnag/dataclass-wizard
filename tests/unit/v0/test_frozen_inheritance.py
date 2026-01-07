@@ -1,5 +1,5 @@
 from dataclasses import dataclass, is_dataclass
-from dataclass_wizard import JSONWizard
+from dataclass_wizard.v0 import JSONWizard
 
 
 def test_jsonwizard_is_not_a_dataclass_mixin():

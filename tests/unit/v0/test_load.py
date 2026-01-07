@@ -1,5 +1,7 @@
 """
-Tests for the `loaders` module.
+Tests for the `loaders` module, but more importantly for the `parsers` module.
+
+Note: I might refactor this into a separate `test_parsers.py` as time permits.
 """
 import logging
 from abc import ABC
@@ -7,22 +9,26 @@ from collections import namedtuple, defaultdict, deque
 from dataclasses import dataclass, field
 from datetime import datetime, date, time, timedelta
 from typing import (
-    List, Optional, Union, Tuple, Dict, NamedTuple, DefaultDict,
-    Set, FrozenSet, Annotated, Literal, Sequence, MutableSequence, Collection
+    List, Optional, Union, Tuple, Dict, NamedTuple, Type, DefaultDict,
+    Set, FrozenSet, Generic, Annotated, Literal, Sequence, MutableSequence, Collection
 )
 
 import pytest
 
-from dataclass_wizard import *
-from dataclass_wizard.constants import TAG
-from dataclass_wizard.errors import (
+from dataclass_wizard.v0 import *
+from dataclass_wizard.v0.constants import TAG
+from dataclass_wizard.v0.errors import (
     ParseError, MissingFields, UnknownKeysError, MissingData, InvalidConditionError
 )
-from dataclass_wizard.models import _PatternBase
-from .conftest import MyUUIDSubclass
-from .._typing import *
-from ..conftest import *
+from dataclass_wizard.v0.models import Extras, _PatternBase
+from dataclass_wizard.v0.parsers import (
+    OptionalParser, Parser, IdentityParser, SingleArgParser
+)
+from dataclass_wizard.v0.type_def import NoneType, T
 
+from .conftest import MyUUIDSubclass
+from ..conftest import *
+from ..._typing import *
 
 log = logging.getLogger(__name__)
 
@@ -1654,6 +1660,66 @@ def test_named_tuple_without_type_hinting(input, expectation, expected):
             expected = MyNamedTuple(**expected)
 
         assert result.my_nt == expected
+
+
+@pytest.mark.parametrize(
+    'input,expected',
+    [
+        (None, True),
+        (NoneType, False),
+        ('hello world', True),
+        (123, False),
+    ]
+)
+def test_optional_parser_contains(input, expected):
+    """
+    Test case for :meth:`OptionalParser.__contains__`, added for code
+    coverage.
+
+    """
+    base_type: Type[T] = str
+    mock_parser = Parser(None, None, None, lambda: None)
+    optional_parser = OptionalParser(
+        None, None, base_type, lambda *args: mock_parser)
+
+    actual = input in optional_parser
+    assert actual == expected
+
+
+def test_single_arg_parser_without_hook():
+    """
+    Test case for `SingleArgParser` when the hook function is missing or None,
+    added for code coverage.
+
+    """
+    class MyClass(Generic[T]):
+        pass
+
+    parser = SingleArgParser(None, None, MyClass, None)
+
+    c = MyClass()
+    assert parser(c) == c
+
+
+def test_parser_with_unsupported_type():
+    """
+    Test case for :meth:`LoadMixin.get_parser_for_annotation` with an unknown
+    or unsupported type, added for code coverage.
+
+    """
+    class MyClass(Generic[T]):
+        pass
+
+    extras: Extras = {}
+    mock_parser = LoadMixin.get_parser_for_annotation(None, MyClass, extras)
+
+    assert type(mock_parser) is IdentityParser
+
+    c = MyClass()
+    assert mock_parser(c) == c
+
+    # with pytest.raises(ParseError):
+    #     _ = mock_parser('hello world')
 
 
 def test_load_with_inner_model_when_data_is_null():

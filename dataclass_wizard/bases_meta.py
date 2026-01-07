@@ -329,8 +329,6 @@ class BaseEnvWizardMeta(AbstractEnvMeta):
             # Copy over global defaults to the :class:`AbstractMeta`
             for attr in AbstractEnvMeta.fields_to_merge:
                 setattr(AbstractEnvMeta, attr, getattr(cls, attr, None))
-            if cls.field_to_env_var:
-                AbstractEnvMeta.field_to_env_var = cls.field_to_env_var
             if cls.v1_field_to_alias_dump:
                 AbstractEnvMeta.v1_field_to_alias_dump = cls.v1_field_to_alias_dump
             if cls.v1_field_to_env_load:

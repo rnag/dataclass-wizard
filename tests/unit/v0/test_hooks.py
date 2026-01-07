@@ -5,9 +5,9 @@ import pytest
 from dataclasses import dataclass
 from ipaddress import IPv4Address
 
-from dataclass_wizard import JSONWizard, LoadMeta
-from dataclass_wizard.errors import ParseError
-from dataclass_wizard import DumpMixin, LoadMixin
+from dataclass_wizard.v0 import JSONWizard, LoadMeta
+from dataclass_wizard.v0.errors import ParseError
+from dataclass_wizard.v0 import DumpMixin, LoadMixin
 
 
 def test_register_type_ipv4address_roundtrip():
@@ -50,18 +50,19 @@ def test_ipv4address_without_hook_raises_parse_error():
 
 def test_ipv4address_hooks_with_load_and_dump_mixins_roundtrip():
     @dataclass
-    class Foo(JSONWizard):
+    class Foo(JSONWizard, DumpMixin, LoadMixin):
         c: IPv4Address | None = None
 
-    def load_to_ipv4_address(o):
-        return IPv4Address(o)
+        @classmethod
+        def load_to_ipv4_address(cls, o, *_):
+            return IPv4Address(o)
 
-    def dump_from_ipv4_address(o):
-        return str(o)
+        @classmethod
+        def dump_from_ipv4_address(cls, o, *_):
+            return str(o)
 
-    Foo.register_type(IPv4Address,
-                      load=load_to_ipv4_address,
-                      dump=dump_from_ipv4_address)
+    Foo.register_load_hook(IPv4Address, Foo.load_to_ipv4_address)
+    Foo.register_dump_hook(IPv4Address, Foo.dump_from_ipv4_address)
 
     data = {"c": "127.0.0.1"}
 

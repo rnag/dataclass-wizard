@@ -2,7 +2,7 @@ import pytest
 
 from typing import Literal
 
-from dataclass_wizard.parsers import LiteralParser
+from dataclass_wizard.v0.parsers import LiteralParser
 
 
 class TestLiteralParser:

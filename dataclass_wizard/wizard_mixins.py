@@ -107,14 +107,13 @@ class TOMLWizard:
         >>>     ...
 
     """
-    def __init_subclass__(cls): # key_transform=LetterCase.NONE):
+    def __init_subclass__(cls, dump_case=None):
         """Allow easy setup of common config, such as key casing transform."""
         # Only add the key transform if Meta config has not been specified
         # for the dataclass.
         # TODO
-        ...
-        # if key_transform and cls not in _META:
-        #     DumpMeta(key_transform=key_transform).bind_to(cls)
+        if dump_case and cls not in _META:
+            DumpMeta(v1_case=dump_case).bind_to(cls)
 
     @classmethod
     def from_toml(cls,
