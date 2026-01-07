@@ -1,5 +1,6 @@
 from __future__ import annotations
-from logging import getLogger, Logger, StreamHandler, DEBUG
+
+from logging import getLogger, StreamHandler, DEBUG
 
 from .constants import LOG_LEVEL, PACKAGE_NAME
 
@@ -8,10 +9,7 @@ LOG = getLogger(PACKAGE_NAME)
 LOG.setLevel(LOG_LEVEL)
 
 
-def enable_library_debug_logging(
-    debug: bool | int,
-    logger: Logger = LOG,
-) -> int:
+def enable_library_debug_logging(debug, logger):
     """
     Enable debug logging for a library logger without touching global logging.
 
