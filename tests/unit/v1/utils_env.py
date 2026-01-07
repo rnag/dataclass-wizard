@@ -6,11 +6,11 @@ from collections import Counter
 from collections.abc import Mapping
 from typing import TYPE_CHECKING, TypeVar
 
-from dataclass_wizard.v1 import env_config
+from dataclass_wizard import env_config
 
 
 if TYPE_CHECKING:
-    from dataclass_wizard.v1._env import EnvInit
+    from dataclass_wizard._env import EnvInit
     T = TypeVar('T')
 
 

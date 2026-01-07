@@ -2,8 +2,7 @@ from collections import namedtuple
 from dataclasses import dataclass
 from typing import NamedTuple
 
-from dataclass_wizard import DataclassWizard
-from dataclass_wizard.v1 import EnvWizard
+from dataclass_wizard import DataclassWizard, EnvWizard
 
 from ..._typing import Required, NotRequired, ReadOnly, TypedDict
 

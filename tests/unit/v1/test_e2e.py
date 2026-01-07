@@ -7,9 +7,8 @@ from typing import Optional, Union, NamedTuple, Literal
 
 import pytest
 
-from dataclass_wizard import asdict, fromdict, DataclassWizard, CatchAll
+from dataclass_wizard import asdict, fromdict, Alias, DataclassWizard, CatchAll
 from dataclass_wizard.errors import ParseError, MissingFields
-from dataclass_wizard.v1 import Alias
 from .models import TN, CN, ContTF, ContTT, ContAllReq, Sub2, TNReq
 from .utils_env import assert_unordered_equal
 from ..._typing import *
@@ -57,7 +56,6 @@ def test_named_tuples_with_optionals_in_container():
 
     class MyClass(DataclassWizard):
         class _(DataclassWizard.Meta):
-            # v1 = True
             v1_case = 'PASCAL'
 
         nt_all_opts: dict[str, set[NTAllOptionals]]

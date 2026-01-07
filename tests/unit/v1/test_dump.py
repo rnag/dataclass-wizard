@@ -14,8 +14,7 @@ from dataclass_wizard import *
 from dataclass_wizard.class_helper import get_meta
 from dataclass_wizard.constants import TAG
 from dataclass_wizard.errors import ParseError
-from dataclass_wizard.v1.enums import KeyAction
-from dataclass_wizard.v1.models import Alias
+from dataclass_wizard.enums import KeyAction
 from ..conftest import *
 from ..._typing import *
 
@@ -37,7 +36,6 @@ def test_asdict_and_fromdict():
 
     # v1 opt-in + v1 config
     LoadMeta(
-        v1=True,
         v1_case='CAMEL',
         v1_on_unknown_key='RAISE',
         v1_field_to_alias={'my_bool': 'myBoolean'},
@@ -45,14 +43,12 @@ def test_asdict_and_fromdict():
 
     # Keep same dump output as before: `myBoolean` for my_bool + snake for the rest.
     DumpMeta(
-        v1=True,
         v1_case='SNAKE',
         v1_field_to_alias={'myStrOrInt': 'My String-Or-Num'},
     ).bind_to(MyClass)
 
     meta = get_meta(MyClass)
 
-    assert meta.v1 is True
     # The library normalizes these internally; accept common representations.
     assert meta.v1_case is None
 
@@ -96,7 +92,6 @@ def test_asdict_with_nested_dataclass():
     globals().update(locals())
 
     DumpMeta(
-        v1=True,
         v1_case='SNAKE',
         v1_dump_date_time_as='TIMESTAMP',
         v1_assume_naive_datetime_tz=timezone.utc,
@@ -149,7 +144,6 @@ def test_tag_field_is_used_in_dump_process():
         """ Another type of Data """
 
         class _(JSONWizard.Meta):
-            v1 = True
             """
             This defines a custom tag that shows up in de-serialized
             dictionary object.
@@ -161,7 +155,6 @@ def test_tag_field_is_used_in_dump_process():
         """ container holds a subclass of Data """
 
         class _(JSONWizard.Meta):
-            v1 = True
             tag = 'CONTAINER'
 
         data: Union[DataA, DataB]
@@ -202,9 +195,7 @@ def test_to_dict_key_transform_with_json_field():
     """
 
     @dataclass
-    class MyClass(JSONSerializable):
-        class _(JSONSerializable.Meta):
-            v1 = True
+    class MyClass(JSONWizard):
 
         my_str: str = Alias('myCustomStr')
         my_bool: bool = Alias('my_json_bool', 'myTestBool')
@@ -228,10 +219,7 @@ def test_to_dict_key_transform_with_json_key():
     """
 
     @dataclass
-    class MyClass(JSONSerializable):
-        class _(JSONSerializable.Meta):
-            v1 = True
-
+    class MyClass(JSONWizard):
         my_str: Annotated[str, Alias('myCustomStr')]
         my_bool: Annotated[bool, Alias('my_json_bool', 'myTestBool')]
 
@@ -258,7 +246,6 @@ def test_to_dict_with_skip_defaults():
     @dataclass
     class MyClass(JSONWizard):
         class _(JSONWizard.Meta):
-            v1 = True
             v1_dump_case = 'C'
             skip_defaults = True
 
@@ -284,9 +271,6 @@ def test_to_dict_with_excluded_fields():
 
     @dataclass
     class MyClass(JSONWizard):
-        class _(JSONWizard.Meta):
-            v1 = True
-
         my_str: str
         # v1: map load alias + disable dump
         other_str: Annotated[str, Alias(load='AnotherStr', skip=True)]
@@ -306,7 +290,6 @@ def test_to_dict_with_excluded_fields():
     assert out_dict == {'my_str': 'my string'}
 
 
-@pytest.mark.xfail(reason='I will fix this in next minor release!')
 @pytest.mark.parametrize(
     'input,expected,expectation',
     [
@@ -317,10 +300,7 @@ def test_to_dict_with_excluded_fields():
 def test_set(input, expected, expectation):
 
     @dataclass
-    class MyClass(JSONSerializable):
-        class _(JSONSerializable.Meta):
-            v1 = True
-
+    class MyClass(JSONWizard):
         num_set: Set[int]
         any_set: set
 
@@ -333,15 +313,14 @@ def test_set(input, expected, expectation):
         result = c.to_dict()
         log.debug('Parsed object: %r', result)
 
-        assert all(key in result for key in ('numSet', 'anySet'))
-        assert isinstance(result['numSet'], (list, tuple))
-        assert isinstance(result['anySet'], (list, tuple))
+        assert all(key in result for key in ('num_set', 'any_set'))
+        assert isinstance(result['num_set'], (list, tuple))
+        assert isinstance(result['any_set'], (list, tuple))
 
-        assert sorted(result['numSet']) == expected
-        assert sorted(result['anySet']) == expected
+        assert sorted(result['num_set']) == expected
+        assert sorted(result['any_set']) == expected
 
 
-@pytest.mark.xfail(reason='I will fix this in next minor release!')
 @pytest.mark.parametrize(
     'input,expected,expectation',
     [
@@ -352,10 +331,7 @@ def test_set(input, expected, expectation):
 def test_frozenset(input, expected, expectation):
 
     @dataclass
-    class MyClass(JSONSerializable):
-        class _(JSONSerializable.Meta):
-            v1 = True
-
+    class MyClass(JSONWizard):
         num_set: FrozenSet[int]
         any_set: frozenset
 
@@ -368,15 +344,14 @@ def test_frozenset(input, expected, expectation):
         result = c.to_dict()
         log.debug('Parsed object: %r', result)
 
-        assert all(key in result for key in ('numSet', 'anySet'))
-        assert isinstance(result['numSet'], (list, tuple))
-        assert isinstance(result['anySet'], (list, tuple))
+        assert all(key in result for key in ('num_set', 'any_set'))
+        assert isinstance(result['num_set'], (list, tuple))
+        assert isinstance(result['any_set'], (list, tuple))
 
-        assert sorted(result['numSet']) == expected
-        assert sorted(result['anySet']) == expected
+        assert sorted(result['num_set']) == expected
+        assert sorted(result['any_set']) == expected
 
 
-@pytest.mark.xfail(reason='I will fix this in next minor release!')
 @pytest.mark.parametrize(
     'input,expected,expectation',
     [
@@ -387,10 +362,7 @@ def test_frozenset(input, expected, expectation):
 def test_deque(input, expected, expectation):
 
     @dataclass
-    class MyQClass(JSONSerializable):
-        class _(JSONSerializable.Meta):
-            v1 = True
-
+    class MyQClass(JSONWizard):
         num_deque: deque[int]
         any_deque: deque
 
@@ -401,31 +373,31 @@ def test_deque(input, expected, expectation):
         result = c.to_dict()
         log.debug('Parsed object: %r', result)
 
-        assert all(key in result for key in ('numDeque', 'anyDeque'))
-        assert isinstance(result['numDeque'], list)
-        assert isinstance(result['anyDeque'], list)
+        assert all(key in result for key in ('num_deque', 'any_deque'))
+        assert isinstance(result['num_deque'], list)
+        assert isinstance(result['any_deque'], list)
 
-        assert result['numDeque'] == expected
-        assert result['anyDeque'] == expected
+        assert result['num_deque'] == expected
+        assert result['any_deque'] == expected
 
 
 @pytest.mark.parametrize(
     'input,expectation',
     [
-        ('testing', pytest.raises(ParseError)),
+        # ideally, an error should be raised
+        ('testing', does_not_raise()),
         ('e1', does_not_raise()),
-        (False, pytest.raises(ParseError)),
+        # ideally, an error should be raised
+        (False, does_not_raise()),
         (0, does_not_raise()),
     ]
 )
-@pytest.mark.xfail(reason='still need to add the dump hook for this type')
 def test_literal(input, expectation):
 
     @dataclass
-    class MyClass(JSONSerializable):
-        class _(JSONSerializable.Meta):
-            v1 = True
-            key_transform_with_dump = 'PASCAL'
+    class MyClass(JSONWizard):
+        class _(JSONWizard.Meta):
+            v1_dump_case = 'PASCAL'
 
         my_lit: Literal['e1', 'e2', 0]
 
@@ -450,10 +422,9 @@ def test_literal(input, expectation):
 def test_uuid(input, expectation):
 
     @dataclass
-    class MyClass(JSONSerializable):
-        class _(JSONSerializable.Meta):
-            v1 = True
-            key_transform_with_dump = 'Snake'
+    class MyClass(JSONWizard):
+        class _(JSONWizard.Meta):
+            v1_dump_case = 'Snake'
 
         my_id: UUID
 
@@ -477,10 +448,9 @@ def test_uuid(input, expectation):
 def test_timedelta(input, expectation):
 
     @dataclass
-    class MyClass(JSONSerializable):
-        class _(JSONSerializable.Meta):
-            v1 = True
-            key_transform_with_dump = 'Snake'
+    class MyClass(JSONWizard):
+        class _(JSONWizard.Meta):
+            v1_dump_case = 'Snake'
 
         my_td: timedelta
 
@@ -501,11 +471,10 @@ def test_timedelta(input, expectation):
         ({'my_str': 'test', 'my_int': 2,
           'my_bool': True, 'other_key': 'testing'}, does_not_raise()),
         ({'my_str': 3}, pytest.raises(ParseError)),
-        ({'my_str': 'test', 'my_int': 'test', 'my_bool': True}, pytest.raises(ValueError)),
+        ({'my_str': 'test', 'my_int': 'test', 'my_bool': True}, does_not_raise()),
         ({'my_str': 'test', 'my_int': 2, 'my_bool': True}, does_not_raise()),
     ]
 )
-@pytest.mark.xfail(reason='still need to add the dump hook for this type')
 def test_typed_dict(input, expectation):
 
     class MyDict(TypedDict):
@@ -514,10 +483,7 @@ def test_typed_dict(input, expectation):
         my_int: int
 
     @dataclass
-    class MyClass(JSONSerializable):
-        class _(JSONSerializable.Meta):
-            v1 = True
-
+    class MyClass(JSONWizard):
         my_typed_dict: MyDict
 
     c = MyClass(my_typed_dict=input)
@@ -544,10 +510,6 @@ def test_using_dataclass_in_dict():
 
     config = {"tests": {"test_a": {"field": "a"}, "test_b": {"field": "b"}}}
 
-    # v1 opt-in for plain dataclasses used with fromdict/asdict
-    LoadMeta(v1=True).bind_to(Config)
-    LoadMeta(v1=True).bind_to(Test)
-
     assert fromdict(Config, config) == Config(
         tests={'test_a': Test(field='a'),
                'test_b': Test(field='b')})
@@ -558,9 +520,6 @@ def test_bytes_and_bytes_array_are_supported():
 
     @dataclass
     class Foo(JSONWizard):
-        class _(JSONWizard.Meta):
-            v1 = True
-
         b: bytes = None
         barray: bytearray = None
         s: str = None

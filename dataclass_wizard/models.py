@@ -777,12 +777,7 @@ if PY314_OR_ABOVE:
 
         metadata["__skip_if__"] = condition
 
-        return Field(
-            None,
-            None,
-            None,
-            False,
-            None,
+        return _Field(
             default,
             default_factory,
             init,
@@ -923,12 +918,7 @@ elif PY310_OR_ABOVE:  # pragma: no cover
 
         metadata["__skip_if__"] = condition
 
-        return Field(
-            None,
-            None,
-            None,
-            False,
-            None,
+        return _Field(
             default,
             default_factory,
             init,
@@ -1043,12 +1033,7 @@ else:  # pragma: no cover
 
         metadata["__skip_if__"] = condition
 
-        return Field(
-            None,
-            None,
-            None,
-            False,
-            None,
+        return _Field(
             default,
             default_factory,
             init,

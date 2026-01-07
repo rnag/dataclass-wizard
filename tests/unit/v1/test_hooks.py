@@ -5,19 +5,17 @@ import pytest
 from dataclasses import dataclass
 from ipaddress import IPv4Address
 
-from dataclass_wizard import register_type, JSONWizard, LoadMeta, fromdict, asdict
+from dataclass_wizard import (register_type, JSONWizard,
+                              LoadMeta, fromdict, asdict,
+                              DumpMixin, LoadMixin)
 from dataclass_wizard.errors import ParseError
-from dataclass_wizard.v1 import DumpMixin, LoadMixin
-from dataclass_wizard.v1.models import TypeInfo, Extras
+from dataclass_wizard.models import TypeInfo, Extras
 
 
 def test_v1_register_type_ipv4address_roundtrip():
 
     @dataclass
     class Foo(JSONWizard):
-        class Meta(JSONWizard.Meta):
-            v1 = True
-
         b: bytes = b""
         s: str | None = None
         c: IPv4Address | None = None
@@ -37,9 +35,6 @@ def test_v1_ipv4address_without_hook_raises_parse_error():
 
     @dataclass
     class Foo(JSONWizard):
-        class Meta(JSONWizard.Meta):
-            v1 = True
-
         c: IPv4Address | None = None
 
     data = {"c": "127.0.0.1"}
@@ -67,7 +62,6 @@ def test_v1_meta_codegen_hooks_ipv4address_roundtrip():
     @dataclass
     class Foo(JSONWizard):
         class Meta(JSONWizard.Meta):
-            v1 = True
             v1_type_to_load_hook = {IPv4Address: load_to_ipv4_address}
             v1_type_to_dump_hook = {IPv4Address: dump_from_ipv4_address}
 
@@ -89,7 +83,6 @@ def test_v1_meta_runtime_hooks_ipv4address_roundtrip():
     @dataclass
     class Foo(JSONWizard):
         class Meta(JSONWizard.Meta):
-            v1 = True
             v1_type_to_load_hook = {IPv4Address: ('runtime', IPv4Address)}
             v1_type_to_dump_hook = {IPv4Address: ('runtime', str)}
 
@@ -119,8 +112,6 @@ def test_v1_register_type_no_inheritance_with_functional_api_roundtrip():
         s: str | None = None
         c: IPv4Address | None = None
 
-    LoadMeta(v1=True).bind_to(Foo)
-
     register_type(Foo, IPv4Address)
 
     data = {"b": "AAAA", "c": "127.0.0.1", "s": "foobar"}
@@ -135,9 +126,6 @@ def test_v1_register_type_no_inheritance_with_functional_api_roundtrip():
 def test_v1_ipv4address_hooks_with_load_and_dump_mixins_roundtrip():
     @dataclass
     class Foo(JSONWizard, DumpMixin, LoadMixin):
-        class Meta(JSONWizard.Meta):
-            v1 = True
-
         c: IPv4Address | None = None
 
         @classmethod

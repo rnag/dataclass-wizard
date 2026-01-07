@@ -13,10 +13,6 @@ def test_union_as_type_alias_recursive():
 
     @dataclass
     class MyTestClass(JSONWizard):
-
-        class _(JSONWizard.Meta):
-            v1 = True
-
         name: str
         meta: str
         msg: JSON
