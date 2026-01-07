@@ -11,7 +11,7 @@ from dataclass_wizard.errors import ParseError, MissingVars, MissingFields
 from ..models import TN, CN, EnvContTF, EnvContTT, EnvContAllReq, Sub2
 
 from ..utils_env import envsafe, from_env, assert_unordered_equal
-from ...._typing import *
+from tests._typing import *
 
 
 def test_none_is_deserialized():

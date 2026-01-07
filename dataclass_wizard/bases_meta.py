@@ -47,12 +47,12 @@ def register_type(cls, tp, *, load=None, dump=None, mode=None) -> None:
     dump_hook[tp] = (mode if mode else _infer_mode(dump), dump)
 
 
-# use `debug_enabled` for log level if it's a str or int.
+# use `debug` for log level if it's a str or int.
 def _enable_debug_mode_if_needed(possible_lvl):
     global _debug_was_enabled
     if not _debug_was_enabled:
         _debug_was_enabled = True
-        # use `debug_enabled` for log level if it's a str or int.
+        # use `debug` for log level if it's a str or int.
         default_lvl = logging.DEBUG
         # minimum logging level for logs by this library.
         min_level = default_lvl if isinstance(possible_lvl, bool) else possible_lvl

@@ -28,9 +28,9 @@ from dataclass_wizard.errors import (
 )
 from dataclass_wizard.models import PatternBase
 from dataclass_wizard.type_def import NoneType
-from ..conftest import MyUUIDSubclass
-from ...conftest import *
-from ..._typing import *
+from tests.unit.conftest import MyUUIDSubclass
+from tests.conftest import *
+from tests._typing import *
 
 
 log = logging.getLogger(__name__)

@@ -11,7 +11,7 @@ from dataclass_wizard import asdict, fromdict, Alias, DataclassWizard, CatchAll
 from dataclass_wizard.errors import ParseError, MissingFields
 from .models import TN, CN, ContTF, ContTT, ContAllReq, Sub2, TNReq
 from .utils_env import assert_unordered_equal
-from ..._typing import *
+from tests._typing import *
 
 
 def test_nested_union_with_complex_types_in_containers():

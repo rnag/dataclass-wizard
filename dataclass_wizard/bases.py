@@ -125,6 +125,7 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
     # attributes which will *not* be merged.
     __special_attrs__ = frozenset({
         'recursive',
+        # 'v1_debug',
         'v1_field_to_alias',
         'v1_field_to_alias_dump',
         'v1_field_to_alias_load',

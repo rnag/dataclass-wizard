@@ -4,7 +4,7 @@ from typing import NamedTuple
 
 from dataclass_wizard import DataclassWizard, EnvWizard
 
-from ..._typing import Required, NotRequired, ReadOnly, TypedDict
+from tests._typing import Required, NotRequired, ReadOnly, TypedDict
 
 
 class TNReq(NamedTuple):

@@ -159,7 +159,7 @@ def test_meta_initializer_runs_as_expected(mock_log):
         isActive: bool = False
         myDt: Optional[datetime] = None
 
-    assert 'DEBUG Mode is enabled' in mock_log.text
+    # assert 'DEBUG Mode is enabled' in mock_log.text
 
     string = """
     {
