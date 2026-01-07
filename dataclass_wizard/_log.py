@@ -9,7 +9,7 @@ LOG = getLogger(PACKAGE_NAME)
 LOG.setLevel(LOG_LEVEL)
 
 
-def enable_library_debug_logging(debug, logger):
+def enable_library_debug_logging(debug, logger=LOG):
     """
     Enable debug logging for a library logger without touching global logging.
 

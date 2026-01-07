@@ -146,6 +146,8 @@ from .loader_selection import asdict, fromlist, fromdict
 from .loaders import LoadMixin, setup_default_loader
 from ._env import EnvWizard, env_config
 from ._log import LOG
+from ._mixins import JSONListWizard, JSONFileWizard, TOMLWizard, YAMLWizard
+from ._properties import property_wizard
 from ._serial_json import DataclassWizard, JSONWizard
 from .models import (Alias, AliasPath, CatchAll, Container, Env,
                      SkipIf, SkipIfNone,
@@ -155,9 +157,6 @@ from .models import (Alias, AliasPath, CatchAll, Container, Env,
                      Pattern, DatePattern, TimePattern, DateTimePattern,
                      EQ, NE, LT, LE, GT, GE, IS, IS_NOT, IS_TRUTHY, IS_FALSY
                      )
-
-from .property_wizard import property_wizard
-from .wizard_mixins import JSONListWizard, JSONFileWizard, TOMLWizard, YAMLWizard
 
 
 # Set up logging to ``/dev/null`` like a library is supposed to.

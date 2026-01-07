@@ -12,7 +12,7 @@ AnnotationType = Dict[str, Type[T]]
 AnnotationReplType = Dict[str, str]
 
 
-def get_resolved_annotations(obj) -> Dict[str, Any]:
+def _get_resolved_annotations(obj) -> Dict[str, Any]:
     # Python 3.14+: annotationlib.get_annotations supports explicit formats
     if PY314_OR_ABOVE:
         from annotationlib import get_annotations, Format  # 3.14+
@@ -48,7 +48,7 @@ def property_wizard(*args, **kwargs):
     cls: Type = type(*args, **kwargs)
     cls_dict: Dict[str, Any] = args[2]
     # https://docs.python.org/3.14/whatsnew/3.14.html#implications-for-readers-of-annotations
-    annotations: AnnotationType = get_resolved_annotations(cls)
+    annotations: AnnotationType = _get_resolved_annotations(cls)
 
     # For each property, we want to replace the annotation for the underscore-
     # leading field associated with that property with the 'public' field

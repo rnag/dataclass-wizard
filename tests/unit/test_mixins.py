@@ -6,7 +6,7 @@ import pytest
 from pytest_mock import MockerFixture
 
 from dataclass_wizard import Container
-from dataclass_wizard.wizard_mixins import (
+from dataclass_wizard._mixins import (
     JSONListWizard, JSONFileWizard, TOMLWizard, YAMLWizard
 )
 from .conftest import SampleClass
@@ -34,7 +34,7 @@ class Inner:
 
 @pytest.fixture
 def mock_open(mocker: MockerFixture):
-    return mocker.patch('dataclass_wizard.wizard_mixins.open')
+    return mocker.patch('dataclass_wizard._mixins.open')
 
 
 def test_json_list_wizard_methods():
@@ -87,7 +87,7 @@ def test_yaml_wizard_methods(mocker: MockerFixture):
     """
 
     # Patch open() to return a file-like object which returns our string data.
-    m = mocker.patch('dataclass_wizard.wizard_mixins.open',
+    m = mocker.patch('dataclass_wizard._mixins.open',
                      mocker.mock_open(read_data=yaml_data))
 
     filename = 'my_file.yaml'
@@ -195,7 +195,7 @@ my_list = ["hello, world!", "123"]
     """
 
     # Mock open to return the TOML data as a string directly.
-    mock_open = mocker.patch("dataclass_wizard.wizard_mixins.open", mocker.mock_open(read_data=toml_data))
+    mock_open = mocker.patch("dataclass_wizard._mixins.open", mocker.mock_open(read_data=toml_data))
 
     filename = 'my_file.toml'
 
@@ -212,7 +212,7 @@ my_list = ["hello, world!", "123"]
     # Test writing to TOML file
     # Mock open for writing to the TOML file.
     mock_open_write = mocker.mock_open()
-    mocker.patch("dataclass_wizard.wizard_mixins.open", mock_open_write)
+    mocker.patch("dataclass_wizard._mixins.open", mock_open_write)
 
     obj.to_toml_file(filename)
 
