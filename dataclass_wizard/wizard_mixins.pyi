@@ -10,7 +10,7 @@ from typing import AnyStr, TextIO, BinaryIO, TypeAlias
 from .abstractions import W
 from .enums import KeyCase
 from .models import Container
-from .serial_json import JSONWizard, SerializerHookMixin
+from ._serial_json import JSONWizard, SerializerHookMixin
 from .type_def import (T, ListOfJSONObject,
                        Encoder, Decoder, FileDecoder, FileEncoder, ParseFloat)
 

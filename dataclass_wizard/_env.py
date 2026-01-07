@@ -14,31 +14,31 @@ from .enums import EnvKeyStrategy, EnvPrecedence
 from .loaders import LoadMixin as V1LoadMixin
 from .models import Extras, TypeInfo, SEQUENCE_ORIGINS, MAPPING_ORIGINS
 from .type_conv import as_list_v1, as_dict_v1
-from dataclass_wizard.bases import META, AbstractEnvMeta, ENV_META
-from dataclass_wizard.bases_meta import BaseEnvWizardMeta, EnvMeta, register_type
-from dataclass_wizard.class_helper import (dataclass_fields,
-                                           dataclass_field_to_default,
-                                           dataclass_init_fields,
-                                           dataclass_init_field_names,
-                                           get_meta,
-                                           v1_dataclass_field_to_env_for_load,
-                                           CLASS_TO_LOAD_FUNC,
-                                           DATACLASS_FIELD_TO_ALIAS_PATH_FOR_LOAD,
-                                           call_meta_initializer_if_needed,
-                                           dataclass_field_names)
-from dataclass_wizard.constants import CATCH_ALL, PACKAGE_NAME
-from dataclass_wizard.decorators import cached_class_property
-from dataclass_wizard.errors import (JSONWizardError,
-                                     MissingData,
-                                     ParseError,
-                                     type_name, MissingVars)
-from dataclass_wizard.loader_selection import get_loader, asdict
-from dataclass_wizard.log import LOG, enable_library_debug_logging
-from dataclass_wizard.type_def import T, JSONObject, dataclass_transform
+from .bases import META, AbstractEnvMeta, ENV_META
+from .bases_meta import BaseEnvWizardMeta, EnvMeta, register_type
+from .class_helper import (dataclass_fields,
+                           dataclass_field_to_default,
+                           dataclass_init_fields,
+                           dataclass_init_field_names,
+                           get_meta,
+                           v1_dataclass_field_to_env_for_load,
+                           CLASS_TO_LOAD_FUNC,
+                           DATACLASS_FIELD_TO_ALIAS_PATH_FOR_LOAD,
+                           call_meta_initializer_if_needed,
+                           dataclass_field_names)
+from .constants import CATCH_ALL, PACKAGE_NAME
+from .decorators import cached_class_property
+from .errors import (JSONWizardError,
+                     MissingData,
+                     ParseError,
+                     type_name, MissingVars)
+from .loader_selection import get_loader, asdict
+from ._log import LOG, enable_library_debug_logging
+from .type_def import T, JSONObject, dataclass_transform
 # noinspection PyProtectedMember
 from .utils.dataclass_compat import (_apply_env_wizard_dataclass,
-                                                     _dataclass_needs_refresh,
-                                                     _set_new_attribute)
+                                     _dataclass_needs_refresh,
+                                     _set_new_attribute)
 from .utils.function_builder import FunctionBuilder
 from .utils.object_path import v1_env_safe_get
 from .utils.string_conv import possible_env_vars

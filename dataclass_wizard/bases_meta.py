@@ -19,7 +19,7 @@ from .class_helper import (
 )
 from .errors import ParseError
 from .loader_selection import get_dumper, get_loader
-from .log import LOG
+from ._log import LOG
 from .type_def import E
 from .type_conv import as_enum
 

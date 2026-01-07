@@ -145,7 +145,8 @@ from .dumpers import DumpMixin, setup_default_dumper
 from .loader_selection import asdict, fromlist, fromdict
 from .loaders import LoadMixin, setup_default_loader
 from ._env import EnvWizard, env_config
-from .log import LOG
+from ._log import LOG
+from ._serial_json import DataclassWizard, JSONWizard
 from .models import (Alias, AliasPath, CatchAll, Container, Env,
                      SkipIf, SkipIfNone,
                      skip_if_field,
@@ -156,7 +157,6 @@ from .models import (Alias, AliasPath, CatchAll, Container, Env,
                      )
 
 from .property_wizard import property_wizard
-from .serial_json import DataclassWizard, JSONWizard
 from .wizard_mixins import JSONListWizard, JSONFileWizard, TOMLWizard, YAMLWizard
 
 

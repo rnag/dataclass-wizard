@@ -1,7 +1,7 @@
 from dataclasses import MISSING
 from typing import Any
 
-from ..log import LOG
+from .._log import LOG
 
 
 def is_builtin_class(cls: type) -> bool:

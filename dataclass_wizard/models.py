@@ -10,7 +10,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from .decorators import cached_property, setup_recursive_safe_function
 from .constants import PY310_OR_ABOVE, PY311_OR_ABOVE, PY314_OR_ABOVE
-from .log import LOG
+from ._log import LOG
 from .type_def import DefFactory, ExplicitNull, PyNotRequired, NoneType, T
 from .utils.function_builder import FunctionBuilder
 from .utils.object_path import split_object_path

@@ -7,7 +7,7 @@ from .bases_meta import BaseJSONWizardMeta, LoadMeta, register_type
 from .class_helper import call_meta_initializer_if_needed
 from .constants import PACKAGE_NAME
 from .loader_selection import asdict, fromdict, fromlist
-from .log import enable_library_debug_logging
+from ._log import enable_library_debug_logging
 from .type_def import dataclass_transform
 # noinspection PyProtectedMember
 from .utils.dataclass_compat import (_create_fn,

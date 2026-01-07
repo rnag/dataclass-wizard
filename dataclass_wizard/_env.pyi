@@ -5,9 +5,9 @@ from typing import (Callable, Mapping, dataclass_transform, TypedDict,
 
 from .loaders import LoadMixin as V1LoadMixIn
 from .models import Extras
-from ..bases import AbstractEnvMeta, ENV_META
-from ..bases_meta import BaseEnvWizardMeta, V1HookFn
-from ..type_def import Unpack, JSONObject, T, Encoder
+from .bases import AbstractEnvMeta, ENV_META
+from .bases_meta import BaseEnvWizardMeta, V1HookFn
+from .type_def import Unpack, JSONObject, T, Encoder
 
 E_ = TypeVar('E_', bound=EnvWizard)
 E = type[E_]

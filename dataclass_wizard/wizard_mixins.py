@@ -13,7 +13,7 @@ from .class_helper import _META
 from .lazy_imports import toml, toml_w, yaml
 from .loader_selection import asdict, fromdict, fromlist
 from .models import Container
-from .serial_json import JSONWizard
+from ._serial_json import JSONWizard
 
 
 class JSONListWizard(JSONWizard, str=False):

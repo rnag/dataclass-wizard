@@ -42,7 +42,7 @@ from .errors import (JSONWizardError,
                                      ParseError,
                                      UnknownKeysError)
 from .loader_selection import fromdict, get_loader
-from .log import LOG
+from ._log import LOG
 from .type_def import DefFactory, JSONObject, NoneType, PyLiteralString, T
 # noinspection PyProtectedMember
 from .utils.dataclass_compat import _set_new_attribute

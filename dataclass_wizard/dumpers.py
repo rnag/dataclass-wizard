@@ -37,21 +37,21 @@ from .class_helper import (
     dataclass_field_names,
     dataclass_field_to_skip_if,
 )
-from dataclass_wizard.constants import CATCH_ALL, TAG, PACKAGE_NAME
-from dataclass_wizard.errors import (ParseError, MissingFields, MissingData, JSONWizardError)
-from dataclass_wizard.loader_selection import get_dumper, asdict
-from dataclass_wizard.log import LOG
-from dataclass_wizard.models import get_skip_if_condition, finalize_skip_if
-from dataclass_wizard.type_def import (
+from .constants import CATCH_ALL, TAG, PACKAGE_NAME
+from .errors import (ParseError, MissingFields, MissingData, JSONWizardError)
+from .loader_selection import get_dumper, asdict
+from ._log import LOG
+from .models import get_skip_if_condition, finalize_skip_if
+from .type_def import (
     NoneType, JSONObject,
     PyLiteralString,
     T, ExplicitNull
 )
 # noinspection PyProtectedMember
-from dataclass_wizard.utils.dataclass_compat import _set_new_attribute
-from dataclass_wizard.utils.dict_helper import NestedDict
-from dataclass_wizard.utils.function_builder import FunctionBuilder
-from dataclass_wizard.utils.typing_compat import (
+from .utils.dataclass_compat import _set_new_attribute
+from .utils.dict_helper import NestedDict
+from .utils.function_builder import FunctionBuilder
+from .utils.typing_compat import (
     is_typed_dict, get_args, is_annotated,
     eval_forward_ref_if_needed, get_origin_v2, is_union,
     get_keys_for_typed_dict, is_typed_dict_type_qualifier,
