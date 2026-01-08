@@ -10,15 +10,15 @@ from .loader_selection import asdict, fromdict, fromlist
 from ._log import enable_library_debug_logging
 from .type_def import dataclass_transform
 # noinspection PyProtectedMember
-from .utils.dataclass_compat import (_create_fn,
-                                     _dataclass_needs_refresh,
-                                     _set_new_attribute)
+from .utils._dataclass_compat import (create_fn,
+                                      dataclass_needs_refresh,
+                                      set_new_attribute)
 
 
 def _str_fn():
-    return _create_fn('__str__',
-                      ('self',),
-                      ['return self.to_json(indent=2)'])
+    return create_fn('__str__',
+                     ('self',),
+                     ['return self.to_json(indent=2)'])
 
 
 def _first_declared_attr_in_mro(cls, name: str):
@@ -86,7 +86,7 @@ def _configure_wizard_class(cls,
 
     # Add a `__str__` method to the subclass, if needed
     if str:
-        _set_new_attribute(cls, '__str__', _str_fn())
+        set_new_attribute(cls, '__str__', _str_fn())
 
     # Add `from_dict` and `to_dict` methods to the subclass, if needed
     _set_from_dict_and_to_dict_if_needed(cls)
@@ -156,7 +156,7 @@ class DataclassWizard(AbstractJSONWizard):
             return
 
         # Apply the @dataclass decorator.
-        if _apply_dataclass and _dataclass_needs_refresh(cls):
+        if _apply_dataclass and dataclass_needs_refresh(cls):
             # noinspection PyArgumentList
             dataclass(cls, **dc_kwargs)
 

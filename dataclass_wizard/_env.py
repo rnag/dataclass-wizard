@@ -36,11 +36,11 @@ from .loader_selection import get_loader, asdict
 from ._log import LOG, enable_library_debug_logging
 from .type_def import T, JSONObject, dataclass_transform
 # noinspection PyProtectedMember
-from .utils.dataclass_compat import (_apply_env_wizard_dataclass,
-                                     _dataclass_needs_refresh,
-                                     _set_new_attribute)
+from .utils._dataclass_compat import (apply_env_wizard_dataclass,
+                                      dataclass_needs_refresh,
+                                      set_new_attribute)
 from .utils.function_builder import FunctionBuilder
-from .utils.object_path import env_safe_get
+from .utils._object_path import env_safe_get
 from .utils.string_conv import possible_env_vars
 from .utils.typing_compat import (eval_forward_ref_if_needed)
 
@@ -110,9 +110,9 @@ class EnvWizard:
             return
 
         # Apply the @dataclass decorator.
-        if _apply_dataclass and _dataclass_needs_refresh(cls):
+        if _apply_dataclass and dataclass_needs_refresh(cls):
             # noinspection PyArgumentList
-            _apply_env_wizard_dataclass(cls, dc_kwargs)
+            apply_env_wizard_dataclass(cls, dc_kwargs)
 
         load_meta_kwargs = {'v1': True, 'v1_pre_decoder': _pre_decoder}
 
@@ -526,12 +526,12 @@ def load_func_for_dataclass(
     cls_init = functions[fn_name]
     cls_raw_dict = functions[raw_dict_name]
 
-    _set_new_attribute(
+    set_new_attribute(
         cls, '__init__', cls_init)
     LOG.debug("setattr(%s, '__init__', %s)",
               cls_name, fn_name)
 
-    _set_new_attribute(
+    set_new_attribute(
         cls, 'raw_dict', cls_raw_dict)
     LOG.debug("setattr(%s, 'raw_dict', %s)",
               cls_name, raw_dict_name)

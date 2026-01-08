@@ -49,7 +49,7 @@ from .type_def import (
     T, ExplicitNull
 )
 # noinspection PyProtectedMember
-from .utils.dataclass_compat import _set_new_attribute
+from .utils._dataclass_compat import set_new_attribute
 from .utils.dict_helper import NestedDict
 from .utils.function_builder import FunctionBuilder
 from .utils.typing_compat import (
@@ -1079,9 +1079,9 @@ def dump_func_for_dataclass(
             # Marker reserved for future detection/debugging of specialized dumpers.
             # setattr(cls_todict, _SPECIALIZED_TO_DICT, True)
             # safe to specialize only when user didn't define it on cls
-            _set_new_attribute(cls, 'to_dict', cls_todict, force=True)
+            set_new_attribute(cls, 'to_dict', cls_todict, force=True)
 
-        _set_new_attribute(
+        set_new_attribute(
             cls, f'__{PACKAGE_NAME}_to_dict__', cls_todict)
         LOG.debug(
             "setattr(%s, '__%s_to_dict__', %s)",

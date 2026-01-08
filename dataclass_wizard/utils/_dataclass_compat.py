@@ -9,7 +9,7 @@ from types import FunctionType
 from ..constants import PY310_OR_ABOVE
 
 
-def _set_qualname(cls, value):
+def set_qualname(cls, value):
     # Removed in Python 3.13
     # Original: `dataclasses._set_qualname`
     # Ensure that the functions returned from _create_fn uses the proper
@@ -19,20 +19,20 @@ def _set_qualname(cls, value):
     return value
 
 
-def _set_new_attribute(cls, name, value, force=False):
+def set_new_attribute(cls, name, value, force=False):
     # Removed in Python 3.13
     # Original: `dataclasses._set_new_attribute`
     # Never overwrites an existing attribute.  Returns True if the
     # attribute already exists.
     if force or name not in cls.__dict__:
-        _set_qualname(cls, value)
+        set_qualname(cls, value)
         setattr(cls, name, value)
         return False
     return True
 
 
-def _create_fn(name, args, body, *, globals=None, locals=None,
-               return_type=MISSING):
+def create_fn(name, args, body, *, globals=None, locals=None,
+              return_type=MISSING):
     # Removed in Python 3.13
     # Original: `dataclasses._create_fn`
     # Note that we may mutate locals. Callers beware!
@@ -61,7 +61,7 @@ def _create_fn(name, args, body, *, globals=None, locals=None,
     return ns['__create_fn__'](**locals)
 
 
-def _dataclass_needs_refresh(cls) -> bool:
+def dataclass_needs_refresh(cls) -> bool:
     if not is_dataclass(cls):
         return True
 
@@ -77,7 +77,7 @@ def _dataclass_needs_refresh(cls) -> bool:
 
 
 if PY310_OR_ABOVE:
-    def _apply_env_wizard_dataclass(cls, dc_kwargs):
+    def apply_env_wizard_dataclass(cls, dc_kwargs):
         # noinspection PyArgumentList
         return dataclass(
             cls,
@@ -87,7 +87,7 @@ if PY310_OR_ABOVE:
         )
 else:  # Python 3.9: no `kw_only`
     # noinspection PyArgumentList
-    def _apply_env_wizard_dataclass(cls, dc_kwargs):
+    def apply_env_wizard_dataclass(cls, dc_kwargs):
         return dataclass(
             cls,
             init=False,

@@ -46,9 +46,9 @@ from .loader_selection import fromdict, get_loader
 from ._log import LOG
 from .type_def import DefFactory, JSONObject, NoneType, PyLiteralString, T
 # noinspection PyProtectedMember
-from .utils.dataclass_compat import _set_new_attribute
+from .utils._dataclass_compat import set_new_attribute
 from .utils.function_builder import FunctionBuilder
-from .utils.object_path import safe_get
+from .utils._object_path import safe_get
 from .utils.string_conv import possible_json_keys
 from .utils.typing_compat import (eval_forward_ref_if_needed,
                                   get_args,
@@ -1458,9 +1458,9 @@ def load_func_for_dataclass(
             # Marker reserved for future detection/debugging of specialized loaders.
             # setattr(cls_fromdict, _SPECIALIZED_FROM_DICT, True)
             # safe to specialize only when user didn't define it on cls
-            _set_new_attribute(cls, 'from_dict', cls_fromdict, force=True)
+            set_new_attribute(cls, 'from_dict', cls_fromdict, force=True)
 
-        _set_new_attribute(
+        set_new_attribute(
             cls, f'__{PACKAGE_NAME}_from_dict__', cls_fromdict)
         LOG.debug(
             "setattr(%s, '__%s_from_dict__', %s)",

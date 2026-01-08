@@ -14,7 +14,7 @@ from .constants import PY310_OR_ABOVE, PY311_OR_ABOVE, PY314_OR_ABOVE
 from ._log import LOG
 from .type_def import DefFactory, ExplicitNull, PyNotRequired, NoneType, T
 from .utils.function_builder import FunctionBuilder
-from .utils.object_path import split_object_path
+from .utils._object_path import split_object_path
 from .utils.typing_compat import get_origin_v2
 
 if TYPE_CHECKING:  # pragma: no cover
