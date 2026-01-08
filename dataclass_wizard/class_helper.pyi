@@ -25,15 +25,15 @@ CLASS_TO_LOAD_FUNC: dict[type, Any] = {}
 CLASS_TO_DUMP_FUNC: dict[type, Any] = {}
 
 # V1: A mapping of dataclass to its loader.
-CLASS_TO_V1_LOADER: dict[type, type[AbstractLoaderGenerator]] = {}
+CLASS_TO_LOADER: dict[type, type[AbstractLoaderGenerator]] = {}
 
 # V1: A mapping of dataclass to its dumper.
-CLASS_TO_V1_DUMPER: dict[type, type[AbstractDumperGenerator]] = {}
+CLASS_TO_DUMPER: dict[type, type[AbstractDumperGenerator]] = {}
 
 # Since the load process in V1 doesn't use Parsers currently, we use a sentinel
 # mapping to confirm if we need to setup the load config for a dataclass
 # on an initial run.
-IS_V1_CONFIG_SETUP: set[type] = set()
+IS_CONFIG_SETUP: set[type] = set()
 
 # V1: A cached mapping, per dataclass, of instance field name to JSON path
 DATACLASS_FIELD_TO_ALIAS_PATH_FOR_LOAD: dict[type, dict[str, Sequence[PathType]]] = defaultdict(dict)
@@ -90,11 +90,11 @@ def dataclass_field_to_skip_if(cls: type) -> dict[str, Condition]:
     """
 
 
-def v1_dataclass_field_to_alias_for_dump(cls: type) -> dict[str, Sequence[str]]: ...
-def v1_dataclass_field_to_alias_for_load(cls: type) -> dict[str, Sequence[str]]: ...
-def v1_dataclass_field_to_env_for_load(cls: type) -> dict[str, Sequence[str]]: ...
+def resolve_dataclass_field_to_alias_for_dump(cls: type) -> dict[str, Sequence[str]]: ...
+def resolve_dataclass_field_to_alias_for_load(cls: type) -> dict[str, Sequence[str]]: ...
+def resolve_dataclass_field_to_env_for_load(cls: type) -> dict[str, Sequence[str]]: ...
 
-def _setup_v1_load_config_for_cls(cls: type):
+def setup_config_for_cls(cls: type):
     """
     This function processes a class `cls` on an initial run, and sets up the
     load process for `cls` by iterating over each dataclass field. For each

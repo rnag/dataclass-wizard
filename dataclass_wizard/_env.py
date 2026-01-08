@@ -21,7 +21,7 @@ from .class_helper import (dataclass_fields,
                            dataclass_init_fields,
                            dataclass_init_field_names,
                            get_meta,
-                           v1_dataclass_field_to_env_for_load,
+                           resolve_dataclass_field_to_env_for_load,
                            CLASS_TO_LOAD_FUNC,
                            DATACLASS_FIELD_TO_ALIAS_PATH_FOR_LOAD,
                            call_meta_initializer_if_needed,
@@ -230,7 +230,7 @@ def load_func_for_dataclass(
     # default `v1_env_precedence` to SECRETS_ENV_DOTENV if not set
     env_precedence: EnvPrecedence = meta.v1_env_precedence or EnvPrecedence.SECRETS_ENV_DOTENV
 
-    field_to_env_vars = v1_dataclass_field_to_env_for_load(cls)
+    field_to_env_vars = resolve_dataclass_field_to_env_for_load(cls)
     check_env_vars = True if field_to_env_vars else False
 
     field_to_paths = DATACLASS_FIELD_TO_ALIAS_PATH_FOR_LOAD[cls]

@@ -32,15 +32,15 @@ CLASS_TO_LOAD_FUNC = {}
 CLASS_TO_DUMP_FUNC = {}
 
 # V1: A mapping of dataclass to its loader.
-CLASS_TO_V1_LOADER = {}
+CLASS_TO_LOADER = {}
 
 # V1: A mapping of dataclass to its dumper.
-CLASS_TO_V1_DUMPER = {}
+CLASS_TO_DUMPER = {}
 
 # Since the load process in V1 doesn't use Parsers currently, we use a sentinel
 # mapping to confirm if we need to setup the load config for a dataclass
 # on an initial run.
-IS_V1_CONFIG_SETUP = set()
+IS_CONFIG_SETUP = set()
 
 # V1 Load: A cached mapping, per dataclass, of instance field name to alias path
 DATACLASS_FIELD_TO_ALIAS_PATH_FOR_LOAD = defaultdict(dict)
@@ -104,26 +104,26 @@ def dataclass_field_to_skip_if(cls):
     return DATACLASS_FIELD_TO_SKIP_IF[cls]
 
 
-def v1_dataclass_field_to_alias_for_dump(cls):
+def resolve_dataclass_field_to_alias_for_dump(cls):
 
-    if cls not in IS_V1_CONFIG_SETUP:
-        _setup_v1_config_for_cls(cls)
+    if cls not in IS_CONFIG_SETUP:
+        setup_config_for_cls(cls)
 
     return DATACLASS_FIELD_TO_ALIAS_FOR_DUMP[cls]
 
 
-def v1_dataclass_field_to_alias_for_load(cls):
+def resolve_dataclass_field_to_alias_for_load(cls):
 
-    if cls not in IS_V1_CONFIG_SETUP:
-        _setup_v1_config_for_cls(cls)
+    if cls not in IS_CONFIG_SETUP:
+        setup_config_for_cls(cls)
 
     return DATACLASS_FIELD_TO_ALIAS_FOR_LOAD[cls]
 
 
-def v1_dataclass_field_to_env_for_load(cls):
+def resolve_dataclass_field_to_env_for_load(cls):
 
-    if cls not in IS_V1_CONFIG_SETUP:
-        _setup_v1_config_for_cls(cls)
+    if cls not in IS_CONFIG_SETUP:
+        setup_config_for_cls(cls)
 
     return DATACLASS_FIELD_TO_ENV_FOR_LOAD[cls]
 
@@ -165,7 +165,7 @@ def _process_field(name: str,
 
 
 # Set up load and dump config for dataclass
-def _setup_v1_config_for_cls(cls):
+def setup_config_for_cls(cls):
     # TODO
     from .models import Field
 
@@ -232,7 +232,7 @@ def _setup_v1_config_for_cls(cls):
                     if not getattr(extra, '_wrapped', False):
                         raise InvalidConditionError(cls, f.name) from None
 
-    IS_V1_CONFIG_SETUP.add(cls)
+    IS_CONFIG_SETUP.add(cls)
 
 
 def call_meta_initializer_if_needed(cls, package_name=PACKAGE_NAME):

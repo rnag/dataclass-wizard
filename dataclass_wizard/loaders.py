@@ -32,10 +32,10 @@ from .class_helper import (create_meta,
                            dataclass_init_field_names,
                            get_meta,
                            is_subclass_safe,
-                           v1_dataclass_field_to_alias_for_load,
+                           resolve_dataclass_field_to_alias_for_load,
                            CLASS_TO_LOAD_FUNC,
                            DATACLASS_FIELD_TO_ALIAS_PATH_FOR_LOAD,
-                           dataclass_kw_only_init_field_names, CLASS_TO_V1_LOADER, set_class_loader, create_new_class)
+                           dataclass_kw_only_init_field_names, CLASS_TO_LOADER, set_class_loader, create_new_class)
 # noinspection PyUnresolvedReferences
 from .constants import CATCH_ALL, TAG, PY311_OR_ABOVE, PACKAGE_NAME, _LOAD_HOOKS
 from .errors import (JSONWizardError,
@@ -1086,7 +1086,7 @@ def check_and_raise_missing_fields(
                           and (f.default is MISSING
                                and f.default_factory is MISSING)]
 
-        missing_keys = [v1_dataclass_field_to_alias_for_load(cls).get(field, [field])[0]
+        missing_keys = [resolve_dataclass_field_to_alias_for_load(cls).get(field, [field])[0]
                         for field in missing_fields]
 
     raise MissingFields(
@@ -1184,7 +1184,7 @@ def load_func_for_dataclass(
     key_case: KeyCase | None = cls_loader.transform_json_field
     auto_key_case = key_case is KeyCase.AUTO
 
-    field_to_aliases = v1_dataclass_field_to_alias_for_load(cls)
+    field_to_aliases = resolve_dataclass_field_to_alias_for_load(cls)
     check_aliases = True if field_to_aliases else False
 
     field_to_paths = DATACLASS_FIELD_TO_ALIAS_PATH_FOR_LOAD[cls]
@@ -1597,21 +1597,21 @@ def get_loader(class_or_instance=None,
     """
     # TODO
     try:
-        return CLASS_TO_V1_LOADER[class_or_instance]
+        return CLASS_TO_LOADER[class_or_instance]
 
     except KeyError:
 
         if hasattr(class_or_instance, _LOAD_HOOKS):
             return set_class_loader(
-                CLASS_TO_V1_LOADER, class_or_instance, class_or_instance)
+                CLASS_TO_LOADER, class_or_instance, class_or_instance)
 
         elif create:
             cls_loader = create_new_class(class_or_instance, (base_cls, ))
             return set_class_loader(
-                CLASS_TO_V1_LOADER, class_or_instance, cls_loader)
+                CLASS_TO_LOADER, class_or_instance, cls_loader)
 
         return set_class_loader(
-            CLASS_TO_V1_LOADER, class_or_instance, base_cls)
+            CLASS_TO_LOADER, class_or_instance, base_cls)
 
 
 def fromdict(cls: type[T], d: JSONObject) -> T:

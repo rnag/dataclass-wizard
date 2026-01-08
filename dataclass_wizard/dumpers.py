@@ -32,11 +32,11 @@ from .class_helper import (
     create_meta,
     get_meta,
     is_subclass_safe,
-    v1_dataclass_field_to_alias_for_dump,
+    resolve_dataclass_field_to_alias_for_dump,
     dataclass_fields,
     dataclass_field_to_default,
     dataclass_field_names,
-    dataclass_field_to_skip_if, CLASS_TO_V1_DUMPER, set_class_dumper, create_new_class,
+    dataclass_field_to_skip_if, CLASS_TO_DUMPER, set_class_dumper, create_new_class,
 )
 # noinspection PyUnresolvedReferences
 from .constants import CATCH_ALL, TAG, PACKAGE_NAME, _DUMP_HOOKS
@@ -741,7 +741,7 @@ def check_and_raise_missing_fields(
                       and (f.default is MISSING
                            and f.default_factory is MISSING)]
 
-    missing_keys = [v1_dataclass_field_to_alias_for_dump(cls)[field]
+    missing_keys = [resolve_dataclass_field_to_alias_for_dump(cls)[field]
                     for field in missing_fields]
 
     raise MissingFields(
@@ -840,7 +840,7 @@ def dump_func_for_dataclass(
     # A cached mapping of each dataclass field to the resolved key name in a
     # JSON or dictionary object; useful so we don't need to do a case
     # transformation (via regex) each time.
-    field_to_alias = v1_dataclass_field_to_alias_for_dump(cls)
+    field_to_alias = resolve_dataclass_field_to_alias_for_dump(cls)
     check_aliases = True if field_to_alias else False
 
     field_to_path = DATACLASS_FIELD_TO_ALIAS_PATH_FOR_DUMP[cls]
@@ -1165,22 +1165,22 @@ def get_dumper(class_or_instance=None, create=True,
     """
     # TODO
     try:
-        return CLASS_TO_V1_DUMPER[class_or_instance]
+        return CLASS_TO_DUMPER[class_or_instance]
 
     except KeyError:
         # TODO figure out type errors
 
         if hasattr(class_or_instance, _DUMP_HOOKS):
             return set_class_dumper(
-                CLASS_TO_V1_DUMPER, class_or_instance, class_or_instance)
+                CLASS_TO_DUMPER, class_or_instance, class_or_instance)
 
         elif create:
             cls_loader = create_new_class(class_or_instance, (base_cls, ))
             return set_class_dumper(
-                CLASS_TO_V1_DUMPER, class_or_instance, cls_loader)
+                CLASS_TO_DUMPER, class_or_instance, cls_loader)
 
         return set_class_dumper(
-            CLASS_TO_V1_DUMPER, class_or_instance, base_cls)
+            CLASS_TO_DUMPER, class_or_instance, base_cls)
 
 
 def asdict(o: T,
