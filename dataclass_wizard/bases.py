@@ -10,12 +10,12 @@ from .decorators import cached_class_property
 from .models import Condition
 
 if TYPE_CHECKING:
-    from .enums import KeyAction, KeyCase, DateTimeTo as V1DateTimeTo, EnvKeyStrategy, EnvPrecedence
+    from .enums import KeyAction, KeyCase, DateTimeTo, EnvKeyStrategy, EnvPrecedence
     from ._path_util import EnvFilePaths, SecretsDirs
-    from .bases_meta import ALLOWED_MODES, V1HookFn, V1PreDecoder
+    from .bases_meta import ALLOWED_MODES, HookFn, V1PreDecoder
     from .type_def import FrozenKeys
 
-    V1TypeToHook = Mapping[type, Union[tuple[ALLOWED_MODES, V1HookFn], V1HookFn, None]]
+    V1TypeToHook = Mapping[type, Union[tuple[ALLOWED_MODES, HookFn], HookFn, None]]
 
 # Create a generic variable that can be 'AbstractMeta', or any subclass.
 # Full word as `M` is already defined in another module
@@ -359,7 +359,7 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
     # By default, values are serialized using ISO 8601 string format.
     #
     # Supported values are defined by :class:`DateTimeTo`.
-    v1_dump_date_time_as: ClassVar[Union[V1DateTimeTo, str]] = None
+    v1_dump_date_time_as: ClassVar[Union[DateTimeTo, str]] = None
 
     # Specifies the timezone to assume for naive :class:`datetime` values
     # during serialization.
@@ -647,7 +647,7 @@ class AbstractEnvMeta(metaclass=ABCOrAndMeta):
     # By default, values are serialized using ISO 8601 string format.
     #
     # Supported values are defined by :class:`DateTimeTo`.
-    v1_dump_date_time_as: ClassVar[Union[V1DateTimeTo, str]] = None
+    v1_dump_date_time_as: ClassVar[Union[DateTimeTo, str]] = None
 
     # Specifies the timezone to assume for naive :class:`datetime` values
     # during serialization.

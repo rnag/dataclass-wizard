@@ -68,13 +68,12 @@ from typing import (
     Union, Dict, Sequence
 )
 
-from dataclass_wizard.models import UTC
-from .. import property_wizard
+from .._properties import property_wizard
 from ..constants import PACKAGE_NAME
 from ..class_helper import get_class_name
+from ..models import UTC
 from ..type_def import PyDeque, JSONList, JSONObject, JSONValue, T, NUMBERS
 from ..utils.string_conv import to_snake_case, to_pascal_case
-# noinspection PyProtectedMember
 from ..type_conv import TRUTHY_VALUES
 
 

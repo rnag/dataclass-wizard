@@ -143,12 +143,10 @@ class Pattern(PatternBase):
     >>> from typing import Annotated
     >>> from datetime import date
     >>> from dataclasses import dataclass
-    >>> from dataclass_wizard import LoadMeta
-    >>> from dataclass_wizard.v1 import Pattern
+    >>> from dataclass_wizard import Pattern
     >>> @dataclass
     ... class MyClass:
     ...     my_date_field: Annotated[date, Pattern('%m-%d-%y')]
-    >>> LoadMeta(v1=True).bind_to(MyClass)
     """
     __class_getitem__ = __getitem__ = __init__
     # noinspection PyInitNewSignature
@@ -173,12 +171,10 @@ class AwarePattern(PatternBase):
     >>> from typing import Annotated
     >>> from datetime import time
     >>> from dataclasses import dataclass
-    >>> from dataclass_wizard import LoadMeta
-    >>> from dataclass_wizard.v1 import AwarePattern
+    >>> from dataclass_wizard import AwarePattern
     >>> @dataclass
     ... class MyClass:
     ...     my_time_field: Annotated[list[time], AwarePattern('US/Eastern', '%H:%M:%S')]
-    >>> LoadMeta(v1=True).bind_to(MyClass)
     """
     __class_getitem__ = __getitem__ = __init__
     # noinspection PyInitNewSignature
@@ -201,12 +197,10 @@ class UTCPattern(PatternBase):
     >>> from typing import Annotated
     >>> from datetime import datetime
     >>> from dataclasses import dataclass
-    >>> from dataclass_wizard import LoadMeta
-    >>> from dataclass_wizard.v1 import UTCPattern
+    >>> from dataclass_wizard import UTCPattern
     >>> @dataclass
     ... class MyClass:
     ...     my_utc_field: Annotated[datetime, UTCPattern('%Y-%m-%d %H:%M:%S')]
-    >>> LoadMeta(v1=True).bind_to(MyClass)
     """
     __class_getitem__ = __getitem__ = __init__
     # noinspection PyInitNewSignature
@@ -229,12 +223,10 @@ class AwareTimePattern(time, Generic[T]):
     Using ``AwareTimePattern`` inside a dataclass:
 
     >>> from dataclasses import dataclass
-    >>> from dataclass_wizard import LoadMeta
-    >>> from dataclass_wizard.v1 import AwareTimePattern
+    >>> from dataclass_wizard import AwareTimePattern
     >>> @dataclass
     ... class MyClass:
     ...     my_aware_dt_field: AwareTimePattern['Europe/London', '%H:%M:%Z']
-    >>> LoadMeta(v1=True).bind_to(MyClass)
     """
     __getitem__ = __init__
     # noinspection PyInitNewSignature
@@ -257,12 +249,10 @@ class AwareDateTimePattern(datetime, Generic[T]):
     Using ``AwareDateTimePattern`` inside a dataclass:
 
     >>> from dataclasses import dataclass
-    >>> from dataclass_wizard import LoadMeta
-    >>> from dataclass_wizard.v1 import AwareDateTimePattern
+    >>> from dataclass_wizard import AwareDateTimePattern
     >>> @dataclass
     ... class MyClass:
     ...     my_aware_dt_field: AwareDateTimePattern['Asia/Tokyo', '%m-%Y-%H:%M-%Z']
-    >>> LoadMeta(v1=True).bind_to(MyClass)
     """
     __getitem__ = __init__
     # noinspection PyInitNewSignature
@@ -284,12 +274,10 @@ class DatePattern(date, Generic[T]):
     Using ``DatePattern`` inside a dataclass:
 
     >>> from dataclasses import dataclass
-    >>> from dataclass_wizard import LoadMeta
-    >>> from dataclass_wizard.v1 import DatePattern
+    >>> from dataclass_wizard import DatePattern
     >>> @dataclass
     ... class MyClass:
     ...     my_date_field: DatePattern['%Y/%m/%d']
-    >>> LoadMeta(v1=True).bind_to(MyClass)
     """
     __getitem__ = __init__
     # noinspection PyInitNewSignature
@@ -311,12 +299,10 @@ class TimePattern(time, Generic[T]):
     Using ``TimePattern`` inside a dataclass:
 
     >>> from dataclasses import dataclass
-    >>> from dataclass_wizard import LoadMeta
-    >>> from dataclass_wizard.v1 import TimePattern
+    >>> from dataclass_wizard import TimePattern
     >>> @dataclass
     ... class MyClass:
     ...     my_time_field: TimePattern['%H:%M:%S']
-    >>> LoadMeta(v1=True).bind_to(MyClass)
     """
     __getitem__ = __init__
     # noinspection PyInitNewSignature
@@ -338,12 +324,10 @@ class DateTimePattern(datetime, Generic[T]):
     Using DateTimePattern with `Annotated` inside a dataclass:
 
     >>> from dataclasses import dataclass
-    >>> from dataclass_wizard import LoadMeta
-    >>> from dataclass_wizard.v1 import DateTimePattern
+    >>> from dataclass_wizard import DateTimePattern
     >>> @dataclass
     ... class MyClass:
     ...     my_time_field: DateTimePattern['%d, %b, %Y %I:%M:%S %p']
-    >>> LoadMeta(v1=True).bind_to(MyClass)
     """
     __getitem__ = __init__
     # noinspection PyInitNewSignature
@@ -364,12 +348,10 @@ class UTCTimePattern(time, Generic[T]):
     Using ``UTCTimePattern`` inside a dataclass:
 
     >>> from dataclasses import dataclass
-    >>> from dataclass_wizard import LoadMeta
-    >>> from dataclass_wizard.v1 import UTCTimePattern
+    >>> from dataclass_wizard import UTCTimePattern
     >>> @dataclass
     ... class MyClass:
     ...     my_utc_time_field: UTCTimePattern['%H:%M:%S']
-    >>> LoadMeta(v1=True).bind_to(MyClass)
     """
     __getitem__ = __init__
     # noinspection PyInitNewSignature
@@ -390,12 +372,10 @@ class UTCDateTimePattern(datetime, Generic[T]):
     Using ``UTCDateTimePattern`` inside a dataclass:
 
     >>> from dataclasses import dataclass
-    >>> from dataclass_wizard import LoadMeta
-    >>> from dataclass_wizard.v1 import UTCDateTimePattern
+    >>> from dataclass_wizard import UTCDateTimePattern
     >>> @dataclass
     ... class MyClass:
     ...     my_utc_datetime_field: UTCDateTimePattern['%Y-%m-%d %H:%M:%S']
-    >>> LoadMeta(v1=True).bind_to(MyClass)
     """
     __getitem__ = __init__
     # noinspection PyInitNewSignature
@@ -461,14 +441,11 @@ def AliasPath(*all: PathType | str,
 
         from dataclasses import dataclass
 
-        from dataclass_wizard import fromdict, LoadMeta
-        from dataclass_wizard.v1 import AliasPath
+        from dataclass_wizard import AliasPath, fromdict
 
         @dataclass
         class Example:
             my_str: str = AliasPath('a.b.c.1', 'x.y["-1"].z', default="default_value")
-
-        LoadMeta(v1=True).bind_to(Example)
 
         # Maps nested paths ('a', 'b', 'c', 1) and ('x', 'y', '-1', 'z')
         # to the `my_str` attribute. '-1' is treated as a literal string key,
@@ -482,14 +459,10 @@ def AliasPath(*all: PathType | str,
         from dataclasses import dataclass
         from typing import Annotated
 
-        from dataclass_wizard import JSONPyWizard
-        from dataclass_wizard.v1 import AliasPath
+        from dataclass_wizard import AliasPath, JSONWizard
 
         @dataclass
-        class Example(JSONPyWizard):
-            class _(JSONPyWizard.Meta):
-                v1 = True
-
+        class Example(JSONWizard):
             my_str: Annotated[str, AliasPath('my."7".nested.path.-321')]
 
 
@@ -555,14 +528,11 @@ def Alias(*all: str,
 
         from dataclasses import dataclass
 
-        from dataclass_wizard import LoadMeta, fromdict
-        from dataclass_wizard.v1 import Alias
+        from dataclass_wizard import Alias, fromdict
 
         @dataclass
         class Example:
             my_field: str = Alias('key1', 'key2', default="default_value")
-
-        LoadMeta(v1=True).bind_to(Example)
 
         print(fromdict(Example, {'key2': 'a value!'}))
         #> Example(my_field='a value!')
@@ -571,14 +541,10 @@ def Alias(*all: str,
 
         from dataclasses import dataclass
 
-        from dataclass_wizard import JSONPyWizard
-        from dataclass_wizard.v1 import Alias
+        from dataclass_wizard import Alias, JSONWizard
 
         @dataclass
-        class Example(JSONPyWizard):
-            class _(JSONPyWizard.Meta):
-                v1 = True
-
+        class Example(JSONWizard):
             my_field: str = Alias('key', skip=True)
 
         ex = Example.from_dict({'key': 'some value'})
@@ -631,14 +597,11 @@ def Env(*load: str,
 
         from dataclasses import dataclass
 
-        from dataclass_wizard import LoadMeta, fromdict
-        from dataclass_wizard.v1 import Alias
+        from dataclass_wizard import Alias, fromdict
 
         @dataclass
         class Example:
             my_field: str = Alias('key1', 'key2', default="default_value")
-
-        LoadMeta(v1=True).bind_to(Example)
 
         print(fromdict(Example, {'key2': 'a value!'}))
         #> Example(my_field='a value!')
@@ -647,14 +610,10 @@ def Env(*load: str,
 
         from dataclasses import dataclass
 
-        from dataclass_wizard import JSONPyWizard
-        from dataclass_wizard.v1 import Alias
+        from dataclass_wizard import Alias, JSONWizard
 
         @dataclass
-        class Example(JSONPyWizard):
-            class _(JSONPyWizard.Meta):
-                v1 = True
-
+        class Example(JSONWizard):
             my_field: str = Alias('key', skip=True)
 
         ex = Example.from_dict({'key': 'some value'})

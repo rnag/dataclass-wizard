@@ -24,7 +24,7 @@ from .type_def import E
 from .type_conv import as_enum
 
 
-ALLOWED_MODES = ('runtime', 'v1_codegen')
+ALLOWED_MODES = ('runtime', 'codegen')
 
 # global flag to determine if debug mode was ever enabled
 _debug_was_enabled = False
@@ -94,7 +94,7 @@ def _infer_mode(hook) -> str:
     if argc == 1:
         return 'runtime'
     if argc == 2:
-        return 'v1_codegen'
+        return 'codegen'
 
     raise TypeError('hook must accept 1 arg (runtime) or 2 args (TypeInfo, Extras)')
 
@@ -111,7 +111,7 @@ def _normalize_hooks(hooks: Mapping | None) -> None:
             mode, fn = hook
             if mode not in ALLOWED_MODES:
                 raise ValueError(
-                    f"mode must be 'runtime' or 'v1_codegen' (got {mode!r})"
+                    f"mode must be 'runtime' or 'codegen' (got {mode!r})"
                 ) from None
 
         else:

@@ -1116,14 +1116,11 @@ Alias.__doc__ = """
 
         from dataclasses import dataclass
 
-        from dataclass_wizard import LoadMeta, fromdict
-        from dataclass_wizard.v1 import Alias
+        from dataclass_wizard import Alias, LoadMeta, fromdict
 
         @dataclass
         class Example:
             my_field: str = Alias('key1', 'key2', default="default_value")
-
-        LoadMeta(v1=True).bind_to(Example)
 
         print(fromdict(Example, {'key2': 'a value!'}))
         #> Example(my_field='a value!')
@@ -1132,14 +1129,10 @@ Alias.__doc__ = """
 
         from dataclasses import dataclass
 
-        from dataclass_wizard import JSONPyWizard
-        from dataclass_wizard.v1 import Alias
+        from dataclass_wizard import Alias, JSONWizard
 
         @dataclass
-        class Example(JSONPyWizard):
-            class _(JSONPyWizard.Meta):
-                v1 = True
-
+        class Example(JSONWizard):
             my_field: str = Alias('key', skip=True)
 
         ex = Example.from_dict({'key': 'some value'})
@@ -1192,8 +1185,7 @@ AliasPath.__doc__ = """
 
         from dataclasses import dataclass
 
-        from dataclass_wizard import fromdict, LoadMeta
-        from dataclass_wizard.v1 import AliasPath
+        from dataclass_wizard import AliasPath, fromdict, LoadMeta
 
         @dataclass
         class Example:
@@ -1213,14 +1205,10 @@ AliasPath.__doc__ = """
         from dataclasses import dataclass
         from typing import Annotated
 
-        from dataclass_wizard import JSONPyWizard
-        from dataclass_wizard.v1 import AliasPath
+        from dataclass_wizard import AliasPath, JSONWizard
 
         @dataclass
-        class Example(JSONPyWizard):
-            class _(JSONPyWizard.Meta):
-                v1 = True
-
+        class Example(JSONWizard):
             my_str: Annotated[str, AliasPath('my."7".nested.path.-321')]
 
 

@@ -6,7 +6,7 @@ from typing import (Callable, Mapping, dataclass_transform, TypedDict,
 from .loaders import LoadMixin as V1LoadMixIn
 from .models import Extras
 from .bases import AbstractEnvMeta, ENV_META
-from .bases_meta import BaseEnvWizardMeta, V1HookFn
+from .bases_meta import BaseEnvWizardMeta, HookFn
 from .type_def import Unpack, JSONObject, T, Encoder
 
 E_ = TypeVar('E_', bound=EnvWizard)
@@ -48,8 +48,8 @@ class EnvWizard:
 
     @classmethod
     def register_type(cls, tp: type, *,
-                      load: V1HookFn | None = None,
-                      dump: V1HookFn | None = None,
+                      load: HookFn | None = None,
+                      dump: HookFn | None = None,
                       mode: str | None = None) -> None:
         ...
 

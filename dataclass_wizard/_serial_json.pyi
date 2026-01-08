@@ -2,7 +2,7 @@ import json
 from typing import AnyStr, Collection, Callable, Protocol, dataclass_transform
 
 from .abstractions import AbstractJSONWizard, W
-from .bases_meta import BaseJSONWizardMeta, V1HookFn
+from .bases_meta import BaseJSONWizardMeta, HookFn
 from .enums import KeyCase
 from .type_def import Decoder, Encoder, JSONObject, ListOfJSONObject
 
@@ -88,8 +88,8 @@ class JSONWizardImpl(AbstractJSONWizard, SerializerHookMixin):
 
     @classmethod
     def register_type(cls, tp: type, *,
-                      load: V1HookFn | None = None,
-                      dump: V1HookFn | None = None,
+                      load: HookFn | None = None,
+                      dump: HookFn | None = None,
                       mode: str | None = None) -> None:
         ...
 

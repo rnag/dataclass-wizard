@@ -102,7 +102,7 @@ def test_v1_meta_runtime_hooks_ipv4address_roundtrip():
     with pytest.raises(ValueError) as e:
         meta = LoadMeta(v1_type_to_load_hook={IPv4Address: ('RT', str)})
         meta.bind_to(Foo)
-        assert "mode must be 'runtime' or 'v1_codegen' (got 'RT')" in str(e.value)
+        assert "mode must be 'runtime' or 'codegen' (got 'RT')" in str(e.value)
 
 
 def test_v1_register_type_no_inheritance_with_functional_api_roundtrip():

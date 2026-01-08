@@ -2,7 +2,7 @@ from collections import defaultdict
 from dataclasses import Field
 from typing import Any, Callable, Literal, Sequence, overload
 
-from .abstractions import W, AbstractLoader, AbstractDumper, E, AbstractLoaderGenerator, AbstractDumperGenerator
+from .abstractions import W, E, AbstractLoaderGenerator, AbstractDumperGenerator
 from .bases import META, AbstractMeta
 from .constants import PACKAGE_NAME
 from .models import Condition
@@ -66,13 +66,13 @@ META_INITIALIZER: dict[str, Callable[[type[W]], None]] = {}
 _META: dict[type, META] = {}
 
 
-def set_class_loader(cls_to_loader, class_or_instance, loader: type[AbstractLoader]):
+def set_class_loader(cls_to_loader, class_or_instance, loader: type[AbstractLoaderGenerator]):
     """
     Set (and return) the loader for a dataclass.
     """
 
 
-def set_class_dumper(cls: type, dumper: type[AbstractDumper]):
+def set_class_dumper(cls: type, dumper: type[AbstractDumperGenerator]):
     """
     Set (and return) the dumper for a dataclass.
     """

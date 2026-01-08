@@ -116,7 +116,7 @@ __all__ = [
     'EnvMeta',
     # Models
     'skip_if_field',
-    # 'Container',
+    'Container',
     'Pattern',
     'DatePattern',
     'TimePattern',
