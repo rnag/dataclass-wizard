@@ -41,8 +41,8 @@ from .utils._dataclass_compat import (apply_env_wizard_dataclass,
                                       set_new_attribute)
 from .utils._function_builder import FunctionBuilder
 from .utils._object_path import env_safe_get
-from .utils.string_conv import possible_env_vars
-from .utils.typing_compat import (eval_forward_ref_if_needed)
+from .utils._string_conv import possible_env_vars
+from .utils._typing_compat import eval_forward_ref_if_needed
 
 if TYPE_CHECKING:
     from ._env import EnvInit, E_

@@ -1,10 +1,10 @@
 from enum import Enum
 from typing import Callable
 
-from .utils.string_conv import (to_camel_case,
-                                to_lisp_case,
-                                to_pascal_case,
-                                to_snake_case)
+from .utils._string_conv import (to_camel_case,
+                                 to_lisp_case,
+                                 to_pascal_case,
+                                 to_snake_case)
 
 
 class FuncWrapper:
@@ -15,7 +15,7 @@ class FuncWrapper:
 
     https://stackoverflow.com/a/40339397/10237506
     """
-    __slots__ = ('f', )
+    __slots__ = ('f',)
 
     def __init__(self, f: Callable):
         self.f = f
@@ -37,8 +37,8 @@ class KeyAction(Enum):
     More details: https://dcw.ritviknag.com/en/latest/common_use_cases/handling_unknown_json_keys.html#capturing-unknown-keys-with-catchall
     """
     IGNORE = 0  # Silently skip unknown keys.
-    RAISE = 1   # Raise an exception for the first unknown key.
-    WARN = 2    # Log a warning for each unknown key.
+    RAISE = 1  # Raise an exception for the first unknown key.
+    WARN = 2  # Log a warning for each unknown key.
     # INCLUDE = 3
 
 
@@ -76,9 +76,9 @@ class EnvKeyStrategy(Enum):
         Useful when you want configuration loading to be fully deterministic.
 
     """
-    ENV = "env"             # `MY_FIELD` > `my_field`
-    FIELD_FIRST = "field"   # try field name as written, then env-style (ENV)
-    STRICT = "strict"       # explicit keys only (kwargs + aliases), no prefixes / transforms
+    ENV = "env"  # `MY_FIELD` > `my_field`
+    FIELD_FIRST = "field"  # try field name as written, then env-style (ENV)
+    STRICT = "strict"  # explicit keys only (kwargs + aliases), no prefixes / transforms
     # TODO: Implement later, as time allows!
     # PREFIXED_EXACT = "prefixed_exact"  # kwargs > prefixed exact field > alias > missing
 
@@ -105,10 +105,10 @@ class KeyCase(Enum):
         * Example: `MY_FIELD_NAME` -> `MY_FIELD_NAME`
     """
     # Key casing options
-    CAMEL = C = FuncWrapper(to_camel_case)    # Convert to `camelCase`
+    CAMEL = C = FuncWrapper(to_camel_case)  # Convert to `camelCase`
     PASCAL = P = FuncWrapper(to_pascal_case)  # Convert to `PascalCase`
-    KEBAB = K = FuncWrapper(to_lisp_case)     # Convert to `kebab-case`
-    SNAKE = S = FuncWrapper(to_snake_case)    # Convert to `snake_case`
+    KEBAB = K = FuncWrapper(to_lisp_case)  # Convert to `kebab-case`
+    SNAKE = S = FuncWrapper(to_snake_case)  # Convert to `snake_case`
     AUTO = A = None  # Attempt all valid casing transforms at runtime.
 
     def __call__(self, *args):
@@ -117,8 +117,8 @@ class KeyCase(Enum):
 
 
 class DateTimeTo(Enum):
-    ISO = 0          # ISO 8601 string (default)
-    TIMESTAMP = 1    # Unix timestamp (seconds)
+    ISO = 0  # ISO 8601 string (default)
+    TIMESTAMP = 1  # Unix timestamp (seconds)
 
 
 class EnvPrecedence(Enum):

@@ -9,9 +9,9 @@ from .constants import CATCH_ALL, PACKAGE_NAME, PY310_OR_ABOVE
 from .errors import InvalidConditionError
 from .models import CatchAll, Condition
 from .type_def import ExplicitNull
-from .utils.typing_compat import (
-    is_annotated, get_args, eval_forward_ref_if_needed
-)
+from .utils._typing_compat import (eval_forward_ref_if_needed,
+                                   get_args,
+                                   is_annotated)
 
 if TYPE_CHECKING:
     from .models import Field

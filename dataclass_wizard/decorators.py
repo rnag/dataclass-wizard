@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Callable, Union, cast
 
 from .type_def import DT
 from .utils._function_builder import FunctionBuilder
-from .utils.typing_compat import is_union
+from .utils._typing_compat import is_union
 
 if TYPE_CHECKING:  # pragma: no cover
     from .models import Extras, TypeInfo

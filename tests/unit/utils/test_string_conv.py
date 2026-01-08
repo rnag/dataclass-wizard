@@ -1,6 +1,6 @@
 import pytest
 
-from dataclass_wizard.utils.string_conv import *
+from dataclass_wizard.utils._string_conv import *
 
 
 @pytest.mark.parametrize(

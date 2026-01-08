@@ -19,8 +19,9 @@ import mashumaro
 from dataclass_wizard import JSONWizard, LoadMeta
 from dataclass_wizard.class_helper import create_new_class
 from dataclass_wizard.constants import PY314_OR_ABOVE
-from dataclass_wizard.utils.string_conv import to_snake_case
-from dataclass_wizard.utils.type_conv import as_datetime
+from dataclass_wizard.utils._string_conv import to_snake_case
+# FIXME
+from dataclass_wizard.wizard_cli.schema import _as_datetime as as_datetime
 
 
 log = logging.getLogger(__name__)

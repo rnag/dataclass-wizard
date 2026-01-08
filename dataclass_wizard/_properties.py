@@ -4,8 +4,13 @@ from typing import Dict, Any, Type, Union, Tuple, Optional
 
 from .constants import PY314_OR_ABOVE, PY310_OR_ABOVE
 from .type_def import T, NoneType
-from .utils.typing_compat import (
-    get_origin, get_args, is_generic, is_literal, is_annotated, eval_forward_ref_if_needed
+from .utils._typing_compat import (
+    eval_forward_ref_if_needed,
+    get_args,
+    get_origin,
+    is_annotated,
+    is_generic,
+    is_literal,
 )
 
 AnnotationType = Dict[str, Type[T]]

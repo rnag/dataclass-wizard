@@ -73,7 +73,7 @@ from ..constants import PACKAGE_NAME
 from ..class_helper import get_class_name
 from dataclass_wizard._models_date import UTC
 from ..type_def import PyDeque, JSONList, JSONObject, JSONValue, T, NUMBERS
-from ..utils.string_conv import to_snake_case, to_pascal_case
+from ..utils._string_conv import to_snake_case, to_pascal_case
 from ..type_conv import TRUTHY_VALUES
 
 

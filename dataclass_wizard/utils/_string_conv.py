@@ -85,6 +85,7 @@ def possible_env_vars(field: str, lookup_strat: 'EnvKeyStrategy') -> list[str]:
     Returns:
         list[str]: The possible JSON keys for the given field.
     """
+    # TODO
     from ..enums import EnvKeyStrategy
 
     _is_field_first = lookup_strat is EnvKeyStrategy.FIELD_FIRST
@@ -118,7 +119,7 @@ def to_camel_case(string: str) -> str:
         string.replace('-', '_').replace(' ', '_'))
 
     return string[0].lower() + re.sub(
-        r"(?:_)(.)", lambda m: m.group(1).upper(), string[1:])
+        r"_(.)", lambda m: m.group(1).upper(), string[1:])
 
 
 def to_pascal_case(string):
@@ -135,7 +136,7 @@ def to_pascal_case(string):
         string.replace('-', '_').replace(' ', '_'))
 
     return string[0].upper() + re.sub(
-        r"(?:_)(.)", lambda m: m.group(1).upper(), string[1:])
+        r"_(.)", lambda m: m.group(1).upper(), string[1:])
 
 
 def to_lisp_case(string: str) -> str:

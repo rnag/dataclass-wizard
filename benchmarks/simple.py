@@ -16,7 +16,7 @@ import mashumaro
 from dataclass_wizard import JSONWizard, LoadMeta
 from dataclass_wizard.class_helper import create_new_class
 from dataclass_wizard.constants import PY314_OR_ABOVE
-from dataclass_wizard.utils.string_conv import to_snake_case
+from dataclass_wizard.utils._string_conv import to_snake_case
 
 log = logging.getLogger(__name__)
 

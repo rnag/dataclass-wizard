@@ -26,22 +26,22 @@ from .type_conv import (
 from .abstractions import AbstractLoaderGenerator
 from .bases import AbstractMeta, BaseLoadHook, META
 from .class_helper import (create_meta,
-                                           dataclass_fields,
-                                           dataclass_field_to_default,
-                                           dataclass_init_fields,
-                                           dataclass_init_field_names,
-                                           get_meta,
-                                           is_subclass_safe,
-                                           v1_dataclass_field_to_alias_for_load,
-                                           CLASS_TO_LOAD_FUNC,
-                                           DATACLASS_FIELD_TO_ALIAS_PATH_FOR_LOAD,
-                                           dataclass_kw_only_init_field_names)
+                           dataclass_fields,
+                           dataclass_field_to_default,
+                           dataclass_init_fields,
+                           dataclass_init_field_names,
+                           get_meta,
+                           is_subclass_safe,
+                           v1_dataclass_field_to_alias_for_load,
+                           CLASS_TO_LOAD_FUNC,
+                           DATACLASS_FIELD_TO_ALIAS_PATH_FOR_LOAD,
+                           dataclass_kw_only_init_field_names)
 from .constants import CATCH_ALL, TAG, PY311_OR_ABOVE, PACKAGE_NAME
 from .errors import (JSONWizardError,
-                                     MissingData,
-                                     MissingFields,
-                                     ParseError,
-                                     UnknownKeysError)
+                     MissingData,
+                     MissingFields,
+                     ParseError,
+                     UnknownKeysError)
 from .loader_selection import fromdict, get_loader
 from ._log import LOG
 from .type_def import DefFactory, JSONObject, NoneType, PyLiteralString, T
@@ -49,15 +49,15 @@ from .type_def import DefFactory, JSONObject, NoneType, PyLiteralString, T
 from .utils._dataclass_compat import set_new_attribute
 from .utils._function_builder import FunctionBuilder
 from .utils._object_path import safe_get
-from .utils.string_conv import possible_json_keys
-from .utils.typing_compat import (eval_forward_ref_if_needed,
-                                  get_args,
-                                  get_keys_for_typed_dict,
-                                  get_origin_v2,
-                                  is_annotated,
-                                  is_typed_dict,
-                                  is_typed_dict_type_qualifier,
-                                  is_union)
+from .utils._string_conv import possible_json_keys
+from .utils._typing_compat import (eval_forward_ref_if_needed,
+                                   get_args,
+                                   get_keys_for_typed_dict,
+                                   get_origin_v2,
+                                   is_annotated,
+                                   is_typed_dict,
+                                   is_typed_dict_type_qualifier,
+                                   is_union)
 
 
 class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
@@ -458,10 +458,10 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
 
         dict_body = ', '.join(
             f"""{name!r}: {
-                cls.load_dispatcher_for_annotation(
-                    tp.replace(origin=ann.get(name, Any), index=repr(name)),
-                    extras,
-                )
+            cls.load_dispatcher_for_annotation(
+                tp.replace(origin=ann.get(name, Any), index=repr(name)),
+                extras,
+            )
             }"""
             for name in req_keys
         )
@@ -548,10 +548,10 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         #   collisions are possible.
         # noinspection PyUnboundLocalVariable
         if (has_dataclass
-                and (pre_decoder := config.v1_pre_decoder) is not None
-                and (new_v := pre_decoder(cls, dict, tp, extras).v()) != v):
+            and (pre_decoder := config.v1_pre_decoder) is not None
+            and (new_v := pre_decoder(cls, dict, tp, extras).v()) != v):
             current_v = v
-            tp = tp.replace(i=i+1)
+            tp = tp.replace(i=i + 1)
 
             i = tp.i
             v = tp.v_for_def()
@@ -623,10 +623,10 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
             ]
 
             if (possible_tp in LEAF_TYPES or (
-                    leaf_handling_as_subclass
-                    and is_subclass_safe(
-                        get_origin_v2(possible_tp), LEAF_TYPES)
-                    )):
+                leaf_handling_as_subclass
+                and is_subclass_safe(
+                get_origin_v2(possible_tp), LEAF_TYPES)
+            )):
 
                 # TODO disable for dataclasses
 
@@ -806,7 +806,6 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         else:  # pragma: no cover
             _parse_iso_string = f"{_fromisoformat}({o}.replace('Z', '+00:00', 1))"
 
-
         return (f'({_fromtimestamp}(int({o}), UTC){_date_part} if {o}.isdigit() '
                 f'else {_parse_iso_string}) if {o}.__class__ is str '
                 f'else {_as_func}({o}, {_fromtimestamp}, UTC{_opt_cls})')
@@ -881,8 +880,8 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         # -> Atomic, immutable types which don't require
         #    any iterative / recursive handling.
         elif origin in LEAF_TYPES or (
-                leaf_handling_as_subclass
-                and is_subclass_safe(origin, LEAF_TYPES)):
+            leaf_handling_as_subclass
+            and is_subclass_safe(origin, LEAF_TYPES)):
             load_hook = hooks.get(origin)
 
         elif (type_hooks is not None
@@ -1056,11 +1055,10 @@ def setup_default_loader(cls=LoadMixin):
 
 
 def check_and_raise_missing_fields(
-        _locals, o, cls,
-        fields: tuple[Field, ...] | None,
-        **kwargs,
+    _locals, o, cls,
+    fields: tuple[Field, ...] | None,
+    **kwargs,
 ):
-
     if fields is None:  # `typing.NamedTuple` or `collections.namedtuple`
         nt_tp = cast(NamedTuple, cls)
         field_to_default = nt_tp._field_defaults
@@ -1098,12 +1096,11 @@ def check_and_raise_missing_fields(
 
 
 def load_func_for_dataclass(
-        cls: type,
-        extras: Extras | None = None,
-        loader_cls=LoadMixin,
-        base_meta_cls: type = AbstractMeta,
+    cls: type,
+    extras: Extras | None = None,
+    loader_cls=LoadMixin,
+    base_meta_cls: type = AbstractMeta,
 ) -> Callable[[JSONObject], T] | None:
-
     # Tuple describing the fields of this dataclass.
     fields = dataclass_fields(cls)
 
@@ -1197,10 +1194,10 @@ def load_func_for_dataclass(
     # See https://github.com/rnag/dataclass-wizard/issues/137
     has_tag_assigned = meta.tag is not None
     if (has_tag_assigned and
-            # Ensure `tag_key` isn't a dataclass field,
-            # to avoid issues with our logic.
-            # See https://github.com/rnag/dataclass-wizard/issues/148
-            meta.tag_key not in cls_init_field_names):
+        # Ensure `tag_key` isn't a dataclass field,
+        # to avoid issues with our logic.
+        # See https://github.com/rnag/dataclass-wizard/issues/148
+        meta.tag_key not in cls_init_field_names):
         expect_tag_as_unknown_key = True
     else:
         expect_tag_as_unknown_key = False
@@ -1280,7 +1277,7 @@ def load_func_for_dataclass(
                     val_is_found = _val_is_found
 
                     if (check_aliases
-                            and (_aliases := field_to_aliases.get(name)) is not None):
+                        and (_aliases := field_to_aliases.get(name)) is not None):
 
                         if len(_aliases) == 1:
                             alias = _aliases[0]
@@ -1303,7 +1300,7 @@ def load_func_for_dataclass(
                             val_is_found = '(' + '\n     or '.join(condition) + ')'
 
                     elif (has_alias_paths
-                            and (paths := field_to_paths.get(name)) is not None):
+                          and (paths := field_to_paths.get(name)) is not None):
 
                         if len(paths) == 1:
                             path = paths[0]
@@ -1368,7 +1365,7 @@ def load_func_for_dataclass(
                             aliases.add(alias)
 
                         if alias != name:
-                            field_to_aliases[name] = (alias, )
+                            field_to_aliases[name] = (alias,)
 
                         f_assign = f'field={name!r}; {val}=o.get({alias!r}, MISSING)'
 
@@ -1453,7 +1450,7 @@ def load_func_for_dataclass(
         # Check if the class has a `from_dict`, and it's
         # a class method bound to `fromdict`.
         if ((from_dict := getattr(cls, 'from_dict', None)) is not None
-                and getattr(from_dict, '__func__', None) is fromdict):
+            and getattr(from_dict, '__func__', None) is fromdict):
             LOG.debug("setattr(%s, 'from_dict', %s)", cls_name, fn_name)
             # Marker reserved for future detection/debugging of specialized loaders.
             # setattr(cls_fromdict, _SPECIALIZED_FROM_DICT, True)
@@ -1477,7 +1474,6 @@ def generate_field_code(cls_loader: LoadMixin,
                         field: Field,
                         field_i: int,
                         var_name=None) -> 'str | TypeInfo':
-
     cls = extras['cls']
     field_type = field.type = eval_forward_ref_if_needed(field.type, cls)
 
@@ -1529,10 +1525,10 @@ def re_raise(e, cls, o, fields, field, value):
 
     # noinspection PyUnboundLocalVariable
     if (isinstance(e, ParseError)
-            # `typing.NamedTuple` or `collections.namedtuple`
-            and (origin := e.ann_type) is not None
-            and is_subclass_safe(origin, tuple)
-            and (_fields := getattr(origin, '_fields', None))):
+        # `typing.NamedTuple` or `collections.namedtuple`
+        and (origin := e.ann_type) is not None
+        and is_subclass_safe(origin, tuple)
+        and (_fields := getattr(origin, '_fields', None))):
 
         meta = get_meta(cls)
         nt_tp = cast(NamedTuple, origin)

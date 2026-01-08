@@ -52,10 +52,15 @@ from .type_def import (
 from .utils._dataclass_compat import set_new_attribute
 from .utils._dict_helper import NestedDict
 from .utils._function_builder import FunctionBuilder
-from .utils.typing_compat import (
-    is_typed_dict, get_args, is_annotated,
-    eval_forward_ref_if_needed, get_origin_v2, is_union,
-    get_keys_for_typed_dict, is_typed_dict_type_qualifier,
+from .utils._typing_compat import (
+    eval_forward_ref_if_needed,
+    get_args,
+    get_keys_for_typed_dict,
+    get_origin_v2,
+    is_annotated,
+    is_typed_dict,
+    is_typed_dict_type_qualifier,
+    is_union,
 )
 
 
@@ -101,10 +106,10 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
         # identity: o
         return tp.v()
 
-    dump_from_str     = dump_fallback
-    dump_from_int     = dump_fallback
-    dump_from_float   = dump_fallback
-    dump_from_bool    = dump_fallback
+    dump_from_str = dump_fallback
+    dump_from_int = dump_fallback
+    dump_from_float = dump_fallback
+    dump_from_bool = dump_fallback
     dump_from_literal = dump_fallback
 
     @staticmethod
@@ -268,10 +273,10 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
 
         dict_body = ', '.join(
             f"""{name!r}: {
-                cls.dump_dispatcher_for_annotation(
-                    tp.replace(origin=ann.get(name, Any), index=repr(name)),
-                    extras,
-                )
+            cls.dump_dispatcher_for_annotation(
+                tp.replace(origin=ann.get(name, Any), index=repr(name)),
+                extras,
+            )
             }"""
             for name in req_keys
         )
@@ -352,11 +357,11 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
             tp_new.in_optional = in_optional
 
             if _type_returns_value_unchanged(
-                    possible_tp, leaf_handling_as_subclass):
+                possible_tp, leaf_handling_as_subclass):
                 leaf_types.append(possible_tp)
 
-        # if num_leaf_types_no_bytes > 0:
-        #     fn_gen.add_line(f'return {v}')
+            # if num_leaf_types_no_bytes > 0:
+            #     fn_gen.add_line(f'return {v}')
 
             elif is_dataclass(possible_tp):
                 # we see a dataclass in `Union` declaration
@@ -396,7 +401,7 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
             container = tuple if len(leaf_types) <= 6 else frozenset
             _locals['leaf_types'] = container(leaf_types)
             leaf_type_names = ', '.join(getattr(t, '__name__', None) or str(t)
-                               for t in leaf_types)
+                                        for t in leaf_types)
             with fn_gen.if_('t in leaf_types', comment=f'{{{leaf_type_names}}}'):
                 fn_gen.add_line(f'return {v}')
 
@@ -531,8 +536,8 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
         # -> Atomic, immutable types which don't require
         #    any iterative / recursive handling.
         elif origin in LEAF_TYPES or (
-                leaf_handling_as_subclass
-                and is_subclass_safe(origin, LEAF_TYPES)):
+            leaf_handling_as_subclass
+            and is_subclass_safe(origin, LEAF_TYPES)):
             dump_hook = hooks.get(origin)
 
         elif (type_hooks is not None
@@ -730,7 +735,6 @@ def setup_default_dumper(cls=DumpMixin):
 
 def check_and_raise_missing_fields(
     _locals, o, cls, fields: tuple[Field, ...]):
-
     missing_fields = [f.name for f in fields
                       if f.init
                       and f'__{f.name}' not in _locals
@@ -752,7 +756,6 @@ def dump_func_for_dataclass(
     dumper_cls=DumpMixin,
     base_meta_cls: type = AbstractMeta,
 ) -> Union[Callable[[T], JSONObject], str]:
-
     # TODO dynamically generate for multiple nested classes at once
 
     # Tuple describing the fields of this dataclass.
@@ -874,7 +877,7 @@ def dump_func_for_dataclass(
     cls_name = cls.__name__
 
     with fn_gen.function(
-            fn_name, [
+        fn_name, [
             'o',
             'dict_factory=dict',
             "exclude:'list[str]|None'=None",
@@ -945,7 +948,6 @@ def dump_func_for_dataclass(
                         # else:
                         #     field_assignments.append(f"if not {skip_field}:")
 
-
                     # A dataclass field which specifies a "JSON Path".
                     if has_paths and (
                         path := field_to_path.get(name)
@@ -1009,8 +1011,8 @@ def dump_func_for_dataclass(
                             meta.skip_defaults_if, var_name, skip_defaults_if_condition)
                         # TODO missing skip individual condition!!
                         with fn_gen.if_(
-                                f'(add_defaults or {var_name} != {default_name}) '
-                                f'and not ({_final_skip_if})'):
+                            f'(add_defaults or {var_name} != {default_name}) '
+                            f'and not ({_final_skip_if})'):
                             fn_gen.add_line(line)
 
                     elif (condition := name_to_skip_condition.get(name)) is not None:
@@ -1020,8 +1022,8 @@ def dump_func_for_dataclass(
                                 fn_gen.add_line(line)
                         else:
                             with fn_gen.if_(
-                                    f'(add_defaults or {var_name} != {default_name}) '
-                                    f'and {condition}'):
+                                f'(add_defaults or {var_name} != {default_name}) '
+                                f'and {condition}'):
                                 fn_gen.add_line(line)
 
                     else:
@@ -1098,7 +1100,6 @@ def generate_field_code(cls_dumper: DumpMixin,
                         field: Field,
                         field_i: int,
                         var_name=None) -> 'str | TypeInfo':
-
     cls = extras['cls']
     field_type = field.type = eval_forward_ref_if_needed(field.type, cls)
 
@@ -1117,7 +1118,7 @@ def re_raise(e, cls, o, fields, field, value):
     # If the object `o` is None, then raise an error with
     # the relevant info included.
     if o is None:
-      raise MissingData(cls) from None
+        raise MissingData(cls) from None
 
     add_fields = True
     if type(e) is not ParseError:
@@ -1131,7 +1132,7 @@ def re_raise(e, cls, o, fields, field, value):
     # to resolve it.
     if field == '<UNK>' and cls and fields:
         if len((names := [f.name for f in fields
-                         if getattr(o, f.name, MISSING) == e.obj])) == 1:
+                          if getattr(o, f.name, MISSING) == e.obj])) == 1:
             field = e.field_name = names[0]
 
     # We run into a parsing error while dumping the field value;

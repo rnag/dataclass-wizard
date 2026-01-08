@@ -15,7 +15,7 @@ from ._log import LOG
 from .type_def import DefFactory, ExplicitNull, PyNotRequired, NoneType, T
 from .utils._function_builder import FunctionBuilder
 from .utils._object_path import split_object_path
-from .utils.typing_compat import get_origin_v2
+from .utils._typing_compat import get_origin_v2
 
 if TYPE_CHECKING:  # pragma: no cover
     from .bases import META

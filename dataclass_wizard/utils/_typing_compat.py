@@ -21,9 +21,9 @@ import functools
 import sys
 import typing
 # noinspection PyUnresolvedReferences,PyProtectedMember
-from typing import Literal, Union, _AnnotatedAlias
+from typing import Literal, Union, _AnnotatedAlias  # type: ignore
 
-from .string_conv import repl_or_with_union
+from ._string_conv import repl_or_with_union
 from ..constants import PY310_OR_ABOVE, PY313_OR_ABOVE
 from ..type_def import (FREF,
                         PyRequired,
@@ -31,7 +31,7 @@ from ..type_def import (FREF,
                         PyReadOnly,
                         PyForwardRef)
 
-
+# noinspection PyTypedDict
 _TYPED_DICT_TYPE_QUALIFIERS = frozenset(
     {PyRequired, PyNotRequired, PyReadOnly}
 )
@@ -69,8 +69,9 @@ if PY310_OR_ABOVE:  # pragma: no cover
     from types import GenericAlias, UnionType
     _get_args = typing.get_args
 
+    # noinspection PyUnresolvedReferences,PyProtectedMember
     _BASE_GENERIC_TYPES = (
-        typing._GenericAlias,
+        typing._GenericAlias,  # type: ignore
         typing._SpecialForm,
         GenericAlias,
         UnionType,
@@ -109,8 +110,9 @@ if PY310_OR_ABOVE:  # pragma: no cover
 else:  # pragma: no cover
     from typing_extensions import get_args as _get_args
 
+    # noinspection PyProtectedMember,PyUnresolvedReferences
     _BASE_GENERIC_TYPES = (
-        typing._GenericAlias,
+        typing._GenericAlias,  # type: ignore
         typing._SpecialForm,
     )
 
@@ -140,7 +142,7 @@ else:  # pragma: no cover
 
 try:
     # noinspection PyProtectedMember,PyUnresolvedReferences
-    from typing_extensions import _TYPEDDICT_TYPES
+    from typing_extensions import _TYPEDDICT_TYPES, is_typeddict
 
 except ImportError:
     from typing import is_typeddict as is_typed_dict
