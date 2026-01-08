@@ -40,7 +40,7 @@ from .utils.dataclass_compat import (_apply_env_wizard_dataclass,
                                      _dataclass_needs_refresh,
                                      _set_new_attribute)
 from .utils.function_builder import FunctionBuilder
-from .utils.object_path import v1_env_safe_get
+from .utils.object_path import env_safe_get
 from .utils.string_conv import possible_env_vars
 from .utils.typing_compat import (eval_forward_ref_if_needed)
 
@@ -289,7 +289,7 @@ def load_func_for_dataclass(
         aliases = None
 
     if has_alias_paths:
-        new_locals['safe_get'] = v1_env_safe_get
+        new_locals['safe_get'] = env_safe_get
 
     add_body_lines = cls_init_fields or has_catch_all
 

@@ -17,7 +17,8 @@ from .decorators import (process_patterned_date_time,
                          setup_recursive_safe_function,
                          setup_recursive_safe_function_for_generic)
 from .enums import KeyAction, KeyCase
-from .models import Extras, PatternBase, TypeInfo, LEAF_TYPES, UTC
+from .models import Extras, PatternBase, TypeInfo, LEAF_TYPES
+from ._models_date import UTC
 from .type_conv import (
     as_datetime_v1, as_date_v1, as_int_v1,
     as_time_v1, as_timedelta, TRUTHY_VALUES,
@@ -47,7 +48,7 @@ from .type_def import DefFactory, JSONObject, NoneType, PyLiteralString, T
 # noinspection PyProtectedMember
 from .utils.dataclass_compat import _set_new_attribute
 from .utils.function_builder import FunctionBuilder
-from .utils.object_path import v1_safe_get
+from .utils.object_path import safe_get
 from .utils.string_conv import possible_json_keys
 from .utils.typing_compat import (eval_forward_ref_if_needed,
                                   get_args,
@@ -1244,7 +1245,7 @@ def load_func_for_dataclass(
         aliases = None
 
     if has_alias_paths:
-        new_locals['safe_get'] = v1_safe_get
+        new_locals['safe_get'] = safe_get
 
     with fn_gen.function(fn_name, ['o'], MISSING, new_locals):
 

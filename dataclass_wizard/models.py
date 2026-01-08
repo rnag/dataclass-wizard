@@ -4,10 +4,11 @@ import sys
 import types
 from collections import defaultdict, deque
 from dataclasses import MISSING, Field as _Field
-from datetime import datetime, date, time, tzinfo, timezone, timedelta
+from datetime import datetime, date, time, tzinfo
 from typing import TYPE_CHECKING, Any, TypedDict, cast, NewType, Mapping
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
+from ._models_date import UTC
 from .decorators import cached_property, setup_recursive_safe_function
 from .constants import PY310_OR_ABOVE, PY311_OR_ABOVE, PY314_OR_ABOVE
 from ._log import LOG
@@ -19,16 +20,6 @@ from .utils.typing_compat import get_origin_v2
 if TYPE_CHECKING:  # pragma: no cover
     from .bases import META
 
-
-# UTC Time Zone
-if PY311_OR_ABOVE:
-    # https://docs.python.org/3/library/datetime.html#datetime.UTC
-    from datetime import UTC
-else:
-    UTC: timezone = timezone.utc
-
-# UTC time zone (no offset)
-ZERO: timedelta = timedelta(0)
 
 # Define a simple type (alias) for the `CatchAll` field
 #
@@ -1185,13 +1176,11 @@ AliasPath.__doc__ = """
 
         from dataclasses import dataclass
 
-        from dataclass_wizard import AliasPath, fromdict, LoadMeta
+        from dataclass_wizard import AliasPath, fromdict
 
         @dataclass
         class Example:
             my_str: str = AliasPath('a.b.c.1', 'x.y["-1"].z', default="default_value")
-
-        LoadMeta(v1=True).bind_to(Example)
 
         # Maps nested paths ('a', 'b', 'c', 1) and ('x', 'y', '-1', 'z')
         # to the `my_str` attribute. '-1' is treated as a literal string key,

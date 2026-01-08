@@ -23,7 +23,7 @@ from typing import Union, Any, AnyStr
 from .errors import ParseError
 from .lazy_imports import pytimeparse
 from .type_def import E, N, NUMBERS
-from .models import ZERO, UTC
+from ._models_date import ZERO, UTC
 
 
 # What values are considered "truthy" when converting to a boolean type.

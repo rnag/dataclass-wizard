@@ -26,12 +26,6 @@ LEAF_TYPES_NO_BYTES: frozenset[type]
 SEQUENCE_ORIGINS: frozenset[type]
 MAPPING_ORIGINS: frozenset[type]
 
-# UTC Time Zone
-UTC: timezone
-
-# UTC time zone (no offset)
-ZERO: timedelta
-
 
 def get_zoneinfo(key: str) -> ZoneInfo: ...
 

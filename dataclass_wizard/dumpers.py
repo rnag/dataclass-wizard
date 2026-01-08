@@ -21,7 +21,8 @@ from .decorators import (setup_recursive_safe_function,
                          setup_recursive_safe_function_for_generic)
 from .enums import KeyCase, DateTimeTo
 from .models import (Extras, TypeInfo, PatternBase,
-                     LEAF_TYPES, LEAF_TYPES_NO_BYTES, UTC, ZERO)
+                     LEAF_TYPES, LEAF_TYPES_NO_BYTES)
+from ._models_date import ZERO, UTC
 from .type_conv import datetime_to_timestamp
 from .abstractions import AbstractDumperGenerator
 from .bases import AbstractMeta, BaseDumpHook, META

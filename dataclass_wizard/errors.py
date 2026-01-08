@@ -267,13 +267,7 @@ class MissingFields(JSONWizardError):
 
     @property
     def message(self) -> str:
-        from .class_helper import get_meta
         from .utils.json_util import safe_dumps
-
-        # need to determine this, as we can't
-        # directly import `class_helper.py`
-        meta = get_meta(self.parent_cls)
-        v1 = meta.v1
 
         if isinstance(self.obj, list):
             keys = [f.name for f in self.all_fields]

@@ -1,37 +1,10 @@
 from dataclasses import MISSING
 
 from ..errors import ParseError
+from ..type_conv import as_collection_v1
 
 
-def safe_get(data, path, default=MISSING, raise_=True):
-    current_data = data
-    p = path  # to avoid "unbound local variable" warnings
-
-    try:
-        for p in path:
-            current_data = current_data[p]
-
-        return current_data
-
-    # IndexError -
-    #   raised when `data` is a `list`, and we access an index that is "out of bounds"
-    # KeyError -
-    #   raised when `data` is a `dict`, and we access a key that is not present
-    # AttributeError -
-    #   raised when `data` is an invalid type, such as a `None`
-    except (IndexError, KeyError, AttributeError) as e:
-        if raise_ and default is MISSING:
-            raise _format_err(e, current_data, path, p) from None
-        return default
-
-    # TypeError -
-    #   raised when `data` is a `list`, but we try to use it like a `dict`
-    except TypeError:
-        e = TypeError('Invalid path')
-        raise _format_err(e, current_data, path, p, True) from None
-
-
-def v1_safe_get(data, path, raise_):
+def safe_get(data, path, raise_):
     current_data = data
 
     try:
@@ -56,15 +29,12 @@ def v1_safe_get(data, path, raise_):
     # TypeError -
     #   raised when `data` is a `list`, but we try to use it like a `dict`
     except TypeError:
-        e = TypeError('Invalid path')
+        e = TypeError('Invalid path')  # type: ignore
         p = locals().get('p', path)  # to suppress "unbound local variable"
         raise _format_err(e, current_data, path, p, True) from None
 
 
-def v1_env_safe_get(data, first_key, path, raise_):
-    # TODO
-    from ..type_conv import as_collection_v1
-
+def env_safe_get(data, first_key, path, raise_):
     current_data = data
 
     try:
@@ -92,7 +62,7 @@ def v1_env_safe_get(data, first_key, path, raise_):
     # TypeError -
     #   raised when `data` is a `list`, but we try to use it like a `dict`
     except TypeError:
-        e = TypeError('Invalid path')
+        e = TypeError('Invalid path')  # type: ignore
         path = [first_key] + list(path)
         p = locals().get('p', path)  # to suppress "unbound local variable"
         raise _format_err(e, current_data, path, p, True) from None

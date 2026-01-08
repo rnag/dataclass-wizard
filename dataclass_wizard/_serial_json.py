@@ -59,15 +59,12 @@ def _configure_wizard_class(cls,
     load_meta_kwargs = {}
 
     if case is not None:
-        _v1_default = True
         load_meta_kwargs['v1_case'] = case
 
     if dump_case is not None:
-        _v1_default = True
         load_meta_kwargs['v1_dump_case'] = dump_case
 
     if load_case is not None:
-        _v1_default = True
         load_meta_kwargs['v1_load_case'] = load_case
 
     # TODO

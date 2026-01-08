@@ -12,7 +12,7 @@ from dataclass_wizard import JSONWizard, EnvWizard
 from dataclass_wizard.bases_meta import BaseJSONWizardMeta
 from dataclass_wizard.enums import KeyCase, DateTimeTo
 from dataclass_wizard.errors import ParseError
-from dataclass_wizard.models import UTC
+from dataclass_wizard._models_date import UTC
 
 log = logging.getLogger(__name__)
 
