@@ -400,7 +400,7 @@ class PatternBase:
 
     @setup_recursive_safe_function(add_cls=False)
     def load_to_pattern(self, tp, extras):
-        from .type_conv import as_datetime_v1, as_date_v1, as_time_v1
+        from .type_conv import as_datetime, as_date, as_time
 
         v = tp.v()
 
@@ -461,21 +461,21 @@ class PatternBase:
         if is_datetime:
             _as_func = '__as_datetime'
             _as_func_args = f'{v}, {_fromtimestamp}, __tz' if has_tz else f'{v}, {_fromtimestamp}'
-            name_to_func[_as_func] = as_datetime_v1
+            name_to_func[_as_func] = as_datetime
             # `datetime` has a `fromtimestamp` method
             name_to_func[_fromtimestamp] = __base__.fromtimestamp
             end_part = ''
         elif is_date:
             _as_func = '__as_date'
             _as_func_args = f'{v}, {_fromtimestamp}'
-            name_to_func[_as_func] = as_date_v1
+            name_to_func[_as_func] = as_date
             # `date` has a `fromtimestamp` method
             name_to_func[_fromtimestamp] = __base__.fromtimestamp
             end_part = '.date()'
         else:
             _as_func = '__as_time'
             _as_func_args = f'{v}, cls'
-            name_to_func[_as_func] = as_time_v1
+            name_to_func[_as_func] = as_time
             end_part = '.timetz()' if has_tz else '.time()'
 
         tp.ensure_in_locals(extras, **name_to_func)

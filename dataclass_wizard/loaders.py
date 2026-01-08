@@ -20,8 +20,8 @@ from .enums import KeyAction, KeyCase
 from .models import Extras, PatternBase, TypeInfo, LEAF_TYPES
 from ._models_date import UTC
 from .type_conv import (
-    as_datetime_v1, as_date_v1, as_int_v1,
-    as_time_v1, as_timedelta, TRUTHY_VALUES,
+    as_datetime, as_date, as_int,
+    as_time, as_timedelta, TRUTHY_VALUES,
 )
 from .abstractions import AbstractLoaderGenerator
 from .bases import AbstractMeta, BaseLoadHook, META
@@ -120,7 +120,7 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         """
         tn = tp.type_name(extras)
         o = tp.v()
-        tp.ensure_in_locals(extras, as_int=as_int_v1)
+        tp.ensure_in_locals(extras, as_int=as_int)
 
         return (
             f'{o} '
@@ -759,7 +759,7 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
 
         tp.ensure_in_locals(
             extras,
-            __as_time=as_time_v1,
+            __as_time=as_time,
             **{__fromisoformat: tp_time.fromisoformat}
         )
 
@@ -788,14 +788,14 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
             _fromtimestamp = f'__{tn}_fromtimestamp'
             name_to_func[_fromtimestamp] = tp_date_or_datetime.fromtimestamp
             _as_func = '__as_datetime'
-            name_to_func[_as_func] = as_datetime_v1
+            name_to_func[_as_func] = as_datetime
             _date_part = _opt_cls = ''
 
         else:  # date or a subclass
             _fromtimestamp = f'__datetime_fromtimestamp'
             name_to_func[_fromtimestamp] = datetime.fromtimestamp
             _as_func = '__as_date'
-            name_to_func[_as_func] = as_date_v1
+            name_to_func[_as_func] = as_date
             _date_part = '.date()'
             _opt_cls = f', {tn}'
 

@@ -1,15 +1,15 @@
 from __future__ import annotations
 
 __all__ = ['TRUTHY_VALUES',
-           'as_int_v1',
-           'as_datetime_v1',
-           'as_date_v1',
-           'as_time_v1',
+           'as_int',
+           'as_datetime',
+           'as_date',
+           'as_time',
            'as_timedelta',
            'datetime_to_timestamp',
-           'as_collection_v1',
-           'as_list_v1',
-           'as_dict_v1',
+           'as_collection',
+           'as_list',
+           'as_dict',
            'as_enum',
            ]
 
@@ -31,9 +31,9 @@ from ._models_date import ZERO, UTC
 TRUTHY_VALUES = frozenset({'true', 't', 'yes', 'y', 'on', '1'})
 
 
-def as_int_v1(o: Union[float, bool],
-              tp: type,
-              base_type=int):
+def as_int(o: Union[float, bool],
+           tp: type,
+           base_type=int):
     """
     Attempt to convert `o` to an int.
 
@@ -68,9 +68,9 @@ def as_int_v1(o: Union[float, bool],
         raise
 
 
-def as_datetime_v1(o: Union[int, float, datetime],
-                   __from_timestamp: Callable[[float, tzinfo], datetime],
-                   __tz=None):
+def as_datetime(o: Union[int, float, datetime],
+                __from_timestamp: Callable[[float, tzinfo], datetime],
+                __tz=None):
     """
     V1: Attempt to convert an object `o` to a :class:`datetime` object using the
     below logic.
@@ -108,10 +108,10 @@ def as_datetime_v1(o: Union[int, float, datetime],
         raise
 
 
-def as_date_v1(o: Union[int, float, date],
-               __from_timestamp: Callable[[float, tzinfo], datetime],
-               __tz=None,
-               __cls=date):
+def as_date(o: Union[int, float, date],
+            __from_timestamp: Callable[[float, tzinfo], datetime],
+            __tz=None,
+            __cls=date):
     """
     V1: Attempt to convert an object `o` to a :class:`date` object using the
     below logic.
@@ -148,51 +148,8 @@ def as_date_v1(o: Union[int, float, date],
 
         raise
 
-# Fix for: https://github.com/rnag/dataclass-wizard/issues/206
-#
-# def as_date_v1_utc(o: Union[int, float, date],
-#                    __base_cls=date,
-#                    __tz=UTC,
-#                    __dt_from_timestamp: Callable[[float], datetime] = datetime.fromtimestamp):
-#     """
-#     V1: Attempt to convert an object `o` to a :class:`date` object using the
-#     below logic.
-#
-#         * ``Number`` (int or float): Convert a numeric timestamp via the
-#             built-in ``fromtimestamp`` method, and return a date.
-#         * ``base_type``: Return object `o` if it's already of this type.
-#
-#     Note: It is assumed that `o` is not a ``str`` (in ISO format), as
-#     de-serialization in ``v1`` already checks for this.
-#
-#     Otherwise, if we're unable to convert the value of `o` to a
-#     :class:`date` as expected, raise an error.
-#
-#     """
-#     try:
-#         # We can assume that `o` is a number, as generally this will be the
-#         # case.
-#         # noinspection PyArgumentList
-#         return __dt_from_timestamp(o, __tz).date()
-#
-#     except Exception:
-#         # Note: the `__self__` attribute refers to the class bound
-#         # to the class method `fromtimestamp`.
-#         #
-#         # See: https://stackoverflow.com/a/41258933/10237506
-#         #
-#         # noinspection PyUnresolvedReferences
-#         if o.__class__ is __base_cls:
-#             return o
-#
-#         # Check `type` explicitly, because `bool` is a sub-class of `int`
-#         if o.__class__ not in NUMBERS:
-#             raise TypeError(f'Unsupported type, value={o!r}, type={type(o)}')
-#
-#         raise
 
-
-def as_time_v1(o: Union[time, Any], base_type: type[time]):
+def as_time(o: Union[time, Any], base_type: type[time]):
     """
     V1: Attempt to convert an object `o` to a :class:`time` object using the
     below logic.
@@ -290,7 +247,7 @@ def _csv_split(s: str, sep: str) -> list[str]:
     return row
 
 
-def as_collection_v1(
+def as_collection(
     v: Any,
     *,
     strip: bool = True,
@@ -319,7 +276,7 @@ def as_collection_v1(
     return s
 
 
-def as_list_v1(
+def as_list(
     v: Any,
     *,
     sep: str = ",",
@@ -364,7 +321,7 @@ def as_list_v1(
     return parts
 
 
-def as_dict_v1(
+def as_dict(
     v: Any,
     *,
     sep: str = ",",

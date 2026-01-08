@@ -13,7 +13,7 @@ from ._path_util import get_secrets_map, get_dotenv_map
 from .enums import EnvKeyStrategy, EnvPrecedence
 from .loaders import LoadMixin as V1LoadMixin
 from .models import Extras, TypeInfo, SEQUENCE_ORIGINS, MAPPING_ORIGINS
-from .type_conv import as_list_v1, as_dict_v1
+from .type_conv import as_list, as_dict
 from .bases import META, AbstractEnvMeta, ENV_META
 from .bases_meta import BaseEnvWizardMeta, EnvMeta, register_type
 from .class_helper import (dataclass_fields,
@@ -62,11 +62,11 @@ _PRECEDENCE_ORDER: dict[EnvPrecedence, tuple[str, ...]] = {
 def _pre_decoder(_cls: V1LoadMixin, container_tp: type, tp: TypeInfo, extras: Extras):
     if tp.i == 1:  # Outermost container (first seen in field annotation)
         if container_tp in SEQUENCE_ORIGINS:
-            tp.ensure_in_locals(extras, as_list=as_list_v1)
+            tp.ensure_in_locals(extras, as_list=as_list)
             return tp.replace(val_name=f'as_list({tp.v()})')
 
         elif container_tp in MAPPING_ORIGINS:
-            tp.ensure_in_locals(extras, as_dict=as_dict_v1)
+            tp.ensure_in_locals(extras, as_dict=as_dict)
             return tp.replace(val_name=f'as_dict({tp.v()})')
 
     return tp

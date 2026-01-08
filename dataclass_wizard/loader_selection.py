@@ -3,6 +3,7 @@ from typing import Callable
 from .class_helper import (CLASS_TO_LOAD_FUNC,
                            CLASS_TO_V1_LOADER,
                            set_class_loader, create_new_class, CLASS_TO_DUMP_FUNC, CLASS_TO_V1_DUMPER, set_class_dumper)
+# noinspection PyUnresolvedReferences
 from .constants import _LOAD_HOOKS, _DUMP_HOOKS
 from .type_def import T, JSONObject
 

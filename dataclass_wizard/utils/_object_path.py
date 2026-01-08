@@ -1,7 +1,7 @@
 from dataclasses import MISSING
 
 from ..errors import ParseError
-from ..type_conv import as_collection_v1
+from ..type_conv import as_collection
 
 
 def safe_get(data, path, raise_):
@@ -38,7 +38,7 @@ def env_safe_get(data, first_key, path, raise_):
     current_data = data
 
     try:
-        current_data = as_collection_v1(current_data[first_key])
+        current_data = as_collection(current_data[first_key])
 
         for p in path:
             current_data = current_data[p]
