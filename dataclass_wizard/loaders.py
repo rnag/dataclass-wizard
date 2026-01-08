@@ -35,14 +35,15 @@ from .class_helper import (create_meta,
                            v1_dataclass_field_to_alias_for_load,
                            CLASS_TO_LOAD_FUNC,
                            DATACLASS_FIELD_TO_ALIAS_PATH_FOR_LOAD,
-                           dataclass_kw_only_init_field_names)
-from .constants import CATCH_ALL, TAG, PY311_OR_ABOVE, PACKAGE_NAME
+                           dataclass_kw_only_init_field_names, CLASS_TO_V1_LOADER, set_class_loader, create_new_class)
+# noinspection PyUnresolvedReferences
+from .constants import CATCH_ALL, TAG, PY311_OR_ABOVE, PACKAGE_NAME, _LOAD_HOOKS
 from .errors import (JSONWizardError,
                      MissingData,
                      MissingFields,
                      ParseError,
                      UnknownKeysError)
-from .loader_selection import fromdict, get_loader
+from .loader_selection import fromdict
 from ._log import LOG
 from .type_def import DefFactory, JSONObject, NoneType, PyLiteralString, T
 # noinspection PyProtectedMember
@@ -1579,3 +1580,36 @@ def re_raise(e, cls, o, fields, field, value):
                 e.kwargs['unsupported_type'] = dict
 
     raise e from None
+
+
+def get_loader(class_or_instance=None,
+               create=True,
+               base_cls: T = LoadMixin) -> type[T]:
+    """
+    Get the loader for the class, using the following logic:
+
+        * Return the class if it's already a sub-class of :class:`LoadMixin`
+        * If `create` is enabled (which is the default), a new sub-class of
+          :class:`LoadMixin` for the class will be generated and cached on the
+          initial run.
+        * Otherwise, we will return the base loader, :class:`LoadMixin`, which
+          can potentially be shared by more than one dataclass.
+
+    """
+    # TODO
+    try:
+        return CLASS_TO_V1_LOADER[class_or_instance]
+
+    except KeyError:
+
+        if hasattr(class_or_instance, _LOAD_HOOKS):
+            return set_class_loader(
+                CLASS_TO_V1_LOADER, class_or_instance, class_or_instance)
+
+        elif create:
+            cls_loader = create_new_class(class_or_instance, (base_cls, ))
+            return set_class_loader(
+                CLASS_TO_V1_LOADER, class_or_instance, cls_loader)
+
+        return set_class_loader(
+            CLASS_TO_V1_LOADER, class_or_instance, base_cls)

@@ -18,7 +18,8 @@ from .class_helper import (
     DATACLASS_FIELD_TO_ALIAS_FOR_DUMP,
 )
 from .errors import ParseError
-from .loader_selection import get_dumper, get_loader
+from .loaders import LoadMixin, get_loader
+from .dumpers import DumpMixin, get_dumper
 from ._log import LOG
 from .type_def import E
 from .type_conv import as_enum
@@ -176,8 +177,8 @@ class BaseJSONWizardMeta(AbstractMeta):
 
     @classmethod
     def bind_to(cls, dataclass: type, create=True, is_default=True,
-                base_loader=None,
-                base_dumper=None):
+                base_loader=LoadMixin,
+                base_dumper=DumpMixin):
         # TODO
         from .enums import KeyAction, KeyCase, DateTimeTo as V1DateTimeTo
 

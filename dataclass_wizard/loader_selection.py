@@ -1,8 +1,7 @@
 from typing import Callable
 
 from .class_helper import (CLASS_TO_LOAD_FUNC,
-                           CLASS_TO_V1_LOADER,
-                           set_class_loader, create_new_class, CLASS_TO_DUMP_FUNC, CLASS_TO_V1_DUMPER, set_class_dumper)
+                           CLASS_TO_DUMP_FUNC)
 # noinspection PyUnresolvedReferences
 from .constants import _LOAD_HOOKS, _DUMP_HOOKS
 from .type_def import T, JSONObject
@@ -113,83 +112,3 @@ def _get_dump_fn_for_dataclass(cls: type[T]) -> Callable[[JSONObject], T]:
 
     # noinspection PyTypeChecker
     return dump
-
-
-def get_dumper(class_or_instance=None, create=True,
-               base_cls: T = None) -> type[T]:
-    """
-    Get the dumper for the class, using the following logic:
-
-        * Return the class if it's already a sub-class of :class:`DumpMixin`
-        * If `create` is enabled (which is the default), a new sub-class of
-          :class:`DumpMixin` for the class will be generated and cached on the
-          initial run.
-        * Otherwise, we will return the base loader, :class:`DumpMixin`, which
-          can potentially be shared by more than one dataclass.
-
-    """
-    # TODO
-    cls_to_dumper = CLASS_TO_V1_DUMPER
-    if base_cls is None:
-        from .dumpers import DumpMixin as V1_DumpMixin
-        base_cls = V1_DumpMixin
-
-    try:
-        return cls_to_dumper[class_or_instance]
-
-    except KeyError:
-        # TODO figure out type errors
-
-        if hasattr(class_or_instance, _DUMP_HOOKS):
-            return set_class_dumper(
-                cls_to_dumper, class_or_instance, class_or_instance)
-
-        elif create:
-            cls_loader = create_new_class(class_or_instance, (base_cls, ))
-            return set_class_dumper(
-                cls_to_dumper, class_or_instance, cls_loader)
-
-        return set_class_dumper(
-            cls_to_dumper, class_or_instance, base_cls)
-
-
-def get_loader(class_or_instance=None, create=True,
-               base_cls: T = None,
-               env: bool = False) -> type[T]:
-    """
-    Get the loader for the class, using the following logic:
-
-        * Return the class if it's already a sub-class of :class:`LoadMixin`
-        * If `create` is enabled (which is the default), a new sub-class of
-          :class:`LoadMixin` for the class will be generated and cached on the
-          initial run.
-        * Otherwise, we will return the base loader, :class:`LoadMixin`, which
-          can potentially be shared by more than one dataclass.
-
-    """
-    # TODO
-    cls_to_loader = CLASS_TO_V1_LOADER
-    if base_cls is None:
-        if env:
-            from ._env import LoadMixin as V1_EnvLoadMixin
-            base_cls = V1_EnvLoadMixin
-        else:
-            from .loaders import LoadMixin as V1_LoadMixin
-            base_cls = V1_LoadMixin
-
-    try:
-        return cls_to_loader[class_or_instance]
-
-    except KeyError:
-
-        if hasattr(class_or_instance, _LOAD_HOOKS):
-            return set_class_loader(
-                cls_to_loader, class_or_instance, class_or_instance)
-
-        elif create:
-            cls_loader = create_new_class(class_or_instance, (base_cls, ))
-            return set_class_loader(
-                cls_to_loader, class_or_instance, cls_loader)
-
-        return set_class_loader(
-            cls_to_loader, class_or_instance, base_cls)

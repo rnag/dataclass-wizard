@@ -11,7 +11,7 @@ from typing import (Any, Callable, Mapping, TYPE_CHECKING)
 
 from ._path_util import get_secrets_map, get_dotenv_map
 from .enums import EnvKeyStrategy, EnvPrecedence
-from .loaders import LoadMixin as V1LoadMixin
+from .loaders import LoadMixin as V1LoadMixin, get_loader
 from .models import Extras, TypeInfo, SEQUENCE_ORIGINS, MAPPING_ORIGINS
 from .type_conv import as_list, as_dict
 from .bases import META, AbstractEnvMeta, ENV_META
@@ -32,7 +32,7 @@ from .errors import (JSONWizardError,
                      MissingData,
                      ParseError,
                      type_name, MissingVars)
-from .loader_selection import get_loader, asdict
+from .loader_selection import asdict
 from ._log import LOG, enable_library_debug_logging
 from .type_def import T, JSONObject, dataclass_transform
 # noinspection PyProtectedMember

@@ -36,11 +36,12 @@ from .class_helper import (
     dataclass_fields,
     dataclass_field_to_default,
     dataclass_field_names,
-    dataclass_field_to_skip_if,
+    dataclass_field_to_skip_if, CLASS_TO_V1_DUMPER, set_class_dumper, create_new_class,
 )
-from .constants import CATCH_ALL, TAG, PACKAGE_NAME
+# noinspection PyUnresolvedReferences
+from .constants import CATCH_ALL, TAG, PACKAGE_NAME, _DUMP_HOOKS
 from .errors import (ParseError, MissingFields, MissingData, JSONWizardError)
-from .loader_selection import get_dumper, asdict
+from .loader_selection import asdict
 from ._log import LOG
 from .models import get_skip_if_condition, finalize_skip_if
 from .type_def import (
@@ -1148,3 +1149,36 @@ def re_raise(e, cls, o, fields, field, value):
         e.class_name, e.field_name, e.json_object = cls, field, repr(o)
 
     raise e from None
+
+
+def get_dumper(class_or_instance=None, create=True,
+               base_cls: T = DumpMixin) -> type[T]:
+    """
+    Get the dumper for the class, using the following logic:
+
+        * Return the class if it's already a sub-class of :class:`DumpMixin`
+        * If `create` is enabled (which is the default), a new sub-class of
+          :class:`DumpMixin` for the class will be generated and cached on the
+          initial run.
+        * Otherwise, we will return the base loader, :class:`DumpMixin`, which
+          can potentially be shared by more than one dataclass.
+
+    """
+    # TODO
+    try:
+        return CLASS_TO_V1_DUMPER[class_or_instance]
+
+    except KeyError:
+        # TODO figure out type errors
+
+        if hasattr(class_or_instance, _DUMP_HOOKS):
+            return set_class_dumper(
+                CLASS_TO_V1_DUMPER, class_or_instance, class_or_instance)
+
+        elif create:
+            cls_loader = create_new_class(class_or_instance, (base_cls, ))
+            return set_class_dumper(
+                CLASS_TO_V1_DUMPER, class_or_instance, cls_loader)
+
+        return set_class_dumper(
+            CLASS_TO_V1_DUMPER, class_or_instance, base_cls)
