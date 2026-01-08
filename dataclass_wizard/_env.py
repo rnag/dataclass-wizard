@@ -6,7 +6,7 @@ import os
 from collections import ChainMap
 from dataclasses import Field, MISSING
 # noinspection PyUnresolvedReferences,PyProtectedMember
-from dataclasses import _FIELD_INITVAR, _POST_INIT_NAME
+from dataclasses import _FIELD_INITVAR, _POST_INIT_NAME  # type: ignore
 from typing import (Any, Callable, Mapping, TYPE_CHECKING)
 
 from ._path_util import get_secrets_map, get_dotenv_map
@@ -94,8 +94,8 @@ class EnvWizard:
     def __init__(self, **kwargs):
         __init_fn__ = load_func_for_dataclass(
             self.__class__,
-            loader_cls=LoadMixin,
-            base_meta_cls=AbstractEnvMeta,
+            LoadMixin,
+            AbstractEnvMeta,
         )
         __init_fn__(self, **kwargs)
 
@@ -155,7 +155,6 @@ class EnvWizard:
 
 def load_func_for_dataclass(
         cls,
-        extras: Extras | None = None,
         loader_cls=None,
         base_meta_cls: ENV_META = AbstractEnvMeta,
 ) -> Callable[[T, dict[str, Any]], None] | None:
