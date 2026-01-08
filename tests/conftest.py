@@ -13,7 +13,7 @@ from pathlib import Path
 import pytest
 
 from dataclass_wizard.constants import PACKAGE_NAME
-from dataclass_wizard.utils._string_conv import to_snake_case
+from dataclass_wizard.utils._string_case import to_snake_case
 
 from ._typing import PY312_OR_ABOVE
 

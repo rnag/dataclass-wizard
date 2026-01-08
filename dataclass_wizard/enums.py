@@ -1,10 +1,7 @@
 from enum import Enum
 from typing import Callable
 
-from .utils._string_conv import (to_camel_case,
-                                 to_lisp_case,
-                                 to_pascal_case,
-                                 to_snake_case)
+from .utils._string_case import to_camel_case, to_pascal_case, to_lisp_case, to_snake_case
 
 
 class FuncWrapper:
