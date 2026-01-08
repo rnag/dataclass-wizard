@@ -28,11 +28,11 @@ from .class_helper import (dataclass_fields,
                            dataclass_field_names)
 from .constants import CATCH_ALL, PACKAGE_NAME
 from .decorators import cached_class_property
+from .dumpers import asdict
 from .errors import (JSONWizardError,
                      MissingData,
                      ParseError,
                      type_name, MissingVars)
-from .loader_selection import asdict
 from ._log import LOG, enable_library_debug_logging
 from .type_def import T, JSONObject, dataclass_transform
 # noinspection PyProtectedMember

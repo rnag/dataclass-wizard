@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import (
     cast, Any, Type, Dict, List, Tuple, Iterable, Sequence, Union,
     NamedTupleMeta, SupportsFloat, AnyStr, Text, Callable, Optional,
-    Literal, Annotated, NamedTuple,
+    Literal, Annotated, NamedTuple, Collection,
 )
 from uuid import UUID
 
@@ -41,7 +41,6 @@ from .class_helper import (
 # noinspection PyUnresolvedReferences
 from .constants import CATCH_ALL, TAG, PACKAGE_NAME, _DUMP_HOOKS
 from .errors import (ParseError, MissingFields, MissingData, JSONWizardError)
-from .loader_selection import asdict
 from ._log import LOG
 from .models import get_skip_if_condition, finalize_skip_if
 from .type_def import (
@@ -863,7 +862,7 @@ def dump_func_for_dataclass(
     skip_defaults = True if meta.skip_defaults else False
     skip_if = True if field_to_skip_if or skip_if_condition else False
 
-    catch_all_name: 'str | None' = field_to_alias.pop(CATCH_ALL, None)
+    catch_all_name: str | None = field_to_alias.pop(CATCH_ALL, None)
     has_catch_all = catch_all_name is not None
 
     if has_catch_all:
@@ -1182,3 +1181,50 @@ def get_dumper(class_or_instance=None, create=True,
 
         return set_class_dumper(
             CLASS_TO_V1_DUMPER, class_or_instance, base_cls)
+
+
+def asdict(o: T,
+           *, cls=None,
+           dict_factory=dict,
+           exclude: Collection[str] | None = None,
+           **kwargs) -> JSONObject:
+    # noinspection PyUnresolvedReferences
+    """Return the fields of a dataclass instance as a new dictionary mapping
+    field names to field values.
+
+    Example usage:
+
+      @dataclass
+      class C:
+          x: int
+          y: int
+
+      c = C(1, 2)
+      assert asdict(c) == {'x': 1, 'y': 2}
+
+    When directly invoking this function, an optional Meta configuration for
+    the dataclass can be specified via ``DumpMeta``; by default, this will
+    apply recursively to any nested dataclasses. Here's a sample usage of this
+    below::
+
+        >>> DumpMeta(key_transform='CAMEL').bind_to(MyClass)
+        >>> asdict(MyClass(my_str="value"))
+
+    If given, 'dict_factory' will be used instead of built-in dict.
+    The function applies recursively to field values that are
+    dataclass instances. This will also look into built-in containers:
+    tuples, lists, and dicts.
+    """
+    # This likely won't be needed, as ``dataclasses.fields`` already has this
+    # check.
+    # if not _is_dataclass_instance(obj):
+    #     raise TypeError("asdict() should be called on dataclass instances")
+
+    cls = cls or type(o)
+
+    try:
+        dump = CLASS_TO_DUMP_FUNC[cls]
+    except KeyError:
+        dump = dump_func_for_dataclass(cls)
+
+    return dump(o, dict_factory, exclude, **kwargs)

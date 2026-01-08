@@ -10,8 +10,9 @@ import json
 
 from .bases_meta import DumpMeta
 from .class_helper import _META
+from .dumpers import asdict
 from .lazy_imports import toml, toml_w, yaml
-from .loader_selection import asdict, fromdict, fromlist
+from .loaders import fromdict, fromlist
 from .models import Container
 from ._serial_json import JSONWizard
 

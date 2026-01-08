@@ -6,7 +6,8 @@ from .abstractions import AbstractJSONWizard
 from .bases_meta import BaseJSONWizardMeta, LoadMeta, register_type
 from .class_helper import call_meta_initializer_if_needed
 from .constants import PACKAGE_NAME
-from .loader_selection import asdict, fromdict, fromlist
+from .dumpers import asdict
+from .loaders import fromdict, fromlist
 from ._log import enable_library_debug_logging
 from .type_def import dataclass_transform
 # noinspection PyProtectedMember

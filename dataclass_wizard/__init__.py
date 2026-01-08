@@ -141,9 +141,8 @@ __all__ = [
 import logging
 
 from .bases_meta import LoadMeta, DumpMeta, EnvMeta, register_type
-from .dumpers import DumpMixin, setup_default_dumper
-from .loader_selection import asdict, fromlist, fromdict
-from .loaders import LoadMixin, setup_default_loader
+from .dumpers import DumpMixin, setup_default_dumper, asdict
+from .loaders import LoadMixin, setup_default_loader, fromdict, fromlist
 from ._env import EnvWizard, env_config
 from ._log import LOG
 from ._mixins import JSONListWizard, JSONFileWizard, TOMLWizard, YAMLWizard

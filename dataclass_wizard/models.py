@@ -1251,8 +1251,7 @@ class Container(list[T]):
 
     def to_json(self, encoder=json.dumps,
                 **encoder_kwargs):
-
-        from .loader_selection import asdict
+        from .dumpers import asdict
 
         cls = self.__model__
         list_of_dict = [asdict(o, cls=cls) for o in self]
@@ -1262,8 +1261,8 @@ class Container(list[T]):
     def to_json_file(self, file, mode = 'w',
                      encoder=json.dump,
                      **encoder_kwargs):
-
-        from .loader_selection import asdict
+        # TODO
+        from .dumpers import asdict
 
         cls = self.__model__
         list_of_dict = [asdict(o, cls=cls) for o in self]

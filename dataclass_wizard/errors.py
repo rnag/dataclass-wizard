@@ -56,7 +56,7 @@ def show_deprecation_warning(
 
 
 def _get_safe_encoder() -> type[JSONEncoder]:
-    from .loader_selection import asdict
+    from .dumpers import asdict
 
     global _SafeEncoder
     if _SafeEncoder is not None:

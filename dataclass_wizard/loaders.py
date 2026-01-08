@@ -43,7 +43,6 @@ from .errors import (JSONWizardError,
                      MissingFields,
                      ParseError,
                      UnknownKeysError)
-from .loader_selection import fromdict
 from ._log import LOG
 from .type_def import DefFactory, JSONObject, NoneType, PyLiteralString, T
 # noinspection PyProtectedMember
@@ -1613,3 +1612,43 @@ def get_loader(class_or_instance=None,
 
         return set_class_loader(
             CLASS_TO_V1_LOADER, class_or_instance, base_cls)
+
+
+def fromdict(cls: type[T], d: JSONObject) -> T:
+    """
+    Converts a Python dictionary object to a dataclass instance.
+
+    Iterates over each dataclass field recursively; lists, dicts, and nested
+    dataclasses will likewise be initialized as expected.
+
+    When directly invoking this function, an optional Meta configuration for
+    the dataclass can be specified via ``LoadMeta``; by default, this will
+    apply recursively to any nested dataclasses. Here's a sample usage of this
+    below::
+
+        >>> LoadMeta(key_transform='CAMEL').bind_to(MyClass)
+        >>> fromdict(MyClass, {"myStr": "value"})
+
+    """
+    try:
+        load = CLASS_TO_LOAD_FUNC[cls]
+    except KeyError:
+        load = load_func_for_dataclass(cls)
+
+    return load(d)
+
+
+def fromlist(cls: type[T], list_of_dict: list[JSONObject]) -> list[T]:
+    """
+    Converts a Python list object to a list of dataclass instances.
+
+    Iterates over each dataclass field recursively; lists, dicts, and nested
+    dataclasses will likewise be initialized as expected.
+
+    """
+    try:
+        load = CLASS_TO_LOAD_FUNC[cls]
+    except KeyError:
+        load = load_func_for_dataclass(cls)
+
+    return [load(d) for d in list_of_dict]
