@@ -4,7 +4,7 @@ from typing import Any
 from .._log import LOG
 
 
-def is_builtin_class(cls: type) -> bool:
+def is_builtin_class(cls):
     """Check if a class is a builtin in Python."""
     return cls.__module__ == 'builtins'
 
@@ -24,6 +24,7 @@ class FunctionBuilder:
         self.indent_level = 0
         self.globals = {}
         self.namespace = {}
+        self.current_function = self.prev_function = None
 
     def __ior__(self, other):
         """
@@ -49,7 +50,7 @@ class FunctionBuilder:
     def function(self, name: str, args: list, return_type=MISSING,
                  locals=None) -> 'FunctionBuilder':
         """Start a new function definition with optional return type."""
-        curr_fn = getattr(self, 'current_function', None)
+        curr_fn = self.current_function
         if curr_fn is not None:
             curr_fn['indent_level'] = self.indent_level
             self.prev_function = curr_fn
@@ -66,9 +67,9 @@ class FunctionBuilder:
         return self
 
     def _with_new_block(self,
-                        name: str,
-                        condition: 'str | None' = None,
-                        comment: Any = '') -> 'FunctionBuilder':
+                        name,
+                        condition=None,
+                        comment='') -> 'FunctionBuilder':
         """Creates a new block. Used with a context manager (with)."""
         indent = '  ' * self.indent_level
 
@@ -99,19 +100,20 @@ class FunctionBuilder:
         return self._with_new_block('for', condition)
 
     def if_(self, condition: str, comment: Any = '') -> 'FunctionBuilder':
+        # noinspection PyUnresolvedReferences
         """Equivalent to the `if` statement in Python.
 
-        Sample Usage:
+                Sample Usage:
 
-            >>> with FunctionBuilder().if_('something is True'):
-            >>>     ...
+                    >>> with FunctionBuilder().if_('something is True'):
+                    >>>     ...
 
-        Will generate the following code:
+                Will generate the following code:
 
-            >>> if something is True:
-            >>>     ...
+                    >>> if something is True:
+                    >>>     ...
 
-        """
+                """
         return self._with_new_block('if', condition, comment)
 
     def elif_(self, condition: str) -> 'FunctionBuilder':
@@ -124,8 +126,8 @@ class FunctionBuilder:
 
         Will generate the following code:
 
-            >>> elif something is True:
-            >>>     ...
+            >>> # elif something is True:
+            >>> #   ...
 
         """
         return self._with_new_block('elif', condition)
@@ -164,7 +166,7 @@ class FunctionBuilder:
 
     def except_(self,
                 cls: type[Exception],
-                var_name: 'str | None' = None,
+                var_name=None,
                 *custom_classes: type[Exception]):
         """Equivalent to the `except` block in Python.
 
@@ -199,19 +201,20 @@ class FunctionBuilder:
         return self._with_new_block('except', statement)
 
     def except_multi(self, *classes: type[Exception]):
+        # noinspection PyShadowingBuiltins
         """Equivalent to the `except` block in Python.
 
-        Sample Usage:
+                Sample Usage:
 
-            >>> with FunctionBuilder().except_multi(AttributeError, TypeError, ValueError):
-            >>>     ...
+                    >>> with FunctionBuilder().except_multi(AttributeError, TypeError, ValueError):
+                    >>>     ...
 
-        Will generate the following code:
+                Will generate the following code:
 
-            >>> except (AttributeError, TypeError, ValueError):
-            >>>     ...
+                    >>> # except (AttributeError, TypeError, ValueError):
+                    >>> #    ...
 
-        """
+                """
         if len(classes) == 1:
             statement = classes[0].__name__
         else:
@@ -257,12 +260,10 @@ class FunctionBuilder:
             "code": func_code
         }
 
-        if (prev_fn := getattr(self, 'prev_function', None)) is not None:
+        if (prev_fn := self.prev_function) is not None:
             self.indent_level = prev_fn.pop('indent_level')
             self.current_function = prev_fn
             self.prev_function = None
-        else:
-            self.current_function  # Reset current function
 
     def create_functions(self, _globals=None):
         """Create functions by compiling the code."""

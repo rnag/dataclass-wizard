@@ -1,5 +1,8 @@
 """
 Dict helper module
+
+TODO: Delete when time allows --
+  See https://github.com/rnag/dataclass-wizard/issues/215
 """
 
 

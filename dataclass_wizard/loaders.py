@@ -47,7 +47,7 @@ from ._log import LOG
 from .type_def import DefFactory, JSONObject, NoneType, PyLiteralString, T
 # noinspection PyProtectedMember
 from .utils._dataclass_compat import set_new_attribute
-from .utils.function_builder import FunctionBuilder
+from .utils._function_builder import FunctionBuilder
 from .utils._object_path import safe_get
 from .utils.string_conv import possible_json_keys
 from .utils.typing_compat import (eval_forward_ref_if_needed,

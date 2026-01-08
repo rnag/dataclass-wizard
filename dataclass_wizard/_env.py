@@ -39,7 +39,7 @@ from .type_def import T, JSONObject, dataclass_transform
 from .utils._dataclass_compat import (apply_env_wizard_dataclass,
                                       dataclass_needs_refresh,
                                       set_new_attribute)
-from .utils.function_builder import FunctionBuilder
+from .utils._function_builder import FunctionBuilder
 from .utils._object_path import env_safe_get
 from .utils.string_conv import possible_env_vars
 from .utils.typing_compat import (eval_forward_ref_if_needed)

@@ -40,6 +40,7 @@ def env_safe_get(data: dict | list,
 
     Args:
         data (Any): The nested structure to traverse.
+        first_key (Iterable): The first key in the path.
         path (Iterable): A sequence of keys or indices to follow.
         raise_ (bool): True to raise an error on invalid path.
 

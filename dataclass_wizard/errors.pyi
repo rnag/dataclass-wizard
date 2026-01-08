@@ -1,11 +1,16 @@
 import warnings
 from abc import ABC, abstractmethod
 from dataclasses import Field
+from json import JSONEncoder
 from typing import (Any, ClassVar, Iterable, Callable, Collection, Sequence)
 
 
 # added as we can't import from `type_def`, as we run into a circular import.
 JSONObject = dict[str, Any]
+_SafeEncoder: type[JSONEncoder] | None = None
+
+
+def safe_dumps(o: Any, **kwargs: Any) -> str: ...
 
 
 def type_name(obj: type) -> str:

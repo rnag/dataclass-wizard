@@ -50,8 +50,8 @@ from .type_def import (
 )
 # noinspection PyProtectedMember
 from .utils._dataclass_compat import set_new_attribute
-from .utils.dict_helper import NestedDict
-from .utils.function_builder import FunctionBuilder
+from .utils._dict_helper import NestedDict
+from .utils._function_builder import FunctionBuilder
 from .utils.typing_compat import (
     is_typed_dict, get_args, is_annotated,
     eval_forward_ref_if_needed, get_origin_v2, is_union,

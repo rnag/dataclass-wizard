@@ -23,9 +23,9 @@ class LazyLoader(types.ModuleType):
         self._extra = extra
         self._warning = warning
 
-        super(LazyLoader, self).__init__(name)
+        super().__init__(name)
 
-    def _load(self):
+    def load(self):
         """Load the module and insert it into the parent's globals."""
 
         # Import the target module and insert it into the parent's namespace
@@ -36,7 +36,7 @@ class LazyLoader(types.ModuleType):
             # The lazy-loaded module is not currently installed.
             msg = f'Unable to import the module `{self._local_name}`'
 
-            if self._extra:
+            if self._extra:  # type: ignore
                 from ..__version__ import __title__
                 msg = f'{msg}. Please run the following command to resolve the issue:\n' \
                       f'  $ pip install {__title__}[{self._extra}]'
@@ -59,9 +59,9 @@ class LazyLoader(types.ModuleType):
         return module
 
     def __getattr__(self, item):
-        module = self._load()
+        module = self.load()
         return getattr(module, item)
 
     def __dir__(self):
-        module = self._load()
+        module = self.load()
         return dir(module)

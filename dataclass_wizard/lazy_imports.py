@@ -6,7 +6,7 @@ Lazy Import definitions. Generally, these imports will be available when any
 """
 
 from .constants import PY311_OR_ABOVE
-from .utils.lazy_loader import LazyLoader
+from .utils._lazy_loader import LazyLoader
 
 
 # python-dotenv: for loading environment values from `.env` files

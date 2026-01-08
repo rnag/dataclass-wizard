@@ -13,7 +13,7 @@ from .decorators import cached_property, setup_recursive_safe_function
 from .constants import PY310_OR_ABOVE, PY311_OR_ABOVE, PY314_OR_ABOVE
 from ._log import LOG
 from .type_def import DefFactory, ExplicitNull, PyNotRequired, NoneType, T
-from .utils.function_builder import FunctionBuilder
+from .utils._function_builder import FunctionBuilder
 from .utils._object_path import split_object_path
 from .utils.typing_compat import get_origin_v2
 

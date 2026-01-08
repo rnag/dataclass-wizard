@@ -31,6 +31,7 @@ def set_new_attribute(cls, name, value, force=False):
     return True
 
 
+# noinspection PyShadowingBuiltins
 def create_fn(name, args, body, *, globals=None, locals=None,
               return_type=MISSING):
     # Removed in Python 3.13
@@ -66,6 +67,7 @@ def dataclass_needs_refresh(cls) -> bool:
         return True
 
     # dataclass fields currently registered
+    # noinspection PyDataclass
     dc_fields = {f.name for f in fields(cls)}
     # annotated fields declared on the class (ignore ClassVar/InitVar nuance)
     ann = getattr(cls, '__annotations__', {}) or {}

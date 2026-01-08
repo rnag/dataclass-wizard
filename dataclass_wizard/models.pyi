@@ -11,8 +11,8 @@ from .type_def import FileEncoder, Encoder
 from .bases import META
 from .models import Condition
 from .type_def import DefFactory, DT, T
-from .utils.function_builder import FunctionBuilder
-from .utils.object_path import PathType
+from .utils._function_builder import FunctionBuilder
+from .utils._object_path import PathType
 
 
 # Define a simple type (alias) for the `CatchAll` field
