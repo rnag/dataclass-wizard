@@ -10,7 +10,7 @@ from datetime import date, datetime, time, timedelta
 from decimal import Decimal
 from enum import Enum
 from pathlib import Path
-from typing import Any, Callable, Literal, NamedTuple, cast
+from typing import Any, Callable, Literal, NamedTuple, cast, Required, NotRequired
 from uuid import UUID
 
 from .decorators import (process_patterned_date_time,
@@ -26,16 +26,12 @@ from .type_conv import (
 from .abstractions import AbstractLoaderGenerator
 from .bases import AbstractMeta, BaseLoadHook, META
 from .class_helper import (create_meta,
-                           dataclass_fields,
-                           dataclass_field_to_default,
-                           dataclass_init_fields,
-                           dataclass_init_field_names,
                            get_meta,
                            is_subclass_safe,
                            resolve_dataclass_field_to_alias_for_load,
                            CLASS_TO_LOAD_FUNC,
                            DATACLASS_FIELD_TO_ALIAS_PATH_FOR_LOAD,
-                           dataclass_kw_only_init_field_names, CLASS_TO_LOADER, set_class_loader, create_new_class)
+                           CLASS_TO_LOADER, set_class_loader, create_new_class)
 # noinspection PyUnresolvedReferences
 from .constants import CATCH_ALL, TAG, PY311_OR_ABOVE, PACKAGE_NAME, _LOAD_HOOKS
 from .errors import (JSONWizardError,
@@ -45,8 +41,12 @@ from .errors import (JSONWizardError,
                      UnknownKeysError)
 from ._log import LOG
 from .type_def import DefFactory, JSONObject, NoneType, PyLiteralString, T
-# noinspection PyProtectedMember
-from .utils._dataclass_compat import set_new_attribute
+from .utils._dataclass_compat import (dataclass_fields,
+                                      dataclass_init_fields,
+                                      dataclass_init_field_names,
+                                      dataclass_kw_only_init_field_names,
+                                      set_new_attribute,
+                                      SEEN_DEFAULT)
 from .utils._function_builder import FunctionBuilder
 from .utils._object_path import safe_get
 from .utils._string_conv import possible_json_keys
@@ -858,9 +858,11 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
 
         elif is_typed_dict_type_qualifier(origin):
             # Given `Required[T]` or `NotRequired[T]`, we only need `T`
-            type_ann = get_args(type_ann)[0]
-            origin = get_origin_v2(type_ann)
-            name = getattr(origin, '__name__', origin)
+            # Loop because they can be nested `ReadOnly[NotRequired[...]]
+            while is_typed_dict_type_qualifier(origin):
+                type_ann = get_args(type_ann)[0]
+                origin = get_origin_v2(type_ann)
+                name = getattr(origin, '__name__', origin)
 
         # TypeAliasType: Type aliases are created through
         # the `type` statement
@@ -1108,10 +1110,6 @@ def load_func_for_dataclass(
     cls_init_field_names = dataclass_init_field_names(cls)
     cls_init_kw_only_field_names = dataclass_kw_only_init_field_names(cls)
 
-    field_to_default = dataclass_field_to_default(cls)
-
-    has_defaults = True if field_to_default else False
-
     # Get the loader for the class, or create a new one as needed.
     cls_loader = get_loader(cls, base_cls=loader_cls)
 
@@ -1189,6 +1187,9 @@ def load_func_for_dataclass(
 
     field_to_paths = DATACLASS_FIELD_TO_ALIAS_PATH_FOR_LOAD[cls]
     has_alias_paths = True if field_to_paths else False
+
+    # FIXME get from functions instead
+    has_defaults = SEEN_DEFAULT[cls]
 
     # Fix for using `auto_assign_tags` and `raise_on_unknown_json_key` together
     # See https://github.com/rnag/dataclass-wizard/issues/137
@@ -1273,7 +1274,10 @@ def load_func_for_dataclass(
                 for i, f in enumerate(cls_init_fields):
                     name = f.name
                     var = f'__{name}'
-                    has_default = name in field_to_default
+                    has_default = has_defaults and (
+                        f.default is not MISSING
+                        or f.default_factory is not MISSING
+                    )
                     val_is_found = _val_is_found
 
                     if (check_aliases

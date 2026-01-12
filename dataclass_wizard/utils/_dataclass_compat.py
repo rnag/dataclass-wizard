@@ -5,8 +5,13 @@ All function names and bodies are left exactly as they were prior to being remov
 
 from dataclasses import MISSING, is_dataclass, fields, dataclass
 from types import FunctionType
+from weakref import WeakKeyDictionary
 
 from ..constants import PY310_OR_ABOVE
+
+
+FIELDS = WeakKeyDictionary()
+SEEN_DEFAULT = WeakKeyDictionary()
 
 
 def set_qualname(cls, value):
@@ -87,6 +92,10 @@ if PY310_OR_ABOVE:
             kw_only=True,
             **dc_kwargs,
         )
+
+    def dataclass_kw_only_init_field_names(cls):
+        return {f.name for f in dataclass_init_fields(cls) if f.kw_only}
+
 else:  # Python 3.9: no `kw_only`
     # noinspection PyArgumentList
     def apply_env_wizard_dataclass(cls, dc_kwargs):
@@ -95,3 +104,28 @@ else:  # Python 3.9: no `kw_only`
             init=False,
             **dc_kwargs,
         )
+
+    def dataclass_kw_only_init_field_names(_):
+        return set()
+
+
+def dataclass_fields(cls):
+    try:
+        return FIELDS[cls]
+    except KeyError:
+        # noinspection PyTypeChecker,PyDataclass
+        FIELDS[cls] = fs = fields(cls)
+        return fs
+
+
+def dataclass_init_fields(cls, as_list=False):
+    init_fields = [f for f in dataclass_fields(cls) if f.init]
+    return init_fields if as_list else tuple(init_fields)
+
+
+def dataclass_field_names(cls):
+    return tuple(f.name for f in dataclass_fields(cls))
+
+
+def dataclass_init_field_names(cls):
+    return tuple(f.name for f in dataclass_init_fields(cls))

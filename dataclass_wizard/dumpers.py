@@ -33,10 +33,10 @@ from .class_helper import (
     get_meta,
     is_subclass_safe,
     resolve_dataclass_field_to_alias_for_dump,
-    dataclass_fields,
-    dataclass_field_to_default,
-    dataclass_field_names,
-    dataclass_field_to_skip_if, CLASS_TO_DUMPER, set_class_dumper, create_new_class,
+    dataclass_field_to_skip_if,
+    CLASS_TO_DUMPER,
+    set_class_dumper,
+    create_new_class,
 )
 # noinspection PyUnresolvedReferences
 from .constants import CATCH_ALL, TAG, PACKAGE_NAME, _DUMP_HOOKS
@@ -48,8 +48,10 @@ from .type_def import (
     PyLiteralString,
     T, ExplicitNull
 )
-# noinspection PyProtectedMember
-from .utils._dataclass_compat import set_new_attribute
+from .utils._dataclass_compat import (dataclass_fields,
+                                      dataclass_field_names,
+                                      set_new_attribute,
+                                      SEEN_DEFAULT)
 from .utils._dict_helper import NestedDict
 from .utils._function_builder import FunctionBuilder
 from .utils._typing_compat import (
@@ -62,6 +64,54 @@ from .utils._typing_compat import (
     is_typed_dict_type_qualifier,
     is_union,
 )
+
+
+_KNOWN_FACTORY_LITERALS: dict[Callable[[], Any], str] = {
+    list: '[]',
+    dict: '{}',
+    set: 'set()',
+    tuple: '()',
+    frozenset: 'frozenset()',
+}
+
+def factory_default_expr(factory: Callable[[], Any]) -> str | None:
+    """
+    Returns a Python expression string that evaluates to the default value
+    for well-known factories, else None (meaning: don't elide by default).
+    """
+    return _KNOWN_FACTORY_LITERALS.get(factory)
+
+
+def default_compare_expr(
+    f: Field[Any],
+    locals_ns: dict[str, Any],
+    default_name: str,
+    *,
+    allow_calling_unknown_factories: bool = True,
+) -> str | None:
+    """
+    Return an expression string to compare against for default-elision.
+    None means: cannot/should not elide.
+    """
+    # scalar/object default: bind it and reference by name
+    if f.default is not MISSING:
+        locals_ns[default_name] = f.default
+        return default_name
+
+    df = f.default_factory
+    if df is not MISSING:
+        lit = _KNOWN_FACTORY_LITERALS.get(df)
+        if lit is not None:
+            return lit
+
+        if allow_calling_unknown_factories:
+            locals_ns[default_name] = df
+            return f'{default_name}()'
+
+        # safest default (in case of non-deterministic factories)
+        return None
+
+    return None
 
 
 def _type_returns_value_unchanged(arg, leaf_handling_as_subclass, origin=None):
@@ -848,8 +898,8 @@ def dump_func_for_dataclass(
 
     # A cached mapping of dataclass field name to its default value, either
     # via a `default` or `default_factory` argument.
-    field_to_default = dataclass_field_to_default(cls)
-    has_defaults = True if field_to_default else False
+    # FIXME get from functions instead
+    has_defaults = SEEN_DEFAULT[cls]
 
     # A cached mapping of dataclass field name to its SkipIf condition.
     field_to_skip_if = dataclass_field_to_skip_if(cls)
@@ -870,9 +920,9 @@ def dump_func_for_dataclass(
         catch_all_idx = cls_field_names.index(catch_all_name_stripped)
         # remove catch all field from list, so we don't iterate over it
         # noinspection PyTypeChecker
-        del cls_fields_list[catch_all_idx]
+        catch_all_field = cls_fields_list.pop(catch_all_idx)
     else:
-        catch_all_name_stripped = None
+        catch_all_name_stripped = catch_all_field = None
 
     cls_name = cls.__name__
 
@@ -908,13 +958,12 @@ def dump_func_for_dataclass(
 
                 for i, f in enumerate(cls_fields_list):
                     name = f.name
-                    default = field_to_default.get(name, ExplicitNull)
-                    has_default = default is not ExplicitNull
                     has_skip_if = False
                     # TODO: This is if we want to check if field is in `exclude`
                     #  (not huge performance gain)
                     # skip_field = f'_skip_{i}'
-                    default_value = f'_default_{i}'
+                    default_value = default_compare_expr(f, new_locals, f'_default_{i}')
+                    has_default = default_value is not None
 
                     # Check for Field Aliases + Paths
                     # NOTE: `key` is used later, so we need to capture it.
@@ -954,7 +1003,6 @@ def dump_func_for_dataclass(
                     ) is not None:  # AliasPath(...)
                         lvalue = f"paths{''.join(f'[{p!r}]' for p in path)}"
                         if has_default:
-                            new_locals[default_value] = default
                             string = generate_field_code(cls_dumper, extras, f, i)
                             default_assigns.append((name, key, default_value, lvalue, string))
                         else:
@@ -965,7 +1013,6 @@ def dump_func_for_dataclass(
                         continue
 
                     if has_default:
-                        new_locals[default_value] = default
                         string = generate_field_code(cls_dumper, extras, f, i)
                         lvalue = f'result[{key!r}]'
                         default_assigns.append((name, key, default_value, lvalue, string))
@@ -975,7 +1022,7 @@ def dump_func_for_dataclass(
                         if has_skip_if:
                             string = generate_field_code(cls_dumper, extras, f, i, 'v1')
                             lvalue = f'result[{key!r}]'
-                            default_assigns.append((name, ExplicitNull, ExplicitNull, lvalue, string))
+                            default_assigns.append((name, ExplicitNull, None, lvalue, string))
                         else:
                             string = generate_field_code(cls_dumper, extras, f, i, f'o.{name}')
                             required_field_assigns.append((name, key, string))
@@ -1017,7 +1064,7 @@ def dump_func_for_dataclass(
 
                     elif (condition := name_to_skip_condition.get(name)) is not None:
                         condition = condition.format(var_name)
-                        if default_name is ExplicitNull:  # Required field with skip condition
+                        if default_name is None:  # Required field with skip condition
                             with fn_gen.if_(condition):
                                 fn_gen.add_line(line)
                         else:
@@ -1040,11 +1087,13 @@ def dump_func_for_dataclass(
 
         if has_catch_all:
             # noinspection PyUnresolvedReferences,PyProtectedMember
+            # TODO
             from dataclasses import _asdict_inner as __dataclasses_asdict_inner__
 
-            if (default := field_to_default.get(catch_all_name_stripped, ExplicitNull)) is not ExplicitNull:
-                default_value = f'_default_{len(cls_fields_list)}'
-                new_locals[default_value] = default
+            if (default_value := default_compare_expr(
+                    catch_all_field,
+                    new_locals,
+                f'_default_{len(cls_fields_list)}')) is not None:
                 condition = f"(v1 := o.{catch_all_name_stripped}) != {default_value}"
 
             else:

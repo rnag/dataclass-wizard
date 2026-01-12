@@ -1,22 +1,12 @@
 from collections import defaultdict
-from dataclasses import Field
-from typing import Any, Callable, Literal, Sequence, overload
+from typing import Any, Callable, Sequence
 
 from .abstractions import W, E, AbstractLoaderGenerator, AbstractDumperGenerator
 from .bases import META, AbstractMeta
 from .constants import PACKAGE_NAME
 from .models import Condition
 from .type_def import T
-from .utils.object_path import PathType
-
-
-# A cached mapping of dataclass to the list of fields, as returned by
-# `dataclasses.fields()`.
-FIELDS: dict[type, tuple[Field, ...]] = {}
-
-# A cached mapping of dataclass to a mapping of field name
-# to default value, as returned by `dataclasses.fields()`.
-FIELD_TO_DEFAULT: dict[type, dict[str, Any]] = {}
+from .utils._object_path import PathType
 
 # Mapping of main dataclass to its `load` function.
 CLASS_TO_LOAD_FUNC: dict[type, Any] = {}
@@ -138,39 +128,6 @@ def create_meta(cls: type, cls_name: str | None = None, **kwargs) -> None:
       e.g. `get_meta` for the `cls` returns `base_cls`.
 
     """
-
-
-def dataclass_fields(cls: type) -> tuple[Field, ...]:
-    """
-    Cache the `dataclasses.fields()` call for each class, as overall that
-    ends up around 5x faster than making a fresh call each time.
-
-    """
-
-@overload
-def dataclass_init_fields(cls: type, as_list: Literal[True] = False) -> list[Field]:
-    """Get only the dataclass fields that would be passed into the constructor."""
-
-
-@overload
-def dataclass_init_fields(cls: type, as_list: Literal[False] = False) -> tuple[Field]:
-    """Get only the dataclass fields that would be passed into the constructor."""
-
-
-def dataclass_field_names(cls: type) -> tuple[str, ...]:
-    """Get the names of all dataclass fields"""
-
-
-def dataclass_init_field_names(cls: type) -> tuple[str, ...]:
-    """Get the names of all __init__() dataclass fields"""
-
-
-def dataclass_kw_only_init_field_names(cls: type) -> set[str]:
-    """Get the names of all "KEYWORD-ONLY" dataclass fields"""
-
-
-def dataclass_field_to_default(cls: type) -> dict[str, Any]:
-    """Get default values for the (optional) dataclass fields."""
 
 
 def is_builtin(o: Any) -> bool:

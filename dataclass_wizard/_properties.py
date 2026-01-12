@@ -13,30 +13,36 @@ from .utils._typing_compat import (
     is_literal,
 )
 
+
 AnnotationType = Dict[str, Type[T]]
 AnnotationReplType = Dict[str, str]
 
-
-def _get_resolved_annotations(obj) -> Dict[str, Any]:
-    # Python 3.14+: annotationlib.get_annotations supports explicit formats
-    if PY314_OR_ABOVE:
-        from annotationlib import get_annotations, Format  # 3.14+
+# Python 3.14+: annotationlib.get_annotations supports explicit formats
+if PY314_OR_ABOVE:  # type: ignore
+    # noinspection PyUnresolvedReferences
+    from annotationlib import get_annotations, Format  # 3.14+
+    def _get_resolved_annotations(obj) -> Dict[str, Any]:
+        # noinspection PyArgumentList
         return get_annotations(obj, format=Format.VALUE)
 
-    # Python 3.10–3.13: inspect.get_annotations is best practice
-    # eval_str=False keeps strings unresolved
-    if PY310_OR_ABOVE:
-        from inspect import get_annotations
+# Python 3.10–3.13: inspect.get_annotations is best practice
+# eval_str=False keeps strings unresolved
+elif PY310_OR_ABOVE:
+    from inspect import get_annotations
+    def _get_resolved_annotations(obj) -> Dict[str, Any]:
         return get_annotations(obj, eval_str=True)
 
+else:
     # Python 3.9: use typing_extensions backport (supports get_annotations + format/eval_str behavior)
+    # noinspection PyUnresolvedReferences,PyProtectedMember
     from typing_extensions import get_annotations
-    try:
-        # newer typing_extensions mirrors 3.10+ signature
-        return get_annotations(obj, eval_str=True)
-    except TypeError:
-        # ultra-defensive fallback
-        return obj.__dict__.get("__annotations__", {}) or {}
+    def _get_resolved_annotations(obj) -> Dict[str, Any]:
+        try:
+            # newer typing_extensions mirrors 3.10+ signature
+            return get_annotations(obj, eval_str=True)
+        except TypeError:
+            # ultra-defensive fallback
+            return obj.__dict__.get('__annotations__', {}) or {}
 
 
 def property_wizard(*args, **kwargs):
@@ -50,15 +56,15 @@ def property_wizard(*args, **kwargs):
     .. _Using Field Properties: https://dcw.ritviknag.com/en/latest/using_field_properties.html
     .. _an answer: https://stackoverflow.com/a/68488125/10237506
     """
-    cls: Type = type(*args, **kwargs)
-    cls_dict: Dict[str, Any] = args[2]
+    cls: type = type(*args, **kwargs)  # type: ignore
+    cls_dict: dict[str, Any] = args[2]  # type: ignore
     # https://docs.python.org/3.14/whatsnew/3.14.html#implications-for-readers-of-annotations
-    annotations: AnnotationType = _get_resolved_annotations(cls)
+    annotations: AnnotationType = _get_resolved_annotations(cls)  # type: ignore
 
     # For each property, we want to replace the annotation for the underscore-
     # leading field associated with that property with the 'public' field
     # name, and this mapping helps us keep a track of that.
-    annotation_repls: AnnotationReplType = {}
+    annotation_repls: AnnotationReplType = {}  # type: ignore
 
     for f, val in cls_dict.items():
 
@@ -273,7 +279,7 @@ def _default_from_type(default_type: Type[T]) -> Field:
 def _default_from_generic_type(
         cls: Type,
         default_type: Type[T],
-        field: Optional[str] = None) -> Field:
+        field: str = '') -> Field:
     """
     Process a Generic type from the `typing` module, and return the default
     value (or default factory) for the annotated type.

@@ -1,14 +1,15 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from dataclasses import MISSING, fields
+from dataclasses import MISSING
 from typing import TYPE_CHECKING
 
 from .bases import AbstractMeta
-from .constants import CATCH_ALL, PACKAGE_NAME, PY310_OR_ABOVE
+from .constants import CATCH_ALL, PACKAGE_NAME
 from .errors import InvalidConditionError
 from .models import CatchAll, Condition
 from .type_def import ExplicitNull
+from .utils._dataclass_compat import dataclass_fields, SEEN_DEFAULT
 from .utils._typing_compat import (eval_forward_ref_if_needed,
                                    get_args,
                                    is_annotated)
@@ -16,14 +17,6 @@ from .utils._typing_compat import (eval_forward_ref_if_needed,
 if TYPE_CHECKING:
     from .models import Field
 
-
-# A cached mapping of dataclass to the list of fields, as returned by
-# `dataclasses.fields()`.
-FIELDS = {}
-
-# A cached mapping of dataclass to a mapping of field name
-# to default value, as returned by `dataclasses.fields()`.
-FIELD_TO_DEFAULT = {}
 
 # Mapping of main dataclass to its `load` function.
 CLASS_TO_LOAD_FUNC = {}
@@ -178,10 +171,16 @@ def setup_config_for_cls(cls):
 
     set_paths = False if dataclass_field_to_path else True
     dataclass_field_to_skip_if = DATACLASS_FIELD_TO_SKIP_IF[cls]
+    seen_default = False
 
     for f in dataclass_fields(cls):
         init = f.init
         field_type = f.type = eval_forward_ref_if_needed(f.type, cls)
+
+        if (init and not seen_default
+            and (f.default is not MISSING
+                 or f.default_factory is not MISSING)):
+            seen_default = True
 
         # isinstance(f, Field) == True
 
@@ -231,6 +230,8 @@ def setup_config_for_cls(cls):
                     dataclass_field_to_skip_if[f.name] = extra
                     if not getattr(extra, '_wrapped', False):
                         raise InvalidConditionError(cls, f.name) from None
+
+    SEEN_DEFAULT[cls] = seen_default
 
     IS_CONFIG_SETUP.add(cls)
 
@@ -289,50 +290,6 @@ def create_meta(cls, cls_name=None, **kwargs):
                 cls_dict)
 
     _META[cls] = meta
-
-
-def dataclass_fields(cls):
-
-    if cls not in FIELDS:
-        FIELDS[cls] = fields(cls)
-
-    return FIELDS[cls]
-
-
-def dataclass_init_fields(cls, as_list=False):
-    init_fields = [f for f in dataclass_fields(cls) if f.init]
-    return init_fields if as_list else tuple(init_fields)
-
-
-def dataclass_field_names(cls):
-
-    return tuple(f.name for f in dataclass_fields(cls))
-
-
-def dataclass_init_field_names(cls):
-
-    return tuple(f.name for f in dataclass_init_fields(cls))
-
-
-if not PY310_OR_ABOVE:  # Python 3.9 doesn't have `kw_only`
-    def dataclass_kw_only_init_field_names(_):
-        return set()
-else:
-    def dataclass_kw_only_init_field_names(cls):
-        return {f.name for f in dataclass_init_fields(cls) if f.kw_only}
-
-
-def dataclass_field_to_default(cls):
-
-    if cls not in FIELD_TO_DEFAULT:
-        defaults = FIELD_TO_DEFAULT[cls] = {}
-        for f in dataclass_fields(cls):
-            if f.default is not MISSING:
-                defaults[f.name] = f.default
-            elif f.default_factory is not MISSING:
-                defaults[f.name] = f.default_factory()
-
-    return FIELD_TO_DEFAULT[cls]
 
 
 def is_builtin(o):

@@ -16,16 +16,11 @@ from .models import Extras, TypeInfo, SEQUENCE_ORIGINS, MAPPING_ORIGINS
 from .type_conv import as_list, as_dict
 from .bases import META, AbstractEnvMeta, ENV_META
 from .bases_meta import BaseEnvWizardMeta, EnvMeta, register_type
-from .class_helper import (dataclass_fields,
-                           dataclass_field_to_default,
-                           dataclass_init_fields,
-                           dataclass_init_field_names,
-                           get_meta,
+from .class_helper import (get_meta,
                            resolve_dataclass_field_to_env_for_load,
                            CLASS_TO_LOAD_FUNC,
                            DATACLASS_FIELD_TO_ALIAS_PATH_FOR_LOAD,
-                           call_meta_initializer_if_needed,
-                           dataclass_field_names)
+                           call_meta_initializer_if_needed)
 from .constants import CATCH_ALL, PACKAGE_NAME
 from .decorators import cached_class_property
 from .dumpers import asdict
@@ -35,10 +30,14 @@ from .errors import (JSONWizardError,
                      type_name, MissingVars)
 from ._log import LOG, enable_library_debug_logging
 from .type_def import T, JSONObject, dataclass_transform
-# noinspection PyProtectedMember
 from .utils._dataclass_compat import (apply_env_wizard_dataclass,
+                                      dataclass_fields,
+                                      dataclass_field_names,
+                                      dataclass_init_fields,
+                                      dataclass_init_field_names,
                                       dataclass_needs_refresh,
-                                      set_new_attribute)
+                                      set_new_attribute,
+                                      SEEN_DEFAULT)
 from .utils._function_builder import FunctionBuilder
 from .utils._object_path import env_safe_get
 from .utils._string_conv import possible_env_vars
@@ -165,9 +164,6 @@ def load_func_for_dataclass(
     cls_init_fields = dataclass_init_fields(cls, True)
     cls_init_field_names = dataclass_init_field_names(cls)
 
-    field_to_default = dataclass_field_to_default(cls)
-    has_defaults = True if field_to_default else False
-
     # Does this class have a post-init function?
     has_post_init = hasattr(cls, _POST_INIT_NAME)
 
@@ -235,6 +231,9 @@ def load_func_for_dataclass(
 
     field_to_paths = DATACLASS_FIELD_TO_ALIAS_PATH_FOR_LOAD[cls]
     has_alias_paths = True if field_to_paths else False
+
+    # FIXME get from functions instead
+    has_defaults = SEEN_DEFAULT[cls]
 
     # Fix for using `auto_assign_tags` and `raise_on_unknown_json_key` together
     # See https://github.com/rnag/dataclass-wizard/issues/137
@@ -358,7 +357,10 @@ def load_func_for_dataclass(
                 for i, f in enumerate(cls_init_fields):
                     name = f.name
                     preferred_env_var = f"f'{{pfx}}{name}'"
-                    has_default = has_defaults and name in field_to_default
+                    has_default = has_defaults and (
+                        f.default is not MISSING
+                        or f.default_factory is not MISSING
+                    )
                     val_is_found = _val_is_found
 
                     tp_var = f'tp_{i}'
