@@ -9,7 +9,7 @@ if PY311_OR_ABOVE:
     # noinspection PyUnresolvedReferences
     from datetime import UTC
 else:
-    UTC: timezone = timezone.utc  # type: ignore
+    UTC = timezone.utc  # type: ignore
 
 # UTC time zone (no offset)
-ZERO: timedelta = timedelta(0)
+ZERO = timedelta(0)

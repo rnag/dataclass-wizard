@@ -1,12 +1,8 @@
 from os import PathLike, fspath, sep, altsep, getcwd
 from os.path import isabs
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from .lazy_imports import dotenv
-
-if TYPE_CHECKING:
-    from ._path_util import Environ, SecretsFileMapping
 
 
 def get_secrets_map(cls, secret_dirs, *, reload=False):
@@ -61,7 +57,7 @@ def get_dotenv_map(cls, env_file, *, reload=False):
 
 
 def read_secrets_dirs(secret_dirs):
-    out: SecretsFileMapping = {}
+    out = {}
 
     for d in secret_dirs:
         if not isinstance(d, (str, PathLike)):
@@ -104,7 +100,7 @@ def dotenv_values(files):
     elif isinstance(files, (str, PathLike)):
         files = [files]
 
-    env: Environ = {}
+    env = {}
 
     for f in files:
         f = fspath(f)
