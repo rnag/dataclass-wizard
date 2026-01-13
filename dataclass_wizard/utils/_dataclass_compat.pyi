@@ -1,6 +1,6 @@
 from _typeshed import DataclassInstance
 from dataclasses import MISSING, Field
-from typing import Any, MutableMapping, Callable, Mapping, TypeVar, overload, Literal
+from typing import Any, MutableMapping, Callable, Mapping, TypeVar, overload, Literal, Sequence
 from weakref import WeakKeyDictionary
 
 _T = TypeVar('_T')
@@ -16,8 +16,8 @@ def set_qualname(cls: type[Any], value: Any) -> Any: ...
 def set_new_attribute(cls: type[Any], name: str, value: Any, force: bool = False) -> bool: ...
 def create_fn(
     name: str,
-    args: list[str],
-    body: list[str],
+    args: Sequence[str],
+    body: Sequence[str],
     *,
     globals: MutableMapping[str, Any] | None = ...,
     locals: MutableMapping[str, Any] | None = ...,

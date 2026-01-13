@@ -1,11 +1,22 @@
 import json
-from typing import AnyStr, Collection, Callable, Protocol, dataclass_transform
+from typing import AnyStr, Collection, Callable, Protocol, dataclass_transform, Any
 
 from .abstractions import AbstractJSONWizard, W
 from .bases_meta import BaseJSONWizardMeta, HookFn
 from .enums import KeyCase
 from .type_def import Decoder, Encoder, JSONObject, ListOfJSONObject
 
+
+def str_pprint_fn(): ...
+def first_declared_attr_in_mro(cls: type, name: str) -> Callable | Any | None: ...
+def set_from_dict_and_to_dict_if_needed(cls: type) -> None: ...
+def configure_wizard_class(cls: type,
+                           str: bool = False,
+                           debug: bool | int = False,
+                           case: KeyCase | str = None,
+                           dump_case: KeyCase | str = None,
+                           load_case: KeyCase | str  = None):
+    ...
 
 class SerializerHookMixin(Protocol):
     @classmethod

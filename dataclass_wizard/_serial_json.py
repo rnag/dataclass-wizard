@@ -16,13 +16,19 @@ from .utils._dataclass_compat import (create_fn,
                                       set_new_attribute)
 
 
-def _str_fn():
+def str_pprint_fn():
+    from pprint import pformat
+
     return create_fn('__str__',
                      ('self',),
-                     ['return self.to_json(indent=2)'])
+                     ['try:',
+                      '    return pformat(self.to_dict(), width=70)',
+                      'except Exception:',
+                      '    return object.__repr__(self)'],
+                     globals={'pformat': pformat})
 
 
-def _first_declared_attr_in_mro(cls, name: str):
+def first_declared_attr_in_mro(cls, name):
     """First `name` found in MRO (excluding cls); else None."""
     for base in cls.__mro__[1:]:
         attr = base.__dict__.get(name, MISSING)
@@ -31,7 +37,7 @@ def _first_declared_attr_in_mro(cls, name: str):
     return None
 
 
-def _set_from_dict_and_to_dict_if_needed(cls):
+def set_from_dict_and_to_dict_if_needed(cls):
     """
     Pin default dispatchers on subclasses.
 
@@ -40,23 +46,23 @@ def _set_from_dict_and_to_dict_if_needed(cls):
     Defining defaults in `cls.__dict__` blocks that.
     """
     if 'from_dict' not in cls.__dict__:
-        inherited = _first_declared_attr_in_mro(cls, 'from_dict')
+        inherited = first_declared_attr_in_mro(cls, 'from_dict')
         if getattr(inherited, '__func__', None) is fromdict:
             cls.from_dict = classmethod(fromdict)
 
     if 'to_dict' not in cls.__dict__:
-        inherited = _first_declared_attr_in_mro(cls, 'to_dict')
+        inherited = first_declared_attr_in_mro(cls, 'to_dict')
         if inherited is asdict:
             cls.to_dict = asdict
 
 
 # noinspection PyShadowingBuiltins
-def _configure_wizard_class(cls,
-                            str=False,
-                            debug=False,
-                            case=None,
-                            dump_case=None,
-                            load_case=None):
+def configure_wizard_class(cls,
+                           str=False,
+                           debug=False,
+                           case=None,
+                           dump_case=None,
+                           load_case=None):
     load_meta_kwargs = {}
 
     if case is not None:
@@ -87,10 +93,10 @@ def _configure_wizard_class(cls,
 
     # Add a `__str__` method to the subclass, if needed
     if str:
-        set_new_attribute(cls, '__str__', _str_fn())
+        set_new_attribute(cls, '__str__', str_pprint_fn())
 
     # Add `from_dict` and `to_dict` methods to the subclass, if needed
-    _set_from_dict_and_to_dict_if_needed(cls)
+    set_from_dict_and_to_dict_if_needed(cls)
 
 
 @dataclass_transform()
@@ -161,7 +167,7 @@ class DataclassWizard(AbstractJSONWizard):
             # noinspection PyArgumentList
             dataclass(cls, **dc_kwargs)
 
-        _configure_wizard_class(cls, str, debug, case, dump_case, load_case)
+        configure_wizard_class(cls, str, debug, case, dump_case, load_case)
 
 
 # noinspection PyAbstractClass
@@ -181,12 +187,3 @@ class JSONWizard(DataclassWizard):
 
         super().__init_subclass__(str, debug, case, dump_case, load_case,
                                   _apply_dataclass)
-
-
-def _str_pprint_fn():
-    from pprint import pformat
-
-    def __str__(self):
-        return pformat(self, width=70)
-
-    return __str__
