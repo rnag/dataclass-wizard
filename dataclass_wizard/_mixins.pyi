@@ -51,7 +51,7 @@ class JSONFileWizard(SerializerHookMixin):
 
 class TOMLWizard(SerializerHookMixin):
 
-    def __init_subclass__(cls, key_transform=None):
+    def __init_subclass__(cls, dump_case=None):
         ...
 
     @classmethod
@@ -94,7 +94,7 @@ class TOMLWizard(SerializerHookMixin):
 
 class YAMLWizard(SerializerHookMixin):
 
-    def __init_subclass__(cls, key_transform=KeyCase.KEBAB):
+    def __init_subclass__(cls, dump_case=KeyCase.KEBAB):
         ...
 
     @classmethod

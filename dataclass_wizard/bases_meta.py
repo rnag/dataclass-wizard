@@ -11,7 +11,7 @@ from typing import Mapping
 
 from .bases import AbstractMeta, META, AbstractEnvMeta
 from .class_helper import (
-    META_INITIALIZER, _META, get_meta,
+    META_INITIALIZER, get_meta,
     get_outer_class_name, get_class_name, create_new_class,
     DATACLASS_FIELD_TO_ALIAS_FOR_LOAD,
     DATACLASS_FIELD_TO_ENV_FOR_LOAD,
@@ -21,6 +21,7 @@ from .errors import ParseError
 from .loaders import LoadMixin, get_loader
 from .dumpers import DumpMixin, get_dumper
 from ._log import LOG
+from ._meta_cache import META_INNER_BY_CLASS
 from .type_def import E
 from .type_conv import as_enum
 
@@ -233,10 +234,10 @@ class BaseJSONWizardMeta(AbstractMeta):
         if is_default:
             # Check if the dataclass already has a Meta config; if so, we need to
             # copy over special attributes so they don't get overwritten.
-            if dataclass in _META:
-                _META[dataclass] &= cls
+            if dataclass in META_INNER_BY_CLASS:
+                META_INNER_BY_CLASS[dataclass] &= cls
             else:
-                _META[dataclass] = cls
+                META_INNER_BY_CLASS[dataclass] = cls
 
 
 class BaseEnvWizardMeta(AbstractEnvMeta):
@@ -331,10 +332,10 @@ class BaseEnvWizardMeta(AbstractEnvMeta):
         if is_default:
             # Check if the dataclass already has a Meta config; if so, we need to
             # copy over special attributes so they don't get overwritten.
-            if env_class in _META:
-                _META[env_class] &= cls
+            if env_class in META_INNER_BY_CLASS:
+                META_INNER_BY_CLASS[env_class] &= cls
             else:
-                _META[env_class] = cls
+                META_INNER_BY_CLASS[env_class] = cls
 
 
 # noinspection PyPep8Naming

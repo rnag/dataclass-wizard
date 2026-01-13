@@ -51,10 +51,6 @@ DATACLASS_FIELD_TO_SKIP_IF: dict[type, dict[str, Condition]] = defaultdict(dict)
 # :class:`JSONSerializable.Meta` is sub-classed.
 META_INITIALIZER: dict[str, Callable[[type[W]], None]] = {}
 
-# Mapping of dataclass to its Meta inner class, which will only be set when
-# the :class:`JSONSerializable.Meta` is sub-classed.
-_META: dict[type, META] = {}
-
 
 def set_class_loader(cls_to_loader, class_or_instance, loader: type[AbstractLoaderGenerator]):
     """

@@ -4,6 +4,7 @@ from collections import defaultdict
 from dataclasses import MISSING
 from typing import TYPE_CHECKING
 
+from ._meta_cache import META_INNER_BY_CLASS
 from .bases import AbstractMeta
 from .constants import CATCH_ALL, PACKAGE_NAME
 from .errors import InvalidConditionError
@@ -58,13 +59,11 @@ DATACLASS_FIELD_TO_SKIP_IF = defaultdict(dict)
 
 # A mapping of dataclass name to its Meta initializer (defined in
 # :class:`bases.BaseJSONWizardMeta`), which is only set when the
-# :class:`JSONSerializable.Meta` is sub-classed.
+# :class:`JSONWizard.Meta` is sub-classed.
 META_INITIALIZER = {}
 
 
-# Mapping of dataclass to its Meta inner class, which will only be set when
-# the :class:`JSONSerializable.Meta` is sub-classed.
-_META = {}
+# Cache: owner class -> its `Meta` inner class (only present when subclassed)
 
 
 def set_class_loader(cls_to_loader, class_or_instance, loader):
@@ -270,7 +269,7 @@ def get_meta(cls, base_cls=AbstractMeta):
 
     This config is set when the inner :class:`Meta` is sub-classed.
     """
-    return _META.get(cls, base_cls)
+    return META_INNER_BY_CLASS.get(cls, base_cls)
 
 
 def create_meta(cls, cls_name=None, **kwargs):
@@ -289,7 +288,7 @@ def create_meta(cls, cls_name=None, **kwargs):
                 (BaseJSONWizardMeta, ),
                 cls_dict)
 
-    _META[cls] = meta
+    META_INNER_BY_CLASS[cls] = meta
 
 
 def is_builtin(o):

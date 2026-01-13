@@ -9,15 +9,16 @@ __all__ = ['JSONListWizard',
 import json
 
 from .bases_meta import DumpMeta
-from .class_helper import _META
 from .dumpers import asdict
+from .enums import KeyCase
 from .lazy_imports import toml, toml_w, yaml
 from .loaders import fromdict, fromlist
 from .models import Container
+from ._meta_cache import META_INNER_BY_CLASS
 from ._serial_json import JSONWizard
 
 
-class JSONListWizard(JSONWizard, str=False):
+class JSONListWizard(JSONWizard):
     """
     A Mixin class that extends :class:`JSONWizard` to return
     :class:`Container` - instead of `list` - objects.
@@ -91,7 +92,7 @@ class JSONFileWizard:
 
 
 class TOMLWizard:
-    # noinspection PyUnresolvedReferences
+    # noinspection PyUnresolvedReferences,GrazieInspection
     """
     A Mixin class that makes it easier to interact with TOML data.
 
@@ -104,7 +105,7 @@ class TOMLWizard:
     For example:
 
         >>> @dataclass
-        >>> class MyClass(TOMLWizard, key_transform='CAMEL'):
+        >>> class MyClass(TOMLWizard, dump_case='CAMEL'):
         >>>     ...
 
     """
@@ -113,7 +114,7 @@ class TOMLWizard:
         # Only add the key transform if Meta config has not been specified
         # for the dataclass.
         # TODO
-        if dump_case and cls not in _META:
+        if dump_case and cls not in META_INNER_BY_CLASS:
             DumpMeta(v1_case=dump_case).bind_to(cls)
 
     @classmethod
@@ -215,7 +216,7 @@ class TOMLWizard:
 
 
 class YAMLWizard:
-    # noinspection PyUnresolvedReferences
+    # noinspection PyUnresolvedReferences,GrazieInspection
     """
     A Mixin class that makes it easier to interact with YAML data.
 
@@ -227,15 +228,15 @@ class YAMLWizard:
     For example:
 
         >>> @dataclass
-        >>> class MyClass(YAMLWizard, key_transform='CAMEL'):
+        >>> class MyClass(YAMLWizard, dump_case='CAMEL'):
         >>>     ...
 
     """
-    def __init_subclass__(cls, dump_case='KEBAB'):
+    def __init_subclass__(cls, dump_case=KeyCase.KEBAB):
         """Allow easy setup of common config, such as key casing transform."""
         # Only add the key transform if Meta config has not been specified
         # for the dataclass.
-        if dump_case and cls not in _META:
+        if dump_case and cls not in META_INNER_BY_CLASS:
             DumpMeta(v1_case=dump_case).bind_to(cls)
 
     @classmethod

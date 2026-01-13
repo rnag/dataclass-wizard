@@ -28,6 +28,8 @@ def env_config(**kw: Unpack[EnvInit]) -> EnvInit:
 @dataclass()
 class EnvWizard:
     __slots__ = ()
+
+    # noinspection PyDataclass
     __env__: InitVar[EnvInit | None] = None
 
     class Meta(BaseEnvWizardMeta):
