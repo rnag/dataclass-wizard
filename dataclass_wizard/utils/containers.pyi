@@ -39,6 +39,7 @@ class Container(list[T]):
         ...
 
     def prettify(self, encoder: Encoder = json.dumps,
+                 indent=2,
                  ensure_ascii=False,
                  **encoder_kwargs) -> str:
         """

@@ -2,6 +2,7 @@ import json
 
 from ..class_helper import str_pprint_fn
 from ..decorators import cached_property
+from ..dumpers import asdict
 from ..type_def import T
 from ._dataclass_compat import set_new_attribute
 
@@ -36,11 +37,12 @@ class Container(list[T]):
             set_new_attribute(cls, '__str__', str_pprint_fn())
 
     def prettify(self, encoder = json.dumps,
+                 indent=2,
                  ensure_ascii=False,
                  **encoder_kwargs):
 
         return self.to_json(
-            indent=2,
+            indent=indent,
             encoder=encoder,
             ensure_ascii=ensure_ascii,
             **encoder_kwargs
@@ -48,21 +50,16 @@ class Container(list[T]):
 
     def to_json(self, encoder=json.dumps,
                 **encoder_kwargs):
-        from ..dumpers import asdict
 
-        cls = self.__model__
-        list_of_dict = [asdict(o, cls=cls) for o in self]
+        list_of_dict = [asdict(o, cls=self.__model__) for o in self]
 
         return encoder(list_of_dict, **encoder_kwargs)
 
     def to_json_file(self, file, mode = 'w',
                      encoder=json.dump,
                      **encoder_kwargs):
-        # TODO
-        from ..dumpers import asdict
 
-        cls = self.__model__
-        list_of_dict = [asdict(o, cls=cls) for o in self]
+        list_of_dict = [asdict(o, cls=self.__model__) for o in self]
 
         with open(file, mode) as out_file:
             encoder(list_of_dict, out_file, **encoder_kwargs)
