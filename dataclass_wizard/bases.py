@@ -730,49 +730,49 @@ class AbstractEnvMeta(metaclass=ABCOrAndMeta):
         """
         raise NotImplementedError
 
-class BaseLoadHook:
+
+class _BaseHookRegistry:
+    __slots__ = ()
+    __HOOKS__: ClassVar[dict[type, Callable]]
+
+    def __init_subclass__(cls):
+        # (Re)assign the dict object so we have a fresh copy per class
+        cls.__HOOKS__ = {}
+
+    @classmethod
+    def register_hook(cls, typ: type, func: Callable):
+        cls.__HOOKS__[typ] = func
+
+    @classmethod
+    def get_hook(cls, typ: type) -> Callable | None:
+        return cls.__HOOKS__.get(typ)
+
+
+class BaseLoadHook(_BaseHookRegistry):
     """
     Container class for type hooks.
     """
-    __slots__ = ()
-
-    __LOAD_HOOKS__: ClassVar[Dict[Type, Callable]] = None
-
-    def __init_subclass__(cls):
-        super().__init_subclass__()
-        # (Re)assign the dict object so we have a fresh copy per class
-        cls.__LOAD_HOOKS__ = {}
-
-    @classmethod
-    def register_load_hook(cls, typ: Type, func: Callable):
-        """Registers the hook for a type, on the default loader by default."""
-        cls.__LOAD_HOOKS__[typ] = func
-
-    @classmethod
-    def get_load_hook(cls, typ: Type) -> Optional[Callable]:
-        """Retrieves the hook for a type, if one exists."""
-        return cls.__LOAD_HOOKS__.get(typ)
+    # @classmethod
+    # def register_load_hook(cls, typ: Type, func: Callable):
+    #     """Registers the hook for a type, on the default loader by default."""
+    #
+    # @classmethod
+    # def get_load_hook(cls, typ: Type) -> Optional[Callable]:
+    #     """Retrieves the hook for a type, if one exists."""
 
 
-class BaseDumpHook:
+class BaseDumpHook(_BaseHookRegistry):
     """
     Container class for type hooks.
     """
-    __slots__ = ()
+    # __slots__ = ()
 
-    __DUMP_HOOKS__: ClassVar[Dict[Type, Callable]] = None
-
-    def __init_subclass__(cls):
-        super().__init_subclass__()
-        # (Re)assign the dict object so we have a fresh copy per class
-        cls.__DUMP_HOOKS__ = {}
-
-    @classmethod
-    def register_dump_hook(cls, typ: Type, func: Callable):
-        """Registers the hook for a type, on the default dumper by default."""
-        cls.__DUMP_HOOKS__[typ] = func
-
-    @classmethod
-    def get_dump_hook(cls, typ: Type) -> Optional[Callable]:
-        """Retrieves the hook for a type, if one exists."""
-        return cls.__DUMP_HOOKS__.get(typ)
+    # @classmethod
+    # def register_dump_hook(cls, typ: Type, func: Callable):
+    #     """Registers the hook for a type, on the default dumper by default."""
+    #     cls.__DUMP_HOOKS__[typ] = func
+    #
+    # @classmethod
+    # def get_dump_hook(cls, typ: Type) -> Optional[Callable]:
+    #     """Retrieves the hook for a type, if one exists."""
+    #     return cls.__DUMP_HOOKS__.get(typ)

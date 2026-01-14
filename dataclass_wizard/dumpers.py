@@ -538,7 +538,7 @@ class DumpMixin(BaseDumpHook):
                                        tp,
                                        extras):
 
-        hooks = cls.__DUMP_HOOKS__
+        hooks = cls.__HOOKS__
         config = extras['config']
         type_hooks = config.type_to_dump_hook
         leaf_handling_as_subclass = config.leaf_handling == 'issubclass'
@@ -752,34 +752,34 @@ def setup_default_dumper(cls=DumpMixin):
     # Technically a complex type, however check this
     # first, since `StrEnum` and `IntEnum` are subclasses
     # of `str` and `int`
-    cls.register_dump_hook(Enum, cls.dump_from_enum)
+    cls.register_hook(Enum, cls.dump_from_enum)
     # Simple types
-    cls.register_dump_hook(str, cls.dump_from_str)
-    cls.register_dump_hook(float, cls.dump_from_float)
-    cls.register_dump_hook(bool, cls.dump_from_bool)
-    cls.register_dump_hook(int, cls.dump_from_int)
-    cls.register_dump_hook(bytes, cls.dump_from_bytes)
-    cls.register_dump_hook(bytearray, cls.dump_from_bytearray)
-    cls.register_dump_hook(NoneType, cls.dump_from_none)
+    cls.register_hook(str, cls.dump_from_str)
+    cls.register_hook(float, cls.dump_from_float)
+    cls.register_hook(bool, cls.dump_from_bool)
+    cls.register_hook(int, cls.dump_from_int)
+    cls.register_hook(bytes, cls.dump_from_bytes)
+    cls.register_hook(bytearray, cls.dump_from_bytearray)
+    cls.register_hook(NoneType, cls.dump_from_none)
     # Complex types
-    cls.register_dump_hook(UUID, cls.dump_from_uuid)
-    cls.register_dump_hook(set, cls.dump_from_iterable)
-    cls.register_dump_hook(frozenset, cls.dump_from_iterable)
-    cls.register_dump_hook(deque, cls.dump_from_iterable)
-    cls.register_dump_hook(list, cls.dump_from_iterable)
-    cls.register_dump_hook(tuple, cls.dump_from_tuple)
+    cls.register_hook(UUID, cls.dump_from_uuid)
+    cls.register_hook(set, cls.dump_from_iterable)
+    cls.register_hook(frozenset, cls.dump_from_iterable)
+    cls.register_hook(deque, cls.dump_from_iterable)
+    cls.register_hook(list, cls.dump_from_iterable)
+    cls.register_hook(tuple, cls.dump_from_tuple)
     # `typing` Generics
-    # cls.register_dump_hook(Literal, cls.dump_from_literal)
+    # cls.register_hook(Literal, cls.dump_from_literal)
     # noinspection PyTypeChecker
-    cls.register_dump_hook(defaultdict, cls.dump_from_defaultdict)
-    cls.register_dump_hook(dict, cls.dump_from_dict)
-    cls.register_dump_hook(Decimal, cls.dump_from_decimal)
-    cls.register_dump_hook(Path, cls.dump_from_path)
+    cls.register_hook(defaultdict, cls.dump_from_defaultdict)
+    cls.register_hook(dict, cls.dump_from_dict)
+    cls.register_hook(Decimal, cls.dump_from_decimal)
+    cls.register_hook(Path, cls.dump_from_path)
     # Dates and times
-    cls.register_dump_hook(datetime, cls.dump_from_datetime)
-    cls.register_dump_hook(time, cls.dump_from_time)
-    cls.register_dump_hook(date, cls.dump_from_date)
-    cls.register_dump_hook(timedelta, cls.dump_from_timedelta)
+    cls.register_hook(datetime, cls.dump_from_datetime)
+    cls.register_hook(time, cls.dump_from_time)
+    cls.register_hook(date, cls.dump_from_date)
+    cls.register_hook(timedelta, cls.dump_from_timedelta)
 
 
 def check_and_raise_missing_fields(

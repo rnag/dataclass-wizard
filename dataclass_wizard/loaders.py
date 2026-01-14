@@ -827,7 +827,7 @@ class LoadMixin(BaseLoadHook):
                                        tp,
                                        extras):
 
-        hooks = cls.__LOAD_HOOKS__
+        hooks = cls.__HOOKS__
         config = extras['config']
         pre_decoder = config.pre_decoder
         type_hooks = config.type_to_load_hook
@@ -1029,29 +1029,29 @@ def setup_default_loader(cls=LoadMixin):
     # TODO maybe `dict.update` might be better?
 
     # Simple types
-    cls.register_load_hook(str, cls.load_to_str)
-    cls.register_load_hook(float, cls.load_to_float)
-    cls.register_load_hook(bool, cls.load_to_bool)
-    cls.register_load_hook(int, cls.load_to_int)
-    cls.register_load_hook(bytes, cls.load_to_bytes)
-    cls.register_load_hook(bytearray, cls.load_to_bytearray)
-    cls.register_load_hook(NoneType, cls.load_to_none)
+    cls.register_hook(str, cls.load_to_str)
+    cls.register_hook(float, cls.load_to_float)
+    cls.register_hook(bool, cls.load_to_bool)
+    cls.register_hook(int, cls.load_to_int)
+    cls.register_hook(bytes, cls.load_to_bytes)
+    cls.register_hook(bytearray, cls.load_to_bytearray)
+    cls.register_hook(NoneType, cls.load_to_none)
     # Complex types
-    cls.register_load_hook(UUID, cls.load_to_uuid)
-    cls.register_load_hook(set, cls.load_to_iterable)
-    cls.register_load_hook(frozenset, cls.load_to_iterable)
-    cls.register_load_hook(deque, cls.load_to_iterable)
-    cls.register_load_hook(list, cls.load_to_iterable)
-    cls.register_load_hook(tuple, cls.load_to_tuple)
-    cls.register_load_hook(defaultdict, cls.load_to_defaultdict)
-    cls.register_load_hook(dict, cls.load_to_dict)
-    cls.register_load_hook(Decimal, cls.load_to_decimal)
-    cls.register_load_hook(Path, cls.load_to_path)
+    cls.register_hook(UUID, cls.load_to_uuid)
+    cls.register_hook(set, cls.load_to_iterable)
+    cls.register_hook(frozenset, cls.load_to_iterable)
+    cls.register_hook(deque, cls.load_to_iterable)
+    cls.register_hook(list, cls.load_to_iterable)
+    cls.register_hook(tuple, cls.load_to_tuple)
+    cls.register_hook(defaultdict, cls.load_to_defaultdict)
+    cls.register_hook(dict, cls.load_to_dict)
+    cls.register_hook(Decimal, cls.load_to_decimal)
+    cls.register_hook(Path, cls.load_to_path)
     # Dates and times
-    cls.register_load_hook(datetime, cls.load_to_datetime)
-    cls.register_load_hook(time, cls.load_to_time)
-    cls.register_load_hook(date, cls.load_to_date)
-    cls.register_load_hook(timedelta, cls.load_to_timedelta)
+    cls.register_hook(datetime, cls.load_to_datetime)
+    cls.register_hook(time, cls.load_to_time)
+    cls.register_hook(date, cls.load_to_date)
+    cls.register_hook(timedelta, cls.load_to_timedelta)
 
 
 def check_and_raise_missing_fields(
