@@ -3,8 +3,7 @@ Contains implementations for Abstract Base Classes
 """
 import json
 from abc import ABC, abstractmethod
-from dataclasses import Field
-from typing import AnyStr, TypeVar
+from typing import AnyStr, TypeVar, ClassVar
 
 from .models import Extras, TypeInfo
 from .type_def import Encoder, JSONObject, ListOfJSONObject
@@ -24,18 +23,18 @@ class AbstractEnvWizard(ABC):
     """
     __slots__ = ()
 
-    # Extends the `__annotations__` attribute to return only the fields
-    # (variables) of the `EnvWizard` subclass.
+    # Extends the `__annotations__` attribute to return only the field
+    # names of the `EnvWizard` subclass.
     #
     # .. NOTE::
     #    This excludes fields marked as ``ClassVar``, or ones which are
     #    not type-annotated.
-    __fields__: dict[str, Field]
+    __field_names__: ClassVar[tuple[str, ...]]
 
-    def dict(self: E) -> JSONObject:
+    def raw_dict(self: E) -> JSONObject:
         """
         Same as ``__dict__``, but only returns values for fields defined
-        on the `EnvWizard` instance. See :attr:`__fields__` for more info.
+        on the `EnvWizard` instance. See :attr:`__field_names__` for more info.
 
         .. NOTE::
            The values in the returned dictionary object are not needed to be

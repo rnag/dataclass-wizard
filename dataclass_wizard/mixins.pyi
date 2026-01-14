@@ -7,7 +7,7 @@ import json
 from os import PathLike
 from typing import AnyStr, TextIO, BinaryIO, TypeAlias
 
-from .abstractions import W
+from ._abstractions import W
 from .enums import KeyCase
 from .utils.containers import Container
 from ._serial_json import JSONWizard, SerializerHookMixin

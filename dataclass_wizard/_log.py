@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from logging import getLogger, StreamHandler, DEBUG
 
 from .constants import LOG_LEVEL, PACKAGE_NAME

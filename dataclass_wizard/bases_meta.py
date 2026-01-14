@@ -9,6 +9,7 @@ from __future__ import annotations
 import logging
 from typing import Mapping
 
+from ._abstractions import AbstractJSONWizard
 from .bases import AbstractMeta, META, AbstractEnvMeta
 from .class_helper import (
     META_INITIALIZER, get_meta,
@@ -155,8 +156,6 @@ class BaseJSONWizardMeta(AbstractMeta):
         if outer_cls_name is not None:
             META_INITIALIZER[outer_cls_name] = cls.bind_to
         else:
-            from .abstractions import AbstractJSONWizard
-
             # The `Meta` class is defined as an outer class. Emit a warning
             # here, just so we can ensure awareness of this special case.
             LOG.warning('The %r class is not declared as an Inner Class, so '
@@ -265,8 +264,6 @@ class BaseEnvWizardMeta(AbstractEnvMeta):
         if outer_cls_name is not None:
             META_INITIALIZER[outer_cls_name] = cls.bind_to
         else:
-            from .abstractions import AbstractJSONWizard
-
             # The `Meta` class is defined as an outer class. Emit a warning
             # here, just so we can ensure awareness of this special case.
             LOG.warning('The %r class is not declared as an Inner Class, so '

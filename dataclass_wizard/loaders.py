@@ -23,7 +23,7 @@ from .type_conv import (
     as_datetime, as_date, as_int,
     as_time, as_timedelta, TRUTHY_VALUES,
 )
-from .abstractions import AbstractLoaderGenerator
+from ._abstractions import AbstractLoaderGenerator
 from .bases import AbstractMeta, BaseLoadHook, META
 from .class_helper import (create_meta,
                            get_meta,
@@ -60,7 +60,7 @@ from .utils._typing_compat import (eval_forward_ref_if_needed,
                                    is_union)
 
 
-class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
+class LoadMixin(BaseLoadHook, AbstractLoaderGenerator):
     """
     This Mixin class derives its name from the eponymous `json.loads`
     function. Essentially it contains helper methods to convert JSON strings

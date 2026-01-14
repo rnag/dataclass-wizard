@@ -2,7 +2,7 @@ import json
 import logging
 from dataclasses import dataclass, MISSING
 
-from .abstractions import AbstractJSONWizard
+from ._abstractions import AbstractJSONWizard
 from .bases_meta import BaseJSONWizardMeta, LoadMeta, register_type
 from .class_helper import call_meta_initializer_if_needed, str_pprint_fn
 from .constants import PACKAGE_NAME

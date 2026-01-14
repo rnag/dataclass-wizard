@@ -24,7 +24,7 @@ from .models import (Extras, TypeInfo, PatternBase,
                      LEAF_TYPES, LEAF_TYPES_NO_BYTES)
 from ._models_date import ZERO, UTC
 from .type_conv import datetime_to_timestamp
-from .abstractions import AbstractDumperGenerator
+from ._abstractions import AbstractDumperGenerator
 from .bases import AbstractMeta, BaseDumpHook, META
 from .class_helper import (
     CLASS_TO_DUMP_FUNC,
@@ -133,7 +133,7 @@ def _all_return_value_unchanged(args, leaf_handling_as_subclass):
     return True
 
 
-class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
+class DumpMixin(BaseDumpHook, AbstractDumperGenerator):
     """
     This Mixin class derives its name from the eponymous `json.dumps`
     function. Essentially it contains helper methods to convert a `dataclass`

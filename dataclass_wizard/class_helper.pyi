@@ -1,7 +1,7 @@
 from collections import defaultdict
 from typing import Any, Callable, Sequence
 
-from .abstractions import W, E, AbstractLoaderGenerator, AbstractDumperGenerator
+from ._abstractions import W, E, AbstractLoaderGenerator, AbstractDumperGenerator
 from .bases import META, AbstractMeta
 from .constants import PACKAGE_NAME
 from .models import Condition

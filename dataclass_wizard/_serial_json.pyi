@@ -1,7 +1,7 @@
 import json
 from typing import AnyStr, Collection, Callable, Protocol, dataclass_transform, Any
 
-from .abstractions import AbstractJSONWizard, W
+from ._abstractions import AbstractJSONWizard, W
 from .bases_meta import BaseJSONWizardMeta, HookFn
 from .enums import KeyCase
 from .type_def import Decoder, Encoder, JSONObject, ListOfJSONObject
