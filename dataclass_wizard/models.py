@@ -1,5 +1,4 @@
 import hashlib
-import json
 import sys
 import types
 from collections import defaultdict, deque
@@ -9,10 +8,10 @@ from typing import TYPE_CHECKING, Any, TypedDict, cast, NewType, Mapping
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from ._models_date import UTC
-from .decorators import cached_property, setup_recursive_safe_function
+from .decorators import setup_recursive_safe_function
 from .constants import PY310_OR_ABOVE, PY311_OR_ABOVE, PY314_OR_ABOVE
 from ._log import LOG
-from .type_def import DefFactory, ExplicitNull, PyNotRequired, NoneType, T
+from .type_def import DefFactory, ExplicitNull, PyNotRequired, NoneType
 from .utils._function_builder import FunctionBuilder
 from .utils._object_path import split_object_path
 from .utils._typing_compat import get_origin_v2
@@ -1211,64 +1210,6 @@ Field.__doc__ = """
 
     See the docs on the :func:`Alias` and :func:`AliasPath` for more info.
 """
-
-
-class Container(list[T]):
-
-    __slots__ = ('__dict__',
-                 '__orig_class__')
-
-    @cached_property
-    def __model__(self):
-
-        try:
-            # noinspection PyUnresolvedReferences
-            return self.__orig_class__.__args__[0]
-        except AttributeError:
-            cls_name = self.__class__.__qualname__
-            msg = (f'A {cls_name} object needs to be instantiated with '
-                   f'a generic type T.\n\n'
-                   'Example:\n'
-                   f'  my_list = {cls_name}[T](...)')
-
-            raise TypeError(msg) from None
-
-    def __str__(self):
-
-        import pprint
-        return pprint.pformat(self)
-
-    def prettify(self, encoder = json.dumps,
-                 ensure_ascii=False,
-                 **encoder_kwargs):
-
-        return self.to_json(
-            indent=2,
-            encoder=encoder,
-            ensure_ascii=ensure_ascii,
-            **encoder_kwargs
-        )
-
-    def to_json(self, encoder=json.dumps,
-                **encoder_kwargs):
-        from .dumpers import asdict
-
-        cls = self.__model__
-        list_of_dict = [asdict(o, cls=cls) for o in self]
-
-        return encoder(list_of_dict, **encoder_kwargs)
-
-    def to_json_file(self, file, mode = 'w',
-                     encoder=json.dump,
-                     **encoder_kwargs):
-        # TODO
-        from .dumpers import asdict
-
-        cls = self.__model__
-        list_of_dict = [asdict(o, cls=cls) for o in self]
-
-        with open(file, mode) as out_file:
-            encoder(list_of_dict, out_file, **encoder_kwargs)
 
 
 class Condition:

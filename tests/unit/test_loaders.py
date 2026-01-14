@@ -22,6 +22,7 @@ from zoneinfo import ZoneInfo
 import pytest
 
 from dataclass_wizard import *
+from dataclass_wizard.mixins import TOMLWizard
 from dataclass_wizard.constants import TAG
 from dataclass_wizard.errors import (
     ParseError, MissingFields, UnknownKeysError, MissingData, InvalidConditionError

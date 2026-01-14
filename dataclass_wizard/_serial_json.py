@@ -4,28 +4,15 @@ from dataclasses import dataclass, MISSING
 
 from .abstractions import AbstractJSONWizard
 from .bases_meta import BaseJSONWizardMeta, LoadMeta, register_type
-from .class_helper import call_meta_initializer_if_needed
+from .class_helper import call_meta_initializer_if_needed, str_pprint_fn
 from .constants import PACKAGE_NAME
 from .dumpers import asdict
 from .loaders import fromdict, fromlist
 from ._log import enable_library_debug_logging
 from .type_def import dataclass_transform
 # noinspection PyProtectedMember
-from .utils._dataclass_compat import (create_fn,
-                                      dataclass_needs_refresh,
+from .utils._dataclass_compat import (dataclass_needs_refresh,
                                       set_new_attribute)
-
-
-def str_pprint_fn():
-    from pprint import pformat
-
-    return create_fn('__str__',
-                     ('self',),
-                     ['try:',
-                      '    return pformat(self.to_dict(), width=70)',
-                      'except Exception:',
-                      '    return object.__repr__(self)'],
-                     globals={'pformat': pformat})
 
 
 def first_declared_attr_in_mro(cls, name):

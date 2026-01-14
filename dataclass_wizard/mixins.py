@@ -13,7 +13,7 @@ from .dumpers import asdict
 from .enums import KeyCase
 from .lazy_imports import toml, toml_w, yaml
 from .loaders import fromdict, fromlist
-from .models import Container
+from .utils.containers import Container
 from ._meta_cache import META_INNER_BY_CLASS
 from ._serial_json import JSONWizard
 

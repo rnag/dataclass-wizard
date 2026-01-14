@@ -10,7 +10,7 @@ from .constants import CATCH_ALL, PACKAGE_NAME
 from .errors import InvalidConditionError
 from .models import CatchAll, Condition
 from .type_def import ExplicitNull
-from .utils._dataclass_compat import dataclass_fields, SEEN_DEFAULT
+from .utils._dataclass_compat import dataclass_fields, SEEN_DEFAULT, create_fn
 from .utils._typing_compat import (eval_forward_ref_if_needed,
                                    get_args,
                                    is_annotated)
@@ -365,3 +365,15 @@ def is_subclass_safe(cls, class_or_tuple):
         return issubclass(cls, class_or_tuple)
     except TypeError:
         return False
+
+
+def str_pprint_fn():
+    from pprint import pformat
+
+    return create_fn('__str__',
+                     ('self',),
+                     ['try:',
+                      '    return pformat(self.to_dict(), width=70)',
+                      'except Exception:',
+                      '    return object.__repr__(self)'],
+                     globals={'pformat': pformat})

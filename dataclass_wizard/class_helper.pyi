@@ -165,3 +165,6 @@ def is_subclass(obj: Any, base_cls: type) -> bool:
 
 def is_subclass_safe(cls, class_or_tuple) -> bool:
     """Check if `obj` is a sub-class of `base_cls` (safer version)"""
+
+
+def str_pprint_fn(): ...
