@@ -68,7 +68,7 @@ from typing import (
     Union, Dict, Sequence
 )
 
-from .._properties import property_wizard
+from ..properties import property_wizard
 from ..constants import PACKAGE_NAME
 from ..class_helper import get_class_name
 from dataclass_wizard._models_date import UTC

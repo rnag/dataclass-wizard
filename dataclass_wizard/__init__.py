@@ -11,7 +11,8 @@ Sample Usage:
     >>> from datetime import datetime
     >>> from typing import Optional
     >>>
-    >>> from dataclass_wizard import JSONWizard, property_wizard
+    >>> from dataclass_wizard import JSONWizard
+    >>> from dataclass_wizard.properties import property_wizard
     >>>
     >>>
     >>> @dataclass
@@ -100,7 +101,6 @@ __all__ = [
     'register_type',
     'LoadMixin',
     'DumpMixin',
-    'property_wizard',
     # Wizard Mixins
     'EnvWizard',
     # Helper serializer functions + meta config
@@ -140,7 +140,6 @@ from .dumpers import DumpMixin, setup_default_dumper, asdict
 from .loaders import LoadMixin, setup_default_loader, fromdict, fromlist
 from ._env import EnvWizard, env_config
 from ._log import LOG
-from ._properties import property_wizard
 from ._serial_json import DataclassWizard, JSONWizard
 from .models import (Alias, AliasPath, CatchAll, Env,
                      SkipIf, SkipIfNone,
