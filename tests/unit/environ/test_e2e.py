@@ -37,8 +37,8 @@ def test_nested_union_with_complex_types_in_containers():
 
     class MyClass(EnvWizard):
         class _(EnvWizard.Meta):
-            v1_case = 'CAMEL'
-            v1_unsafe_parse_dataclass_in_union = True
+            case = 'CAMEL'
+            unsafe_parse_dataclass_in_union = True
 
         my_bool: dict[str, tuple[Optional[bool], ...]] = Alias(env='Boolean-Dict')
         unionInListWithClass: list[Union[str, Sub, None]]
@@ -80,7 +80,7 @@ def test_named_tuples_with_optionals_in_container():
 
     class MyClass(EnvWizard):
         class _(EnvWizard.Meta):
-            v1_load_case = 'FIELD_FIRST'
+            load_case = 'FIELD_FIRST'
 
         nt_all_opts: dict[str, set[NTAllOptionals]]
         nt_one_opt: list[NTOneOptional]
@@ -186,11 +186,11 @@ def test_decode_date_and_datetime_from_numeric_and_string_timestamp_and_iso_form
 
 
 def test_field_to_env_load():
-    """Meta field `v1_field_to_env_load` usage."""
+    """Meta field `field_to_env_load` usage."""
 
     class MyClass(EnvWizard):
         class _(EnvWizard.Meta):
-            v1_field_to_env_load = {'my_value': 'MyVal', 'other_key': ('INT1', 'INT2')}
+            field_to_env_load = {'my_value': 'MyVal', 'other_key': ('INT1', 'INT2')}
 
         my_value: float
         other_key: int = 3
@@ -282,7 +282,7 @@ def test_env_precedence_env_only():
         my_value: float
 
         class _(EnvWizard.Meta):
-            v1_env_precedence = 'ENV_ONLY'
+            env_precedence = 'ENV_ONLY'
             # contains `MY_VALUE=1.23`
             env_file = '.env.test'
 
@@ -300,7 +300,7 @@ def test_env_load_case_strict():
         my_value: float
 
         class _(EnvWizard.Meta):
-            v1_load_case = 'STRICT'
+            load_case = 'STRICT'
 
     with pytest.raises(MissingVars) as e:
         _ = from_env(E, {'my_value': 3.21})
@@ -381,7 +381,7 @@ def test_env_alias_path_with_multiple_paths():
 def test_namedtuple_dict_mode_roundtrip_and_defaults():
     class EnvContDict(EnvWizard):
         class _(EnvWizard.Meta):
-            v1_namedtuple_as_dict = True
+            namedtuple_as_dict = True
 
         tn: TN
         cn: CN
@@ -405,7 +405,7 @@ def test_namedtuple_dict_mode_roundtrip_and_defaults():
 def test_namedtuple_list_mode_roundtrip_and_defaults():
     class EnvContList(EnvWizard):
         class _(EnvWizard.Meta):
-            v1_namedtuple_as_dict = False
+            namedtuple_as_dict = False
 
         tn: TN
         cn: CN
@@ -419,7 +419,7 @@ def test_namedtuple_list_mode_roundtrip_and_defaults():
 
 
 # def test_namedtuple_list_mode_rejects_dict_input_with_clear_error():
-#     with pytest.raises(ParseError, match=r"Dict input is not supported for NamedTuple fields in list mode.*list.*Meta\.v1_namedtuple_as_dict = True"):
+#     with pytest.raises(ParseError, match=r"Dict input is not supported for NamedTuple fields in list mode.*list.*Meta\.namedtuple_as_dict = True"):
 #         from_env(EnvContList, {"tn": {"a": 1}, "cn": {"a": 3}})
 
 
@@ -458,10 +458,10 @@ def test_typeddict_all_required_e2e_inline_path():
         from_env(EnvContAllReq, {"td": {"x": 1}})  # missing y
 
 
-def test_v1_union_codegen_cache_nested_union_roundtrip_and_dump_error():
+def test_union_codegen_cache_nested_union_roundtrip_and_dump_error():
     class MyClass(EnvWizard):
         class _(EnvWizard.Meta):
-            v1_unsafe_parse_dataclass_in_union = True
+            unsafe_parse_dataclass_in_union = True
 
         complex_tp: 'list[int | Sub2] | list[int | str]'
 

@@ -6,9 +6,6 @@ from ..utils_env import from_env
 def test_dump_with_excluded_fields_and_skip_defaults():
 
     class TestClass(EnvWizard):
-        class _(EnvWizard.Meta):
-            v1 = True
-
         my_first_str: str
         my_second_str: str = Alias(skip=True)
         my_int: int = 123

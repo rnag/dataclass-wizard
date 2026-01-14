@@ -272,7 +272,7 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
             for i, name in enumerate(fields)
         }
 
-        if extras['config'].v1_namedtuple_as_dict:
+        if extras['config'].namedtuple_as_dict:
             params = [f'{field!r}: {value}' for field, value in field_to_value.items()]
             return f'{{{", ".join(params)}}}'
 
@@ -281,7 +281,7 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
 
     @classmethod
     def dump_from_named_tuple_untyped(cls, tp: TypeInfo, extras: Extras):
-        as_dict = extras['config'].v1_namedtuple_as_dict
+        as_dict = extras['config'].namedtuple_as_dict
         return f'{tp.v()}._asdict()' if as_dict else f'list({tp.v()})'
 
     @classmethod
@@ -387,7 +387,7 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
 
         tag_key = config.tag_key or TAG
         auto_assign_tags = config.auto_assign_tags
-        leaf_handling_as_subclass = config.v1_leaf_handling == 'issubclass'
+        leaf_handling_as_subclass = config.leaf_handling == 'issubclass'
 
         in_optional = NoneType in args
 
@@ -487,7 +487,7 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
     def dump_from_date(cls, tp: TypeInfo, extras: Extras):
         o = tp.v()
 
-        if extras['config'].v1_dump_date_time_as is DateTimeTo.TIMESTAMP:
+        if extras['config'].dump_date_time_as is DateTimeTo.TIMESTAMP:
             tp.ensure_in_locals(extras, datetime, UTC=UTC)
             return f'int(datetime((v0 := {o}).year, v0.month, v0.day, tzinfo=UTC).timestamp())'
 
@@ -498,13 +498,13 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
         o = tp.v()
         config = extras['config']
 
-        if config.v1_dump_date_time_as is DateTimeTo.TIMESTAMP:
-            naive_tz = config.v1_assume_naive_datetime_tz
+        if config.dump_date_time_as is DateTimeTo.TIMESTAMP:
+            naive_tz = config.assume_naive_datetime_tz
 
             if naive_tz is None:
                 def raise_naive():
                     raise ValueError('Naive datetime has no timezone; '
-                                     'set v1_assume_naive_datetime_tz to '
+                                     'set assume_naive_datetime_tz to '
                                      'define how it should be interpreted.')
 
                 tp.ensure_in_locals(extras, raise_naive, ZERO=ZERO)
@@ -541,8 +541,8 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
 
         hooks = cls.__DUMP_HOOKS__
         config = extras['config']
-        type_hooks = config.v1_type_to_dump_hook
-        leaf_handling_as_subclass = config.v1_leaf_handling == 'issubclass'
+        type_hooks = config.type_to_dump_hook
+        leaf_handling_as_subclass = config.leaf_handling == 'issubclass'
 
         # type_ann = tp.origin
         type_ann = eval_forward_ref_if_needed(tp.origin, extras['cls'])
@@ -734,7 +734,7 @@ class DumpMixin(AbstractDumperGenerator, BaseDumpHook):
         pe = ParseError(
             err, origin, type_ann, 'dump',
             resolution=f'Register a dump hook for {ParseError.name(origin)} '
-                       f'(v1: `register_type` / `Meta.v1_type_to_dump_hook`).',
+                       f'(v1: `register_type` / `Meta.type_to_dump_hook`).',
             unsupported_type=origin
         )
         raise pe from None

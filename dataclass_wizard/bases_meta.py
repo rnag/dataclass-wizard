@@ -15,13 +15,13 @@ from .class_helper import (
     get_outer_class_name, get_class_name, create_new_class,
     DATACLASS_FIELD_TO_ALIAS_FOR_LOAD,
     DATACLASS_FIELD_TO_ENV_FOR_LOAD,
-    DATACLASS_FIELD_TO_ALIAS_FOR_DUMP,
+    DATACLASS_FIELD_TO_ALIAS_FOR_DUMP, create_meta,
 )
 from .errors import ParseError
 from .loaders import LoadMixin, get_loader
 from .dumpers import DumpMixin, get_dumper
 from ._log import LOG
-from ._meta_cache import META_INNER_BY_CLASS
+from ._meta_cache import META_BY_DATACLASS
 from .type_def import E
 from .type_conv import as_enum
 
@@ -34,16 +34,18 @@ _debug_was_enabled = False
 
 def register_type(cls, tp, *, load=None, dump=None, mode=None) -> None:
     meta = get_meta(cls)
+    if meta is AbstractMeta:
+        meta = create_meta(cls)
 
     if load is None:
         load = tp
     if dump is None:
         dump = str
 
-    if (load_hook := meta.v1_type_to_load_hook) is None:
-        meta.v1_type_to_load_hook = load_hook = {}
-    if (dump_hook := meta.v1_type_to_dump_hook) is None:
-        meta.v1_type_to_dump_hook = dump_hook = {}
+    if (load_hook := meta.type_to_load_hook) is None:
+        meta.type_to_load_hook = load_hook = {}
+    if (dump_hook := meta.type_to_dump_hook) is None:
+        meta.type_to_dump_hook = dump_hook = {}
 
     load_hook[tp] = (mode if mode else _infer_mode(load), load)
     dump_hook[tp] = (mode if mode else _infer_mode(dump), dump)
@@ -164,12 +166,12 @@ class BaseJSONWizardMeta(AbstractMeta):
             # Copy over global defaults to the :class:`AbstractMeta`
             for attr in AbstractMeta.fields_to_merge:
                 setattr(AbstractMeta, attr, getattr(cls, attr, None))
-            if cls.v1_field_to_alias:
-                AbstractMeta.v1_field_to_alias = cls.v1_field_to_alias
-            if cls.v1_field_to_alias_dump:
-                AbstractMeta.v1_field_to_alias_dump = cls.v1_field_to_alias_dump
-            if cls.v1_field_to_alias_load:
-                AbstractMeta.v1_field_to_alias_load = cls.v1_field_to_alias_load
+            if cls.field_to_alias:
+                AbstractMeta.field_to_alias = cls.field_to_alias
+            if cls.field_to_alias_dump:
+                AbstractMeta.field_to_alias_dump = cls.field_to_alias_dump
+            if cls.field_to_alias_load:
+                AbstractMeta.field_to_alias_load = cls.field_to_alias_load
 
             # Create a new class of `Type[W]`, and then pass `create=False` so
             # that we don't create new loader / dumper for the class.
@@ -188,45 +190,45 @@ class BaseJSONWizardMeta(AbstractMeta):
         cls_dumper = get_dumper(dataclass, create=create,
                                 base_cls=base_dumper)
 
-        if cls.v1_debug:
-            _enable_debug_mode_if_needed(cls.v1_debug)
+        if cls.debug:
+            _enable_debug_mode_if_needed(cls.debug)
 
-        if cls.v1_dump_date_time_as is not None:
-            cls.v1_dump_date_time_as = _as_enum_safe(cls, 'v1_dump_date_time_as', V1DateTimeTo)
+        if cls.dump_date_time_as is not None:
+            cls.dump_date_time_as = _as_enum_safe(cls, 'dump_date_time_as', V1DateTimeTo)
 
-        if (key_case := cls.v1_case) is not None:
-            cls.v1_load_case = cls.v1_dump_case = key_case
-            cls.v1_case = None
+        if (key_case := cls.case) is not None:
+            cls.load_case = cls.dump_case = key_case
+            cls.case = None
 
-        if cls.v1_load_case is not None:
+        if cls.load_case is not None:
             cls_loader.transform_json_field = _as_enum_safe(
-                cls, 'v1_load_case', KeyCase)
+                cls, 'load_case', KeyCase)
 
-        if cls.v1_dump_case is not None:
+        if cls.dump_case is not None:
             cls_dumper.transform_dataclass_field = _as_enum_safe(
-                cls, 'v1_dump_case', KeyCase)
+                cls, 'dump_case', KeyCase)
 
-        if (field_to_alias := cls.v1_field_to_alias) is not None:
-            cls.v1_field_to_alias_dump = {
+        if (field_to_alias := cls.field_to_alias) is not None:
+            cls.field_to_alias_dump = {
                 k: v if isinstance(v, str) else v[0]
                 for k, v in field_to_alias.items()
             }
-            cls.v1_field_to_alias_load = field_to_alias
+            cls.field_to_alias_load = field_to_alias
 
-        if (field_to_alias := cls.v1_field_to_alias_dump) is not None:
+        if (field_to_alias := cls.field_to_alias_dump) is not None:
             DATACLASS_FIELD_TO_ALIAS_FOR_DUMP[dataclass].update(field_to_alias)
 
-        if (field_to_alias := cls.v1_field_to_alias_load) is not None:
+        if (field_to_alias := cls.field_to_alias_load) is not None:
             DATACLASS_FIELD_TO_ALIAS_FOR_LOAD[dataclass].update({
                 k: (v, ) if isinstance(v, str) else v
                 for k, v in field_to_alias.items()
             })
 
-        if cls.v1_on_unknown_key is not None:
-            cls.v1_on_unknown_key = _as_enum_safe(cls, 'v1_on_unknown_key', KeyAction)
+        if cls.on_unknown_key is not None:
+            cls.on_unknown_key = _as_enum_safe(cls, 'on_unknown_key', KeyAction)
 
-        _normalize_hooks(cls.v1_type_to_load_hook)
-        _normalize_hooks(cls.v1_type_to_dump_hook)
+        _normalize_hooks(cls.type_to_load_hook)
+        _normalize_hooks(cls.type_to_dump_hook)
 
         # Finally, if needed, save the meta config for the outer class. This
         # will allow us to access this config as part of the JSON load/dump
@@ -234,10 +236,10 @@ class BaseJSONWizardMeta(AbstractMeta):
         if is_default:
             # Check if the dataclass already has a Meta config; if so, we need to
             # copy over special attributes so they don't get overwritten.
-            if dataclass in META_INNER_BY_CLASS:
-                META_INNER_BY_CLASS[dataclass] &= cls
+            if dataclass in META_BY_DATACLASS:
+                META_BY_DATACLASS[dataclass] &= cls
             else:
-                META_INNER_BY_CLASS[dataclass] = cls
+                META_BY_DATACLASS[dataclass] = cls
 
 
 class BaseEnvWizardMeta(AbstractEnvMeta):
@@ -274,10 +276,10 @@ class BaseEnvWizardMeta(AbstractEnvMeta):
             # Copy over global defaults to the :class:`AbstractMeta`
             for attr in AbstractEnvMeta.fields_to_merge:
                 setattr(AbstractEnvMeta, attr, getattr(cls, attr, None))
-            if cls.v1_field_to_alias_dump:
-                AbstractEnvMeta.v1_field_to_alias_dump = cls.v1_field_to_alias_dump
-            if cls.v1_field_to_env_load:
-                AbstractEnvMeta.v1_field_to_env_load = cls.v1_field_to_env_load
+            if cls.field_to_alias_dump:
+                AbstractEnvMeta.field_to_alias_dump = cls.field_to_alias_dump
+            if cls.field_to_env_load:
+                AbstractEnvMeta.field_to_env_load = cls.field_to_env_load
 
             # Create a new class of `Type[W]`, and then pass `create=False` so
             # that we don't create new loader / dumper for the class.
@@ -293,24 +295,24 @@ class BaseEnvWizardMeta(AbstractEnvMeta):
             env_class,
             create=create)
 
-        if cls.v1_debug:
-            _enable_debug_mode_if_needed(cls.v1_debug)
+        if cls.debug:
+            _enable_debug_mode_if_needed(cls.debug)
 
-        if cls.v1_load_case is not None:
-            cls.v1_load_case = _as_enum_safe(
-                cls, 'v1_load_case', EnvKeyStrategy)
-        if cls.v1_env_precedence is not None:
-            cls.v1_env_precedence = _as_enum_safe(
-                cls, 'v1_env_precedence', EnvPrecedence)
+        if cls.load_case is not None:
+            cls.load_case = _as_enum_safe(
+                cls, 'load_case', EnvKeyStrategy)
+        if cls.env_precedence is not None:
+            cls.env_precedence = _as_enum_safe(
+                cls, 'env_precedence', EnvPrecedence)
 
         # TODO
         cls_dumper.transform_dataclass_field = _as_enum_safe(
-            cls, 'v1_dump_case', KeyCase)
+            cls, 'dump_case', KeyCase)
 
-        if (field_to_alias := cls.v1_field_to_alias_dump) is not None:
+        if (field_to_alias := cls.field_to_alias_dump) is not None:
             DATACLASS_FIELD_TO_ALIAS_FOR_DUMP[env_class].update(field_to_alias)
 
-        if (field_to_env := cls.v1_field_to_env_load) is not None:
+        if (field_to_env := cls.field_to_env_load) is not None:
             DATACLASS_FIELD_TO_ENV_FOR_LOAD[env_class].update({
                 k: (v, ) if isinstance(v, str) else v
                 for k, v in field_to_env.items()
@@ -318,13 +320,13 @@ class BaseEnvWizardMeta(AbstractEnvMeta):
 
         # set this attribute in case of nested dataclasses (which
         # uses codegen in `loaders.py`)
-        cls.v1_on_unknown_key = None
+        cls.on_unknown_key = None
 
-        # if cls.v1_on_unknown_key is not None:
-        #     cls.v1_on_unknown_key = _as_enum_safe(cls, 'v1_on_unknown_key', KeyAction)
+        # if cls.on_unknown_key is not None:
+        #     cls.on_unknown_key = _as_enum_safe(cls, 'on_unknown_key', KeyAction)
 
-        _normalize_hooks(cls.v1_type_to_load_hook)
-        _normalize_hooks(cls.v1_type_to_dump_hook)
+        _normalize_hooks(cls.type_to_load_hook)
+        _normalize_hooks(cls.type_to_dump_hook)
 
         # Finally, if needed, save the meta config for the outer class. This
         # will allow us to access this config as part of the JSON load/dump
@@ -332,10 +334,10 @@ class BaseEnvWizardMeta(AbstractEnvMeta):
         if is_default:
             # Check if the dataclass already has a Meta config; if so, we need to
             # copy over special attributes so they don't get overwritten.
-            if env_class in META_INNER_BY_CLASS:
-                META_INNER_BY_CLASS[env_class] &= cls
+            if env_class in META_BY_DATACLASS:
+                META_BY_DATACLASS[env_class] &= cls
             else:
-                META_INNER_BY_CLASS[env_class] = cls
+                META_BY_DATACLASS[env_class] = cls
 
 
 # noinspection PyPep8Naming
@@ -361,14 +363,14 @@ def LoadMeta(**kwargs) -> META:
     if (v := base_dict.pop('key_transform', None)) is not None:
         base_dict['key_transform_with_load'] = v
 
-    if (v := base_dict.pop('v1_case', None)) is not None:
-        base_dict['v1_load_case'] = v
+    if (v := base_dict.pop('case', None)) is not None:
+        base_dict['load_case'] = v
 
-    if (v := base_dict.pop('v1_field_to_alias', None)) is not None:
-        base_dict['v1_field_to_alias_load'] = v
+    if (v := base_dict.pop('field_to_alias', None)) is not None:
+        base_dict['field_to_alias_load'] = v
 
-    if (v := base_dict.pop('v1_type_to_hook', None)) is not None:
-        base_dict['v1_type_to_load_hook'] = v
+    if (v := base_dict.pop('type_to_hook', None)) is not None:
+        base_dict['type_to_load_hook'] = v
 
     # Create a new subclass of :class:`AbstractMeta`
     # noinspection PyTypeChecker
@@ -400,14 +402,14 @@ def DumpMeta(**kwargs) -> META:
     if (v := base_dict.pop('key_transform', None)) is not None:
         base_dict['key_transform_with_dump'] = v
 
-    if (v := base_dict.pop('v1_case', None)) is not None:
-        base_dict['v1_dump_case'] = v
+    if (v := base_dict.pop('case', None)) is not None:
+        base_dict['dump_case'] = v
 
-    if (v := base_dict.pop('v1_field_to_alias', None)) is not None:
-        base_dict['v1_field_to_alias_dump'] = v
+    if (v := base_dict.pop('field_to_alias', None)) is not None:
+        base_dict['field_to_alias_dump'] = v
 
-    if (v := base_dict.pop('v1_type_to_hook', None)) is not None:
-        base_dict['v1_type_to_dump_hook'] = v
+    if (v := base_dict.pop('type_to_hook', None)) is not None:
+        base_dict['type_to_dump_hook'] = v
 
     # Create a new subclass of :class:`AbstractMeta`
     # noinspection PyTypeChecker

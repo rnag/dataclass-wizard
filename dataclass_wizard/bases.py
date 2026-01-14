@@ -125,10 +125,10 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
     # attributes which will *not* be merged.
     __special_attrs__ = frozenset({
         'recursive',
-        # 'v1_debug',
-        'v1_field_to_alias',
-        'v1_field_to_alias_dump',
-        'v1_field_to_alias_load',
+        # 'debug',
+        'field_to_alias',
+        'field_to_alias_dump',
+        'field_to_alias_load',
         'tag',
     })
 
@@ -156,7 +156,7 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
     # one that does not have a known mapping to a dataclass field.
     #
     # The default is to only log a "warning" for such cases, which is visible
-    # when `v1_debug` is true and logging is properly configured.
+    # when `debug` is true and logging is properly configured.
     raise_on_unknown_json_key: ClassVar[bool] = False
 
     # The field name that identifies the tag for a class.
@@ -211,7 +211,7 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
     # - Detailed error messages for invalid types during unmarshalling.
     #
     # Note: Enabling Debug mode may have a minor performance impact.
-    v1_debug: ClassVar['bool | int | str'] = False
+    debug: ClassVar['bool | int | str'] = False
 
     # Custom load hooks for extending type support in the v1 engine.
     #
@@ -222,7 +222,7 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
     #   - two positional arguments (v1 hook): (TypeInfo, Extras) -> str | TypeInfo
     #
     # The hook is invoked when loading a value annotated with the given type.
-    v1_type_to_load_hook: ClassVar[V1TypeToHook] = None
+    type_to_load_hook: ClassVar[V1TypeToHook] = None
 
     # Custom dump hooks for extending type support in the v1 engine.
     #
@@ -234,9 +234,9 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
     #
     # The hook is invoked when dumping a value whose runtime type matches
     # the given type.
-    v1_type_to_dump_hook: ClassVar[V1TypeToHook] = None
+    type_to_dump_hook: ClassVar[V1TypeToHook] = None
 
-    # ``v1_pre_decoder``: Optional hook called before ``v1`` type loading.
+    # ``pre_decoder``: Optional hook called before ``v1`` type loading.
     # Receives the container type plus (cls, TypeInfo, Extras) and may return a
     # transformed ``TypeInfo`` (e.g., wrapped in a function which decodes
     # JSON/delimited strings into list/dict for env loading). Returning the
@@ -244,19 +244,19 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
     #
     #  Pre-decoder signature:
     #   (cls, container_tp, tp, extras) -> new_tp
-    v1_pre_decoder: ClassVar[V1PreDecoder] = None
+    pre_decoder: ClassVar[V1PreDecoder] = None
 
     # Specifies the letter case to use for JSON keys when both loading and dumping.
     #
     # This is a convenience setting that applies the same key casing rule to
     # both deserialization (load) and serialization (dump).
     #
-    # If set, it is used as the default for both `v1_load_case` and
-    # `v1_dump_case`, unless either is explicitly specified.
+    # If set, it is used as the default for both `load_case` and
+    # `dump_case`, unless either is explicitly specified.
     #
     # The setting is case-insensitive and supports shorthand assignment,
     # such as using the string 'C' instead of 'CAMEL'.
-    v1_case: ClassVar[Union[KeyCase, str, None]] = None
+    case: ClassVar[Union[KeyCase, str, None]] = None
 
     # Specifies the letter case used to match JSON keys when mapping them
     # to dataclass fields during deserialization.
@@ -275,8 +275,8 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
     # attempted at runtime, and the resolved transform is cached for
     # subsequent lookups.
     #
-    # If unset, this value defaults to `v1_case` when provided.
-    v1_load_case: ClassVar[Union[KeyCase, str, None]] = None
+    # If unset, this value defaults to `case` when provided.
+    load_case: ClassVar[Union[KeyCase, str, None]] = None
 
     # Specifies the letter case used for JSON keys during serialization.
     #
@@ -288,8 +288,8 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
     # The setting is case-insensitive and supports shorthand assignment,
     # such as using the string 'P' instead of 'PASCAL'.
     #
-    # If unset, this value defaults to `v1_case` when provided.
-    v1_dump_case: ClassVar[Union[KeyCase, str, None]] = None
+    # If unset, this value defaults to `case` when provided.
+    dump_case: ClassVar[Union[KeyCase, str, None]] = None
 
     # A custom mapping of dataclass fields to their JSON aliases (keys).
     #
@@ -302,8 +302,8 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
     # transformations (e.g., "my_field" → "myField") for the affected fields.
     #
     # This setting applies to both load and dump unless explicitly overridden
-    # by `v1_field_to_alias_load` or `v1_field_to_alias_dump`.
-    v1_field_to_alias: ClassVar[
+    # by `field_to_alias_load` or `field_to_alias_dump`.
+    field_to_alias: ClassVar[
         Mapping[str, Union[str, Sequence[str]]]
     ] = None
 
@@ -314,9 +314,9 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
     # Any listed alias is accepted when mapping input JSON keys to
     # dataclass fields.
     #
-    # When set, this mapping overrides `v1_field_to_alias` for load behavior
+    # When set, this mapping overrides `field_to_alias` for load behavior
     # only.
-    v1_field_to_alias_load: ClassVar[
+    field_to_alias_load: ClassVar[
         Mapping[str, Union[str, Sequence[str]]]
     ] = None
 
@@ -326,9 +326,9 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
     # Values may be a single alias string or a sequence of alias strings.
     # When a sequence is provided, the first alias is used as the output key.
     #
-    # When set, this mapping overrides `v1_field_to_alias` for dump behavior
+    # When set, this mapping overrides `field_to_alias` for dump behavior
     # only.
-    v1_field_to_alias_dump: ClassVar[
+    field_to_alias_dump: ClassVar[
         Mapping[str, Union[str, Sequence[str]]]
     ] = None
 
@@ -338,15 +338,15 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
     #
     # Valid options are:
     # - `"ignore"` (default): Silently ignore unknown keys.
-    # - `"warn"`: Log a warning for each unknown key. Requires `v1_debug`
+    # - `"warn"`: Log a warning for each unknown key. Requires `debug`
     #   to be `True` and properly configured logging.
     # - `"raise"`: Raise an `UnknownKeyError` for the first unknown key encountered.
-    v1_on_unknown_key: ClassVar[KeyAction] = None
+    on_unknown_key: ClassVar[KeyAction] = None
 
     # Unsafe: Enables parsing of dataclasses in unions without requiring
     # the presence of a `tag_key`, i.e., a dictionary key identifying the
     # tag field in the input. Defaults to False.
-    v1_unsafe_parse_dataclass_in_union: ClassVar[bool] = False
+    unsafe_parse_dataclass_in_union: ClassVar[bool] = False
 
     # Specifies how :class:`datetime` (and :class:`time`, where applicable)
     # objects are serialized during output.
@@ -359,7 +359,7 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
     # By default, values are serialized using ISO 8601 string format.
     #
     # Supported values are defined by :class:`DateTimeTo`.
-    v1_dump_date_time_as: ClassVar[Union[DateTimeTo, str]] = None
+    dump_date_time_as: ClassVar[Union[DateTimeTo, str]] = None
 
     # Specifies the timezone to assume for naive :class:`datetime` values
     # during serialization.
@@ -371,11 +371,11 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
     # timezone before conversion to a UTC epoch timestamp.
     #
     # Common usage:
-    #     v1_assume_naive_datetime_tz = timezone.utc
+    #     assume_naive_datetime_tz = timezone.utc
     #
     # This setting applies to serialization only and does not affect
     # deserialization.
-    v1_assume_naive_datetime_tz: ClassVar[tzinfo | None] = None
+    assume_naive_datetime_tz: ClassVar[tzinfo | None] = None
 
     # Controls how `typing.NamedTuple` and `collections.namedtuple`
     # fields are loaded and serialized.
@@ -390,7 +390,7 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
     #
     # Note:
     #   This option enforces strict shape matching for performance reasons.
-    v1_namedtuple_as_dict: ClassVar[bool] = None
+    namedtuple_as_dict: ClassVar[bool] = None
 
     # If True (default: False), ``None`` is coerced to an empty string (``""``)
     # when loading ``str`` fields.
@@ -399,7 +399,7 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
     # the literal string ``'None'`` for ``str`` fields.
     #
     # For ``Optional[str]`` fields, ``None`` is preserved by default.
-    v1_coerce_none_to_empty_str: ClassVar[bool] = None
+    coerce_none_to_empty_str: ClassVar[bool] = None
 
     # Controls how leaf (non-recursive) types are detected during serialization.
     #
@@ -412,7 +412,7 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
     # Note:
     #     The default "exact" mode avoids treating third-party scalar-like
     #     objects (e.g. NumPy scalars) as built-in leaf types.
-    v1_leaf_handling: ClassVar[Literal['exact', 'issubclass']] = None
+    leaf_handling: ClassVar[Literal['exact', 'issubclass']] = None
 
     # noinspection PyMethodParameters
     @cached_class_property
@@ -456,9 +456,9 @@ class AbstractEnvMeta(metaclass=ABCOrAndMeta):
     # attributes which will *not* be merged.
     __special_attrs__ = frozenset({
         'recursive',
-        'v1_debug',
-        'v1_field_to_env_load',
-        'v1_field_to_alias_dump',
+        'debug',
+        'field_to_env_load',
+        'field_to_alias_dump',
         'tag',
     })
 
@@ -549,7 +549,7 @@ class AbstractEnvMeta(metaclass=ABCOrAndMeta):
     # - Detailed error messages for invalid types during unmarshalling.
     #
     # Note: Enabling Debug mode may have a minor performance impact.
-    v1_debug: ClassVar['bool | int | str'] = False
+    debug: ClassVar['bool | int | str'] = False
 
     # Custom load hooks for extending type support in the v1 engine.
     #
@@ -560,7 +560,7 @@ class AbstractEnvMeta(metaclass=ABCOrAndMeta):
     #   - two positional arguments (v1 hook): (TypeInfo, Extras) -> str | TypeInfo
     #
     # The hook is invoked when loading a value annotated with the given type.
-    v1_type_to_load_hook: ClassVar[V1TypeToHook] = None
+    type_to_load_hook: ClassVar[V1TypeToHook] = None
 
     # Custom dump hooks for extending type support in the v1 engine.
     #
@@ -572,9 +572,9 @@ class AbstractEnvMeta(metaclass=ABCOrAndMeta):
     #
     # The hook is invoked when dumping a value whose runtime type matches
     # the given type.
-    v1_type_to_dump_hook: ClassVar[V1TypeToHook] = None
+    type_to_dump_hook: ClassVar[V1TypeToHook] = None
 
-    # ``v1_pre_decoder``: Optional hook called before ``v1`` type loading.
+    # ``pre_decoder``: Optional hook called before ``v1`` type loading.
     # Receives the container type plus (cls, TypeInfo, Extras) and may return a
     # transformed ``TypeInfo`` (e.g., wrapped in a function which decodes
     # JSON/delimited strings into list/dict for env loading). Returning the
@@ -582,21 +582,21 @@ class AbstractEnvMeta(metaclass=ABCOrAndMeta):
     #
     #  Pre-decoder signature:
     #   (cls, container_tp, tp, extras) -> new_tp
-    v1_pre_decoder: ClassVar[V1PreDecoder] = None
+    pre_decoder: ClassVar[V1PreDecoder] = None
 
     # The key lookup strategy to use for Env Var Names.
     #
     # The default strategy is `SCREAMING_SNAKE_CASE` > `snake_case`.
-    v1_load_case: ClassVar[Union[EnvKeyStrategy, str]] = None
+    load_case: ClassVar[Union[EnvKeyStrategy, str]] = None
 
     # How `EnvWizard` fields (variables) should be transformed to JSON keys.
     #
     # The default is 'snake_case'.
-    v1_dump_case: ClassVar[Union[KeyCase, str]] = None
+    dump_case: ClassVar[Union[KeyCase, str]] = None
 
     # Environment Precedence (order) to search for values
     # Defaults to EnvPrecedence.SECRETS_ENV_DOTENV
-    v1_env_precedence: EnvPrecedence = None
+    env_precedence: EnvPrecedence = None
 
     # A custom mapping of dataclass fields to their env vars (keys) used
     # during deserialization only.
@@ -604,7 +604,7 @@ class AbstractEnvMeta(metaclass=ABCOrAndMeta):
     # Values may be a single alias string or a sequence of alias strings.
     # Any listed alias is accepted when mapping input env vars to
     # dataclass fields.
-    v1_field_to_env_load: ClassVar[
+    field_to_env_load: ClassVar[
         Mapping[str, Union[str, Sequence[str]]]
     ] = None
 
@@ -614,9 +614,9 @@ class AbstractEnvMeta(metaclass=ABCOrAndMeta):
     # Values may be a single alias string or a sequence of alias strings.
     # When a sequence is provided, the first alias is used as the output key.
     #
-    # When set, this mapping overrides `v1_field_to_alias` for dump behavior
+    # When set, this mapping overrides `field_to_alias` for dump behavior
     # only.
-    v1_field_to_alias_dump: ClassVar[
+    field_to_alias_dump: ClassVar[
         Mapping[str, Union[str, Sequence[str]]]
     ] = None
 
@@ -626,15 +626,15 @@ class AbstractEnvMeta(metaclass=ABCOrAndMeta):
     #
     # Valid options are:
     # - `"ignore"` (default): Silently ignore unknown keys.
-    # - `"warn"`: Log a warning for each unknown key. Requires `v1_debug`
+    # - `"warn"`: Log a warning for each unknown key. Requires `debug`
     #   to be `True` and properly configured logging.
     # - `"raise"`: Raise an `UnknownKeyError` for the first unknown key encountered.
-    # v1_on_unknown_key: ClassVar[KeyAction] = None
+    # on_unknown_key: ClassVar[KeyAction] = None
 
     # Unsafe: Enables parsing of dataclasses in unions without requiring
     # the presence of a `tag_key`, i.e., a dictionary key identifying the
     # tag field in the input. Defaults to False.
-    v1_unsafe_parse_dataclass_in_union: ClassVar[bool] = False
+    unsafe_parse_dataclass_in_union: ClassVar[bool] = False
 
     # Specifies how :class:`datetime` (and :class:`time`, where applicable)
     # objects are serialized during output.
@@ -647,7 +647,7 @@ class AbstractEnvMeta(metaclass=ABCOrAndMeta):
     # By default, values are serialized using ISO 8601 string format.
     #
     # Supported values are defined by :class:`DateTimeTo`.
-    v1_dump_date_time_as: ClassVar[Union[DateTimeTo, str]] = None
+    dump_date_time_as: ClassVar[Union[DateTimeTo, str]] = None
 
     # Specifies the timezone to assume for naive :class:`datetime` values
     # during serialization.
@@ -659,11 +659,11 @@ class AbstractEnvMeta(metaclass=ABCOrAndMeta):
     # timezone before conversion to a UTC epoch timestamp.
     #
     # Common usage:
-    #     v1_assume_naive_datetime_tz = timezone.utc
+    #     assume_naive_datetime_tz = timezone.utc
     #
     # This setting applies to serialization only and does not affect
     # deserialization.
-    v1_assume_naive_datetime_tz: ClassVar[tzinfo | None] = None
+    assume_naive_datetime_tz: ClassVar[tzinfo | None] = None
 
     # Controls how `typing.NamedTuple` and `collections.namedtuple`
     # fields are loaded and serialized.
@@ -678,7 +678,7 @@ class AbstractEnvMeta(metaclass=ABCOrAndMeta):
     #
     # Note:
     #   This option enforces strict shape matching for performance reasons.
-    v1_namedtuple_as_dict: ClassVar[bool] = None
+    namedtuple_as_dict: ClassVar[bool] = None
 
     # If True (default: False), ``None`` is coerced to an empty string (``""``)
     # when loading ``str`` fields.
@@ -687,7 +687,7 @@ class AbstractEnvMeta(metaclass=ABCOrAndMeta):
     # the literal string ``'None'`` for ``str`` fields.
     #
     # For ``Optional[str]`` fields, ``None`` is preserved by default.
-    v1_coerce_none_to_empty_str: ClassVar[bool] = None
+    coerce_none_to_empty_str: ClassVar[bool] = None
 
     # Controls how leaf (non-recursive) types are detected during serialization.
     #
@@ -700,7 +700,7 @@ class AbstractEnvMeta(metaclass=ABCOrAndMeta):
     # Note:
     #     The default "exact" mode avoids treating third-party scalar-like
     #     objects (e.g. NumPy scalars) as built-in leaf types.
-    v1_leaf_handling: ClassVar[Literal['exact', 'issubclass']] = None
+    leaf_handling: ClassVar[Literal['exact', 'issubclass']] = None
 
     # noinspection PyMethodParameters
     @cached_class_property

@@ -14,7 +14,7 @@ from .enums import KeyCase
 from .lazy_imports import toml, toml_w, yaml
 from .loaders import fromdict, fromlist
 from .utils.containers import Container
-from ._meta_cache import META_INNER_BY_CLASS
+from ._meta_cache import META_BY_DATACLASS
 from ._serial_json import JSONWizard
 
 
@@ -114,8 +114,8 @@ class TOMLWizard:
         # Only add the key transform if Meta config has not been specified
         # for the dataclass.
         # TODO
-        if dump_case and cls not in META_INNER_BY_CLASS:
-            DumpMeta(v1_case=dump_case).bind_to(cls)
+        if dump_case and cls not in META_BY_DATACLASS:
+            DumpMeta(case=dump_case).bind_to(cls)
 
     @classmethod
     def from_toml(cls,
@@ -236,8 +236,8 @@ class YAMLWizard:
         """Allow easy setup of common config, such as key casing transform."""
         # Only add the key transform if Meta config has not been specified
         # for the dataclass.
-        if dump_case and cls not in META_INNER_BY_CLASS:
-            DumpMeta(v1_case=dump_case).bind_to(cls)
+        if dump_case and cls not in META_BY_DATACLASS:
+            DumpMeta(case=dump_case).bind_to(cls)
 
     @classmethod
     def from_yaml(cls,

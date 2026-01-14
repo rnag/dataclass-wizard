@@ -95,7 +95,7 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         o = tp.v()
 
         # str(v)
-        if not extras['config'].v1_coerce_none_to_empty_str or tp.in_optional:
+        if not extras['config'].coerce_none_to_empty_str or tp.in_optional:
             return f'{tn}({o})'
 
         # '' if v is None else str(v)
@@ -261,7 +261,7 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         fields_in_order = nt_tp._fields  # field names in order
         ann = nt_tp.__annotations__
 
-        if extras['config'].v1_namedtuple_as_dict:
+        if extras['config'].namedtuple_as_dict:
             values_in_order = tuple(
                 str(
                     cls.load_dispatcher_for_annotation(
@@ -302,7 +302,7 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         all_optionals = len(field_to_default) == len(fields_in_order)
         v = tp.v_for_def()
 
-        if extras['config'].v1_namedtuple_as_dict:
+        if extras['config'].namedtuple_as_dict:
             i_next = tp.i + 1
             v_next = f'{tp.prefix}{i_next}'
 
@@ -392,7 +392,7 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
 
         v = tp.v()
 
-        if extras['config'].v1_namedtuple_as_dict:
+        if extras['config'].namedtuple_as_dict:
             return tp.wrap(f'**{v}', extras, prefix='nt_')
 
         def raise_():
@@ -527,7 +527,7 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
 
         tag_key = config.tag_key or TAG
         auto_assign_tags = config.auto_assign_tags
-        leaf_handling_as_subclass = config.v1_leaf_handling == 'issubclass'
+        leaf_handling_as_subclass = config.leaf_handling == 'issubclass'
 
         args = tp.args
         in_optional = NoneType in args
@@ -548,7 +548,7 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         #   collisions are possible.
         # noinspection PyUnboundLocalVariable
         if (has_dataclass
-            and (pre_decoder := config.v1_pre_decoder) is not None
+            and (pre_decoder := config.pre_decoder) is not None
             and (new_v := pre_decoder(cls, dict, tp, extras).v()) != v):
             current_v = v
             tp = tp.replace(i=i + 1)
@@ -600,14 +600,14 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
                     ]
                     continue
 
-                elif not config.v1_unsafe_parse_dataclass_in_union:
+                elif not config.unsafe_parse_dataclass_in_union:
                     e = ValueError('Cannot parse dataclass types in a Union without '
                                    'one of the following `Meta` settings:\n\n'
                                    '  * `auto_assign_tags = True`\n'
                                    f'    - Set on class `{extras["cls_name"]}`.\n\n'
                                    f'  * `tag = "{cls_name}"`\n'
                                    f'    - Set on class `{possible_tp.__qualname__}`.\n\n'
-                                   '  * `v1_unsafe_parse_dataclass_in_union = True`\n'
+                                   '  * `unsafe_parse_dataclass_in_union = True`\n'
                                    f'    - Set on class `{extras["cls_name"]}`\n\n'
                                    'For more information, refer to:\n'
                                    '  https://dcw.ritviknag.com/en/latest/common_use_cases/dataclasses_in_union_types.html')
@@ -831,9 +831,9 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
 
         hooks = cls.__LOAD_HOOKS__
         config = extras['config']
-        pre_decoder = config.v1_pre_decoder
-        type_hooks = config.v1_type_to_load_hook
-        leaf_handling_as_subclass = config.v1_leaf_handling == 'issubclass'
+        pre_decoder = config.pre_decoder
+        type_hooks = config.type_to_load_hook
+        leaf_handling_as_subclass = config.leaf_handling == 'issubclass'
 
         # type_ann = tp.origin
         type_ann = eval_forward_ref_if_needed(tp.origin, extras['cls'])
@@ -929,7 +929,7 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
             load_hook = cls.load_fallback
 
         elif is_subclass_safe(origin, tuple) and hasattr(origin, '_fields'):
-            container_tp = dict if config.v1_namedtuple_as_dict else tuple
+            container_tp = dict if config.namedtuple_as_dict else tuple
             if getattr(origin, '__annotations__', None):
                 # Annotated as a `typing.NamedTuple` subtype
                 load_hook = cls.load_to_named_tuple
@@ -1015,7 +1015,7 @@ class LoadMixin(AbstractLoaderGenerator, BaseLoadHook):
         pe = ParseError(
             err, origin, type_ann, 'load',
             resolution=f'Register a load hook for {ParseError.name(origin)} '
-                       f'(v1: `register_type` / `Meta.v1_type_to_load_hook`).',
+                       f'(v1: `register_type` / `Meta.type_to_load_hook`).',
             unsupported_type=origin
         )
         raise pe from None
@@ -1203,7 +1203,7 @@ def load_func_for_dataclass(
     else:
         expect_tag_as_unknown_key = False
 
-    on_unknown_key = meta.v1_on_unknown_key
+    on_unknown_key = meta.on_unknown_key
 
     catch_all_field: str | None = field_to_aliases.pop(CATCH_ALL, None)
     has_catch_all = catch_all_field is not None
@@ -1567,18 +1567,18 @@ def re_raise(e, cls, o, fields, field, value):
                         else {}
                     ))
 
-        if meta.v1_namedtuple_as_dict:
+        if meta.namedtuple_as_dict:
             if e_cls is TypeError and type(value) is not dict:
                 e.kwargs['resolution'] = (
                     'List/tuple input is not supported for NamedTuple fields in dict mode. '
-                    'Pass a dict, or set Meta.v1_namedtuple_as_dict = False.'
+                    'Pass a dict, or set Meta.namedtuple_as_dict = False.'
                 )
                 e.kwargs['unsupported_type'] = type(value)
         else:
             if e_cls is KeyError and type(value) is dict:
                 e.kwargs['resolution'] = (
                     'Dict input is not supported for NamedTuple fields in list mode. '
-                    'Pass a list/tuple, or set Meta.v1_namedtuple_as_dict = True.'
+                    'Pass a list/tuple, or set Meta.namedtuple_as_dict = True.'
                 )
                 e.kwargs['unsupported_type'] = dict
 

@@ -109,7 +109,7 @@ def test_load_with_future_annotation_v2(input, expectation):
     @dataclass
     class A(JSONWizard):
         class _(JSONWizard.Meta):
-            v1_unsafe_parse_dataclass_in_union = True
+            unsafe_parse_dataclass_in_union = True
 
         my_field1: Decimal | datetime.date | str
         my_field2: str | Optional[int]
@@ -126,7 +126,7 @@ def test_dataclasses_in_union_types():
     @dataclass
     class Container(JSONWizard):
         class _(JSONWizard.Meta):
-            v1_dump_case = 'SNAKE'
+            dump_case = 'SNAKE'
 
         my_data: Data
         my_dict: dict[str, A | B]
@@ -204,7 +204,7 @@ def test_dataclasses_in_union_types_with_auto_assign_tags():
     @dataclass
     class Container(JSONWizard):
         class _(JSONWizard.Meta):
-            v1_dump_case = 'SNAKE'
+            dump_case = 'SNAKE'
             tag_key = 'type'
             auto_assign_tags = True
 

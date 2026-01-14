@@ -34,29 +34,28 @@ def test_asdict_and_fromdict():
 
     d = {'myBoolean': 'tRuE', 'myStrOrInt': 123}
 
-    # v1 opt-in + v1 config
     LoadMeta(
-        v1_case='CAMEL',
-        v1_on_unknown_key='RAISE',
-        v1_field_to_alias={'my_bool': 'myBoolean'},
+        case='CAMEL',
+        on_unknown_key='RAISE',
+        field_to_alias={'my_bool': 'myBoolean'},
     ).bind_to(MyClass)
 
     # Keep same dump output as before: `myBoolean` for my_bool + snake for the rest.
     DumpMeta(
-        v1_case='SNAKE',
-        v1_field_to_alias={'myStrOrInt': 'My String-Or-Num'},
+        case='SNAKE',
+        field_to_alias={'myStrOrInt': 'My String-Or-Num'},
     ).bind_to(MyClass)
 
     meta = get_meta(MyClass)
 
     # The library normalizes these internally; accept common representations.
-    assert meta.v1_case is None
+    assert meta.case is None
 
-    assert str(meta.v1_load_case).upper() in ('CAMEL', 'C')
-    assert str(meta.v1_dump_case).upper() in ('SNAKE', 'S')
-    assert meta.v1_on_unknown_key is KeyAction.RAISE
-    assert meta.v1_field_to_alias_load == {'my_bool': 'myBoolean'}
-    assert meta.v1_field_to_alias_dump == {'myStrOrInt': 'My String-Or-Num'}
+    assert str(meta.load_case).upper() in ('CAMEL', 'C')
+    assert str(meta.dump_case).upper() in ('SNAKE', 'S')
+    assert meta.on_unknown_key is KeyAction.RAISE
+    assert meta.field_to_alias_load == {'my_bool': 'myBoolean'}
+    assert meta.field_to_alias_dump == {'myStrOrInt': 'My String-Or-Num'}
 
     c = fromdict(MyClass, d)
 
@@ -92,9 +91,9 @@ def test_asdict_with_nested_dataclass():
     globals().update(locals())
 
     DumpMeta(
-        v1_case='SNAKE',
-        v1_dump_date_time_as='TIMESTAMP',
-        v1_assume_naive_datetime_tz=timezone.utc,
+        case='SNAKE',
+        dump_date_time_as='TIMESTAMP',
+        assume_naive_datetime_tz=timezone.utc,
     ).bind_to(Container)
 
     # Case 1: naive dt -> assumed UTC -> timestamp
@@ -246,7 +245,7 @@ def test_to_dict_with_skip_defaults():
     @dataclass
     class MyClass(JSONWizard):
         class _(JSONWizard.Meta):
-            v1_dump_case = 'C'
+            dump_case = 'C'
             skip_defaults = True
 
         my_str: str
@@ -397,7 +396,7 @@ def test_literal(input, expectation):
     @dataclass
     class MyClass(JSONWizard):
         class _(JSONWizard.Meta):
-            v1_dump_case = 'PASCAL'
+            dump_case = 'PASCAL'
 
         my_lit: Literal['e1', 'e2', 0]
 
@@ -424,7 +423,7 @@ def test_uuid(input, expectation):
     @dataclass
     class MyClass(JSONWizard):
         class _(JSONWizard.Meta):
-            v1_dump_case = 'Snake'
+            dump_case = 'Snake'
 
         my_id: UUID
 
@@ -450,7 +449,7 @@ def test_timedelta(input, expectation):
     @dataclass
     class MyClass(JSONWizard):
         class _(JSONWizard.Meta):
-            v1_dump_case = 'Snake'
+            dump_case = 'Snake'
 
         my_td: timedelta
 

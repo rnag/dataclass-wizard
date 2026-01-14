@@ -21,7 +21,7 @@ def test_nested_union_with_complex_types_in_containers():
 
     class MyClass(DataclassWizard):
         class _(DataclassWizard.Meta):
-            v1_case = 'CAMEL'
+            case = 'CAMEL'
             auto_assign_tags = True
 
         # noinspection PyDataclass
@@ -56,7 +56,7 @@ def test_named_tuples_with_optionals_in_container():
 
     class MyClass(DataclassWizard):
         class _(DataclassWizard.Meta):
-            v1_case = 'PASCAL'
+            case = 'PASCAL'
 
         nt_all_opts: dict[str, set[NTAllOptionals]]
         nt_one_opt: list[NTOneOptional]
@@ -276,7 +276,7 @@ def test_lazy_codegen_does_not_poison_subclasses():
 
 class ContDict(DataclassWizard):
     class _(DataclassWizard.Meta):
-        v1_namedtuple_as_dict = True
+        namedtuple_as_dict = True
 
     tn: TN
     cn: CN
@@ -284,7 +284,7 @@ class ContDict(DataclassWizard):
 
 class ContDictReq(DataclassWizard):
     class _(DataclassWizard.Meta):
-        v1_namedtuple_as_dict = True
+        namedtuple_as_dict = True
 
     tn: TNReq
 
@@ -323,7 +323,7 @@ def test_namedtuple_dict_mode_missing_required_raises():
 
 class ContList(DataclassWizard):
     class _(DataclassWizard.Meta):
-        v1_namedtuple_as_dict = False
+        namedtuple_as_dict = False
 
     tn: TN
     cn: CN
@@ -339,12 +339,12 @@ def test_namedtuple_list_mode_roundtrip_and_defaults():
 
 
 def test_namedtuple_list_mode_rejects_dict_input_with_clear_error():
-    with pytest.raises(ParseError, match=r"Dict input is not supported for NamedTuple fields in list mode.*list.*Meta\.v1_namedtuple_as_dict = True"):
+    with pytest.raises(ParseError, match=r"Dict input is not supported for NamedTuple fields in list mode.*list.*Meta\.namedtuple_as_dict = True"):
         ContList.from_dict({"tn": {"a": 1}, "cn": {"a": 3}})
 
 
 def test_namedtuple_dict_mode_rejects_dict_input_with_clear_error():
-    with pytest.raises(ParseError, match=r"List/tuple input is not supported for NamedTuple fields in dict mode.*dict.*Meta\.v1_namedtuple_as_dict = False"):
+    with pytest.raises(ParseError, match=r"List/tuple input is not supported for NamedTuple fields in dict mode.*dict.*Meta\.namedtuple_as_dict = False"):
         ContDict.from_dict({"tn": ['test'], "cn": {"a": 3}})
 
 
@@ -383,10 +383,10 @@ def test_typeddict_all_required_e2e_inline_path():
         ContAllReq.from_dict({"td": {"x": 1}})  # missing y
 
 
-def test_v1_union_codegen_cache_nested_union_roundtrip_and_dump_error():
+def test_union_codegen_cache_nested_union_roundtrip_and_dump_error():
     class MyClass(DataclassWizard):
         class _(DataclassWizard.Meta):
-            v1_unsafe_parse_dataclass_in_union = True
+            unsafe_parse_dataclass_in_union = True
 
         complex_tp: 'list[int | Sub2] | list[int | str]'
 

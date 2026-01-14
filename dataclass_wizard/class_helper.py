@@ -4,7 +4,7 @@ from collections import defaultdict
 from dataclasses import MISSING
 from typing import TYPE_CHECKING
 
-from ._meta_cache import META_INNER_BY_CLASS
+from ._meta_cache import META_BY_DATACLASS
 from .bases import AbstractMeta
 from .constants import CATCH_ALL, PACKAGE_NAME
 from .errors import InvalidConditionError
@@ -269,7 +269,7 @@ def get_meta(cls, base_cls=AbstractMeta):
 
     This config is set when the inner :class:`Meta` is sub-classed.
     """
-    return META_INNER_BY_CLASS.get(cls, base_cls)
+    return META_BY_DATACLASS.get(cls, base_cls)
 
 
 def create_meta(cls, cls_name=None, **kwargs):
@@ -288,7 +288,8 @@ def create_meta(cls, cls_name=None, **kwargs):
                 (BaseJSONWizardMeta, ),
                 cls_dict)
 
-    META_INNER_BY_CLASS[cls] = meta
+    META_BY_DATACLASS[cls] = meta
+    return meta
 
 
 def is_builtin(o):

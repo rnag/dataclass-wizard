@@ -11,7 +11,7 @@ def test_dataclass_wizard_with_debug(restore_logger, mock_debug_log):
     class _(DataclassWizard, debug=True):
         ...
 
-    assert get_meta(_).v1_debug == DEBUG
+    assert get_meta(_).debug == DEBUG
 
     assert logger.level == DEBUG
     assert logger.propagate is False

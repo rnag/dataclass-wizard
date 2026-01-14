@@ -53,24 +53,21 @@ def configure_wizard_class(cls,
     load_meta_kwargs = {}
 
     if case is not None:
-        load_meta_kwargs['v1_case'] = case
+        load_meta_kwargs['case'] = case
 
     if dump_case is not None:
-        load_meta_kwargs['v1_dump_case'] = dump_case
+        load_meta_kwargs['dump_case'] = dump_case
 
     if load_case is not None:
-        load_meta_kwargs['v1_load_case'] = load_case
-
-    # TODO
-    load_meta_kwargs['v1'] = True
+        load_meta_kwargs['load_case'] = load_case
 
     if debug:
         # minimum logging level for logs by this library
         lvl = logging.DEBUG if isinstance(debug, bool) else debug
         # enable library logging
         enable_library_debug_logging(lvl)
-        # set `v1_debug` flag for the class's Meta
-        load_meta_kwargs['v1_debug'] = lvl
+        # set `debug` flag for the class's Meta
+        load_meta_kwargs['debug'] = lvl
 
     if load_meta_kwargs:
         LoadMeta(**load_meta_kwargs).bind_to(cls)

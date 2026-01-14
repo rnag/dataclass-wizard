@@ -146,7 +146,7 @@ def test_load_and_dump_with_dict():
 
     class ClassWithDict(EnvWizard):
         class _(EnvWizard.Meta):
-            v1_field_to_env_load = {'my_other_dict': 'My.Other.Dict'}
+            field_to_env_load = {'my_other_dict': 'My.Other.Dict'}
 
         my_dict: Dict[int, bool]
         my_other_dict: Dict[str, Union[int, str]]
@@ -196,7 +196,7 @@ def test_load_and_dump_with_aliases():
 
     class MyClass(EnvWizard):
         class _(EnvWizard.Meta):
-            v1_field_to_env_load = {
+            field_to_env_load = {
                 'answer_to_life': 'the_number',
                 'emails': ('EMAILS', 'My_Other_List'),
             }
@@ -316,8 +316,8 @@ def test_load_with_dotenv_file():
     class MyClass(EnvWizard):
         class _(EnvWizard.Meta):
             env_file = True
-            v1_load_case = 'FIELD_FIRST'
-            v1_dump_case = 'SNAKE'
+            load_case = 'FIELD_FIRST'
+            dump_case = 'SNAKE'
 
         my_str: int
         my_time: time
@@ -363,7 +363,7 @@ def test_load_with_tuple_of_dotenv_and_env_file_param_to_init():
     class MyClass(EnvWizard):
         class _(EnvWizard.Meta):
             env_file = '.env', here / '.env.test'
-            v1_env_precedence = 'SECRETS_DOTENV_ENV'
+            env_precedence = 'SECRETS_DOTENV_ENV'
 
         my_value: float
         my_str: str
@@ -497,7 +497,7 @@ def test_init_method_declaration_is_logged_when_debug_mode_is_enabled(mock_debug
     assert "setattr(_EnvSettings, '__init__', __dataclass_wizard_init__EnvSettings__)" in mock_debug_log.records[-2].message
 
     # reset global flag for other tests that
-    # rely on `debug_enabled` functionality
+    # rely on `debug` functionality
     dataclass_wizard.bases_meta._debug_was_enabled = False
 
 
@@ -513,7 +513,7 @@ def test_load_with_tuple_of_dotenv_and_env_prefix_param_to_init():
         class _(EnvWizard.Meta):
             env_file = '.env', here / '.env.test'
             env_prefix = 'PREFIXED_'  # Static prefix
-            v1_env_precedence = 'SECRETS_DOTENV_ENV'
+            env_precedence = 'SECRETS_DOTENV_ENV'
 
         my_value: float
         my_str: str
@@ -710,7 +710,7 @@ def test_env_wizard_with_debug(restore_logger):
     class _(EnvWizard, debug=True):
         ...
 
-    assert get_meta(_).v1_debug == DEBUG
+    assert get_meta(_).debug == DEBUG
 
     assert logger.level == DEBUG
     assert logger.propagate is False

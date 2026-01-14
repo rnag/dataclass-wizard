@@ -76,7 +76,7 @@ def test_auto_key_casing():
     @dataclass
     class Test(JSONWizard):
         class _(JSONWizard.Meta):
-            v1_case = 'AUTO'
+            case = 'AUTO'
 
         my_str: str
         my_bool_test: bool
@@ -139,7 +139,7 @@ def test_alias_mapping():
     @dataclass
     class Test(JSONWizard):
         class _(JSONWizard.Meta):
-            v1_field_to_alias = {'my_int': 'MyInt'}
+            field_to_alias = {'my_int': 'MyInt'}
 
         my_str: str = Alias('a_str')
         my_bool_test: Annotated[bool, Alias('myBoolTest')]
@@ -159,8 +159,8 @@ def test_alias_mapping_with_load_or_dump():
     @dataclass
     class Test(JSONWizard):
         class _(JSONWizard.Meta):
-            v1_load_case = 'C'
-            v1_field_to_alias_dump = {
+            load_case = 'C'
+            field_to_alias_dump = {
                 'my_int': 'MyInt',
             }
 
@@ -197,9 +197,9 @@ def test_alias_with_multiple_mappings():
     class MyClass(JSONWizard):
 
         class _(JSONWizard.Meta):
-            v1_load_case = 'CAMEL'
-            v1_dump_case = 'PASCAL'
-            v1_on_unknown_key = 'RAISE'
+            load_case = 'CAMEL'
+            dump_case = 'PASCAL'
+            on_unknown_key = 'RAISE'
 
         my_str: 'str | None' = Alias('my_str', 'MyStr')
         is_active_tuple: tuple[bool, ...]
@@ -283,8 +283,8 @@ def test_fromdict():
 
     d = {'myBoolean': 'tRuE', 'myStrOrInt': 123}
 
-    LoadMeta(v1_case='CAMEL',
-             v1_field_to_alias={'my_bool': 'myBoolean'}).bind_to(MyClass)
+    LoadMeta(case='CAMEL',
+             field_to_alias={'my_bool': 'myBoolean'}).bind_to(MyClass)
 
     c = fromdict(MyClass, d)
 
@@ -305,8 +305,8 @@ def test_fromdict_raises_on_unknown_json_fields():
 
     d = {'myBoolean': 'tRuE', 'my_string': 'Hello world!'}
     LoadMeta(
-        v1_field_to_alias={'my_bool': 'myBoolean'},
-        v1_on_unknown_key='Raise').bind_to(MyClass)
+        field_to_alias={'my_bool': 'myBoolean'},
+        on_unknown_key='Raise').bind_to(MyClass)
 
     # Technically we don't need to pass `load_cfg`, but we'll pass it in as
     # that's how we'd typically expect to do it.
@@ -325,14 +325,14 @@ def test_from_dict_raises_on_unknown_keys_nested():
     @dataclass
     class Sub(JSONWizard):
         class _(JSONWizard.Meta):
-            v1_case = 'P'
+            case = 'P'
 
         my_str: str
 
     @dataclass
     class Test(JSONWizard):
         class _(JSONWizard.Meta):
-            v1_on_unknown_key = 'RAISE'
+            on_unknown_key = 'RAISE'
 
         my_str: str = Alias('a_str')
         my_bool: bool
@@ -389,8 +389,8 @@ def test_from_dict_raises_on_unknown_keys_with_key_case_auto():
     @dataclass
     class Test(JSONWizard):
         class _(JSONWizard.Meta):
-            v1_case = 'A'
-            v1_on_unknown_key = 'RAISE'
+            case = 'A'
+            on_unknown_key = 'RAISE'
 
         my_str: str = Alias('a_str')
         my_bool: bool
@@ -460,7 +460,7 @@ def test_fromdict_with_key_case_auto():
               'StatusCode': '502'},
          ]}
 
-    LoadMeta(v1_case='AUTO').bind_to(Container)
+    LoadMeta(case='AUTO').bind_to(Container)
 
     # Success :-)
     c = fromdict(Container, d)
@@ -501,7 +501,7 @@ def test_fromdict_with_nested_dataclass():
 
     LoadMeta(recursive=False).bind_to(Container)
 
-    LoadMeta(v1_case='AUTO').bind_to(MyElement)
+    LoadMeta(case='AUTO').bind_to(MyElement)
 
     c = fromdict(Container, d)
 
@@ -529,8 +529,8 @@ def test_invalid_types_with_debug_mode_enabled():
     @dataclass
     class MyClass(JSONWizard):
         class _(JSONWizard.Meta):
-            v1_case = 'CAMEL'
-            debug_enabled = True
+            case = 'CAMEL'
+            debug = True
 
         my_int: int
         my_dict: Dict[str, datetime] = field(default_factory=dict)
@@ -868,7 +868,7 @@ def test_tag_field_is_used_in_load_process():
         class _(JSONWizard.Meta):
             tag = 'CONTAINER'
             # Need for `DataC`, which doesn't have a tag assigned
-            v1_unsafe_parse_dataclass_in_union = True
+            unsafe_parse_dataclass_in_union = True
 
         data: Union[DataA, DataB, DataC]
 
@@ -924,7 +924,7 @@ def test_e2e_process_with_init_only_fields():
     class MyClass(JSONWizard):
 
         class _(JSONWizard.Meta):
-            v1_case = 'C'
+            case = 'C'
 
         my_str: str
         my_float: float = field(default=0.123, init=False)
@@ -961,7 +961,7 @@ def test_bool(input, expected):
     class MyClass(JSONWizard):
 
         class _(JSONWizard.Meta):
-            v1_case = 'P'
+            case = 'P'
 
         my_bool: bool
 
@@ -1166,7 +1166,7 @@ def test_literal(input, expectation):
     class MyClass(JSONWizard):
 
         class _(JSONWizard.Meta):
-            v1_case = 'P'
+            case = 'P'
 
         my_lit: Literal['e1', 'e2', 0]
 
@@ -1280,7 +1280,7 @@ def test_annotated(input, expected):
     class MyClass(JSONWizard):
 
         class _(JSONWizard.Meta):
-            v1_case = 'Auto'
+            case = 'Auto'
 
         bool_or_none: Annotated[Optional[bool], MaxLen(23), "testing", 123]
 
@@ -1333,7 +1333,7 @@ def test_optional(input, expectation, expected):
     class MyClass(JSONWizard):
 
         class _(JSONWizard.Meta):
-            v1_case = 'P'
+            case = 'P'
 
         my_str: str
         my_opt_str: Optional[str]
@@ -1355,8 +1355,8 @@ def test_coerce_none_to_empty_str():
     class MyClass(JSONWizard):
 
         class _(JSONWizard.Meta):
-            v1_case = 'P'
-            v1_coerce_none_to_empty_str = True
+            case = 'P'
+            coerce_none_to_empty_str = True
 
         my_str: str
         my_opt_str: Optional[str]
@@ -1392,7 +1392,7 @@ def test_union(input, expectation, expected):
     class MyClass(JSONWizard):
 
         class _(JSONWizard.Meta):
-            v1_case = 'C'
+            case = 'C'
 
         my_opt_str_int_or_bool: Union[str, int, bool, None]
 
@@ -1809,7 +1809,7 @@ def test_tuple_with_variadic_args(input, expectation, expected):
     class MyClass(JSONWizard):
 
         class _(JSONWizard.Meta):
-            v1_case = 'P'
+            case = 'P'
 
         my_tuple: Tuple[int, ...]
 
@@ -1854,7 +1854,7 @@ def test_dict(input, expectation, expected):
     class MyClass(JSONWizard):
 
         class _(JSONWizard.Meta):
-            v1_case = 'C'
+            case = 'C'
 
         my_dict: Dict[int, bool]
 
@@ -1904,7 +1904,7 @@ def test_default_dict(input, expectation, expected):
     class MyClass(JSONWizard):
 
         class _(JSONWizard.Meta):
-            v1_case = 'C'
+            case = 'C'
 
         my_def_dict: DefaultDict[int, list]
 
@@ -1953,7 +1953,7 @@ def test_dict_without_type_hinting(input, expectation, expected):
     class MyClass(JSONWizard):
 
         class _(JSONWizard.Meta):
-            v1_case = 'C'
+            case = 'C'
 
         my_dict: dict
 
@@ -2010,7 +2010,7 @@ def test_typed_dict(input, expectation, expected):
     class MyClass(JSONWizard):
 
         class _(JSONWizard.Meta):
-            v1_case = 'C'
+            case = 'C'
 
         my_typed_dict: MyDict
 
@@ -2067,7 +2067,7 @@ def test_typed_dict_with_all_fields_optional(input, expectation, expected):
     class MyClass(JSONWizard):
 
         class _(JSONWizard.Meta):
-            v1_case = 'C'
+            case = 'C'
 
         my_typed_dict: MyDict
 
@@ -2133,7 +2133,7 @@ def test_typed_dict_with_one_field_not_required(input, expectation, expected):
     class MyClass(JSONWizard):
 
         class _(JSONWizard.Meta):
-            v1_case = 'C'
+            case = 'C'
 
         my_typed_dict: MyDict
 
@@ -2197,7 +2197,7 @@ def test_typed_dict_with_one_field_required(input, expectation, expected):
     class MyClass(JSONWizard):
 
         class _(JSONWizard.Meta):
-            v1_case = 'C'
+            case = 'C'
 
         my_typed_dict: MyDict
 
@@ -2345,7 +2345,7 @@ def test_named_tuple_with_input_dict(input, expectation, expected):
     @dataclass
     class MyClass(JSONWizard):
         class _(JSONWizard.Meta):
-            v1_namedtuple_as_dict = True
+            namedtuple_as_dict = True
 
         my_nt: MyNamedTuple
 
@@ -2511,7 +2511,7 @@ def test_load_with_inner_model_when_data_is_wrong_type():
     class Outer(JSONWizard):
 
         class _(JSONWizard.Meta):
-            v1_case = 'AUTO'
+            case = 'AUTO'
 
         my_str: str
         inner: Inner
@@ -2650,7 +2650,7 @@ def test_catch_all_with_default():
     class MyData(JSONWizard):
 
         class _(JSONWizard.Meta):
-            v1_dump_case = 'CAMEL'
+            dump_case = 'CAMEL'
 
         my_str: str
         my_float: float
@@ -2715,7 +2715,7 @@ def test_catch_all_with_skip_defaults():
     @dataclass
     class MyData(JSONWizard):
         class _(JSONWizard.Meta):
-            v1_dump_case = 'P'
+            dump_case = 'P'
             skip_defaults = True
 
         my_str: str
@@ -2781,7 +2781,7 @@ def test_catch_all_with_auto_key_case():
     @dataclass
     class Options(JSONWizard):
         class _(JSONWizard.Meta):
-            v1_case = 'Auto'
+            case = 'Auto'
 
         my_extras: CatchAll
         the_email: str
@@ -2901,7 +2901,7 @@ def test_from_dict_with_nested_object_alias_path_with_skip_defaults():
     @dataclass
     class A(JSONWizard):
         class _(JSONWizard.Meta):
-            v1_dump_case = 'C'
+            dump_case = 'C'
             skip_defaults = True
 
         an_int: Annotated[int, AliasPath('my."test value"[here!][0]')]
@@ -3045,9 +3045,9 @@ def test_from_dict_with_multiple_nested_object_alias_paths():
     class MyClass(JSONWizard):
 
         class _(JSONWizard.Meta):
-            v1_load_case = 'CAMEL'
-            v1_dump_case = 'PASCAL'
-            v1_on_unknown_key = 'RAISE'
+            load_case = 'CAMEL'
+            dump_case = 'PASCAL'
+            on_unknown_key = 'RAISE'
 
         my_str: 'str | None' = AliasPath('ace.in.hole.0[1]', 'bears.eat.b33ts')
         is_active_tuple: tuple[bool, ...]
@@ -3142,7 +3142,7 @@ def test_auto_assign_tags_and_raise_on_unknown_keys():
 
         class _(JSONWizard.Meta):
             auto_assign_tags = True
-            v1_on_unknown_key = 'RAISE'
+            on_unknown_key = 'RAISE'
 
     c = Container(obj2=B("bar"))
 
@@ -3334,7 +3334,7 @@ def test_skip_if_truthy_or_falsy():
     class SkipExample(JSONWizard):
 
         class _(JSONWizard.Meta):
-            v1_dump_case = 'C'
+            dump_case = 'C'
 
         my_str: 'Annotated[str | None, SkipIf(IS_TRUTHY())]'
         my_bool: bool = skip_if_field(IS_FALSY())
@@ -3357,10 +3357,6 @@ def test_invalid_condition_annotation_raises_error():
 
         @dataclass
         class Example(JSONWizard):
-
-            class _(JSONWizard.Meta):
-                debug_enabled = False
-
             my_field: Annotated[int, LT(5)]  # Invalid: LT is not wrapped in SkipIf.
 
         # Attempt to serialize an instance, which should raise the error.

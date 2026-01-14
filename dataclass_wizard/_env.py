@@ -113,13 +113,13 @@ class EnvWizard:
             # noinspection PyArgumentList
             apply_env_wizard_dataclass(cls, dc_kwargs)
 
-        load_meta_kwargs = {'v1': True, 'v1_pre_decoder': _pre_decoder}
+        load_meta_kwargs = {'pre_decoder': _pre_decoder}
 
         if debug:
             lvl = logging.DEBUG if isinstance(debug, bool) else debug
             enable_library_debug_logging(lvl)
-            # set `v1_debug` flag for the class's Meta
-            load_meta_kwargs['v1_debug'] = lvl
+            # set `debug` flag for the class's Meta
+            load_meta_kwargs['debug'] = lvl
 
         EnvMeta(**load_meta_kwargs).bind_to(cls)
 
@@ -220,11 +220,11 @@ def load_func_for_dataclass(
     # else:
     #     is_main_class = False
 
-    # default `v1_load_case` to `EnvKeyStrategy.ENV` if not set
-    env_key_strat: EnvKeyStrategy | None = meta.v1_load_case or EnvKeyStrategy.ENV
+    # default `load_case` to `EnvKeyStrategy.ENV` if not set
+    env_key_strat: EnvKeyStrategy | None = meta.load_case or EnvKeyStrategy.ENV
     default_strat = env_key_strat is not EnvKeyStrategy.STRICT
-    # default `v1_env_precedence` to SECRETS_ENV_DOTENV if not set
-    env_precedence: EnvPrecedence = meta.v1_env_precedence or EnvPrecedence.SECRETS_ENV_DOTENV
+    # default `env_precedence` to SECRETS_ENV_DOTENV if not set
+    env_precedence: EnvPrecedence = meta.env_precedence or EnvPrecedence.SECRETS_ENV_DOTENV
 
     field_to_env_vars = resolve_dataclass_field_to_env_for_load(cls)
     check_env_vars = True if field_to_env_vars else False
@@ -247,7 +247,7 @@ def load_func_for_dataclass(
     else:
         expect_tag_as_unknown_key = False
 
-    # on_unknown_key = meta.v1_on_unknown_key
+    # on_unknown_key = meta.on_unknown_key
 
     catch_all_field: str | None = field_to_env_vars.pop(CATCH_ALL, None)
     has_catch_all = catch_all_field is not None
