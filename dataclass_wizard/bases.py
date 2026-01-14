@@ -84,10 +84,10 @@ class ABCOrAndMeta(type):
         # a new class, so use the superclass type instead.
         if src.__is_inner_meta__:
             # In a reversed MRO, the inheritance tree looks like this:
-            #   |___ object -> AbstractMeta -> BaseJSONWizardMeta -> ...
+            #   |___ object -> BaseMeta -> AbstractMeta -> BaseJSONWizardMeta -> ...
             # So here, we want to choose the third-to-last class in the list.
             # noinspection PyUnresolvedReferences
-            src = src.__mro__[-3]
+            src = src.__mro__[-4]
 
         # noinspection PyTypeChecker
         return type(new_cls_name, (src, ), base_dict)
@@ -113,9 +113,9 @@ class ABCOrAndMeta(type):
         return cls
 
 
-class AbstractMeta(metaclass=ABCOrAndMeta):
+class BaseMeta(metaclass=ABCOrAndMeta):
     """
-    Base class definition for the `JSONWizard.Meta` inner class.
+    Base (shared) Meta definition.
     """
     __slots__ = ()
 
@@ -131,7 +131,7 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
         'tag',
     })
 
-    # Class attribute which enables us to detect a `JSONWizard.Meta` subclass.
+    # Class attribute which enables us to detect a `EnvWizard.Meta` subclass.
     __is_inner_meta__ = False
 
     # When enabled, a specified Meta config for the main dataclass (i.e. the
@@ -144,20 +144,6 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
     # apply in a recursive manner.
     recursive: ClassVar[bool] = True
 
-    # True to support cyclic or self-referential dataclasses. For example,
-    # the type of a dataclass field in class `A` refers to `A` itself.
-    #
-    # See https://github.com/rnag/dataclass-wizard/issues/62 for more details.
-    recursive_classes: ClassVar[bool] = False
-
-    # True to raise an class:`UnknownJSONKey` when an unmapped JSON key is
-    # encountered when `from_dict` or `from_json` is called; an unknown key is
-    # one that does not have a known mapping to a dataclass field.
-    #
-    # The default is to only log a "warning" for such cases, which is visible
-    # when `debug` is true and logging is properly configured.
-    raise_on_unknown_json_key: ClassVar[bool] = False
-
     # The field name that identifies the tag for a class.
     #
     # When set to a value, an :attr:`TAG` field will be populated in the
@@ -166,7 +152,7 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
     # used to load the corresponding dataclass, assuming the dataclass field
     # is properly annotated as a Union type, ex.:
     #   my_data: Union[Data1, Data2, Data3]
-    tag: ClassVar[str] = None
+    tag: ClassVar[str | None] = None
 
     # The dictionary key that identifies the tag field for a class. This is
     # only set when the `tag` field or the `auto_assign_tags` flag is enabled
@@ -194,11 +180,6 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
     # the :func:`dataclasses.field`) in the serialization process.
     skip_defaults_if: ClassVar[Condition] = None
 
-    # Enable opt-in to the "experimental" major release `v1` feature.
-    # This feature offers optimized performance for de/serialization.
-    # Defaults to False.
-    v1: ClassVar[bool] = False
-
     # Enable Debug mode for more verbose log output.
     #
     # This setting can be a `bool`, `int`, or `str`:
@@ -221,7 +202,7 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
     #   - two positional arguments (v1 hook): (TypeInfo, Extras) -> str | TypeInfo
     #
     # The hook is invoked when loading a value annotated with the given type.
-    type_to_load_hook: ClassVar[V1TypeToHook] = None
+    type_to_load_hook: ClassVar[V1TypeToHook | None] = None
 
     # Custom dump hooks for extending type support in the v1 engine.
     #
@@ -233,7 +214,7 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
     #
     # The hook is invoked when dumping a value whose runtime type matches
     # the given type.
-    type_to_dump_hook: ClassVar[V1TypeToHook] = None
+    type_to_dump_hook: ClassVar[V1TypeToHook | None] = None
 
     # ``pre_decoder``: Optional hook called before ``v1`` type loading.
     # Receives the container type plus (cls, TypeInfo, Extras) and may return a
@@ -244,6 +225,139 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
     #  Pre-decoder signature:
     #   (cls, container_tp, tp, extras) -> new_tp
     pre_decoder: ClassVar[V1PreDecoder] = None
+
+    # Specifies the letter case used for JSON keys during serialization.
+    #
+    # This setting determines how dataclass field names are transformed
+    # when generating keys in the output JSON object.
+    #
+    # By default, field names are emitted in `snake_case`.
+    #
+    # The setting is case-insensitive and supports shorthand assignment,
+    # such as using the string 'P' instead of 'PASCAL'.
+    #
+    # If unset, this value defaults to `case` when provided.
+    dump_case: ClassVar[Union[KeyCase, str, None]] = None
+
+    # A custom mapping of dataclass fields to their JSON aliases (keys) used
+    # during serialization only.
+    #
+    # Values may be a single alias string or a sequence of alias strings.
+    # When a sequence is provided, the first alias is used as the output key.
+    #
+    # When set, this mapping overrides `field_to_alias` for dump behavior
+    # only.
+    field_to_alias_dump: ClassVar[
+        Mapping[str, Union[str, Sequence[str]]] | None
+    ] = None
+
+    # Unsafe: Enables parsing of dataclasses in unions without requiring
+    # the presence of a `tag_key`, i.e., a dictionary key identifying the
+    # tag field in the input. Defaults to False.
+    unsafe_parse_dataclass_in_union: ClassVar[bool] = False
+
+    # Specifies how :class:`datetime` (and :class:`time`, where applicable)
+    # objects are serialized during output.
+    #
+    # This setting controls how temporal values are emitted when converting
+    # a dataclass to a Python dictionary (`to_dict`) or a JSON string
+    # (`to_json`). It applies to serialization only and does not affect
+    # deserialization.
+    #
+    # By default, values are serialized using ISO 8601 string format.
+    #
+    # Supported values are defined by :class:`DateTimeTo`.
+    dump_date_time_as: ClassVar[Union[DateTimeTo, str]] = None
+
+    # Specifies the timezone to assume for naive :class:`datetime` values
+    # during serialization.
+    #
+    # By default, naive datetimes are rejected to avoid ambiguous or
+    # environment-dependent behavior.
+    #
+    # When set, naive datetimes are interpreted as being in the specified
+    # timezone before conversion to a UTC epoch timestamp.
+    #
+    # Common usage:
+    #     assume_naive_datetime_tz = timezone.utc
+    #
+    # This setting applies to serialization only and does not affect
+    # deserialization.
+    assume_naive_datetime_tz: ClassVar[tzinfo | None] = None
+
+    # Controls how `typing.NamedTuple` and `collections.namedtuple`
+    # fields are loaded and serialized.
+    #
+    # - False (DEFAULT): load from list/tuple and serialize
+    #                     as a positional list.
+    # - True: load from mapping and serialize as a dict
+    #           keyed by field name.
+    #
+    # In strict mode, inputs that do not match the selected mode
+    # raise TypeError.
+    #
+    # Note:
+    #   This option enforces strict shape matching for performance reasons.
+    namedtuple_as_dict: ClassVar[bool | None] = None
+
+    # If True (default: False), ``None`` is coerced to an empty string (``""``)
+    # when loading ``str`` fields.
+    #
+    # When False, ``None`` is coerced using ``str(value)``, so ``None`` becomes
+    # the literal string ``'None'`` for ``str`` fields.
+    #
+    # For ``Optional[str]`` fields, ``None`` is preserved by default.
+    coerce_none_to_empty_str: ClassVar[bool] = None
+
+    # Controls how leaf (non-recursive) types are detected during serialization.
+    #
+    # - "exact" (DEFAULT): only exact built-in leaf types are treated as leaf values.
+    # - "issubclass": subclasses of leaf types are also treated as leaf values.
+    #
+    # Leaf types are returned without recursive traversal. Bytes are still
+    # handled separately according to their serialization rules.
+    #
+    # Note:
+    #     The default "exact" mode avoids treating third-party scalar-like
+    #     objects (e.g. NumPy scalars) as built-in leaf types.
+    leaf_handling: ClassVar[Literal['exact', 'issubclass']] = None
+
+    # noinspection PyMethodParameters
+    @cached_class_property
+    def all_fields(cls: type) -> FrozenKeys:
+        """Return a list of all class attributes"""
+        keys = {}
+        for base in reversed(cls.__mro__[:-1]):  # drop object, then reverse
+            keys.update(base.__annotations__)
+        return frozenset(keys)
+
+    # noinspection PyMethodParameters
+    @cached_class_property
+    def fields_to_merge(cls) -> FrozenKeys:
+        """Return a list of class attributes, minus `__special_attrs__`"""
+        return cls.all_fields - cls.__special_attrs__
+
+
+class AbstractMeta(BaseMeta):
+    """
+    Base class definition for the `JSONWizard.Meta` inner class.
+    """
+    __slots__ = ()
+
+    # A list of class attributes that are exclusive to the Meta config.
+    # When merging two Meta configs for a class, these are the only
+    # attributes which will *not* be merged.
+    __special_attrs__ = frozenset({
+        'recursive',
+        # 'debug',
+        'field_to_alias',
+        'field_to_alias_dump',
+        'field_to_alias_load',
+        'tag',
+    })
+
+    # Class attribute which enables us to detect a `JSONWizard.Meta` subclass.
+    __is_inner_meta__ = False
 
     # Specifies the letter case to use for JSON keys when both loading and dumping.
     #
@@ -277,19 +391,6 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
     # If unset, this value defaults to `case` when provided.
     load_case: ClassVar[Union[KeyCase, str, None]] = None
 
-    # Specifies the letter case used for JSON keys during serialization.
-    #
-    # This setting determines how dataclass field names are transformed
-    # when generating keys in the output JSON object.
-    #
-    # By default, field names are emitted in `snake_case`.
-    #
-    # The setting is case-insensitive and supports shorthand assignment,
-    # such as using the string 'P' instead of 'PASCAL'.
-    #
-    # If unset, this value defaults to `case` when provided.
-    dump_case: ClassVar[Union[KeyCase, str, None]] = None
-
     # A custom mapping of dataclass fields to their JSON aliases (keys).
     #
     # Values may be a single alias string or a sequence of alias strings.
@@ -319,18 +420,6 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
         Mapping[str, Union[str, Sequence[str]]]
     ] = None
 
-    # A custom mapping of dataclass fields to their JSON aliases (keys) used
-    # during serialization only.
-    #
-    # Values may be a single alias string or a sequence of alias strings.
-    # When a sequence is provided, the first alias is used as the output key.
-    #
-    # When set, this mapping overrides `field_to_alias` for dump behavior
-    # only.
-    field_to_alias_dump: ClassVar[
-        Mapping[str, Union[str, Sequence[str]]]
-    ] = None
-
     # Defines the action to take when an unknown JSON key is encountered during
     # `from_dict` or `from_json` calls. An unknown key is one that does not map
     # to any dataclass field.
@@ -341,89 +430,6 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
     #   to be `True` and properly configured logging.
     # - `"raise"`: Raise an `UnknownKeyError` for the first unknown key encountered.
     on_unknown_key: ClassVar[KeyAction] = None
-
-    # Unsafe: Enables parsing of dataclasses in unions without requiring
-    # the presence of a `tag_key`, i.e., a dictionary key identifying the
-    # tag field in the input. Defaults to False.
-    unsafe_parse_dataclass_in_union: ClassVar[bool] = False
-
-    # Specifies how :class:`datetime` (and :class:`time`, where applicable)
-    # objects are serialized during output.
-    #
-    # This setting controls how temporal values are emitted when converting
-    # a dataclass to a Python dictionary (`to_dict`) or a JSON string
-    # (`to_json`). It applies to serialization only and does not affect
-    # deserialization.
-    #
-    # By default, values are serialized using ISO 8601 string format.
-    #
-    # Supported values are defined by :class:`DateTimeTo`.
-    dump_date_time_as: ClassVar[Union[DateTimeTo, str]] = None
-
-    # Specifies the timezone to assume for naive :class:`datetime` values
-    # during serialization.
-    #
-    # By default, naive datetimes are rejected to avoid ambiguous or
-    # environment-dependent behavior.
-    #
-    # When set, naive datetimes are interpreted as being in the specified
-    # timezone before conversion to a UTC epoch timestamp.
-    #
-    # Common usage:
-    #     assume_naive_datetime_tz = timezone.utc
-    #
-    # This setting applies to serialization only and does not affect
-    # deserialization.
-    assume_naive_datetime_tz: ClassVar[tzinfo | None] = None
-
-    # Controls how `typing.NamedTuple` and `collections.namedtuple`
-    # fields are loaded and serialized.
-    #
-    # - False (DEFAULT): load from list/tuple and serialize
-    #                     as a positional list.
-    # - True: load from mapping and serialize as a dict
-    #           keyed by field name.
-    #
-    # In strict mode, inputs that do not match the selected mode
-    # raise TypeError.
-    #
-    # Note:
-    #   This option enforces strict shape matching for performance reasons.
-    namedtuple_as_dict: ClassVar[bool] = None
-
-    # If True (default: False), ``None`` is coerced to an empty string (``""``)
-    # when loading ``str`` fields.
-    #
-    # When False, ``None`` is coerced using ``str(value)``, so ``None`` becomes
-    # the literal string ``'None'`` for ``str`` fields.
-    #
-    # For ``Optional[str]`` fields, ``None`` is preserved by default.
-    coerce_none_to_empty_str: ClassVar[bool] = None
-
-    # Controls how leaf (non-recursive) types are detected during serialization.
-    #
-    # - "exact" (DEFAULT): only exact built-in leaf types are treated as leaf values.
-    # - "issubclass": subclasses of leaf types are also treated as leaf values.
-    #
-    # Leaf types are returned without recursive traversal. Bytes are still
-    # handled separately according to their serialization rules.
-    #
-    # Note:
-    #     The default "exact" mode avoids treating third-party scalar-like
-    #     objects (e.g. NumPy scalars) as built-in leaf types.
-    leaf_handling: ClassVar[Literal['exact', 'issubclass']] = None
-
-    # noinspection PyMethodParameters
-    @cached_class_property
-    def all_fields(cls) -> FrozenKeys:
-        """Return a list of all class attributes"""
-        return frozenset(AbstractMeta.__annotations__)
-
-    # noinspection PyMethodParameters
-    @cached_class_property
-    def fields_to_merge(cls) -> FrozenKeys:
-        """Return a list of class attributes, minus `__special_attrs__`"""
-        return cls.all_fields - cls.__special_attrs__
 
     @classmethod
     def bind_to(cls, dataclass: Type, create=True, is_default=True):
@@ -444,7 +450,7 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
         raise NotImplementedError
 
 
-class AbstractEnvMeta(metaclass=ABCOrAndMeta):
+class AbstractEnvMeta(BaseMeta):
     """
     Base class definition for the `EnvWizard.Meta` inner class.
     """
@@ -463,16 +469,6 @@ class AbstractEnvMeta(metaclass=ABCOrAndMeta):
 
     # Class attribute which enables us to detect a `EnvWizard.Meta` subclass.
     __is_inner_meta__ = False
-
-    # When enabled, a specified Meta config for the main dataclass (i.e. the
-    # class on which `from_dict` and `to_dict` is called) will cascade down
-    # and be merged with the Meta config for each *nested* dataclass; note
-    # that during a merge, priority is given to the Meta config specified on
-    # each class.
-    #
-    # The default behavior is True, so the Meta config (if provided) will
-    # apply in a recursive manner.
-    recursive: ClassVar[bool] = True
 
     # `True` to load environment variables from an `.env` file, or a
     # list/tuple of dotenv files.
@@ -497,105 +493,14 @@ class AbstractEnvMeta(metaclass=ABCOrAndMeta):
     # secrets_dir: The secret files directory or a sequence of directories. Defaults to `None`.
     secrets_dir: ClassVar[SecretsDirs] = None
 
-    # Determines whether we should we skip / omit fields with default values
-    # in the serialization process.
-    skip_defaults: ClassVar[bool] = False
-
-    # Determines the :class:`Condition` to skip / omit dataclass
-    # fields in the serialization process.
-    skip_if: ClassVar[Condition] = None
-
-    # Determines the condition to skip / omit fields with default values
-    # (based on the `default` or `default_factory` argument specified for
-    # the :func:`dataclasses.field`) in the serialization process.
-    skip_defaults_if: ClassVar[Condition] = None
-
-    # The field name that identifies the tag for a class.
-    #
-    # When set to a value, an :attr:`TAG` field will be populated in the
-    # dictionary object in the dump (serialization) process. When loading
-    # (or de-serializing) a dictionary object, the :attr:`TAG` field will be
-    # used to load the corresponding dataclass, assuming the dataclass field
-    # is properly annotated as a Union type, ex.:
-    #   my_data: Union[Data1, Data2, Data3]
-    tag: ClassVar[str] = None
-
-    # The dictionary key that identifies the tag field for a class. This is
-    # only set when the `tag` field or the `auto_assign_tags` flag is enabled
-    # in the `Meta` config for a dataclass.
-    #
-    # Defaults to '__tag__' if not specified.
-    tag_key: ClassVar[str] = TAG
-
-    # Auto-assign the class name as a dictionary "tag" key, for any dataclass
-    # fields which are in a `Union` declaration, ex.:
-    #   my_data: Union[Data1, Data2, Data3]
-    auto_assign_tags: ClassVar[bool] = False
-
-    # Enable opt-in to the "experimental" major release `v1` feature.
-    # This feature offers optimized performance for de/serialization.
-    # Defaults to False.
-    v1: ClassVar[bool] = False
-
-    # Enable Debug mode for more verbose log output.
-    #
-    # This setting can be a `bool`, `int`, or `str`:
-    # - `True` enables debug mode with default verbosity.
-    # - A `str` or `int` specifies the minimum log level (e.g., 'DEBUG', 10).
-    #
-    # Debug mode provides additional helpful log messages, including:
-    # - Logging unknown JSON keys encountered during `from_dict` or `from_json`.
-    # - Detailed error messages for invalid types during unmarshalling.
-    #
-    # Note: Enabling Debug mode may have a minor performance impact.
-    debug: ClassVar['bool | int | str'] = False
-
-    # Custom load hooks for extending type support in the v1 engine.
-    #
-    # Mapping: {Type -> hook}
-    #
-    # A hook must accept either:
-    #   - one positional argument (runtime hook): value -> object
-    #   - two positional arguments (v1 hook): (TypeInfo, Extras) -> str | TypeInfo
-    #
-    # The hook is invoked when loading a value annotated with the given type.
-    type_to_load_hook: ClassVar[V1TypeToHook] = None
-
-    # Custom dump hooks for extending type support in the v1 engine.
-    #
-    # Mapping: {Type -> hook}
-    #
-    # A hook must accept either:
-    #   - one positional argument (runtime hook): object -> JSON-serializable value
-    #   - two positional arguments (v1 hook): (TypeInfo, Extras) -> str | TypeInfo
-    #
-    # The hook is invoked when dumping a value whose runtime type matches
-    # the given type.
-    type_to_dump_hook: ClassVar[V1TypeToHook] = None
-
-    # ``pre_decoder``: Optional hook called before ``v1`` type loading.
-    # Receives the container type plus (cls, TypeInfo, Extras) and may return a
-    # transformed ``TypeInfo`` (e.g., wrapped in a function which decodes
-    # JSON/delimited strings into list/dict for env loading). Returning the
-    # input value leaves behavior unchanged.
-    #
-    #  Pre-decoder signature:
-    #   (cls, container_tp, tp, extras) -> new_tp
-    pre_decoder: ClassVar[V1PreDecoder] = None
-
     # The key lookup strategy to use for Env Var Names.
     #
     # The default strategy is `SCREAMING_SNAKE_CASE` > `snake_case`.
     load_case: ClassVar[Union[EnvKeyStrategy, str]] = None
 
-    # How `EnvWizard` fields (variables) should be transformed to JSON keys.
-    #
-    # The default is 'snake_case'.
-    dump_case: ClassVar[Union[KeyCase, str]] = None
-
     # Environment Precedence (order) to search for values
     # Defaults to EnvPrecedence.SECRETS_ENV_DOTENV
-    env_precedence: EnvPrecedence = None
+    env_precedence: ClassVar[EnvPrecedence] = None
 
     # A custom mapping of dataclass fields to their env vars (keys) used
     # during deserialization only.
@@ -604,18 +509,6 @@ class AbstractEnvMeta(metaclass=ABCOrAndMeta):
     # Any listed alias is accepted when mapping input env vars to
     # dataclass fields.
     field_to_env_load: ClassVar[
-        Mapping[str, Union[str, Sequence[str]]]
-    ] = None
-
-    # A custom mapping of dataclass fields to their JSON aliases (keys) used
-    # during serialization only.
-    #
-    # Values may be a single alias string or a sequence of alias strings.
-    # When a sequence is provided, the first alias is used as the output key.
-    #
-    # When set, this mapping overrides `field_to_alias` for dump behavior
-    # only.
-    field_to_alias_dump: ClassVar[
         Mapping[str, Union[str, Sequence[str]]]
     ] = None
 
@@ -629,89 +522,6 @@ class AbstractEnvMeta(metaclass=ABCOrAndMeta):
     #   to be `True` and properly configured logging.
     # - `"raise"`: Raise an `UnknownKeyError` for the first unknown key encountered.
     # on_unknown_key: ClassVar[KeyAction] = None
-
-    # Unsafe: Enables parsing of dataclasses in unions without requiring
-    # the presence of a `tag_key`, i.e., a dictionary key identifying the
-    # tag field in the input. Defaults to False.
-    unsafe_parse_dataclass_in_union: ClassVar[bool] = False
-
-    # Specifies how :class:`datetime` (and :class:`time`, where applicable)
-    # objects are serialized during output.
-    #
-    # This setting controls how temporal values are emitted when converting
-    # a dataclass to a Python dictionary (`to_dict`) or a JSON string
-    # (`to_json`). It applies to serialization only and does not affect
-    # deserialization.
-    #
-    # By default, values are serialized using ISO 8601 string format.
-    #
-    # Supported values are defined by :class:`DateTimeTo`.
-    dump_date_time_as: ClassVar[Union[DateTimeTo, str]] = None
-
-    # Specifies the timezone to assume for naive :class:`datetime` values
-    # during serialization.
-    #
-    # By default, naive datetimes are rejected to avoid ambiguous or
-    # environment-dependent behavior.
-    #
-    # When set, naive datetimes are interpreted as being in the specified
-    # timezone before conversion to a UTC epoch timestamp.
-    #
-    # Common usage:
-    #     assume_naive_datetime_tz = timezone.utc
-    #
-    # This setting applies to serialization only and does not affect
-    # deserialization.
-    assume_naive_datetime_tz: ClassVar[tzinfo | None] = None
-
-    # Controls how `typing.NamedTuple` and `collections.namedtuple`
-    # fields are loaded and serialized.
-    #
-    # - False (DEFAULT): load from list/tuple and serialize
-    #                     as a positional list.
-    # - True: load from mapping and serialize as a dict
-    #           keyed by field name.
-    #
-    # In strict mode, inputs that do not match the selected mode
-    # raise TypeError.
-    #
-    # Note:
-    #   This option enforces strict shape matching for performance reasons.
-    namedtuple_as_dict: ClassVar[bool] = None
-
-    # If True (default: False), ``None`` is coerced to an empty string (``""``)
-    # when loading ``str`` fields.
-    #
-    # When False, ``None`` is coerced using ``str(value)``, so ``None`` becomes
-    # the literal string ``'None'`` for ``str`` fields.
-    #
-    # For ``Optional[str]`` fields, ``None`` is preserved by default.
-    coerce_none_to_empty_str: ClassVar[bool] = None
-
-    # Controls how leaf (non-recursive) types are detected during serialization.
-    #
-    # - "exact" (DEFAULT): only exact built-in leaf types are treated as leaf values.
-    # - "issubclass": subclasses of leaf types are also treated as leaf values.
-    #
-    # Leaf types are returned without recursive traversal. Bytes are still
-    # handled separately according to their serialization rules.
-    #
-    # Note:
-    #     The default "exact" mode avoids treating third-party scalar-like
-    #     objects (e.g. NumPy scalars) as built-in leaf types.
-    leaf_handling: ClassVar[Literal['exact', 'issubclass']] = None
-
-    # noinspection PyMethodParameters
-    @cached_class_property
-    def all_fields(cls) -> FrozenKeys:
-        """Return a list of all class attributes"""
-        return frozenset(AbstractEnvMeta.__annotations__)
-
-    # noinspection PyMethodParameters
-    @cached_class_property
-    def fields_to_merge(cls) -> FrozenKeys:
-        """Return a list of class attributes, minus `__special_attrs__`"""
-        return cls.all_fields - cls.__special_attrs__
 
     @classmethod
     def bind_to(cls, env_class: Type, create=True, is_default=True):

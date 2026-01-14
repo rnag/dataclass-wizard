@@ -374,7 +374,7 @@ class UnknownKeysError(JSONWizardError):
     encountered in the JSON load process.
 
     Note that this error class is only raised when the
-    `raise_on_unknown_json_key` flag is enabled in
+    `on_unknown_key='RAISE'` flag is enabled in
     the :class:`Meta` class.
     """
 
@@ -465,30 +465,6 @@ class MissingData(ParseError):
             msg = f'{msg}{sep}{parts}'
 
         return msg
-
-
-class RecursiveClassError(JSONWizardError):
-    """
-    Error raised when we encounter a `RecursionError` due to cyclic
-    or self-referential dataclasses.
-    """
-
-    _TEMPLATE = ('Failure parsing class `{cls}`. '
-                 'Consider updating the Meta config to enable '
-                 'the `recursive_classes` flag.\n\n'
-                f'Example with `{PACKAGE_NAME}.LoadMeta`:\n'
-                 ' >>> LoadMeta(recursive_classes=True).bind_to({cls})\n\n'
-                 'For more info, please see:\n'
-                 '  https://github.com/rnag/dataclass-wizard/issues/62')
-
-    def __init__(self, cls: type):
-        super().__init__()
-
-        self.class_name: str = self.name(cls)
-
-    @property
-    def message(self) -> str:
-        return self._TEMPLATE.format(cls=self.class_name)
 
 
 class InvalidConditionError(JSONWizardError):

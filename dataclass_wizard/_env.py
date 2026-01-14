@@ -235,7 +235,7 @@ def load_func_for_dataclass(
     # FIXME get from functions instead
     has_defaults = SEEN_DEFAULT[cls]
 
-    # Fix for using `auto_assign_tags` and `raise_on_unknown_json_key` together
+    # Fix for using `auto_assign_tags` and `on_unknown_key='RAISE'` together
     # See https://github.com/rnag/dataclass-wizard/issues/137
     has_tag_assigned = getattr(meta, 'tag', None) is not None
     if (has_tag_assigned and

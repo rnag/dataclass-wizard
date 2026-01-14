@@ -167,7 +167,7 @@ class UnknownKeysError(JSONWizardError):
     encountered in the JSON load process.
 
     Note that this error class is only raised when the
-    `raise_on_unknown_json_key` flag is enabled in
+    `on_unknown_key='RAISE'` is enabled in
     the :class:`Meta` class.
     """
 
@@ -211,22 +211,6 @@ class MissingData(ParseError):
 
     def __init__(self, nested_cls: type, **kwargs):
         ...
-
-    @property
-    def message(self) -> str: ...
-
-
-class RecursiveClassError(JSONWizardError):
-    """
-    Error raised when we encounter a `RecursionError` due to cyclic
-    or self-referential dataclasses.
-    """
-
-    _TEMPLATE: str
-
-    class_name: str
-
-    def __init__(self, cls: type): ...
 
     @property
     def message(self) -> str: ...
