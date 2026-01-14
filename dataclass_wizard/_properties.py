@@ -1,6 +1,6 @@
 from dataclasses import MISSING, Field, field as dataclass_field
 from functools import wraps
-from typing import Any, Union
+from typing import Any, Union, Literal
 
 from .constants import PY314_OR_ABOVE, PY310_OR_ABOVE
 from .type_def import NoneType
@@ -10,7 +10,6 @@ from .utils._typing_compat import (
     get_origin,
     is_annotated,
     is_generic,
-    is_literal,
 )
 
 # Python 3.14+: annotationlib.get_annotations supports explicit formats
@@ -298,7 +297,7 @@ def default_from_generic_type(
         # type `T`, which can be either a concrete or Generic sub-type.
         return default_from_annotation(cls, {field: default_type}, field)
 
-    if is_literal(default_type):
+    if origin is Literal:
         # The Generic type appears as `Literal["r", "r+", ...]`
         return dataclass_field(default=default_from_typing_args(args))
 

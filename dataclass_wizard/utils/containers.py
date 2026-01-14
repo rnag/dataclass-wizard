@@ -42,16 +42,17 @@ class Container(list[T]):
                  **encoder_kwargs):
 
         return self.to_json(
-            indent=indent,
             encoder=encoder,
             ensure_ascii=ensure_ascii,
+            indent=indent,
             **encoder_kwargs
         )
 
     def to_json(self, encoder=json.dumps,
                 **encoder_kwargs):
 
-        list_of_dict = [asdict(o, cls=self.__model__) for o in self]
+        cls = self.__model__
+        list_of_dict = [asdict(o, cls=cls) for o in self]
 
         return encoder(list_of_dict, **encoder_kwargs)
 
@@ -59,7 +60,8 @@ class Container(list[T]):
                      encoder=json.dump,
                      **encoder_kwargs):
 
-        list_of_dict = [asdict(o, cls=self.__model__) for o in self]
+        cls = self.__model__
+        list_of_dict = [asdict(o, cls=cls) for o in self]
 
         with open(file, mode) as out_file:
             encoder(list_of_dict, out_file, **encoder_kwargs)

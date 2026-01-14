@@ -3,7 +3,6 @@ Utility module for checking generic types provided by the `typing` library.
 """
 
 __all__ = [
-    'is_literal',
     'is_union',
     'get_origin',
     'get_origin_v2',
@@ -48,13 +47,6 @@ def get_keys_for_typed_dict(cls):
 def _is_annotated(cls):
     return isinstance(cls, _AnnotatedAlias)
 
-
-# TODO Remove
-def is_literal(cls) -> bool:
-    try:
-        return cls.__origin__ is Literal
-    except AttributeError:
-        return False
 
 # Ref:
 #   https://typing.readthedocs.io/en/latest/spec/typeddict.html#required-and-notrequired
