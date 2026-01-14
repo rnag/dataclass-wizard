@@ -2,13 +2,12 @@ import json
 import logging
 from dataclasses import dataclass, MISSING
 
-from ._abstractions import AbstractJSONWizard
+from ._log import enable_library_debug_logging
 from .bases_meta import BaseJSONWizardMeta, LoadMeta, register_type
 from .class_helper import call_meta_initializer_if_needed, str_pprint_fn
 from .constants import PACKAGE_NAME
 from .dumpers import asdict
 from .loaders import fromdict, fromlist
-from ._log import enable_library_debug_logging
 from .type_def import dataclass_transform
 # noinspection PyProtectedMember
 from .utils._dataclass_compat import (dataclass_needs_refresh,
@@ -84,7 +83,7 @@ def configure_wizard_class(cls,
 
 
 @dataclass_transform()
-class DataclassWizard(AbstractJSONWizard):
+class DataclassWizard:
 
     __slots__ = ()
 

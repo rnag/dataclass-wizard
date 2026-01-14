@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import collections.abc as abc
 import dataclasses
-
 from base64 import b64decode
 from collections import defaultdict, deque
 from dataclasses import is_dataclass, Field, MISSING
@@ -10,20 +9,11 @@ from datetime import date, datetime, time, timedelta
 from decimal import Decimal
 from enum import Enum
 from pathlib import Path
-from typing import Any, Callable, Literal, NamedTuple, cast, Required, NotRequired
+from typing import Any, Callable, Literal, NamedTuple, cast
 from uuid import UUID
 
-from .decorators import (process_patterned_date_time,
-                         setup_recursive_safe_function,
-                         setup_recursive_safe_function_for_generic)
-from .enums import KeyAction, KeyCase
-from .models import Extras, PatternBase, TypeInfo, LEAF_TYPES
+from ._log import LOG
 from ._models_date import UTC
-from .type_conv import (
-    as_datetime, as_date, as_int,
-    as_time, as_timedelta, TRUTHY_VALUES,
-)
-from ._abstractions import AbstractLoaderGenerator
 from .bases import AbstractMeta, BaseLoadHook, META
 from .class_helper import (create_meta,
                            get_meta,
@@ -34,12 +24,20 @@ from .class_helper import (create_meta,
                            CLASS_TO_LOADER, set_class_loader, create_new_class)
 # noinspection PyUnresolvedReferences
 from .constants import CATCH_ALL, TAG, PY311_OR_ABOVE, PACKAGE_NAME, _LOAD_HOOKS
+from .decorators import (process_patterned_date_time,
+                         setup_recursive_safe_function,
+                         setup_recursive_safe_function_for_generic)
+from .enums import KeyAction, KeyCase
 from .errors import (JSONWizardError,
                      MissingData,
                      MissingFields,
                      ParseError,
                      UnknownKeysError)
-from ._log import LOG
+from .models import Extras, PatternBase, TypeInfo, LEAF_TYPES
+from .type_conv import (
+    as_datetime, as_date, as_int,
+    as_time, as_timedelta, TRUTHY_VALUES,
+)
 from .type_def import DefFactory, JSONObject, NoneType, PyLiteralString, T
 from .utils._dataclass_compat import (dataclass_fields,
                                       dataclass_init_fields,
@@ -60,7 +58,7 @@ from .utils._typing_compat import (eval_forward_ref_if_needed,
                                    is_union)
 
 
-class LoadMixin(BaseLoadHook, AbstractLoaderGenerator):
+class LoadMixin(BaseLoadHook):
     """
     This Mixin class derives its name from the eponymous `json.loads`
     function. Essentially it contains helper methods to convert JSON strings

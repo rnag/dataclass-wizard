@@ -17,14 +17,8 @@ from typing import (
 )
 from uuid import UUID
 
-from .decorators import (setup_recursive_safe_function,
-                         setup_recursive_safe_function_for_generic)
-from .enums import KeyCase, DateTimeTo
-from .models import (Extras, TypeInfo, PatternBase,
-                     LEAF_TYPES, LEAF_TYPES_NO_BYTES)
+from ._log import LOG
 from ._models_date import ZERO, UTC
-from .type_conv import datetime_to_timestamp
-from ._abstractions import AbstractDumperGenerator
 from .bases import AbstractMeta, BaseDumpHook, META
 from .class_helper import (
     CLASS_TO_DUMP_FUNC,
@@ -40,9 +34,14 @@ from .class_helper import (
 )
 # noinspection PyUnresolvedReferences
 from .constants import CATCH_ALL, TAG, PACKAGE_NAME, _DUMP_HOOKS
+from .decorators import (setup_recursive_safe_function,
+                         setup_recursive_safe_function_for_generic)
+from .enums import KeyCase, DateTimeTo
 from .errors import (ParseError, MissingFields, MissingData, JSONWizardError)
-from ._log import LOG
+from .models import (Extras, TypeInfo, PatternBase,
+                     LEAF_TYPES, LEAF_TYPES_NO_BYTES)
 from .models import get_skip_if_condition, finalize_skip_if
+from .type_conv import datetime_to_timestamp
 from .type_def import (
     NoneType, JSONObject,
     PyLiteralString,
@@ -133,7 +132,7 @@ def _all_return_value_unchanged(args, leaf_handling_as_subclass):
     return True
 
 
-class DumpMixin(BaseDumpHook, AbstractDumperGenerator):
+class DumpMixin(BaseDumpHook):
     """
     This Mixin class derives its name from the eponymous `json.dumps`
     function. Essentially it contains helper methods to convert a `dataclass`

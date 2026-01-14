@@ -9,7 +9,8 @@ from __future__ import annotations
 import logging
 from typing import Mapping
 
-from ._abstractions import AbstractJSONWizard
+from ._log import LOG
+from ._meta_cache import META_BY_DATACLASS
 from .bases import AbstractMeta, META, AbstractEnvMeta
 from .class_helper import (
     META_INITIALIZER, get_meta,
@@ -18,14 +19,11 @@ from .class_helper import (
     DATACLASS_FIELD_TO_ENV_FOR_LOAD,
     DATACLASS_FIELD_TO_ALIAS_FOR_DUMP, create_meta,
 )
+from .dumpers import DumpMixin, get_dumper
 from .errors import ParseError
 from .loaders import LoadMixin, get_loader
-from .dumpers import DumpMixin, get_dumper
-from ._log import LOG
-from ._meta_cache import META_BY_DATACLASS
-from .type_def import E
 from .type_conv import as_enum
-
+from .type_def import E
 
 ALLOWED_MODES = ('runtime', 'codegen')
 
@@ -174,7 +172,7 @@ class BaseJSONWizardMeta(AbstractMeta):
 
             # Create a new class of `Type[W]`, and then pass `create=False` so
             # that we don't create new loader / dumper for the class.
-            new_cls = create_new_class(cls, (AbstractJSONWizard, ))
+            new_cls = create_new_class(cls, ())
             cls.bind_to(new_cls, create=False)
 
     @classmethod
@@ -280,7 +278,7 @@ class BaseEnvWizardMeta(AbstractEnvMeta):
 
             # Create a new class of `Type[W]`, and then pass `create=False` so
             # that we don't create new loader / dumper for the class.
-            new_cls = create_new_class(cls, (AbstractJSONWizard, ))
+            new_cls = create_new_class(cls, ())
             cls.bind_to(new_cls, create=False)
 
     @classmethod

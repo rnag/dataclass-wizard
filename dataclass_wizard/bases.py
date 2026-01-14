@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-from abc import ABCMeta, abstractmethod
 from datetime import tzinfo
 from typing import (Callable, Type, Dict, Optional, ClassVar, Union,
-                    TypeVar, Mapping, Sequence, TYPE_CHECKING, Any, Literal)
+                    TypeVar, Mapping, Sequence, TYPE_CHECKING, Literal)
 
 from .constants import TAG
 from .decorators import cached_class_property
@@ -31,7 +30,7 @@ ENV_META_ = TypeVar('ENV_META_', bound='AbstractEnvMeta')
 ENV_META = type[ENV_META_]
 
 
-class ABCOrAndMeta(ABCMeta):
+class ABCOrAndMeta(type):
     """
     Metaclass to add class-level :meth:`__or__` and :meth:`__and__` methods
     to a base class of type :type:`M`.
@@ -427,7 +426,6 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
         return cls.all_fields - cls.__special_attrs__
 
     @classmethod
-    @abstractmethod
     def bind_to(cls, dataclass: Type, create=True, is_default=True):
         """
         Initialize hook which applies the Meta config to `dataclass`, which is
@@ -443,6 +441,7 @@ class AbstractMeta(metaclass=ABCOrAndMeta):
           default Meta config for the dataclass. Defaults to true.
 
         """
+        raise NotImplementedError
 
 
 class AbstractEnvMeta(metaclass=ABCOrAndMeta):
@@ -715,7 +714,6 @@ class AbstractEnvMeta(metaclass=ABCOrAndMeta):
         return cls.all_fields - cls.__special_attrs__
 
     @classmethod
-    @abstractmethod
     def bind_to(cls, env_class: Type, create=True, is_default=True):
         """
         Initialize hook which applies the Meta config to `env_class`, which is
@@ -730,7 +728,7 @@ class AbstractEnvMeta(metaclass=ABCOrAndMeta):
           default Meta config for the dataclass. Defaults to true.
 
         """
-
+        raise NotImplementedError
 
 class BaseLoadHook:
     """
