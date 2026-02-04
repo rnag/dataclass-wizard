@@ -1,6 +1,6 @@
 import json
 
-from ..decorators import cached_property
+from .._decorators import cached_property
 from ..type_def import T, Encoder, FileEncoder
 
 

@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Any, TypedDict, cast, NewType, Mapping
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from ._models_date import UTC
-from .decorators import setup_recursive_safe_function
+from ._decorators import setup_recursive_safe_function
 from .constants import PY310_OR_ABOVE, PY311_OR_ABOVE, PY314_OR_ABOVE
 from ._log import LOG
 from .type_def import DefFactory, ExplicitNull, PyNotRequired, NoneType

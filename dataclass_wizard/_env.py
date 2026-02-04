@@ -21,7 +21,7 @@ from ._class_helper import (resolve_dataclass_field_to_env_for_load,
                            call_meta_initializer_if_needed)
 from ._meta_cache import get_meta
 from .constants import CATCH_ALL, PACKAGE_NAME
-from .decorators import cached_class_property
+from ._decorators import cached_class_property
 from .dumpers import asdict
 from .errors import (JSONWizardError,
                      MissingData,

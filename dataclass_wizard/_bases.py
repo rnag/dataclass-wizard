@@ -5,7 +5,7 @@ from typing import (TYPE_CHECKING, Callable, ClassVar, Literal,
                     Mapping, Sequence, TypeVar)
 
 from .constants import TAG
-from .decorators import cached_class_property
+from ._decorators import cached_class_property
 from .enums import KeyAction, KeyCase, DateTimeTo, EnvKeyStrategy, EnvPrecedence
 from .models import Condition
 from .type_def import FrozenKeys

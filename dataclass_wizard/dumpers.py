@@ -32,7 +32,7 @@ from ._class_helper import (
 from ._meta_cache import get_meta
 # noinspection PyUnresolvedReferences
 from .constants import CATCH_ALL, TAG, PACKAGE_NAME, _DUMP_HOOKS
-from .decorators import (setup_recursive_safe_function,
+from ._decorators import (setup_recursive_safe_function,
                          setup_recursive_safe_function_for_generic)
 from .enums import KeyCase, DateTimeTo
 from .errors import (ParseError, MissingFields, MissingData, JSONWizardError)

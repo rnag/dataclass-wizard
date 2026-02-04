@@ -1,5 +1,5 @@
 import typing
-from .decorators import cached_class_property as cached_class_property
+from ._decorators import cached_class_property as cached_class_property
 from .enums import DateTimeTo as DateTimeTo, EnvKeyStrategy as EnvKeyStrategy, EnvPrecedence as EnvPrecedence, KeyAction as KeyAction, KeyCase as KeyCase
 from .models import Condition as Condition
 from typing import Callable, ClassVar as _ClassVar

@@ -4,7 +4,7 @@ from ._bases import AbstractMeta as AbstractMeta, BaseDumpHook as BaseDumpHook
 from ._class_helper import create_new_class as create_new_class, dataclass_field_to_skip_if as dataclass_field_to_skip_if, \
     is_subclass_safe as is_subclass_safe, resolve_dataclass_field_to_alias_for_dump as resolve_dataclass_field_to_alias_for_dump, set_class_dumper as set_class_dumper
 from ._meta_cache import get_meta as get_meta, create_meta as create_meta
-from .decorators import setup_recursive_safe_function as setup_recursive_safe_function, setup_recursive_safe_function_for_generic as setup_recursive_safe_function_for_generic
+from ._decorators import setup_recursive_safe_function as setup_recursive_safe_function, setup_recursive_safe_function_for_generic as setup_recursive_safe_function_for_generic
 from .enums import DateTimeTo as DateTimeTo, KeyCase as KeyCase
 from .errors import JSONWizardError as JSONWizardError, MissingData as MissingData, MissingFields as MissingFields, ParseError as ParseError
 from .models import Extras as Extras, PatternBase as PatternBase, TypeInfo as TypeInfo, finalize_skip_if as finalize_skip_if, get_skip_if_condition as get_skip_if_condition

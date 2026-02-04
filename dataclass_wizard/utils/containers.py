@@ -1,7 +1,7 @@
 import json
 
 from .._class_helper import str_pprint_fn
-from ..decorators import cached_property
+from .._decorators import cached_property
 from ..dumpers import asdict
 from ..type_def import T
 from ._dataclass_compat import set_new_attribute

@@ -23,7 +23,7 @@ from ._class_helper import (is_subclass_safe,
 from ._meta_cache import get_meta
 # noinspection PyUnresolvedReferences
 from .constants import CATCH_ALL, TAG, PY311_OR_ABOVE, PACKAGE_NAME, _LOAD_HOOKS
-from .decorators import (process_patterned_date_time,
+from ._decorators import (process_patterned_date_time,
                          setup_recursive_safe_function,
                          setup_recursive_safe_function_for_generic)
 from .enums import KeyAction, KeyCase
