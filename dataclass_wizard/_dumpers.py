@@ -71,13 +71,6 @@ _KNOWN_FACTORY_LITERALS: dict[Callable[[], Any], str] = {
     frozenset: 'frozenset()',
 }
 
-def factory_default_expr(factory: Callable[[], Any]) -> str | None:
-    """
-    Returns a Python expression string that evaluates to the default value
-    for well-known factories, else None (meaning: don't elide by default).
-    """
-    return _KNOWN_FACTORY_LITERALS.get(factory)
-
 
 def default_compare_expr(
     f: Field[Any],

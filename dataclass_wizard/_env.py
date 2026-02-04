@@ -11,7 +11,7 @@ from typing import (Any, Callable, Mapping, TYPE_CHECKING)
 
 from ._path_util import get_secrets_map, get_dotenv_map
 from .enums import EnvKeyStrategy, EnvPrecedence
-from .loaders import LoadMixin as V1LoadMixin, get_loader
+from ._loaders import LoadMixin as V1LoadMixin, get_loader
 from .models import Extras, TypeInfo, SEQUENCE_ORIGINS, MAPPING_ORIGINS
 from .type_conv import as_list, as_dict
 from ._bases import META, AbstractEnvMeta
@@ -22,7 +22,7 @@ from ._class_helper import (resolve_dataclass_field_to_env_for_load,
 from ._meta_cache import get_meta
 from .constants import CATCH_ALL, PACKAGE_NAME
 from ._decorators import cached_class_property
-from .dumpers import asdict
+from ._dumpers import asdict
 from .errors import (JSONWizardError,
                      MissingData,
                      ParseError,
@@ -213,7 +213,7 @@ def load_func_for_dataclass(
     }
 
     # we are being run for a nested dataclass
-    # NOTE: I don't believe this path exists, since `v1.loaders.from_dict`
+    # NOTE: I don't believe this path exists, since `v1._loaders.from_dict`
     # is used for nested dataclasses.
     #
     # else:

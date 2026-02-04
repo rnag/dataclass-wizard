@@ -3,7 +3,7 @@ from dataclasses import dataclass, Field, InitVar
 from typing import (Callable, Mapping, dataclass_transform, TypedDict,
                     NotRequired, TypeVar, ClassVar, Collection, AnyStr)
 
-from .loaders import LoadMixin as V1LoadMixIn
+from ._loaders import LoadMixin as V1LoadMixIn
 from .models import Extras
 from ._bases import AbstractEnvMeta, ENV_META
 from ._bases_meta import BaseEnvWizardMeta, HookFn

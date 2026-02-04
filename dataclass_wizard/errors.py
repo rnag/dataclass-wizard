@@ -56,7 +56,7 @@ def show_deprecation_warning(
 
 
 def _get_safe_encoder() -> type[JSONEncoder]:
-    from .dumpers import asdict
+    from ._dumpers import asdict
 
     global _SafeEncoder
     if _SafeEncoder is not None:
@@ -323,7 +323,7 @@ class MissingFields(JSONWizardError):
         if (is_dataclass(self.parent_cls) and
             next((f for f in self.missing_fields if normalize(f) in normalized_json_keys), None)):
             from .enums import KeyCase
-            from .loaders import get_loader
+            from ._loaders import get_loader
 
             key_transform = get_loader(self.parent_cls).transform_json_field
             if isinstance(key_transform, KeyCase):

@@ -21,11 +21,11 @@ from ._class_helper import (
     get_outer_class_name,
     get_class_name,
     per_cls)
-from .dumpers import DumpMixin, get_dumper
+from ._dumpers import DumpMixin, get_dumper
 from .enums import KeyAction, KeyCase, DateTimeTo, EnvKeyStrategy, EnvPrecedence
 
 from .errors import ParseError
-from .loaders import LoadMixin, get_loader
+from ._loaders import LoadMixin, get_loader
 from .type_conv import as_enum
 from .type_def import E
 

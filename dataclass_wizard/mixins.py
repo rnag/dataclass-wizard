@@ -9,10 +9,10 @@ __all__ = ['JSONListWizard',
 import json
 
 from ._bases_meta import DumpMeta
-from .dumpers import asdict
+from ._dumpers import asdict
 from .enums import KeyCase
 from .lazy_imports import toml, toml_w, yaml
-from .loaders import fromdict, fromlist
+from ._loaders import fromdict, fromlist
 from .utils.containers import Container
 from ._meta_cache import META_BY_DATACLASS
 from ._serial_json import JSONWizard

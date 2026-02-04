@@ -12,7 +12,7 @@ from ._path_util import EnvFilePaths, SecretsDirs
 from ._bases import AbstractMeta, META, AbstractEnvMeta, TypeToHook
 from .constants import TAG
 from .enums import KeyAction, KeyCase, DateTimeTo, EnvPrecedence, EnvKeyStrategy
-from .loaders import LoadMixin
+from ._loaders import LoadMixin
 from .models import Condition
 from .models import TypeInfo, Extras
 from .type_def import E, T
