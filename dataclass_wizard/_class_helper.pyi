@@ -4,7 +4,7 @@ from weakref import WeakKeyDictionary, WeakSet
 from ._abstractions import W, E, AbstractLoaderGenerator, AbstractDumperGenerator
 from .constants import PACKAGE_NAME
 from .models import Condition
-from .type_def import T
+from ._type_def import T
 from .utils._object_path import PathType
 
 # A mapping of dataclass to its loader.

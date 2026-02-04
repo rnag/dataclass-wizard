@@ -9,7 +9,7 @@ from .enums import KeyAction as KeyAction, KeyCase as KeyCase
 from .errors import JSONWizardError as JSONWizardError, MissingData as MissingData, MissingFields as MissingFields, ParseError as ParseError, UnknownKeysError as UnknownKeysError
 from .models import Extras as Extras, PatternBase as PatternBase, TypeInfo as TypeInfo
 from .type_conv import as_date as as_date, as_datetime as as_datetime, as_int as as_int, as_time as as_time, as_timedelta as as_timedelta
-from .type_def import T as T, JSONObject
+from ._type_def import T as T, JSONObject
 from .utils._dataclass_compat import dataclass_fields as dataclass_fields, dataclass_init_field_names as dataclass_init_field_names, dataclass_init_fields as dataclass_init_fields, dataclass_kw_only_init_field_names as dataclass_kw_only_init_field_names, set_new_attribute as set_new_attribute
 from .utils._function_builder import FunctionBuilder as FunctionBuilder
 from .utils._object_path import safe_get as safe_get

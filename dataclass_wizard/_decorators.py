@@ -5,7 +5,7 @@ from dataclasses import MISSING
 from functools import wraps
 from typing import TYPE_CHECKING, Callable, Union, cast
 
-from .type_def import DT
+from ._type_def import DT
 from .utils._function_builder import FunctionBuilder
 from .utils._typing_compat import is_union
 

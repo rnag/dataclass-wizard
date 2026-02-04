@@ -40,7 +40,7 @@ from .models import (Extras, TypeInfo, PatternBase,
                      LEAF_TYPES, LEAF_TYPES_NO_BYTES)
 from .models import get_skip_if_condition, finalize_skip_if
 from .type_conv import datetime_to_timestamp
-from .type_def import (
+from ._type_def import (
     NoneType, JSONObject,
     PyLiteralString,
     T, ExplicitNull

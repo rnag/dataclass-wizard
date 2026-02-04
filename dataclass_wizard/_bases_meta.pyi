@@ -15,7 +15,7 @@ from .enums import KeyAction, KeyCase, DateTimeTo, EnvPrecedence, EnvKeyStrategy
 from ._loaders import LoadMixin
 from .models import Condition
 from .models import TypeInfo, Extras
-from .type_def import E, T
+from ._type_def import E, T
 
 
 ALLOWED_MODES = Literal['runtime', 'codegen']

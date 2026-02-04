@@ -22,7 +22,7 @@ from typing import Union, Any, AnyStr
 
 from .errors import ParseError
 from ._lazy_imports import pytimeparse
-from .type_def import E, N, NUMBERS
+from ._type_def import E, N, NUMBERS
 from ._models_date import ZERO, UTC
 
 

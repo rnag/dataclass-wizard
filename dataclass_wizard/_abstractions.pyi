@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 from typing import AnyStr, TypeVar, ClassVar
 
 from .models import Extras, TypeInfo
-from .type_def import Encoder, JSONObject, ListOfJSONObject
+from ._type_def import Encoder, JSONObject, ListOfJSONObject
 
 
 # Create a generic variable that can be 'AbstractEnvWizard', or any subclass.

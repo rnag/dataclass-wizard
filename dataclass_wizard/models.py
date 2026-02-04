@@ -11,7 +11,7 @@ from ._models_date import UTC
 from ._decorators import setup_recursive_safe_function
 from .constants import PY310_OR_ABOVE, PY311_OR_ABOVE, PY314_OR_ABOVE
 from ._log import LOG
-from .type_def import DefFactory, ExplicitNull, PyNotRequired, NoneType
+from ._type_def import DefFactory, ExplicitNull, PyNotRequired, NoneType
 from .utils._function_builder import FunctionBuilder
 from .utils._object_path import split_object_path
 from .utils._typing_compat import get_origin_v2

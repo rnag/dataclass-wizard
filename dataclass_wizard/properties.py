@@ -7,7 +7,7 @@ from functools import wraps
 from typing import Any, Union, Literal
 
 from .constants import PY314_OR_ABOVE, PY310_OR_ABOVE
-from .type_def import NoneType
+from ._type_def import NoneType
 from .utils._typing_compat import (
     eval_forward_ref_if_needed,
     get_args,

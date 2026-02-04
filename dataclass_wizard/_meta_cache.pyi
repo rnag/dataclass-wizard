@@ -2,7 +2,7 @@ from typing import Any
 from weakref import WeakKeyDictionary
 
 from ._bases import AbstractMeta, META
-from .type_def import T
+from ._type_def import T
 
 META_BY_DATACLASS: WeakKeyDictionary[type, META] = WeakKeyDictionary()
 BASE_META_CLS: type | None = None

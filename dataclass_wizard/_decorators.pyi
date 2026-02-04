@@ -1,7 +1,7 @@
 from _typeshed import Incomplete
 from typing import Callable
 
-from .type_def import DT as DT
+from ._type_def import DT as DT
 from .utils._function_builder import FunctionBuilder as FunctionBuilder
 from .utils._typing_compat import is_union as is_union
 

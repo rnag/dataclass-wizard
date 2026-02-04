@@ -28,7 +28,7 @@ from .errors import (JSONWizardError,
                      ParseError,
                      type_name, MissingVars)
 from ._log import LOG, enable_library_debug_logging
-from .type_def import T, JSONObject, dataclass_transform
+from ._type_def import T, JSONObject, dataclass_transform
 from .utils._dataclass_compat import (apply_env_wizard_dataclass,
                                       dataclass_fields,
                                       dataclass_field_names,

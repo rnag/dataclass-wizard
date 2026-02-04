@@ -1,7 +1,7 @@
 import json
 
 from .._decorators import cached_property
-from ..type_def import T, Encoder, FileEncoder
+from .._type_def import T, Encoder, FileEncoder
 
 
 class Container(list[T]):

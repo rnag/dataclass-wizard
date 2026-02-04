@@ -37,7 +37,7 @@ from .type_conv import (
     as_datetime, as_date, as_int,
     as_time, as_timedelta, TRUTHY_VALUES,
 )
-from .type_def import DefFactory, JSONObject, NoneType, PyLiteralString, T
+from ._type_def import DefFactory, JSONObject, NoneType, PyLiteralString, T
 from .utils._dataclass_compat import (dataclass_fields,
                                       dataclass_init_fields,
                                       dataclass_init_field_names,

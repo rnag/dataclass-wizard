@@ -28,7 +28,7 @@ from dataclass_wizard.errors import (
     ParseError, MissingFields, UnknownKeysError, MissingData, InvalidConditionError
 )
 from dataclass_wizard.models import PatternBase
-from dataclass_wizard.type_def import NoneType
+from dataclass_wizard._type_def import NoneType
 from tests.unit.conftest import MyUUIDSubclass
 from tests.conftest import *
 from tests._typing import *

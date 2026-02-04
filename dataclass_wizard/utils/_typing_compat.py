@@ -24,7 +24,7 @@ from typing import Literal, Union, _AnnotatedAlias  # type: ignore
 
 from ._string_conv import repl_or_with_union
 from ..constants import PY310_OR_ABOVE, PY313_OR_ABOVE
-from ..type_def import (FREF,
+from .._type_def import (FREF,
                         PyRequired,
                         PyNotRequired,
                         PyReadOnly,

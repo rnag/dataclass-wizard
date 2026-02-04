@@ -11,7 +11,7 @@ from ._abstractions import W
 from .enums import KeyCase
 from .utils.containers import Container
 from ._serial_json import JSONWizard, SerializerHookMixin
-from .type_def import (T, ListOfJSONObject,
+from ._type_def import (T, ListOfJSONObject,
                        Encoder, Decoder, FileDecoder, FileEncoder, ParseFloat)
 
 

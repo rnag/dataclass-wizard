@@ -6,7 +6,7 @@ from weakref import WeakKeyDictionary, WeakSet
 from .constants import CATCH_ALL, PACKAGE_NAME
 from .errors import InvalidConditionError
 from .models import CatchAll, Condition, Field
-from .type_def import ExplicitNull
+from ._type_def import ExplicitNull
 from .utils._dataclass_compat import dataclass_fields, SEEN_DEFAULT, create_fn
 from .utils._typing_compat import (eval_forward_ref_if_needed,
                                    get_args,

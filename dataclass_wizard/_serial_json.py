@@ -9,7 +9,7 @@ from ._class_helper import call_meta_initializer_if_needed, str_pprint_fn
 from .constants import PACKAGE_NAME
 from ._dumpers import asdict
 from ._loaders import fromdict, fromlist
-from .type_def import dataclass_transform
+from ._type_def import dataclass_transform
 # noinspection PyProtectedMember
 from .utils._dataclass_compat import (dataclass_needs_refresh,
                                       set_new_attribute)

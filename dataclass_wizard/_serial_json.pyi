@@ -4,7 +4,7 @@ from typing import AnyStr, Collection, Callable, Protocol, dataclass_transform, 
 from ._abstractions import AbstractJSONWizard, W
 from ._bases_meta import BaseJSONWizardMeta, HookFn
 from .enums import KeyCase
-from .type_def import Decoder, Encoder, JSONObject, ListOfJSONObject
+from ._type_def import Decoder, Encoder, JSONObject, ListOfJSONObject
 
 
 def first_declared_attr_in_mro(cls: type, name: str) -> Callable | Any | None: ...
@@ -30,7 +30,7 @@ class SerializerHookMixin(Protocol):
 
         >>> from dataclasses import dataclass
         >>> from dataclass_wizard import JSONWizard
-        >>> from dataclass_wizard.type_def import JSONObject
+        >>> from dataclass_wizard._type_def import JSONObject
         >>>
         >>>
         >>> @dataclass

@@ -8,7 +8,7 @@ from .constants import TAG
 from ._decorators import cached_class_property
 from .enums import KeyAction, KeyCase, DateTimeTo, EnvKeyStrategy, EnvPrecedence
 from .models import Condition
-from .type_def import FrozenKeys
+from ._type_def import FrozenKeys
 
 if TYPE_CHECKING:
     from typing import Union

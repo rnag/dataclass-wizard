@@ -1,6 +1,6 @@
 from typing import Any
 
-from ..type_def import FREF
+from .._type_def import FREF
 
 __all__ = ['is_union',
            'get_origin',

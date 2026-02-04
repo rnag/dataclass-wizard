@@ -1,0 +1,119 @@
+import _abc
+import typing
+from collections.abc import Buffer as Buffer
+from os import PathLike
+from typing import (ClassVar, Deque as PyDeque, ForwardRef as PyForwardRef,
+                    LiteralString as PyLiteralString,
+                    NotRequired as PyNotRequired,
+                    Protocol as PyProtocol,
+                    ReadOnly as PyReadOnly,
+                    Required as PyRequired,
+                    TypedDict as PyTypedDict,
+                    Unpack as Unpack,
+                    dataclass_transform as dataclass_transform)
+
+DefFactory = typing.Callable[[], T]
+
+FrozenKeys = frozenset[str]
+JSONList = list[typing.Any]
+JSONObject = dict[str, typing.Any]
+ListOfJSONObject = list[JSONObject]
+NoneType = type(None)
+
+FileType = typing.Union[str, bytes, PathLike, int]
+EnvFileType = typing.Union[bool, FileType, typing.Iterable[FileType], None]
+JSONValue = typing.Union[None, str, bool, int, float, JSONList, JSONObject]
+ParseFloat = typing.Callable[[str], typing.Any]
+N = typing.Union[int, float]
+StrCollection = typing.Union[str, typing.Collection[str]]
+
+__all__ = ['Buffer', 'Unpack', 'PyForwardRef', 'PyProtocol', 'PyDeque', 'PyTypedDict', 'PyRequired', 'PyNotRequired', 'PyReadOnly', 'PyLiteralString', 'FrozenKeys', 'DefFactory', 'NoneType', 'ExplicitNullType', 'ExplicitNull', 'JSONList', 'JSONObject', 'ListOfJSONObject', 'JSONValue', 'FileType', 'EnvFileType', 'StrCollection', 'ParseFloat', 'Encoder', 'FileEncoder', 'Decoder', 'FileDecoder', 'NUMBERS', 'T', 'E', 'U', 'M', 'NT', 'DT', 'DD', 'N', 'S', 'LT', 'LSQ', 'FREF', 'dataclass_transform']
+
+NUMBERS: tuple
+T: typing.TypeVar
+E: typing.TypeVar
+U: typing.TypeVar
+M: typing.TypeVar
+NT: typing.TypeVar
+DT: typing.TypeVar
+DD: typing.TypeVar
+S: typing.TypeVar
+LT: typing.TypeVar
+LSQ: typing.TypeVar
+FREF: typing.TypeVar
+
+class ExplicitNullType:
+    _instance: ClassVar[ExplicitNullType] = ...
+    @classmethod
+    def __init__(cls) -> None: ...
+    def __bool__(self) -> bool: ...
+ExplicitNull: ExplicitNullType
+
+class Encoder(typing.Protocol):
+    __parameters__: ClassVar[tuple] = ...
+    _is_protocol: ClassVar[bool] = ...
+    __abstractmethods__: ClassVar[frozenset] = ...
+    _abc_impl: ClassVar[_abc._abc_data] = ...
+    __protocol_attrs__: ClassVar[set] = ...
+    def __call__(self, obj, *args, **kwargs) -> str: ...
+    @classmethod
+    def __subclasshook__(cls, other): ...
+    def __init__(self, *args, **kwargs) -> None: ...
+
+class FileEncoder(typing.Protocol):
+    __parameters__: ClassVar[tuple] = ...
+    _is_protocol: ClassVar[bool] = ...
+    __abstractmethods__: ClassVar[frozenset] = ...
+    _abc_impl: ClassVar[_abc._abc_data] = ...
+    __protocol_attrs__: ClassVar[set] = ...
+    def __call__(self, obj, file, **kwargs) -> typing.AnyStr: ...
+    @classmethod
+    def __subclasshook__(cls, other): ...
+    def __init__(self, *args, **kwargs) -> None: ...
+
+class Decoder(typing.Protocol):
+    __parameters__: ClassVar[tuple] = ...
+    _is_protocol: ClassVar[bool] = ...
+    __abstractmethods__: ClassVar[frozenset] = ...
+    _abc_impl: ClassVar[_abc._abc_data] = ...
+    __protocol_attrs__: ClassVar[set] = ...
+    def __call__(self, s: typing.AnyStr, **kwargs): ...
+    @classmethod
+    def __subclasshook__(cls, other): ...
+    def __init__(self, *args, **kwargs) -> None: ...
+
+class FileDecoder(typing.Protocol):
+    __parameters__: ClassVar[tuple] = ...
+    _is_protocol: ClassVar[bool] = ...
+    __abstractmethods__: ClassVar[frozenset] = ...
+    _abc_impl: ClassVar[_abc._abc_data] = ...
+    __protocol_attrs__: ClassVar[set] = ...
+    def __call__(self, file, **kwargs): ...
+    @classmethod
+    def __subclasshook__(cls, other): ...
+    def __init__(self, *args, **kwargs) -> None: ...
+
+# Names in __all__ with no definition:
+#   Buffer
+#   DefFactory
+#   EnvFileType
+#   FileType
+#   FrozenKeys
+#   JSONList
+#   JSONObject
+#   JSONValue
+#   ListOfJSONObject
+#   N
+#   NoneType
+#   ParseFloat
+#   PyDeque
+#   PyForwardRef
+#   PyLiteralString
+#   PyNotRequired
+#   PyProtocol
+#   PyReadOnly
+#   PyRequired
+#   PyTypedDict
+#   StrCollection
+#   Unpack
+#   dataclass_transform
