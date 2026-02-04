@@ -2,7 +2,7 @@ from os import PathLike, fspath, sep, altsep, getcwd
 from os.path import isabs
 from pathlib import Path
 
-from .lazy_imports import dotenv
+from ._lazy_imports import dotenv
 
 
 def get_secrets_map(cls, secret_dirs, *, reload=False):

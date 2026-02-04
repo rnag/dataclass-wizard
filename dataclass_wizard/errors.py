@@ -11,7 +11,6 @@ from typing import (ClassVar,
                     Iterable, Collection, Sequence)
 from uuid import UUID
 
-from .constants import PACKAGE_NAME
 from .utils._string_conv import normalize
 
 

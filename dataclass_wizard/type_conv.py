@@ -21,7 +21,7 @@ from json import loads, JSONDecodeError
 from typing import Union, Any, AnyStr
 
 from .errors import ParseError
-from .lazy_imports import pytimeparse
+from ._lazy_imports import pytimeparse
 from .type_def import E, N, NUMBERS
 from ._models_date import ZERO, UTC
 
