@@ -1,20 +1,19 @@
-import dataclass_wizard.bases
 import datetime
 from _typeshed import Incomplete
-from dataclass_wizard.bases import AbstractMeta as AbstractMeta, BaseDumpHook as BaseDumpHook
-from dataclass_wizard.class_helper import create_new_class as create_new_class, dataclass_field_to_skip_if as dataclass_field_to_skip_if, \
+from ._bases import AbstractMeta as AbstractMeta, BaseDumpHook as BaseDumpHook
+from .class_helper import create_new_class as create_new_class, dataclass_field_to_skip_if as dataclass_field_to_skip_if, \
     is_subclass_safe as is_subclass_safe, resolve_dataclass_field_to_alias_for_dump as resolve_dataclass_field_to_alias_for_dump, set_class_dumper as set_class_dumper
-from dataclass_wizard._meta_cache import get_meta as get_meta, create_meta as create_meta
-from dataclass_wizard.decorators import setup_recursive_safe_function as setup_recursive_safe_function, setup_recursive_safe_function_for_generic as setup_recursive_safe_function_for_generic
-from dataclass_wizard.enums import DateTimeTo as DateTimeTo, KeyCase as KeyCase
-from dataclass_wizard.errors import JSONWizardError as JSONWizardError, MissingData as MissingData, MissingFields as MissingFields, ParseError as ParseError
-from dataclass_wizard.models import Extras as Extras, PatternBase as PatternBase, TypeInfo as TypeInfo, finalize_skip_if as finalize_skip_if, get_skip_if_condition as get_skip_if_condition
-from dataclass_wizard.type_conv import datetime_to_timestamp as datetime_to_timestamp
-from dataclass_wizard.type_def import ExplicitNull as ExplicitNull, T as T, JSONObject
-from dataclass_wizard.utils._dataclass_compat import dataclass_field_names as dataclass_field_names, dataclass_fields as dataclass_fields, set_new_attribute as set_new_attribute
-from dataclass_wizard.utils._dict_helper import NestedDict as NestedDict
-from dataclass_wizard.utils._function_builder import FunctionBuilder as FunctionBuilder
-from dataclass_wizard.utils._typing_compat import eval_forward_ref_if_needed as eval_forward_ref_if_needed, get_keys_for_typed_dict as get_keys_for_typed_dict, get_origin_v2 as get_origin_v2, is_annotated as is_annotated, is_typed_dict as is_typed_dict, is_typed_dict_type_qualifier as is_typed_dict_type_qualifier, is_union as is_union
+from ._meta_cache import get_meta as get_meta, create_meta as create_meta
+from .decorators import setup_recursive_safe_function as setup_recursive_safe_function, setup_recursive_safe_function_for_generic as setup_recursive_safe_function_for_generic
+from .enums import DateTimeTo as DateTimeTo, KeyCase as KeyCase
+from .errors import JSONWizardError as JSONWizardError, MissingData as MissingData, MissingFields as MissingFields, ParseError as ParseError
+from .models import Extras as Extras, PatternBase as PatternBase, TypeInfo as TypeInfo, finalize_skip_if as finalize_skip_if, get_skip_if_condition as get_skip_if_condition
+from .type_conv import datetime_to_timestamp as datetime_to_timestamp
+from .type_def import ExplicitNull as ExplicitNull, T as T, JSONObject
+from .utils._dataclass_compat import dataclass_field_names as dataclass_field_names, dataclass_fields as dataclass_fields, set_new_attribute as set_new_attribute
+from .utils._dict_helper import NestedDict as NestedDict
+from .utils._function_builder import FunctionBuilder as FunctionBuilder
+from .utils._typing_compat import eval_forward_ref_if_needed as eval_forward_ref_if_needed, get_keys_for_typed_dict as get_keys_for_typed_dict, get_origin_v2 as get_origin_v2, is_annotated as is_annotated, is_typed_dict as is_typed_dict, is_typed_dict_type_qualifier as is_typed_dict_type_qualifier, is_union as is_union
 from dataclasses import Field
 from typing import Any, Callable, ClassVar, Collection, TypeVar
 
@@ -22,7 +21,6 @@ LEAF_TYPES: frozenset
 LEAF_TYPES_NO_BYTES: frozenset
 ZERO: datetime.timedelta
 UTC: datetime.timezone
-CLASS_TO_DUMP_FUNC: dict
 CLASS_TO_DUMPER: dict
 CATCH_ALL: str
 TAG: str
@@ -36,7 +34,7 @@ def default_compare_expr(f: Field[Any], locals_ns: dict[str, Any], default_name:
 def _type_returns_value_unchanged(arg, leaf_handling_as_subclass, origin: Incomplete | None = ...): ...
 def _all_return_value_unchanged(args, leaf_handling_as_subclass): ...
 
-class DumpMixin(dataclass_wizard.bases.BaseDumpHook):
+class DumpMixin(BaseDumpHook):
     transform_dataclass_field: ClassVar[None] = ...
     __DUMP_HOOKS__: ClassVar[dict] = ...
     @classmethod

@@ -22,7 +22,6 @@ from typing import Callable, ClassVar, TypeVar
 LEAF_TYPES: frozenset
 UTC: datetime.timezone
 TRUTHY_VALUES: frozenset
-CLASS_TO_LOAD_FUNC: dict
 CLASS_TO_LOADER: dict
 CATCH_ALL: str
 TAG: str

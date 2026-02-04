@@ -2,7 +2,6 @@ from collections import defaultdict
 from typing import Any, Callable, Sequence
 
 from ._abstractions import W, E, AbstractLoaderGenerator, AbstractDumperGenerator
-from ._bases import META, AbstractMeta
 from .constants import PACKAGE_NAME
 from .models import Condition
 from .type_def import T
@@ -34,15 +33,10 @@ DATACLASS_FIELD_TO_ENV_FOR_LOAD: dict[type, dict[str, Sequence[str]]] = defaultd
 # V1: A cached mapping, per dataclass, of instance field name to alias
 DATACLASS_FIELD_TO_ALIAS_FOR_DUMP: dict[type, dict[str, str]] = defaultdict(dict)
 
-# A cached mapping, per dataclass, of instance field name to alias
-DATACLASS_FIELD_TO_ALIAS: dict[type, dict[str, str]] = defaultdict(dict)
-
 # A cached mapping, per dataclass, of instance field name to `SkipIf` condition
 DATACLASS_FIELD_TO_SKIP_IF: dict[type, dict[str, Condition]] = defaultdict(dict)
 
-# A mapping of dataclass name to its Meta initializer (defined in
-# :class:`bases.BaseJSONWizardMeta`), which is only set when the
-# :class:`JSONSerializable.Meta` is sub-classed.
+# Cache: owner class -> its `Meta` inner class (only present when subclassed)
 META_INITIALIZER: dict[str, Callable[[type[W]], None]] = {}
 
 
@@ -55,12 +49,6 @@ def set_class_loader(cls_to_loader, class_or_instance, loader: type[AbstractLoad
 def set_class_dumper(cls: type, dumper: type[AbstractDumperGenerator]):
     """
     Set (and return) the dumper for a dataclass.
-    """
-
-
-def dataclass_field_to_json_field(cls: type) -> dict[str, str]:
-    """
-    Returns a mapping of dataclass field to JSON field.
     """
 
 

@@ -13,48 +13,36 @@ from .utils._typing_compat import (eval_forward_ref_if_needed,
                                    is_annotated)
 
 
-# Mapping of main dataclass to its `dump` function.
-CLASS_TO_DUMP_FUNC = {}
-
-# V1: A mapping of dataclass to its loader.
+# A mapping of dataclass to its loader.
 CLASS_TO_LOADER = {}
 
-# V1: A mapping of dataclass to its dumper.
+# A mapping of dataclass to its dumper.
 CLASS_TO_DUMPER = {}
 
-# Since the load process in V1 doesn't use Parsers currently, we use a sentinel
-# mapping to confirm if we need to setup the load config for a dataclass
-# on an initial run.
+# We use a sentinel mapping to confirm if we need to set up the load
+# config for a dataclass on an initial run.
 IS_CONFIG_SETUP = set()
 
-# V1 Load: A cached mapping, per dataclass, of instance field name to alias path
+# Load: A cached mapping, per dataclass, of instance field name to alias path
 DATACLASS_FIELD_TO_ALIAS_PATH_FOR_LOAD = defaultdict(dict)
 
-# V1 Dump: A cached mapping, per dataclass, of instance field name to alias path
+# Dump: A cached mapping, per dataclass, of instance field name to alias path
 DATACLASS_FIELD_TO_ALIAS_PATH_FOR_DUMP = defaultdict(dict)
 
-# V1 Load: A cached mapping, per dataclass, of instance field name to alias
+# Load: A cached mapping, per dataclass, of instance field name to alias
 DATACLASS_FIELD_TO_ALIAS_FOR_LOAD = defaultdict(dict)
 
-# V1 Load: A cached mapping, per dataclass, of instance field name to env var
+# Load: A cached mapping, per dataclass, of instance field name to env var
 DATACLASS_FIELD_TO_ENV_FOR_LOAD = defaultdict(dict)
 
-# V1 Dump: A cached mapping, per dataclass, of instance field name to alias
+# Dump: A cached mapping, per dataclass, of instance field name to alias
 DATACLASS_FIELD_TO_ALIAS_FOR_DUMP: dict[type, dict[str, str]] = defaultdict(dict)
-
-# A cached mapping, per dataclass, of instance field name to JSON field
-DATACLASS_FIELD_TO_ALIAS = defaultdict(dict)
 
 # A cached mapping, per dataclass, of instance field name to `SkipIf` condition
 DATACLASS_FIELD_TO_SKIP_IF = defaultdict(dict)
 
-# A mapping of dataclass name to its Meta initializer (defined in
-# :class:`bases.BaseJSONWizardMeta`), which is only set when the
-# :class:`JSONWizard.Meta` is sub-classed.
-META_INITIALIZER = {}
-
-
 # Cache: owner class -> its `Meta` inner class (only present when subclassed)
+META_INITIALIZER = {}
 
 
 def set_class_loader(cls_to_loader, class_or_instance, loader):
@@ -75,11 +63,6 @@ def set_class_dumper(cls_to_dumper, class_or_instance, dumper):
     cls_to_dumper[cls] = dumper_cls
 
     return dumper_cls
-
-
-def dataclass_field_to_json_field(cls):
-
-    return DATACLASS_FIELD_TO_ALIAS[cls]
 
 
 def dataclass_field_to_skip_if(cls):
@@ -157,7 +140,7 @@ def setup_config_for_cls(cls):
     dump_dataclass_field_to_path = DATACLASS_FIELD_TO_ALIAS_PATH_FOR_DUMP[cls]
 
     set_paths = False if dataclass_field_to_path else True
-    dataclass_field_to_skip_if = DATACLASS_FIELD_TO_SKIP_IF[cls]
+    field_to_skip_if = DATACLASS_FIELD_TO_SKIP_IF[cls]
     seen_default = False
 
     for f in dataclass_fields(cls):
@@ -192,7 +175,7 @@ def setup_config_for_cls(cls):
                                    dump_dataclass_field_to_alias)
             elif value := f.metadata.get('__skip_if__'):
                 if isinstance(value, Condition):
-                    dataclass_field_to_skip_if[f.name] = value
+                    field_to_skip_if[f.name] = value
 
         # Check for a "Catch All" field
         if field_type is CatchAll:
@@ -214,7 +197,7 @@ def setup_config_for_cls(cls):
                                    load_dataclass_field_to_env,
                                    dump_dataclass_field_to_alias)
                 elif isinstance(extra, Condition):
-                    dataclass_field_to_skip_if[f.name] = extra
+                    field_to_skip_if[f.name] = extra
                     if not getattr(extra, '_wrapped', False):
                         raise InvalidConditionError(cls, f.name) from None
 
