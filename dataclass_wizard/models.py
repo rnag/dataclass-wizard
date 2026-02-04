@@ -1327,7 +1327,7 @@ def get_skip_if_condition(skip_if, _locals, operand_2=None, condition_i=None, co
         '== other_var'
     """
     # TODO: To avoid circular import
-    from .class_helper import is_builtin
+    from ._class_helper import is_builtin
 
     if skip_if is None:
         return False

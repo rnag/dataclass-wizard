@@ -12,7 +12,7 @@ from typing import Mapping
 from ._log import LOG
 from ._meta_cache import META_BY_DATACLASS, get_meta, set_base_meta_cls
 from ._bases import AbstractMeta, META, AbstractEnvMeta
-from .class_helper import (
+from ._class_helper import (
     META_INITIALIZER,
     DATACLASS_FIELD_TO_ALIAS_FOR_LOAD,
     DATACLASS_FIELD_TO_ENV_FOR_LOAD,

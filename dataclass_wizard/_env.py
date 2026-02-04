@@ -16,7 +16,7 @@ from .models import Extras, TypeInfo, SEQUENCE_ORIGINS, MAPPING_ORIGINS
 from .type_conv import as_list, as_dict
 from ._bases import META, AbstractEnvMeta
 from ._bases_meta import BaseEnvWizardMeta, EnvMeta, register_type
-from .class_helper import (resolve_dataclass_field_to_env_for_load,
+from ._class_helper import (resolve_dataclass_field_to_env_for_load,
                            DATACLASS_FIELD_TO_ALIAS_PATH_FOR_LOAD,
                            call_meta_initializer_if_needed)
 from ._meta_cache import get_meta

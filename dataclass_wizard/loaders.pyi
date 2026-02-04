@@ -1,7 +1,7 @@
 import datetime
 from _typeshed import Incomplete
 from ._bases import AbstractMeta as AbstractMeta, BaseLoadHook as BaseLoadHook
-from .class_helper import create_new_class as create_new_class, \
+from ._class_helper import create_new_class as create_new_class, \
     is_subclass_safe as is_subclass_safe, resolve_dataclass_field_to_alias_for_load as resolve_dataclass_field_to_alias_for_load, set_class_loader as set_class_loader
 from ._meta_cache import get_meta as get_meta, create_meta as create_meta
 from .decorators import process_patterned_date_time as process_patterned_date_time, setup_recursive_safe_function as setup_recursive_safe_function, setup_recursive_safe_function_for_generic as setup_recursive_safe_function_for_generic

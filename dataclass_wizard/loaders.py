@@ -16,7 +16,7 @@ from ._log import LOG
 from ._models_date import UTC
 from ._bases import AbstractMeta, BaseLoadHook, META
 from ._sentinels import UNSET
-from .class_helper import (is_subclass_safe,
+from ._class_helper import (is_subclass_safe,
                            resolve_dataclass_field_to_alias_for_load,
                            DATACLASS_FIELD_TO_ALIAS_PATH_FOR_LOAD,
                            CLASS_TO_LOADER, set_class_loader, create_new_class)

@@ -70,7 +70,7 @@ from typing import (
 
 from ..properties import property_wizard
 from ..constants import PACKAGE_NAME
-from ..class_helper import get_class_name
+from .._class_helper import get_class_name
 from dataclass_wizard._models_date import UTC
 from ..type_def import PyDeque, JSONList, JSONObject, JSONValue, T, NUMBERS
 from dataclass_wizard.utils._string_case import to_pascal_case, to_snake_case
