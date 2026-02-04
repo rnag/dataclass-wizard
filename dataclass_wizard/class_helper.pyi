@@ -1,5 +1,5 @@
-from collections import defaultdict
-from typing import Any, Callable, Sequence
+from typing import Any, Callable, Sequence, TypeVar
+from weakref import WeakKeyDictionary, WeakSet
 
 from ._abstractions import W, E, AbstractLoaderGenerator, AbstractDumperGenerator
 from .constants import PACKAGE_NAME
@@ -7,38 +7,44 @@ from .models import Condition
 from .type_def import T
 from .utils._object_path import PathType
 
-# V1: A mapping of dataclass to its loader.
-CLASS_TO_LOADER: dict[type, type[AbstractLoaderGenerator]] = {}
+# A mapping of dataclass to its loader.
+CLASS_TO_LOADER: WeakKeyDictionary[type, type[AbstractLoaderGenerator]]
 
-# V1: A mapping of dataclass to its dumper.
-CLASS_TO_DUMPER: dict[type, type[AbstractDumperGenerator]] = {}
+# A mapping of dataclass to its dumper.
+CLASS_TO_DUMPER: WeakKeyDictionary[type, type[AbstractDumperGenerator]]
 
-# Since the load process in V1 doesn't use Parsers currently, we use a sentinel
-# mapping to confirm if we need to setup the load config for a dataclass
-# on an initial run.
-IS_CONFIG_SETUP: set[type] = set()
+# We use a sentinel mapping to confirm if we need to set up the load
+# config for a dataclass on an initial run.
+IS_CONFIG_SETUP: WeakSet[type]
 
-# V1: A cached mapping, per dataclass, of instance field name to JSON path
-DATACLASS_FIELD_TO_ALIAS_PATH_FOR_LOAD: dict[type, dict[str, Sequence[PathType]]] = defaultdict(dict)
+# A cached mapping, per dataclass, of instance field name to JSON path
+DATACLASS_FIELD_TO_ALIAS_PATH_FOR_LOAD: WeakKeyDictionary[type, dict[str, Sequence[PathType]]]
 
-# V1 Dump: A cached mapping, per dataclass, of instance field name to alias path
-DATACLASS_FIELD_TO_ALIAS_PATH_FOR_DUMP = defaultdict(dict)
+# Dump: A cached mapping, per dataclass, of instance field name to alias path
+DATACLASS_FIELD_TO_ALIAS_PATH_FOR_DUMP: WeakKeyDictionary[type, dict[str, Sequence[PathType]]]
 
-# V1: A cached mapping, per dataclass, of instance field name to alias
-DATACLASS_FIELD_TO_ALIAS_FOR_LOAD: dict[type, dict[str, Sequence[str]]] = defaultdict(dict)
+# A cached mapping, per dataclass, of instance field name to alias
+DATACLASS_FIELD_TO_ALIAS_FOR_LOAD: WeakKeyDictionary[type, dict[str, Sequence[str]]]
 
-# V1: A cached mapping, per dataclass, of instance field name to env var
-DATACLASS_FIELD_TO_ENV_FOR_LOAD: dict[type, dict[str, Sequence[str]]] = defaultdict(dict)
+# A cached mapping, per dataclass, of instance field name to env var
+DATACLASS_FIELD_TO_ENV_FOR_LOAD: WeakKeyDictionary[type, dict[str, Sequence[str]]]
 
-# V1: A cached mapping, per dataclass, of instance field name to alias
-DATACLASS_FIELD_TO_ALIAS_FOR_DUMP: dict[type, dict[str, str]] = defaultdict(dict)
+# A cached mapping, per dataclass, of instance field name to alias
+DATACLASS_FIELD_TO_ALIAS_FOR_DUMP: WeakKeyDictionary[type, dict[str, str]]
 
 # A cached mapping, per dataclass, of instance field name to `SkipIf` condition
-DATACLASS_FIELD_TO_SKIP_IF: dict[type, dict[str, Condition]] = defaultdict(dict)
+DATACLASS_FIELD_TO_SKIP_IF: WeakKeyDictionary[type, dict[str, Condition]]
 
 # Cache: owner class -> its `Meta` inner class (only present when subclassed)
 META_INITIALIZER: dict[str, Callable[[type[W]], None]] = {}
 
+V = TypeVar('V')
+
+def per_cls(
+    cache: WeakKeyDictionary[type, V],
+    cls: type,
+    factory: Callable[[], V] = dict,
+) -> V: ...
 
 def set_class_loader(cls_to_loader, class_or_instance, loader: type[AbstractLoaderGenerator]):
     """

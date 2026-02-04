@@ -13,10 +13,14 @@ from ._log import LOG
 from ._meta_cache import META_BY_DATACLASS, get_meta, set_base_meta_cls
 from ._bases import AbstractMeta, META, AbstractEnvMeta
 from .class_helper import (
-    META_INITIALIZER, get_outer_class_name, get_class_name, create_new_class,
+    META_INITIALIZER,
     DATACLASS_FIELD_TO_ALIAS_FOR_LOAD,
     DATACLASS_FIELD_TO_ENV_FOR_LOAD,
-    DATACLASS_FIELD_TO_ALIAS_FOR_DUMP, )
+    DATACLASS_FIELD_TO_ALIAS_FOR_DUMP,
+    create_new_class,
+    get_outer_class_name,
+    get_class_name,
+    per_cls)
 from .dumpers import DumpMixin, get_dumper
 from .enums import KeyAction, KeyCase, DateTimeTo, EnvKeyStrategy, EnvPrecedence
 
@@ -211,10 +215,10 @@ class BaseJSONWizardMeta(AbstractMeta):
             cls.field_to_alias_load = field_to_alias
 
         if (field_to_alias := cls.field_to_alias_dump) is not None:
-            DATACLASS_FIELD_TO_ALIAS_FOR_DUMP[dataclass].update(field_to_alias)
+            per_cls(DATACLASS_FIELD_TO_ALIAS_FOR_DUMP, dataclass).update(field_to_alias)
 
         if (field_to_alias := cls.field_to_alias_load) is not None:
-            DATACLASS_FIELD_TO_ALIAS_FOR_LOAD[dataclass].update({
+            per_cls(DATACLASS_FIELD_TO_ALIAS_FOR_LOAD, dataclass).update({
                 k: (v, ) if isinstance(v, str) else v
                 for k, v in field_to_alias.items()
             })
@@ -304,10 +308,10 @@ class BaseEnvWizardMeta(AbstractEnvMeta):
             cls, 'dump_case', KeyCase)
 
         if (field_to_alias := cls.field_to_alias_dump) is not None:
-            DATACLASS_FIELD_TO_ALIAS_FOR_DUMP[env_class].update(field_to_alias)
+            per_cls(DATACLASS_FIELD_TO_ALIAS_FOR_DUMP, env_class).update(field_to_alias)
 
         if (field_to_env := cls.field_to_env_load) is not None:
-            DATACLASS_FIELD_TO_ENV_FOR_LOAD[env_class].update({
+            per_cls(DATACLASS_FIELD_TO_ENV_FOR_LOAD, env_class).update({
                 k: (v, ) if isinstance(v, str) else v
                 for k, v in field_to_env.items()
             })

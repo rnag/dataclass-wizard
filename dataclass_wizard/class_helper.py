@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from collections import defaultdict
 from dataclasses import MISSING
+from weakref import WeakKeyDictionary, WeakSet
 
 from .constants import CATCH_ALL, PACKAGE_NAME
 from .errors import InvalidConditionError
@@ -14,35 +14,43 @@ from .utils._typing_compat import (eval_forward_ref_if_needed,
 
 
 # A mapping of dataclass to its loader.
-CLASS_TO_LOADER = {}
+CLASS_TO_LOADER = WeakKeyDictionary()
 
 # A mapping of dataclass to its dumper.
-CLASS_TO_DUMPER = {}
+CLASS_TO_DUMPER = WeakKeyDictionary()
 
 # We use a sentinel mapping to confirm if we need to set up the load
 # config for a dataclass on an initial run.
-IS_CONFIG_SETUP = set()
+IS_CONFIG_SETUP = WeakSet()
 
 # Load: A cached mapping, per dataclass, of instance field name to alias path
-DATACLASS_FIELD_TO_ALIAS_PATH_FOR_LOAD = defaultdict(dict)
+DATACLASS_FIELD_TO_ALIAS_PATH_FOR_LOAD = WeakKeyDictionary()
 
 # Dump: A cached mapping, per dataclass, of instance field name to alias path
-DATACLASS_FIELD_TO_ALIAS_PATH_FOR_DUMP = defaultdict(dict)
+DATACLASS_FIELD_TO_ALIAS_PATH_FOR_DUMP = WeakKeyDictionary()
 
 # Load: A cached mapping, per dataclass, of instance field name to alias
-DATACLASS_FIELD_TO_ALIAS_FOR_LOAD = defaultdict(dict)
+DATACLASS_FIELD_TO_ALIAS_FOR_LOAD = WeakKeyDictionary()
 
 # Load: A cached mapping, per dataclass, of instance field name to env var
-DATACLASS_FIELD_TO_ENV_FOR_LOAD = defaultdict(dict)
+DATACLASS_FIELD_TO_ENV_FOR_LOAD = WeakKeyDictionary()
 
 # Dump: A cached mapping, per dataclass, of instance field name to alias
-DATACLASS_FIELD_TO_ALIAS_FOR_DUMP: dict[type, dict[str, str]] = defaultdict(dict)
+DATACLASS_FIELD_TO_ALIAS_FOR_DUMP = WeakKeyDictionary()
 
 # A cached mapping, per dataclass, of instance field name to `SkipIf` condition
-DATACLASS_FIELD_TO_SKIP_IF = defaultdict(dict)
+DATACLASS_FIELD_TO_SKIP_IF = WeakKeyDictionary()
 
 # Cache: owner class -> its `Meta` inner class (only present when subclassed)
 META_INITIALIZER = {}
+
+
+def per_cls(cache, cls, factory=dict):
+    # returns the per-class dict, creating if absent
+    value = cache.get(cls)
+    if value is None:
+        value = cache[cls] = factory()
+    return value
 
 
 def set_class_loader(cls_to_loader, class_or_instance, loader):
@@ -66,8 +74,7 @@ def set_class_dumper(cls_to_dumper, class_or_instance, dumper):
 
 
 def dataclass_field_to_skip_if(cls):
-
-    return DATACLASS_FIELD_TO_SKIP_IF[cls]
+    return per_cls(DATACLASS_FIELD_TO_SKIP_IF, cls)
 
 
 def resolve_dataclass_field_to_alias_for_dump(cls):
@@ -132,15 +139,15 @@ def _process_field(name: str,
 
 # Set up load and dump config for dataclass
 def setup_config_for_cls(cls):
-    load_dataclass_field_to_alias = DATACLASS_FIELD_TO_ALIAS_FOR_LOAD[cls]
-    load_dataclass_field_to_env = DATACLASS_FIELD_TO_ENV_FOR_LOAD[cls]
-    dump_dataclass_field_to_alias = DATACLASS_FIELD_TO_ALIAS_FOR_DUMP[cls]
+    load_dataclass_field_to_alias = per_cls(DATACLASS_FIELD_TO_ALIAS_FOR_LOAD, cls)
+    load_dataclass_field_to_env = per_cls(DATACLASS_FIELD_TO_ENV_FOR_LOAD, cls)
+    dump_dataclass_field_to_alias = per_cls(DATACLASS_FIELD_TO_ALIAS_FOR_DUMP, cls)
 
-    dataclass_field_to_path = DATACLASS_FIELD_TO_ALIAS_PATH_FOR_LOAD[cls]
-    dump_dataclass_field_to_path = DATACLASS_FIELD_TO_ALIAS_PATH_FOR_DUMP[cls]
+    dataclass_field_to_path = per_cls(DATACLASS_FIELD_TO_ALIAS_PATH_FOR_LOAD, cls)
+    dump_dataclass_field_to_path = per_cls(DATACLASS_FIELD_TO_ALIAS_PATH_FOR_DUMP, cls)
 
     set_paths = False if dataclass_field_to_path else True
-    field_to_skip_if = DATACLASS_FIELD_TO_SKIP_IF[cls]
+    field_to_skip_if = per_cls(DATACLASS_FIELD_TO_SKIP_IF, cls)
     seen_default = False
 
     for f in dataclass_fields(cls):
