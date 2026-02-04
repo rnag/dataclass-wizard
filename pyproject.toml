@@ -178,6 +178,7 @@ files = [
     # TODO: typing for unit tests
     # "tests",
 ]
+exclude = '^dataclass_wizard/v0/'
 show_column_numbers = true
 show_error_codes = true
 show_traceback = true
@@ -185,6 +186,10 @@ ignore_missing_imports = true
 local_partial_types = true
 no_implicit_optional = true
 check_untyped_defs = false
+
+[[tool.mypy.overrides]]
+module = ["dataclass_wizard.v0.*"]
+ignore_errors = true
 
 [[tool.bumpversion.files]]
 filename = "dataclass_wizard/__version__.py"
