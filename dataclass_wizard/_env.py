@@ -13,7 +13,7 @@ from ._path_util import get_secrets_map, get_dotenv_map
 from .enums import EnvKeyStrategy, EnvPrecedence
 from ._loaders import LoadMixin as V1LoadMixin, get_loader
 from .models import Extras, TypeInfo, SEQUENCE_ORIGINS, MAPPING_ORIGINS
-from .type_conv import as_list, as_dict
+from ._type_conv import as_list, as_dict
 from ._bases import META, AbstractEnvMeta
 from ._bases_meta import BaseEnvWizardMeta, EnvMeta, register_type
 from ._class_helper import (resolve_dataclass_field_to_env_for_load,

@@ -33,7 +33,7 @@ from .errors import (JSONWizardError,
                      ParseError,
                      UnknownKeysError)
 from .models import Extras, PatternBase, TypeInfo, LEAF_TYPES
-from .type_conv import (
+from ._type_conv import (
     as_datetime, as_date, as_int,
     as_time, as_timedelta, TRUTHY_VALUES,
 )

@@ -8,7 +8,7 @@ from ._decorators import setup_recursive_safe_function as setup_recursive_safe_f
 from .enums import DateTimeTo as DateTimeTo, KeyCase as KeyCase
 from .errors import JSONWizardError as JSONWizardError, MissingData as MissingData, MissingFields as MissingFields, ParseError as ParseError
 from .models import Extras as Extras, PatternBase as PatternBase, TypeInfo as TypeInfo, finalize_skip_if as finalize_skip_if, get_skip_if_condition as get_skip_if_condition
-from .type_conv import datetime_to_timestamp as datetime_to_timestamp
+from ._type_conv import datetime_to_timestamp as datetime_to_timestamp
 from ._type_def import ExplicitNull as ExplicitNull, T as T, JSONObject
 from .utils._dataclass_compat import dataclass_field_names as dataclass_field_names, dataclass_fields as dataclass_fields, set_new_attribute as set_new_attribute
 from .utils._dict_helper import NestedDict as NestedDict

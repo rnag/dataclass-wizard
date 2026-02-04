@@ -62,12 +62,12 @@ def v1_safe_get(data, path, raise_):
 
 
 def v1_env_safe_get(data, first_key, path, raise_):
-    from ..v1.type_conv import as_collection_v1
+    from ..._type_conv import as_collection
 
     current_data = data
 
     try:
-        current_data = as_collection_v1(current_data[first_key])
+        current_data = as_collection(current_data[first_key])
 
         for p in path:
             current_data = current_data[p]

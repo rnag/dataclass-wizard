@@ -1,7 +1,7 @@
 from dataclasses import MISSING
 
 from ..errors import ParseError
-from ..type_conv import as_collection
+from .._type_conv import as_collection
 
 
 def safe_get(data, path, raise_):

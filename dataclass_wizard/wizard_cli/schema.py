@@ -74,7 +74,7 @@ from .._class_helper import get_class_name
 from dataclass_wizard._models_date import UTC
 from .._type_def import PyDeque, JSONList, JSONObject, JSONValue, T, NUMBERS
 from dataclass_wizard.utils._string_case import to_pascal_case, to_snake_case
-from ..type_conv import TRUTHY_VALUES
+from .._type_conv import TRUTHY_VALUES
 
 
 # Some unconstrained type variables.  These are used by the container types.

@@ -26,7 +26,7 @@ from .enums import KeyAction, KeyCase, DateTimeTo, EnvKeyStrategy, EnvPrecedence
 
 from .errors import ParseError
 from ._loaders import LoadMixin, get_loader
-from .type_conv import as_enum
+from ._type_conv import as_enum
 from ._type_def import E
 
 ALLOWED_MODES = ('runtime', 'codegen')

@@ -69,8 +69,8 @@ def as_int(o: Union[float, bool],
 
 
 def as_datetime(o: Union[int, float, datetime],
-                __from_timestamp: Callable[[float, tzinfo], datetime],
-                __tz=None):
+                _from_timestamp: Callable[[float, tzinfo], datetime],
+                _tz=None):
     """
     V1: Attempt to convert an object `o` to a :class:`datetime` object using the
     below logic.
@@ -89,7 +89,7 @@ def as_datetime(o: Union[int, float, datetime],
     try:
         # We can assume that `o` is a number, as generally this will be the
         # case.
-        return __from_timestamp(o, __tz)  # type: ignore[arg-type]
+        return _from_timestamp(o, _tz)  # type: ignore[arg-type]
 
     except Exception:
         # Note: the `__self__` attribute refers to the class bound
@@ -98,7 +98,7 @@ def as_datetime(o: Union[int, float, datetime],
         # See: https://stackoverflow.com/a/41258933/10237506
         #
         # noinspection PyUnresolvedReferences
-        if o.__class__ is __from_timestamp.__self__:  # type: ignore[attr-defined]
+        if o.__class__ is _from_timestamp.__self__:  # type: ignore[attr-defined]
             return o
 
         # Check `type` explicitly, because `bool` is a sub-class of `int`
@@ -109,9 +109,9 @@ def as_datetime(o: Union[int, float, datetime],
 
 
 def as_date(o: Union[int, float, date],
-            __from_timestamp: Callable[[float, tzinfo], datetime],
-            __tz=None,
-            __cls=date):
+            _from_timestamp: Callable[[float, tzinfo], datetime],
+            _tz=None,
+            _cls=date):
     """
     V1: Attempt to convert an object `o` to a :class:`date` object using the
     below logic.
@@ -130,7 +130,7 @@ def as_date(o: Union[int, float, date],
     try:
         # We can assume that `o` is a number, as generally this will be the
         # case.
-        return __from_timestamp(o, __tz).date()  # type: ignore[arg-type]
+        return _from_timestamp(o, _tz).date()  # type: ignore[arg-type]
 
     except Exception:
         # Note: the `__self__` attribute refers to the class bound
@@ -139,7 +139,7 @@ def as_date(o: Union[int, float, date],
         # See: https://stackoverflow.com/a/41258933/10237506
         #
         # noinspection PyUnresolvedReferences
-        if o.__class__ is __cls:
+        if o.__class__ is _cls:
             return o
 
         # Check `type` explicitly, because `bool` is a sub-class of `int`

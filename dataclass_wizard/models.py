@@ -399,7 +399,7 @@ class PatternBase:
 
     @setup_recursive_safe_function(add_cls=False)
     def load_to_pattern(self, tp, extras):
-        from .type_conv import as_datetime, as_date, as_time
+        from ._type_conv import as_datetime, as_date, as_time
 
         v = tp.v()
 
