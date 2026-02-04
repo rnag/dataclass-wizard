@@ -89,7 +89,7 @@ def as_datetime(o: Union[int, float, datetime],
     try:
         # We can assume that `o` is a number, as generally this will be the
         # case.
-        return __from_timestamp(o, __tz)
+        return __from_timestamp(o, __tz)  # type: ignore[arg-type]
 
     except Exception:
         # Note: the `__self__` attribute refers to the class bound
@@ -98,7 +98,7 @@ def as_datetime(o: Union[int, float, datetime],
         # See: https://stackoverflow.com/a/41258933/10237506
         #
         # noinspection PyUnresolvedReferences
-        if o.__class__ is __from_timestamp.__self__:
+        if o.__class__ is __from_timestamp.__self__:  # type: ignore[attr-defined]
             return o
 
         # Check `type` explicitly, because `bool` is a sub-class of `int`
@@ -130,7 +130,7 @@ def as_date(o: Union[int, float, date],
     try:
         # We can assume that `o` is a number, as generally this will be the
         # case.
-        return __from_timestamp(o, __tz).date()
+        return __from_timestamp(o, __tz).date()  # type: ignore[arg-type]
 
     except Exception:
         # Note: the `__self__` attribute refers to the class bound
@@ -195,15 +195,15 @@ def as_timedelta(o: Union[str, N, timedelta],
     if t is str:
         # Check if the string represents a numeric value like "1.23"
         # Ref: https://stackoverflow.com/a/23639915/10237506
-        if o.replace('.', '', 1).isdigit():
-            seconds = float(o)
+        if o.replace('.', '', 1).isdigit():  # type: ignore
+            seconds = float(o)  # type: ignore[arg-type]
         else:
             # Otherwise, parse strings using `pytimeparse`
             seconds = pytimeparse.parse(o)
 
     # Check `type` explicitly, because `bool` is a sub-class of `int`
     elif t in NUMBERS:
-        seconds = o
+        seconds = o  # type: ignore[assignment]
 
     elif t is base_type:
         return o
@@ -350,12 +350,12 @@ def as_dict(
 
     if json_enabled and _looks_like_json(s, strip):
         try:
-            out = loads(s)
+            _out = loads(s)
         except JSONDecodeError as e:
             raise ValueError(f'Invalid JSON for dict value: {s!r}') from e
-        if not isinstance(out, dict):
-            raise ValueError(f'Expected JSON object for dict value, got {type(out).__name__}')
-        return out
+        if not isinstance(_out, dict):
+            raise ValueError(f'Expected JSON object for dict value, got {type(_out).__name__}')
+        return _out
 
     # Split into pairs (with quoting support when needed)
     if '"' not in s and "'" not in s:
@@ -391,11 +391,11 @@ def as_dict(
 
 
 def as_enum(o: AnyStr | N,
-            base_type: type[E],
+            base_type: type[E],  # type: ignore[valid-type]
             lookup_func=lambda base_type, o: base_type[o],
             transform_func=lambda o: o.upper().replace(' ', '_'),
             raise_=True
-            ) -> E | None:
+            ) -> E | None:  # type: ignore[valid-type]
     """
     Return `o` if it's already an :class:`Enum` of type `base_type`. If `o` is
     None or an empty string, return None.
