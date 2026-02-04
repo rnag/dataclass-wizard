@@ -725,7 +725,7 @@ class DumpMixin(BaseDumpHook):
         pe = ParseError(
             err, origin, type_ann, 'dump',
             resolution=f'Register a dump hook for {ParseError.name(origin)} '
-                       f'(v1: `register_type` / `Meta.type_to_dump_hook`).',
+                       f'(`register_type` / `Meta.type_to_dump_hook`).',
             unsupported_type=origin
         )
         raise pe from None

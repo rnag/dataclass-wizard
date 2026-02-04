@@ -213,7 +213,7 @@ def load_func_for_dataclass(
     }
 
     # we are being run for a nested dataclass
-    # NOTE: I don't believe this path exists, since `v1._loaders.from_dict`
+    # NOTE: I don't believe this path exists, since `_loaders.from_dict`
     # is used for nested dataclasses.
     #
     # else:

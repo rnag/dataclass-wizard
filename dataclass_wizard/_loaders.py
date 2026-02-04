@@ -1013,7 +1013,7 @@ class LoadMixin(BaseLoadHook):
         pe = ParseError(
             err, origin, type_ann, 'load',
             resolution=f'Register a load hook for {ParseError.name(origin)} '
-                       f'(v1: `register_type` / `Meta.type_to_load_hook`).',
+                       f'(`register_type` / `Meta.type_to_load_hook`).',
             unsupported_type=origin
         )
         raise pe from None
@@ -1174,7 +1174,7 @@ def load_func_for_dataclass(
         extras['cls'] = cls
         extras['cls_name'] = cls_name
 
-        # Added for a `v1.EnvWizard` main class, which doesn't set this in globals
+        # Added for a `EnvWizard` main class, which doesn't set this in globals
         fn_gen.globals.setdefault('raise_missing_fields', check_and_raise_missing_fields)
 
     key_case: KeyCase | None = cls_loader.transform_json_field

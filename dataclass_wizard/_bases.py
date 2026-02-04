@@ -187,30 +187,30 @@ class BaseMeta(metaclass=ABCOrAndMeta):
     # Note: Enabling Debug mode may have a minor performance impact.
     debug: ClassVar['bool | int | str'] = False
 
-    # Custom load hooks for extending type support in the v1 engine.
+    # Custom load hooks for extending type support.
     #
     # Mapping: {Type -> hook}
     #
     # A hook must accept either:
     #   - one positional argument (runtime hook): value -> object
-    #   - two positional arguments (v1 hook): (TypeInfo, Extras) -> str | TypeInfo
+    #   - two positional arguments (codegen hook): (TypeInfo, Extras) -> str | TypeInfo
     #
     # The hook is invoked when loading a value annotated with the given type.
     type_to_load_hook: ClassVar[TypeToHook | None] = None
 
-    # Custom dump hooks for extending type support in the v1 engine.
+    # Custom dump hooks for extending type support.
     #
     # Mapping: {Type -> hook}
     #
     # A hook must accept either:
     #   - one positional argument (runtime hook): object -> JSON-serializable value
-    #   - two positional arguments (v1 hook): (TypeInfo, Extras) -> str | TypeInfo
+    #   - two positional arguments (codegen hook): (TypeInfo, Extras) -> str | TypeInfo
     #
     # The hook is invoked when dumping a value whose runtime type matches
     # the given type.
     type_to_dump_hook: ClassVar[TypeToHook | None] = None
 
-    # ``pre_decoder``: Optional hook called before ``v1`` type loading.
+    # ``pre_decoder``: Optional hook called before type loading.
     # Receives the container type plus (cls, TypeInfo, Extras) and may return a
     # transformed ``TypeInfo`` (e.g., wrapped in a function which decodes
     # JSON/delimited strings into list/dict for env loading). Returning the
