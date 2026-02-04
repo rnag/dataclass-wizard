@@ -1,24 +1,23 @@
-import dataclass_wizard.bases
 import datetime
 from _typeshed import Incomplete
-from dataclass_wizard.bases import AbstractMeta as AbstractMeta, BaseLoadHook as BaseLoadHook
-from dataclass_wizard.class_helper import create_new_class as create_new_class, \
+from ._bases import AbstractMeta as AbstractMeta, BaseLoadHook as BaseLoadHook
+from .class_helper import create_new_class as create_new_class, \
     is_subclass_safe as is_subclass_safe, resolve_dataclass_field_to_alias_for_load as resolve_dataclass_field_to_alias_for_load, set_class_loader as set_class_loader
-from dataclass_wizard._meta_cache import get_meta as get_meta, create_meta as create_meta
-from dataclass_wizard.decorators import process_patterned_date_time as process_patterned_date_time, setup_recursive_safe_function as setup_recursive_safe_function, setup_recursive_safe_function_for_generic as setup_recursive_safe_function_for_generic
-from dataclass_wizard.enums import KeyAction as KeyAction, KeyCase as KeyCase
-from dataclass_wizard.errors import JSONWizardError as JSONWizardError, MissingData as MissingData, MissingFields as MissingFields, ParseError as ParseError, UnknownKeysError as UnknownKeysError
-from dataclass_wizard.models import Extras as Extras, PatternBase as PatternBase, TypeInfo as TypeInfo
-from dataclass_wizard.type_conv import as_date as as_date, as_datetime as as_datetime, as_int as as_int, as_time as as_time, as_timedelta as as_timedelta
-from dataclass_wizard.type_def import T as T, JSONObject
-from dataclass_wizard.utils._dataclass_compat import dataclass_fields as dataclass_fields, dataclass_init_field_names as dataclass_init_field_names, dataclass_init_fields as dataclass_init_fields, dataclass_kw_only_init_field_names as dataclass_kw_only_init_field_names, set_new_attribute as set_new_attribute
-from dataclass_wizard.utils._function_builder import FunctionBuilder as FunctionBuilder
-from dataclass_wizard.utils._object_path import safe_get as safe_get
-from dataclass_wizard.utils._string_conv import possible_json_keys as possible_json_keys
-from dataclass_wizard.utils._typing_compat import eval_forward_ref_if_needed as eval_forward_ref_if_needed, get_keys_for_typed_dict as get_keys_for_typed_dict, get_origin_v2 as get_origin_v2, is_annotated as is_annotated, is_typed_dict as is_typed_dict, is_typed_dict_type_qualifier as is_typed_dict_type_qualifier, is_union as is_union
+from ._meta_cache import get_meta as get_meta, create_meta as create_meta
+from .decorators import process_patterned_date_time as process_patterned_date_time, setup_recursive_safe_function as setup_recursive_safe_function, setup_recursive_safe_function_for_generic as setup_recursive_safe_function_for_generic
+from .enums import KeyAction as KeyAction, KeyCase as KeyCase
+from .errors import JSONWizardError as JSONWizardError, MissingData as MissingData, MissingFields as MissingFields, ParseError as ParseError, UnknownKeysError as UnknownKeysError
+from .models import Extras as Extras, PatternBase as PatternBase, TypeInfo as TypeInfo
+from .type_conv import as_date as as_date, as_datetime as as_datetime, as_int as as_int, as_time as as_time, as_timedelta as as_timedelta
+from .type_def import T as T, JSONObject
+from .utils._dataclass_compat import dataclass_fields as dataclass_fields, dataclass_init_field_names as dataclass_init_field_names, dataclass_init_fields as dataclass_init_fields, dataclass_kw_only_init_field_names as dataclass_kw_only_init_field_names, set_new_attribute as set_new_attribute
+from .utils._function_builder import FunctionBuilder as FunctionBuilder
+from .utils._object_path import safe_get as safe_get
+from .utils._string_conv import possible_json_keys as possible_json_keys
+from .utils._typing_compat import eval_forward_ref_if_needed as eval_forward_ref_if_needed, get_keys_for_typed_dict as get_keys_for_typed_dict, get_origin_v2 as get_origin_v2, is_annotated as is_annotated, is_typed_dict as is_typed_dict, is_typed_dict_type_qualifier as is_typed_dict_type_qualifier, is_union as is_union
 from dataclasses import Field
 from datetime import date
-from typing import Callable, ClassVar
+from typing import Callable, ClassVar, TypeVar
 
 LEAF_TYPES: frozenset
 UTC: datetime.timezone
@@ -31,8 +30,10 @@ PY311_OR_ABOVE: bool
 PACKAGE_NAME: str
 _LOAD_HOOKS: str
 
-class LoadMixin(dataclass_wizard.bases.BaseLoadHook):
-    transform_json_field: ClassVar[None] = ...
+L = TypeVar('L', bound=LoadMixin)
+
+class LoadMixin(BaseLoadHook):
+    transform_json_field: ClassVar[Callable[[str], str] | None] = ...
     __LOAD_HOOKS__: ClassVar[dict] = ...
     @classmethod
     def __init_subclass__(cls, **kwargs): ...
@@ -105,6 +106,6 @@ def check_and_raise_missing_fields(_locals, o, cls, fields: tuple[Field, ...] | 
 def load_func_for_dataclass(cls: type, extras: Extras | None = ..., loader_cls: type[LoadMixin] = ..., base_meta_cls: type = ...) -> Callable[[JSONObject], T] | None: ...
 def generate_field_code(cls_loader: LoadMixin, extras: Extras, field: Field, field_i: int, var_name: Incomplete | None = ...) -> str | TypeInfo: ...
 def re_raise(e, cls, o, fields, field, value): ...
-def get_loader(class_or_instance: Incomplete | None = ..., create: bool = ..., base_cls: T = ...) -> type[T]: ...
+def get_loader(class_or_instance: Incomplete | None = ..., create: bool = ..., base_cls: type[L] = ...) -> type[L]: ...
 def fromdict(cls: type[T], d: JSONObject) -> T: ...
 def fromlist(cls: type[T], list_of_dict: list[JSONObject]) -> list[T]: ...

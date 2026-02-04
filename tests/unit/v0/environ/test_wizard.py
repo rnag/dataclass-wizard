@@ -450,7 +450,7 @@ def test_init_method_declaration_is_logged_when_debug_mode_is_enabled(mock_debug
 
     # reset global flag for other tests that
     # rely on `debug_enabled` functionality
-    dataclass_wizard.bases_meta._debug_was_enabled = False
+    dataclass_wizard.v0.bases_meta._debug_was_enabled = False
 
 
 def test_load_with_tuple_of_dotenv_and_env_prefix_param_to_init():

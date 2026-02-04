@@ -4,7 +4,7 @@ from dataclasses import dataclass, MISSING
 
 from ._log import enable_library_debug_logging
 from ._sentinels import UNSET
-from .bases_meta import BaseJSONWizardMeta, LoadMeta, register_type
+from ._bases_meta import BaseJSONWizardMeta, LoadMeta, register_type
 from .class_helper import call_meta_initializer_if_needed, str_pprint_fn
 from .constants import PACKAGE_NAME
 from .dumpers import asdict

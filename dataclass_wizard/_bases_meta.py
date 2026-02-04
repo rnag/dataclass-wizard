@@ -18,6 +18,8 @@ from .class_helper import (
     DATACLASS_FIELD_TO_ENV_FOR_LOAD,
     DATACLASS_FIELD_TO_ALIAS_FOR_DUMP, )
 from .dumpers import DumpMixin, get_dumper
+from .enums import KeyAction, KeyCase, DateTimeTo, EnvKeyStrategy, EnvPrecedence
+
 from .errors import ParseError
 from .loaders import LoadMixin, get_loader
 from .type_conv import as_enum
@@ -178,9 +180,6 @@ class BaseJSONWizardMeta(AbstractMeta):
     def bind_to(cls, dataclass: type, create=True, is_default=True,
                 base_loader=LoadMixin,
                 base_dumper=DumpMixin):
-        # TODO
-        from .enums import KeyAction, KeyCase, DateTimeTo as V1DateTimeTo
-
         cls_loader = get_loader(dataclass, create=create,
                                 base_cls=base_loader)
         cls_dumper = get_dumper(dataclass, create=create,
@@ -190,7 +189,7 @@ class BaseJSONWizardMeta(AbstractMeta):
             _enable_debug_mode_if_needed(cls.debug)
 
         if cls.dump_date_time_as is not None:
-            cls.dump_date_time_as = _as_enum_safe(cls, 'dump_date_time_as', V1DateTimeTo)
+            cls.dump_date_time_as = _as_enum_safe(cls, 'dump_date_time_as', DateTimeTo)
 
         if (key_case := cls.case) is not None:
             cls.load_case = cls.dump_case = key_case
@@ -286,9 +285,6 @@ class BaseEnvWizardMeta(AbstractEnvMeta):
 
     @classmethod
     def bind_to(cls, env_class: type, create=True, is_default=True):
-        # TODO
-        from .enums import KeyCase, EnvKeyStrategy, EnvPrecedence
-
         cls_dumper = get_dumper(
             env_class,
             create=create)
@@ -338,7 +334,7 @@ class BaseEnvWizardMeta(AbstractEnvMeta):
                 META_BY_DATACLASS[env_class] = cls
 
 
-# noinspection PyPep8Naming
+# noinspection PyPep8Naming, PyUnresolvedReferences
 def LoadMeta(**kwargs) -> META:
     """
     Helper function to setup the ``Meta`` Config for the JSON load
@@ -351,6 +347,7 @@ def LoadMeta(**kwargs) -> META:
 
     Examples::
 
+        >>> from dataclass_wizard import LoadMeta, fromdict
         >>> LoadMeta(key_transform='CAMEL').bind_to(MyClass)
         >>> fromdict(MyClass, {"myStr": "value"})
 
@@ -375,7 +372,7 @@ def LoadMeta(**kwargs) -> META:
     return type('Meta', (BaseJSONWizardMeta, ), base_dict)
 
 
-# noinspection PyPep8Naming
+# noinspection PyPep8Naming, PyUnresolvedReferences
 def DumpMeta(**kwargs) -> META:
     """
     Helper function to setup the ``Meta`` Config for the JSON dump
@@ -388,6 +385,7 @@ def DumpMeta(**kwargs) -> META:
 
     Examples::
 
+        >>> from dataclass_wizard import DumpMeta, asdict
         >>> DumpMeta(key_transform='CAMEL').bind_to(MyClass)
         >>> asdict(MyClass, {"myStr": "value"})
 
@@ -414,7 +412,7 @@ def DumpMeta(**kwargs) -> META:
     return type('Meta', (BaseJSONWizardMeta, ), base_dict)
 
 
-# noinspection PyPep8Naming
+# noinspection PyPep8Naming, PyUnresolvedReferences
 def EnvMeta(**kwargs) -> META:
     """
     Helper function to setup the ``Meta`` Config for the EnvWizard.

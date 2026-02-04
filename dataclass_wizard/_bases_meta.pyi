@@ -9,7 +9,7 @@ from datetime import tzinfo
 from typing import Sequence, Callable, Any, Literal, TypeAlias, TypeVar, Mapping
 
 from ._path_util import EnvFilePaths, SecretsDirs
-from ._bases import AbstractMeta, META, AbstractEnvMeta, V1TypeToHook
+from ._bases import AbstractMeta, META, AbstractEnvMeta, TypeToHook
 from .constants import TAG
 from .enums import KeyAction, KeyCase, DateTimeTo, EnvPrecedence, EnvKeyStrategy
 from .loaders import LoadMixin
@@ -79,7 +79,7 @@ def LoadMeta(*,
              tag: str = MISSING,
              tag_key: str = TAG,
              auto_assign_tags: bool = MISSING,
-             type_to_hook: V1TypeToHook = MISSING,
+             type_to_hook: TypeToHook = MISSING,
              pre_decoder: PreDecoder = MISSING,
              case: KeyCase | str | None = MISSING,
              field_to_alias: Mapping[str, str | Sequence[str]] = MISSING,
@@ -99,7 +99,7 @@ def DumpMeta(*,
              skip_defaults: bool = MISSING,
              skip_if: Condition = MISSING,
              skip_defaults_if: Condition = MISSING,
-             type_to_hook: V1TypeToHook = MISSING,
+             type_to_hook: TypeToHook = MISSING,
              case: KeyCase | str | None = MISSING,
              field_to_alias: Mapping[str, str | Sequence[str]] = MISSING,
              dump_date_time_as: DateTimeTo | str = MISSING,
@@ -122,8 +122,8 @@ def EnvMeta(*,
             tag: str = MISSING,
             tag_key: str = TAG,
             auto_assign_tags: bool = MISSING,
-            type_to_load_hook: V1TypeToHook = MISSING,
-            type_to_dump_hook: V1TypeToHook = MISSING,
+            type_to_load_hook: TypeToHook = MISSING,
+            type_to_dump_hook: TypeToHook = MISSING,
             pre_decoder: PreDecoder = MISSING,
             load_case: EnvKeyStrategy | str = MISSING,
             dump_case: KeyCase | str = MISSING,

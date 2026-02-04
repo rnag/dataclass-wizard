@@ -6,7 +6,7 @@ from typing import (Callable, Mapping, dataclass_transform, TypedDict,
 from .loaders import LoadMixin as V1LoadMixIn
 from .models import Extras
 from ._bases import AbstractEnvMeta, ENV_META
-from .bases_meta import BaseEnvWizardMeta, HookFn
+from ._bases_meta import BaseEnvWizardMeta, HookFn
 from .type_def import Unpack, JSONObject, T, Encoder
 
 E_ = TypeVar('E_', bound=EnvWizard)

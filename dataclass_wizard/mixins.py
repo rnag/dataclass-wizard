@@ -8,7 +8,7 @@ __all__ = ['JSONListWizard',
 
 import json
 
-from .bases_meta import DumpMeta
+from ._bases_meta import DumpMeta
 from .dumpers import asdict
 from .enums import KeyCase
 from .lazy_imports import toml, toml_w, yaml

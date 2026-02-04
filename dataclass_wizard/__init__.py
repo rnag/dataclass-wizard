@@ -135,7 +135,7 @@ __all__ = [
 
 import logging
 
-from .bases_meta import LoadMeta, DumpMeta, EnvMeta, register_type
+from ._bases_meta import LoadMeta, DumpMeta, EnvMeta, register_type
 from .dumpers import DumpMixin, setup_default_dumper, asdict
 from .loaders import LoadMixin, setup_default_loader, fromdict, fromlist
 from ._env import EnvWizard, env_config

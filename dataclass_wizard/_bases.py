@@ -13,13 +13,13 @@ from .type_def import FrozenKeys
 if TYPE_CHECKING:
     from typing import Union
     from ._path_util import EnvFilePaths, SecretsDirs
-    from .bases_meta import ALLOWED_MODES, HookFn, PreDecoder
+    from ._bases_meta import ALLOWED_MODES, HookFn, PreDecoder
 
-    V1TypeToHook = Mapping[type, Union[tuple[ALLOWED_MODES, HookFn], HookFn, None]]
+    TypeToHook = Mapping[type, Union[tuple[ALLOWED_MODES, HookFn], HookFn, None]]
 
 # Create a generic variable that can be 'AbstractMeta', or any subclass.
 # Full word as `M` is already defined in another module
-META_ = TypeVar('META_', bound='AbstractMeta')
+META_ = TypeVar('META_', 'AbstractMeta', 'AbstractEnvMeta')
 # Use `type` here explicitly, because we will never have an `META_` object.
 META = type[META_]
 
@@ -196,7 +196,7 @@ class BaseMeta(metaclass=ABCOrAndMeta):
     #   - two positional arguments (v1 hook): (TypeInfo, Extras) -> str | TypeInfo
     #
     # The hook is invoked when loading a value annotated with the given type.
-    type_to_load_hook: ClassVar[V1TypeToHook | None] = None
+    type_to_load_hook: ClassVar[TypeToHook | None] = None
 
     # Custom dump hooks for extending type support in the v1 engine.
     #
@@ -208,7 +208,7 @@ class BaseMeta(metaclass=ABCOrAndMeta):
     #
     # The hook is invoked when dumping a value whose runtime type matches
     # the given type.
-    type_to_dump_hook: ClassVar[V1TypeToHook | None] = None
+    type_to_dump_hook: ClassVar[TypeToHook | None] = None
 
     # ``pre_decoder``: Optional hook called before ``v1`` type loading.
     # Receives the container type plus (cls, TypeInfo, Extras) and may return a

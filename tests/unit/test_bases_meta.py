@@ -9,7 +9,7 @@ from pytest_mock import MockerFixture
 
 from dataclass_wizard._bases import META
 from dataclass_wizard import JSONWizard, EnvWizard
-from dataclass_wizard.bases_meta import BaseJSONWizardMeta
+from dataclass_wizard._bases_meta import BaseJSONWizardMeta
 from dataclass_wizard.enums import KeyCase, DateTimeTo
 from dataclass_wizard.errors import ParseError
 from dataclass_wizard._models_date import UTC
@@ -29,24 +29,24 @@ def date_to_timestamp(d: date) -> int:
 
 @pytest.fixture
 def mock_meta_initializers(mocker: MockerFixture):
-    return mocker.patch('dataclass_wizard.bases_meta.META_INITIALIZER')
+    return mocker.patch('dataclass_wizard._bases_meta.META_INITIALIZER')
 
 
 @pytest.fixture
 def mock_bind_to(mocker: MockerFixture):
     return mocker.patch(
-        'dataclass_wizard.bases_meta.BaseJSONWizardMeta.bind_to')
+        'dataclass_wizard._bases_meta.BaseJSONWizardMeta.bind_to')
 
 
 @pytest.fixture
 def mock_env_bind_to(mocker: MockerFixture):
     return mocker.patch(
-        'dataclass_wizard.bases_meta.BaseEnvWizardMeta.bind_to')
+        'dataclass_wizard._bases_meta.BaseEnvWizardMeta.bind_to')
 
 
 @pytest.fixture
 def mock_get_dumper(mocker: MockerFixture):
-    return mocker.patch('dataclass_wizard.bases_meta.get_dumper')
+    return mocker.patch('dataclass_wizard._bases_meta.get_dumper')
 
 
 def test_merge_meta_with_or():

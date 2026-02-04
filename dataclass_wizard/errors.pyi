@@ -78,6 +78,7 @@ class ParseError(JSONWizardError):
     kwargs: dict[str, Any]
     _class_name: str | None
     _default_class_name: str | None
+    field_name: str | None
     _field_name: str | None
     _json_object: Any | None
     fields: Collection[Field] | None
@@ -90,10 +91,6 @@ class ParseError(JSONWizardError):
                  _field_name: str | None = None,
                  _json_object: Any = None,
                  **kwargs):
-        ...
-
-    @property
-    def field_name(self) -> str | None:
         ...
 
     @property
