@@ -14,14 +14,13 @@ from uuid import UUID
 
 from ._log import LOG
 from ._models_date import UTC
-from .bases import AbstractMeta, BaseLoadHook, META
-from .class_helper import (create_meta,
-                           get_meta,
-                           is_subclass_safe,
+from ._bases import AbstractMeta, BaseLoadHook, META
+from ._sentinels import UNSET
+from .class_helper import (is_subclass_safe,
                            resolve_dataclass_field_to_alias_for_load,
-                           CLASS_TO_LOAD_FUNC,
                            DATACLASS_FIELD_TO_ALIAS_PATH_FOR_LOAD,
                            CLASS_TO_LOADER, set_class_loader, create_new_class)
+from ._meta_cache import get_meta
 # noinspection PyUnresolvedReferences
 from .constants import CATCH_ALL, TAG, PY311_OR_ABOVE, PACKAGE_NAME, _LOAD_HOOKS
 from .decorators import (process_patterned_date_time,
@@ -585,6 +584,7 @@ class LoadMixin(BaseLoadHook):
                     tag = cls_name
                     # We don't want to mutate the base Meta class here
                     if meta is AbstractMeta:
+                        from ._meta_cache import create_meta
                         create_meta(possible_tp, cls_name, tag=tag)
                     else:
                         meta.tag = cls_name
@@ -1460,13 +1460,10 @@ def load_func_for_dataclass(
             set_new_attribute(cls, 'from_dict', cls_fromdict, force=True)
 
         set_new_attribute(
-            cls, f'__{PACKAGE_NAME}_from_dict__', cls_fromdict)
+            cls, '__dataclass_wizard_from_dict__', cls_fromdict, force=True)
         LOG.debug(
             "setattr(%s, '__%s_from_dict__', %s)",
             cls_name, PACKAGE_NAME, fn_name)
-
-        # TODO in `v1`, we will use class attribute (set above) instead.
-        CLASS_TO_LOAD_FUNC[cls] = cls_fromdict
 
         return cls_fromdict
 
@@ -1628,16 +1625,18 @@ def fromdict(cls: type[T], d: JSONObject) -> T:
     apply recursively to any nested dataclasses. Here's a sample usage of this
     below::
 
+        >>> from dataclass_wizard import LoadMeta
         >>> LoadMeta(key_transform='CAMEL').bind_to(MyClass)
         >>> fromdict(MyClass, {"myStr": "value"})
 
     """
     try:
-        load = CLASS_TO_LOAD_FUNC[cls]
-    except KeyError:
-        load = load_func_for_dataclass(cls)
+        return cls.__dataclass_wizard_from_dict__(d)
 
-    return load(d)
+    except (AttributeError, TypeError):
+        fn = load_func_for_dataclass(cls)
+        cls.__dataclass_wizard_from_dict__ = fn  # explicit cache
+        return fn(d)
 
 
 def fromlist(cls: type[T], list_of_dict: list[JSONObject]) -> list[T]:
@@ -1649,8 +1648,12 @@ def fromlist(cls: type[T], list_of_dict: list[JSONObject]) -> list[T]:
 
     """
     try:
-        load = CLASS_TO_LOAD_FUNC[cls]
-    except KeyError:
+        load = cls.__dataclass_wizard_from_dict__
+    except AttributeError:
+        load = UNSET
+
+    if load is UNSET:
         load = load_func_for_dataclass(cls)
+        cls.__dataclass_wizard_from_dict__ = load  # explicit cache
 
     return [load(d) for d in list_of_dict]

@@ -10,7 +10,7 @@ from typing import ClassVar, List, Dict, Union, DefaultDict, Set, TypedDict, Opt
 import pytest
 
 import dataclass_wizard.bases_meta
-from dataclass_wizard.class_helper import get_meta
+from dataclass_wizard._meta_cache import get_meta
 from dataclass_wizard.constants import PY311_OR_ABOVE
 from dataclass_wizard.errors import MissingVars, ParseError, MissingFields
 from dataclass_wizard import Alias, Env, EnvWizard, DataclassWizard

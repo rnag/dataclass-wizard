@@ -10,15 +10,13 @@ import logging
 from typing import Mapping
 
 from ._log import LOG
-from ._meta_cache import META_BY_DATACLASS
-from .bases import AbstractMeta, META, AbstractEnvMeta
+from ._meta_cache import META_BY_DATACLASS, get_meta, set_base_meta_cls
+from ._bases import AbstractMeta, META, AbstractEnvMeta
 from .class_helper import (
-    META_INITIALIZER, get_meta,
-    get_outer_class_name, get_class_name, create_new_class,
+    META_INITIALIZER, get_outer_class_name, get_class_name, create_new_class,
     DATACLASS_FIELD_TO_ALIAS_FOR_LOAD,
     DATACLASS_FIELD_TO_ENV_FOR_LOAD,
-    DATACLASS_FIELD_TO_ALIAS_FOR_DUMP, create_meta,
-)
+    DATACLASS_FIELD_TO_ALIAS_FOR_DUMP, )
 from .dumpers import DumpMixin, get_dumper
 from .errors import ParseError
 from .loaders import LoadMixin, get_loader
@@ -34,6 +32,7 @@ _debug_was_enabled = False
 def register_type(cls, tp, *, load=None, dump=None, mode=None) -> None:
     meta = get_meta(cls)
     if meta is AbstractMeta:
+        from ._meta_cache import create_meta
         meta = create_meta(cls)
 
     if load is None:
@@ -237,6 +236,10 @@ class BaseJSONWizardMeta(AbstractMeta):
                 META_BY_DATACLASS[dataclass] &= cls
             else:
                 META_BY_DATACLASS[dataclass] = cls
+
+
+# IMPORTANT: do this after the class definition
+set_base_meta_cls(BaseJSONWizardMeta)
 
 
 class BaseEnvWizardMeta(AbstractEnvMeta):

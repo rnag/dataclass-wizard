@@ -1,7 +1,7 @@
 from logging import DEBUG, StreamHandler
 
 from dataclass_wizard import DataclassWizard
-from dataclass_wizard.class_helper import get_meta
+from dataclass_wizard._meta_cache import get_meta
 
 
 def test_dataclass_wizard_with_debug(restore_logger, mock_debug_log):

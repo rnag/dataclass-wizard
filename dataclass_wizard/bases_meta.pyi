@@ -9,7 +9,7 @@ from datetime import tzinfo
 from typing import Sequence, Callable, Any, Literal, TypeAlias, TypeVar, Mapping
 
 from ._path_util import EnvFilePaths, SecretsDirs
-from .bases import AbstractMeta, META, AbstractEnvMeta, V1TypeToHook
+from ._bases import AbstractMeta, META, AbstractEnvMeta, V1TypeToHook
 from .constants import TAG
 from .enums import KeyAction, KeyCase, DateTimeTo, EnvPrecedence, EnvKeyStrategy
 from .loaders import LoadMixin
@@ -28,12 +28,12 @@ HookFn = Callable[..., Any]
 L = TypeVar('L', bound=LoadMixin)
 
 # (cls, container_tp, tp, extras) -> new_tp
-V1PreDecoder: TypeAlias = Callable[[L, type | None, TypeInfo, Extras], TypeInfo]
+PreDecoder: TypeAlias = Callable[[L, type | None, TypeInfo, Extras], TypeInfo]
 
 
 def register_type(cls, tp: type, *,
-                  load: 'V1HookFn | None' = None,
-                  dump: 'V1HookFn | None' = None,
+                  load: HookFn | None = None,
+                  dump: HookFn | None = None,
                   mode: str | None = None) -> None: ...
 
 
@@ -80,7 +80,7 @@ def LoadMeta(*,
              tag_key: str = TAG,
              auto_assign_tags: bool = MISSING,
              type_to_hook: V1TypeToHook = MISSING,
-             pre_decoder: V1PreDecoder = MISSING,
+             pre_decoder: PreDecoder = MISSING,
              case: KeyCase | str | None = MISSING,
              field_to_alias: Mapping[str, str | Sequence[str]] = MISSING,
              on_unknown_key: KeyAction | str | None = KeyAction.IGNORE,
@@ -124,7 +124,7 @@ def EnvMeta(*,
             auto_assign_tags: bool = MISSING,
             type_to_load_hook: V1TypeToHook = MISSING,
             type_to_dump_hook: V1TypeToHook = MISSING,
-            pre_decoder: V1PreDecoder = MISSING,
+            pre_decoder: PreDecoder = MISSING,
             load_case: EnvKeyStrategy | str = MISSING,
             dump_case: KeyCase | str = MISSING,
             env_precedence: EnvPrecedence = MISSING,

@@ -19,12 +19,9 @@ from uuid import UUID
 
 from ._log import LOG
 from ._models_date import ZERO, UTC
-from .bases import AbstractMeta, BaseDumpHook, META
+from ._bases import AbstractMeta, BaseDumpHook, META
 from .class_helper import (
-    CLASS_TO_DUMP_FUNC,
     DATACLASS_FIELD_TO_ALIAS_PATH_FOR_DUMP,
-    create_meta,
-    get_meta,
     is_subclass_safe,
     resolve_dataclass_field_to_alias_for_dump,
     dataclass_field_to_skip_if,
@@ -32,6 +29,7 @@ from .class_helper import (
     set_class_dumper,
     create_new_class,
 )
+from ._meta_cache import get_meta
 # noinspection PyUnresolvedReferences
 from .constants import CATCH_ALL, TAG, PACKAGE_NAME, _DUMP_HOOKS
 from .decorators import (setup_recursive_safe_function,
@@ -426,6 +424,7 @@ class DumpMixin(BaseDumpHook):
                     tag = cls_name
                     # We don't want to mutate the base Meta class here
                     if meta is AbstractMeta:
+                        from ._meta_cache import create_meta
                         create_meta(possible_tp, cls_name, tag=tag)
                     else:
                         meta.tag = cls_name
@@ -1132,13 +1131,10 @@ def dump_func_for_dataclass(
             set_new_attribute(cls, 'to_dict', cls_todict, force=True)
 
         set_new_attribute(
-            cls, f'__{PACKAGE_NAME}_to_dict__', cls_todict)
+            cls, '__dataclass_wizard_to_dict__', cls_todict)
         LOG.debug(
             "setattr(%s, '__%s_to_dict__', %s)",
             cls_name, PACKAGE_NAME, fn_name)
-
-        # TODO in `v1`, we will use class attribute (set above) instead.
-        CLASS_TO_DUMP_FUNC[cls] = cls_todict
 
         return cls_todict
 
@@ -1263,16 +1259,14 @@ def asdict(o: T,
     dataclass instances. This will also look into built-in containers:
     tuples, lists, and dicts.
     """
-    # This likely won't be needed, as ``dataclasses.fields`` already has this
-    # check.
-    # if not _is_dataclass_instance(obj):
-    #     raise TypeError("asdict() should be called on dataclass instances")
-
     cls = cls or type(o)
 
     try:
-        dump = CLASS_TO_DUMP_FUNC[cls]
-    except KeyError:
-        dump = dump_func_for_dataclass(cls)
+        return cls.__dataclass_wizard_to_dict__(
+            o, dict_factory, exclude, **kwargs)
 
-    return dump(o, dict_factory, exclude, **kwargs)
+    except (AttributeError, TypeError):
+        fn = dump_func_for_dataclass(cls)
+        cls.__dataclass_wizard_to_dict__ = fn  # explicit cache
+        return fn(
+            o, dict_factory, exclude, **kwargs)

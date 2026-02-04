@@ -3,6 +3,7 @@ import logging
 from dataclasses import dataclass, MISSING
 
 from ._log import enable_library_debug_logging
+from ._sentinels import UNSET
 from .bases_meta import BaseJSONWizardMeta, LoadMeta, register_type
 from .class_helper import call_meta_initializer_if_needed, str_pprint_fn
 from .constants import PACKAGE_NAME
@@ -31,6 +32,9 @@ def set_from_dict_and_to_dict_if_needed(cls):
     `from_dict` / `to_dict`, subclasses would inherit it.
     Defining defaults in `cls.__dict__` blocks that.
     """
+    cls.__dataclass_wizard_from_dict__ = UNSET
+    cls.__dataclass_wizard_to_dict__ = UNSET
+
     if 'from_dict' not in cls.__dict__:
         inherited = first_declared_attr_in_mro(cls, 'from_dict')
         if getattr(inherited, '__func__', None) is fromdict:
@@ -86,6 +90,9 @@ def configure_wizard_class(cls,
 class DataclassWizard:
 
     __slots__ = ()
+
+    __dataclass_wizard_from_dict__ = UNSET
+    __dataclass_wizard_to_dict__ = UNSET
 
     class Meta(BaseJSONWizardMeta):
 

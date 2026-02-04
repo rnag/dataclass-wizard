@@ -17,7 +17,7 @@ from .utils._object_path import split_object_path
 from .utils._typing_compat import get_origin_v2
 
 if TYPE_CHECKING:  # pragma: no cover
-    from .bases import META
+    from ._bases import META
 
 
 # Define a simple type (alias) for the `CatchAll` field

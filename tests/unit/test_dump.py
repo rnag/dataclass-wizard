@@ -11,7 +11,7 @@ from uuid import UUID
 import pytest
 
 from dataclass_wizard import *
-from dataclass_wizard.class_helper import get_meta
+from dataclass_wizard._meta_cache import get_meta
 from dataclass_wizard.constants import TAG
 from dataclass_wizard.errors import ParseError
 from dataclass_wizard.enums import KeyAction

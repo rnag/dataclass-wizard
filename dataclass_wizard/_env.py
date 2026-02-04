@@ -14,13 +14,12 @@ from .enums import EnvKeyStrategy, EnvPrecedence
 from .loaders import LoadMixin as V1LoadMixin, get_loader
 from .models import Extras, TypeInfo, SEQUENCE_ORIGINS, MAPPING_ORIGINS
 from .type_conv import as_list, as_dict
-from .bases import META, AbstractEnvMeta, ENV_META
+from ._bases import META, AbstractEnvMeta
 from .bases_meta import BaseEnvWizardMeta, EnvMeta, register_type
-from .class_helper import (get_meta,
-                           resolve_dataclass_field_to_env_for_load,
-                           CLASS_TO_LOAD_FUNC,
+from .class_helper import (resolve_dataclass_field_to_env_for_load,
                            DATACLASS_FIELD_TO_ALIAS_PATH_FOR_LOAD,
                            call_meta_initializer_if_needed)
+from ._meta_cache import get_meta
 from .constants import CATCH_ALL, PACKAGE_NAME
 from .decorators import cached_class_property
 from .dumpers import asdict
@@ -155,7 +154,7 @@ class EnvWizard:
 def load_func_for_dataclass(
         cls,
         loader_cls=None,
-        base_meta_cls: ENV_META = AbstractEnvMeta,
+        base_meta_cls=AbstractEnvMeta,
 ) -> Callable[[T, dict[str, Any]], None] | None:
 
     # Tuple describing the fields of this dataclass.
@@ -536,9 +535,6 @@ def load_func_for_dataclass(
         cls, 'raw_dict', cls_raw_dict)
     LOG.debug("setattr(%s, 'raw_dict', %s)",
               cls_name, raw_dict_name)
-
-    # TODO in `v1`, we will use class attribute (set above) instead.
-    CLASS_TO_LOAD_FUNC[cls] = cls_init
 
     return cls_init
 

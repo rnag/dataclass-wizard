@@ -1,18 +1,19 @@
 from __future__ import annotations
 
 from datetime import tzinfo
-from typing import (Callable, Type, Dict, Optional, ClassVar, Union,
-                    TypeVar, Mapping, Sequence, TYPE_CHECKING, Literal)
+from typing import (TYPE_CHECKING, Callable, ClassVar, Literal,
+                    Mapping, Sequence, TypeVar)
 
 from .constants import TAG
 from .decorators import cached_class_property
+from .enums import KeyAction, KeyCase, DateTimeTo, EnvKeyStrategy, EnvPrecedence
 from .models import Condition
+from .type_def import FrozenKeys
 
 if TYPE_CHECKING:
-    from .enums import KeyAction, KeyCase, DateTimeTo, EnvKeyStrategy, EnvPrecedence
+    from typing import Union
     from ._path_util import EnvFilePaths, SecretsDirs
-    from .bases_meta import ALLOWED_MODES, HookFn, V1PreDecoder
-    from .type_def import FrozenKeys
+    from .bases_meta import ALLOWED_MODES, HookFn, PreDecoder
 
     V1TypeToHook = Mapping[type, Union[tuple[ALLOWED_MODES, HookFn], HookFn, None]]
 
@@ -21,13 +22,6 @@ if TYPE_CHECKING:
 META_ = TypeVar('META_', bound='AbstractMeta')
 # Use `type` here explicitly, because we will never have an `META_` object.
 META = type[META_]
-
-
-# Create a generic variable that can be 'AbstractMeta', or any subclass.
-# Full word as `M` is already defined in another module
-ENV_META_ = TypeVar('ENV_META_', bound='AbstractEnvMeta')
-# Use `type` here explicitly, because we will never have an `META_` object.
-ENV_META = type[ENV_META_]
 
 
 class ABCOrAndMeta(type):
@@ -224,7 +218,7 @@ class BaseMeta(metaclass=ABCOrAndMeta):
     #
     #  Pre-decoder signature:
     #   (cls, container_tp, tp, extras) -> new_tp
-    pre_decoder: ClassVar[V1PreDecoder] = None
+    pre_decoder: ClassVar[PreDecoder] = None
 
     # Specifies the letter case used for JSON keys during serialization.
     #
@@ -237,7 +231,7 @@ class BaseMeta(metaclass=ABCOrAndMeta):
     # such as using the string 'P' instead of 'PASCAL'.
     #
     # If unset, this value defaults to `case` when provided.
-    dump_case: ClassVar[Union[KeyCase, str, None]] = None
+    dump_case: ClassVar[KeyCase | str | None] = None
 
     # A custom mapping of dataclass fields to their JSON aliases (keys) used
     # during serialization only.
@@ -248,7 +242,7 @@ class BaseMeta(metaclass=ABCOrAndMeta):
     # When set, this mapping overrides `field_to_alias` for dump behavior
     # only.
     field_to_alias_dump: ClassVar[
-        Mapping[str, Union[str, Sequence[str]]] | None
+        Mapping[str, str | Sequence[str]] | None
     ] = None
 
     # Unsafe: Enables parsing of dataclasses in unions without requiring
@@ -267,7 +261,7 @@ class BaseMeta(metaclass=ABCOrAndMeta):
     # By default, values are serialized using ISO 8601 string format.
     #
     # Supported values are defined by :class:`DateTimeTo`.
-    dump_date_time_as: ClassVar[Union[DateTimeTo, str]] = None
+    dump_date_time_as: ClassVar[DateTimeTo | str] = None
 
     # Specifies the timezone to assume for naive :class:`datetime` values
     # during serialization.
@@ -369,7 +363,7 @@ class AbstractMeta(BaseMeta):
     #
     # The setting is case-insensitive and supports shorthand assignment,
     # such as using the string 'C' instead of 'CAMEL'.
-    case: ClassVar[Union[KeyCase, str, None]] = None
+    case: ClassVar[KeyCase | str | None] = None
 
     # Specifies the letter case used to match JSON keys when mapping them
     # to dataclass fields during deserialization.
@@ -389,7 +383,7 @@ class AbstractMeta(BaseMeta):
     # subsequent lookups.
     #
     # If unset, this value defaults to `case` when provided.
-    load_case: ClassVar[Union[KeyCase, str, None]] = None
+    load_case: ClassVar[KeyCase | str | None] = None
 
     # A custom mapping of dataclass fields to their JSON aliases (keys).
     #
@@ -403,9 +397,7 @@ class AbstractMeta(BaseMeta):
     #
     # This setting applies to both load and dump unless explicitly overridden
     # by `field_to_alias_load` or `field_to_alias_dump`.
-    field_to_alias: ClassVar[
-        Mapping[str, Union[str, Sequence[str]]]
-    ] = None
+    field_to_alias: ClassVar[Mapping[str, str | Sequence[str]] | None] = None
 
     # A custom mapping of dataclass fields to their JSON aliases (keys) used
     # during deserialization only.
@@ -416,9 +408,7 @@ class AbstractMeta(BaseMeta):
     #
     # When set, this mapping overrides `field_to_alias` for load behavior
     # only.
-    field_to_alias_load: ClassVar[
-        Mapping[str, Union[str, Sequence[str]]]
-    ] = None
+    field_to_alias_load: ClassVar[Mapping[str, str | Sequence[str] | None]] = None
 
     # Defines the action to take when an unknown JSON key is encountered during
     # `from_dict` or `from_json` calls. An unknown key is one that does not map
@@ -432,7 +422,7 @@ class AbstractMeta(BaseMeta):
     on_unknown_key: ClassVar[KeyAction] = None
 
     @classmethod
-    def bind_to(cls, dataclass: Type, create=True, is_default=True):
+    def bind_to(cls, dataclass: type, create=True, is_default=True):
         """
         Initialize hook which applies the Meta config to `dataclass`, which is
         typically a subclass of :class:`JSONWizard`.
@@ -496,7 +486,7 @@ class AbstractEnvMeta(BaseMeta):
     # The key lookup strategy to use for Env Var Names.
     #
     # The default strategy is `SCREAMING_SNAKE_CASE` > `snake_case`.
-    load_case: ClassVar[Union[EnvKeyStrategy, str]] = None
+    load_case: ClassVar[EnvKeyStrategy | str] = None
 
     # Environment Precedence (order) to search for values
     # Defaults to EnvPrecedence.SECRETS_ENV_DOTENV
@@ -508,9 +498,7 @@ class AbstractEnvMeta(BaseMeta):
     # Values may be a single alias string or a sequence of alias strings.
     # Any listed alias is accepted when mapping input env vars to
     # dataclass fields.
-    field_to_env_load: ClassVar[
-        Mapping[str, Union[str, Sequence[str]]]
-    ] = None
+    field_to_env_load: ClassVar[Mapping[str, str | Sequence[str]] | None] = None
 
     # Defines the action to take when an unknown JSON key is encountered during
     # `from_dict` or `from_json` calls. An unknown key is one that does not map
@@ -524,7 +512,7 @@ class AbstractEnvMeta(BaseMeta):
     # on_unknown_key: ClassVar[KeyAction] = None
 
     @classmethod
-    def bind_to(cls, env_class: Type, create=True, is_default=True):
+    def bind_to(cls, env_class: type, create=True, is_default=True):
         """
         Initialize hook which applies the Meta config to `env_class`, which is
         typically a subclass of :class:`EnvWizard`.
@@ -560,29 +548,11 @@ class _BaseHookRegistry:
 
 class BaseLoadHook(_BaseHookRegistry):
     """
-    Container class for type hooks.
+    Container class for load type hooks.
     """
-    # @classmethod
-    # def register_load_hook(cls, typ: Type, func: Callable):
-    #     """Registers the hook for a type, on the default loader by default."""
-    #
-    # @classmethod
-    # def get_load_hook(cls, typ: Type) -> Optional[Callable]:
-    #     """Retrieves the hook for a type, if one exists."""
 
 
 class BaseDumpHook(_BaseHookRegistry):
     """
-    Container class for type hooks.
+    Container class for dump type hooks.
     """
-    # __slots__ = ()
-
-    # @classmethod
-    # def register_dump_hook(cls, typ: Type, func: Callable):
-    #     """Registers the hook for a type, on the default dumper by default."""
-    #     cls.__DUMP_HOOKS__[typ] = func
-    #
-    # @classmethod
-    # def get_dump_hook(cls, typ: Type) -> Optional[Callable]:
-    #     """Retrieves the hook for a type, if one exists."""
-    #     return cls.__DUMP_HOOKS__.get(typ)

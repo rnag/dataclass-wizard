@@ -2,7 +2,9 @@ import dataclass_wizard.bases
 import datetime
 from _typeshed import Incomplete
 from dataclass_wizard.bases import AbstractMeta as AbstractMeta, BaseDumpHook as BaseDumpHook
-from dataclass_wizard.class_helper import create_meta as create_meta, create_new_class as create_new_class, dataclass_field_to_skip_if as dataclass_field_to_skip_if, get_meta as get_meta, is_subclass_safe as is_subclass_safe, resolve_dataclass_field_to_alias_for_dump as resolve_dataclass_field_to_alias_for_dump, set_class_dumper as set_class_dumper
+from dataclass_wizard.class_helper import create_new_class as create_new_class, dataclass_field_to_skip_if as dataclass_field_to_skip_if, \
+    is_subclass_safe as is_subclass_safe, resolve_dataclass_field_to_alias_for_dump as resolve_dataclass_field_to_alias_for_dump, set_class_dumper as set_class_dumper
+from dataclass_wizard._meta_cache import get_meta as get_meta, create_meta as create_meta
 from dataclass_wizard.decorators import setup_recursive_safe_function as setup_recursive_safe_function, setup_recursive_safe_function_for_generic as setup_recursive_safe_function_for_generic
 from dataclass_wizard.enums import DateTimeTo as DateTimeTo, KeyCase as KeyCase
 from dataclass_wizard.errors import JSONWizardError as JSONWizardError, MissingData as MissingData, MissingFields as MissingFields, ParseError as ParseError
