@@ -7,7 +7,7 @@ from unittest.mock import ANY
 import pytest
 from pytest_mock import MockerFixture
 
-from dataclass_wizard._bases import META
+from dataclass_wizard._type_def import META
 from dataclass_wizard import JSONWizard, EnvWizard
 from dataclass_wizard._bases_meta import BaseJSONWizardMeta
 from dataclass_wizard.enums import KeyCase, DateTimeTo

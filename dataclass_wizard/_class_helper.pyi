@@ -4,7 +4,6 @@ from weakref import WeakKeyDictionary, WeakSet
 from ._abstractions import W, E, AbstractLoaderGenerator, AbstractDumperGenerator
 from .constants import PACKAGE_NAME
 from .models import Condition
-from ._type_def import T
 from .utils._object_path import PathType
 
 # A mapping of dataclass to its loader.
@@ -38,31 +37,20 @@ DATACLASS_FIELD_TO_SKIP_IF: WeakKeyDictionary[type, dict[str, Condition]]
 # Cache: owner class -> its `Meta` inner class (only present when subclassed)
 META_INITIALIZER: dict[str, Callable[[type[W]], None]] = {}
 
-V = TypeVar('V')
-
-def per_cls(
-    cache: WeakKeyDictionary[type, V],
-    cls: type,
-    factory: Callable[[], V] = dict,
-) -> V: ...
-
 def set_class_loader(cls_to_loader, class_or_instance, loader: type[AbstractLoaderGenerator]):
     """
     Set (and return) the loader for a dataclass.
     """
-
 
 def set_class_dumper(cls: type, dumper: type[AbstractDumperGenerator]):
     """
     Set (and return) the dumper for a dataclass.
     """
 
-
 def dataclass_field_to_skip_if(cls: type) -> dict[str, Condition]:
     """
     Returns a mapping of dataclass field to SkipIf condition.
     """
-
 
 def resolve_dataclass_field_to_alias_for_dump(cls: type) -> dict[str, Sequence[str]]: ...
 def resolve_dataclass_field_to_alias_for_load(cls: type) -> dict[str, Sequence[str]]: ...
@@ -88,53 +76,8 @@ def setup_config_for_cls(cls: type):
           the :class:`JSON` attribute.
     """
 
-
 def call_meta_initializer_if_needed(cls: type[W | E],
                                     package_name=PACKAGE_NAME) -> None:
     """
     Calls the Meta initializer when the inner :class:`Meta` is sub-classed.
     """
-
-
-def is_builtin(o: Any) -> bool:
-    """Check if an object/singleton/class is a builtin in Python."""
-
-
-def create_new_class(
-        class_or_instance, bases: tuple[T, ...],
-        suffix: str | None = None, attr_dict=None) -> T:
-    """
-    Create (dynamically) and return a new class that sub-classes from a list
-    of `bases`.
-    """
-
-
-def get_class_name(class_or_instance) -> str:
-    """Return the fully qualified name of a class."""
-
-
-def get_outer_class_name(inner_cls, default=None, raise_: bool = True) -> str:
-    """
-    Attempt to return the fully qualified name of the outer (enclosing) class,
-    given a reference to the inner class.
-
-    If any errors occur - such as when `inner_cls` is not a real inner
-    class - then an error will be raised if `raise_` is true, and if not
-    we will return `default` instead.
-
-    """
-
-
-def get_class(obj: Any) -> type:
-    """Get the class for an object `obj`"""
-
-
-def is_subclass(obj: Any, base_cls: type) -> bool:
-    """Check if `obj` is a sub-class of `base_cls`"""
-
-
-def is_subclass_safe(cls, class_or_tuple) -> bool:
-    """Check if `obj` is a sub-class of `base_cls` (safer version)"""
-
-
-def str_pprint_fn(): ...

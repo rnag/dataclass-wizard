@@ -1,3 +1,5 @@
+__all__ = ['Buffer', 'Unpack', 'PyForwardRef', 'PyProtocol', 'PyDeque', 'PyTypedDict', 'PyRequired', 'PyNotRequired', 'PyReadOnly', 'PyLiteralString', 'FrozenKeys', 'DefFactory', 'NoneType', 'ExplicitNullType', 'ExplicitNull', 'JSONList', 'JSONObject', 'ListOfJSONObject', 'JSONValue', 'FileType', 'EnvFileType', 'StrCollection', 'ParseFloat', 'Encoder', 'FileEncoder', 'Decoder', 'FileDecoder', 'NUMBERS', 'T', 'E', 'U', 'M', 'NT', 'DT', 'DD', 'N', 'S', 'LT', 'LSQ', 'FREF', 'dataclass_transform', 'UNSET', 'META', 'ENV_META']
+
 import _abc
 import typing
 from collections.abc import Buffer as Buffer
@@ -11,6 +13,8 @@ from typing import (ClassVar, Deque as PyDeque, ForwardRef as PyForwardRef,
                     TypedDict as PyTypedDict,
                     Unpack as Unpack,
                     dataclass_transform as dataclass_transform)
+
+from ._bases import AbstractMeta, AbstractEnvMeta
 
 DefFactory = typing.Callable[[], T]
 
@@ -27,7 +31,17 @@ ParseFloat = typing.Callable[[str], typing.Any]
 N = typing.Union[int, float]
 StrCollection = typing.Union[str, typing.Collection[str]]
 
-__all__ = ['Buffer', 'Unpack', 'PyForwardRef', 'PyProtocol', 'PyDeque', 'PyTypedDict', 'PyRequired', 'PyNotRequired', 'PyReadOnly', 'PyLiteralString', 'FrozenKeys', 'DefFactory', 'NoneType', 'ExplicitNullType', 'ExplicitNull', 'JSONList', 'JSONObject', 'ListOfJSONObject', 'JSONValue', 'FileType', 'EnvFileType', 'StrCollection', 'ParseFloat', 'Encoder', 'FileEncoder', 'Decoder', 'FileDecoder', 'NUMBERS', 'T', 'E', 'U', 'M', 'NT', 'DT', 'DD', 'N', 'S', 'LT', 'LSQ', 'FREF', 'dataclass_transform']
+# Create a generic variable that can be 'AbstractMeta', or any subclass.
+# Full word as `M` is already defined in another module
+_META = typing.TypeVar('_META', bound=AbstractMeta)
+# Use `type` here explicitly, because we will never have an `META_` object.
+META = type[_META]
+
+# Create a generic variable that can be 'AbstractMeta', or any subclass.
+# Full word as `M` is already defined in another module
+_ENV_META = typing.TypeVar('_ENV_META', bound=AbstractEnvMeta)
+# Use `type` here explicitly, because we will never have an `META_` object.
+ENV_META = type[_ENV_META]
 
 NUMBERS: tuple
 T: typing.TypeVar
@@ -41,6 +55,9 @@ S: typing.TypeVar
 LT: typing.TypeVar
 LSQ: typing.TypeVar
 FREF: typing.TypeVar
+
+class _UnsetType: ...
+UNSET: _UnsetType
 
 class ExplicitNullType:
     _instance: ClassVar[ExplicitNullType] = ...

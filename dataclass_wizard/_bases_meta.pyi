@@ -4,18 +4,17 @@ Import scenario if we move it there, since the `loaders` and `dumpers` modules
 both import directly from `bases`.
 
 """
-from dataclasses import MISSING
 from datetime import tzinfo
 from typing import Sequence, Callable, Any, Literal, TypeAlias, TypeVar, Mapping
 
 from ._path_util import EnvFilePaths, SecretsDirs
-from ._bases import AbstractMeta, META, AbstractEnvMeta, TypeToHook
+from ._bases import AbstractMeta, AbstractEnvMeta, TypeToHook
 from .constants import TAG
 from .enums import KeyAction, KeyCase, DateTimeTo, EnvPrecedence, EnvKeyStrategy
 from ._loaders import LoadMixin
 from .models import Condition
 from .models import TypeInfo, Extras
-from ._type_def import E, T
+from ._type_def import META, ENV_META, E, T
 
 
 ALLOWED_MODES = Literal['runtime', 'codegen']
@@ -74,67 +73,67 @@ class BaseEnvWizardMeta(AbstractEnvMeta):
 
 # noinspection PyPep8Naming
 def LoadMeta(*,
-             debug: bool | int | str = MISSING,
+             debug: bool | int | str = ...,
              recursive: bool = True,
-             tag: str = MISSING,
+             tag: str = ...,
              tag_key: str = TAG,
-             auto_assign_tags: bool = MISSING,
-             type_to_hook: TypeToHook = MISSING,
-             pre_decoder: PreDecoder = MISSING,
-             case: KeyCase | str | None = MISSING,
-             field_to_alias: Mapping[str, str | Sequence[str]] = MISSING,
+             auto_assign_tags: bool = ...,
+             type_to_hook: TypeToHook = ...,
+             pre_decoder: PreDecoder = ...,
+             case: KeyCase | str | None = ...,
+             field_to_alias: Mapping[str, str | Sequence[str]] = ...,
              on_unknown_key: KeyAction | str | None = KeyAction.IGNORE,
-             unsafe_parse_dataclass_in_union: bool = MISSING,
-             namedtuple_as_dict: bool = MISSING,
-             coerce_none_to_empty_str: bool = MISSING,
-             leaf_handling: Literal['exact', 'issubclass'] = MISSING) -> T | META:
+             unsafe_parse_dataclass_in_union: bool = ...,
+             namedtuple_as_dict: bool = ...,
+             coerce_none_to_empty_str: bool = ...,
+             leaf_handling: Literal['exact', 'issubclass'] = ...) -> META:
     ...
 
 
 # noinspection PyPep8Naming
 def DumpMeta(*,
-             debug: bool | int | str = MISSING,
+             debug: bool | int | str = ...,
              recursive: bool = True,
-             tag: str = MISSING,
-             skip_defaults: bool = MISSING,
-             skip_if: Condition = MISSING,
-             skip_defaults_if: Condition = MISSING,
-             type_to_hook: TypeToHook = MISSING,
-             case: KeyCase | str | None = MISSING,
-             field_to_alias: Mapping[str, str | Sequence[str]] = MISSING,
-             dump_date_time_as: DateTimeTo | str = MISSING,
-             assume_naive_datetime_tz: tzinfo | None = MISSING,
-             namedtuple_as_dict: bool = MISSING,
-             leaf_handling: Literal['exact', 'issubclass'] = MISSING) -> T | META:
+             tag: str = ...,
+             skip_defaults: bool = ...,
+             skip_if: Condition = ...,
+             skip_defaults_if: Condition = ...,
+             type_to_hook: TypeToHook = ...,
+             case: KeyCase | str | None = ...,
+             field_to_alias: Mapping[str, str | Sequence[str]] = ...,
+             dump_date_time_as: DateTimeTo | str = ...,
+             assume_naive_datetime_tz: tzinfo | None = ...,
+             namedtuple_as_dict: bool = ...,
+             leaf_handling: Literal['exact', 'issubclass'] = ...) -> META:
     ...
 
 
 # noinspection PyPep8Naming
 def EnvMeta(*,
-            debug: bool | int | str = MISSING,
+            debug: bool | int | str = ...,
             recursive: bool = True,
-            env_file: EnvFilePaths = MISSING,
-            env_prefix: str = MISSING,
-            secrets_dir: SecretsDirs = MISSING,
-            skip_defaults: bool = MISSING,
-            skip_if: Condition = MISSING,
-            skip_defaults_if: Condition = MISSING,
-            tag: str = MISSING,
+            env_file: EnvFilePaths = ...,
+            env_prefix: str = ...,
+            secrets_dir: SecretsDirs = ...,
+            skip_defaults: bool = ...,
+            skip_if: Condition = ...,
+            skip_defaults_if: Condition = ...,
+            tag: str = ...,
             tag_key: str = TAG,
-            auto_assign_tags: bool = MISSING,
-            type_to_load_hook: TypeToHook = MISSING,
-            type_to_dump_hook: TypeToHook = MISSING,
-            pre_decoder: PreDecoder = MISSING,
-            load_case: EnvKeyStrategy | str = MISSING,
-            dump_case: KeyCase | str = MISSING,
-            env_precedence: EnvPrecedence = MISSING,
-            field_to_env_load: Mapping[str, str | Sequence[str]] = MISSING,
-            field_to_alias_dump: Mapping[str, str | Sequence[str]] = MISSING,
+            auto_assign_tags: bool = ...,
+            type_to_load_hook: TypeToHook = ...,
+            type_to_dump_hook: TypeToHook = ...,
+            pre_decoder: PreDecoder = ...,
+            load_case: EnvKeyStrategy | str = ...,
+            dump_case: KeyCase | str = ...,
+            env_precedence: EnvPrecedence = ...,
+            field_to_env_load: Mapping[str, str | Sequence[str]] = ...,
+            field_to_alias_dump: Mapping[str, str | Sequence[str]] = ...,
             # on_unknown_key: KeyAction | str | None = KeyAction.IGNORE,
-            unsafe_parse_dataclass_in_union: bool = MISSING,
-            dump_date_time_as: DateTimeTo | str = MISSING,
-            assume_naive_datetime_tz: tzinfo | None = MISSING,
-            namedtuple_as_dict: bool = MISSING,
-            coerce_none_to_empty_str: bool = MISSING,
-            leaf_handling: Literal['exact', 'issubclass'] = MISSING) -> META:
+            unsafe_parse_dataclass_in_union: bool = ...,
+            dump_date_time_as: DateTimeTo | str = ...,
+            assume_naive_datetime_tz: tzinfo | None = ...,
+            namedtuple_as_dict: bool = ...,
+            coerce_none_to_empty_str: bool = ...,
+            leaf_handling: Literal['exact', 'issubclass'] = ...) -> ENV_META:
     ...

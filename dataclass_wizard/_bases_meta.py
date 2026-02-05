@@ -11,16 +11,13 @@ from typing import Mapping
 
 from ._log import LOG
 from ._meta_cache import META_BY_DATACLASS, get_meta, set_base_meta_cls
-from ._bases import AbstractMeta, META, AbstractEnvMeta
+from ._bases import AbstractMeta, AbstractEnvMeta
 from ._class_helper import (
     META_INITIALIZER,
     DATACLASS_FIELD_TO_ALIAS_FOR_LOAD,
     DATACLASS_FIELD_TO_ENV_FOR_LOAD,
-    DATACLASS_FIELD_TO_ALIAS_FOR_DUMP,
-    create_new_class,
-    get_outer_class_name,
-    get_class_name,
-    per_cls)
+    DATACLASS_FIELD_TO_ALIAS_FOR_DUMP)
+from ._type_utils import per_cls, create_new_class, get_class_name, get_outer_class_name
 from ._dumpers import DumpMixin, get_dumper
 from .enums import KeyAction, KeyCase, DateTimeTo, EnvKeyStrategy, EnvPrecedence
 
@@ -339,7 +336,7 @@ class BaseEnvWizardMeta(AbstractEnvMeta):
 
 
 # noinspection PyPep8Naming, PyUnresolvedReferences
-def LoadMeta(**kwargs) -> META:
+def LoadMeta(**kwargs):
     """
     Helper function to setup the ``Meta`` Config for the JSON load
     (de-serialization) process, which is intended for use alongside the
@@ -377,7 +374,7 @@ def LoadMeta(**kwargs) -> META:
 
 
 # noinspection PyPep8Naming, PyUnresolvedReferences
-def DumpMeta(**kwargs) -> META:
+def DumpMeta(**kwargs):
     """
     Helper function to setup the ``Meta`` Config for the JSON dump
     (serialization) process, which is intended for use alongside the
@@ -417,7 +414,7 @@ def DumpMeta(**kwargs) -> META:
 
 
 # noinspection PyPep8Naming, PyUnresolvedReferences
-def EnvMeta(**kwargs) -> META:
+def EnvMeta(**kwargs):
     """
     Helper function to setup the ``Meta`` Config for the EnvWizard.
 

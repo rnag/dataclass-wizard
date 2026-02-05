@@ -7,14 +7,14 @@ from collections import ChainMap
 from dataclasses import Field, MISSING
 # noinspection PyUnresolvedReferences,PyProtectedMember
 from dataclasses import _FIELD_INITVAR, _POST_INIT_NAME  # type: ignore
-from typing import (Any, Callable, Mapping, TYPE_CHECKING)
+from typing import Any, Callable, Mapping, TYPE_CHECKING
 
 from ._path_util import get_secrets_map, get_dotenv_map
 from .enums import EnvKeyStrategy, EnvPrecedence
 from ._loaders import LoadMixin as V1LoadMixin, get_loader
 from .models import Extras, TypeInfo, SEQUENCE_ORIGINS, MAPPING_ORIGINS
 from ._type_conv import as_list, as_dict
-from ._bases import META, AbstractEnvMeta
+from ._bases import AbstractEnvMeta
 from ._bases_meta import BaseEnvWizardMeta, EnvMeta, register_type
 from ._class_helper import (resolve_dataclass_field_to_env_for_load,
                            DATACLASS_FIELD_TO_ALIAS_PATH_FOR_LOAD,
@@ -28,7 +28,7 @@ from .errors import (JSONWizardError,
                      ParseError,
                      type_name, MissingVars)
 from ._log import LOG, enable_library_debug_logging
-from ._type_def import T, JSONObject, dataclass_transform
+from ._type_def import META, T, JSONObject, dataclass_transform
 from .utils._dataclass_compat import (apply_env_wizard_dataclass,
                                       dataclass_fields,
                                       dataclass_field_names,

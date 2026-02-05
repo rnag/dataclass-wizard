@@ -5,9 +5,8 @@ from typing import (Collection, Callable,
 from typing import TypedDict, overload, Any, NotRequired, Self
 from zoneinfo import ZoneInfo
 
-from ._bases import META
 from .models import Condition
-from ._type_def import DefFactory, DT, T
+from ._type_def import DefFactory, DT, T, META
 from .utils._function_builder import FunctionBuilder
 from .utils._object_path import PathType
 

@@ -57,3 +57,5 @@ def dataclass_kw_only_init_field_names(cls: type) -> set[str]:
 
 def dataclass_field_to_default(cls: type) -> dict[str, Any]:
     """Get default values for the (optional) dataclass fields."""
+
+def str_pprint_fn(): ...

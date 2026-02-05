@@ -129,3 +129,18 @@ def dataclass_field_names(cls):
 
 def dataclass_init_field_names(cls):
     return tuple(f.name for f in dataclass_init_fields(cls))
+
+
+def str_pprint_fn():
+    from pprint import pformat
+    return create_fn(
+        '__str__',
+        ('self',),
+        [
+            'try:',
+            '    return pformat(self.to_dict(), width=70)',
+            'except Exception:',
+            '    return object.__repr__(self)',
+        ],
+        globals={'pformat': pformat},
+    )

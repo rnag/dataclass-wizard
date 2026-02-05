@@ -1,8 +1,8 @@
 from typing import Any
 from weakref import WeakKeyDictionary
 
-from ._bases import AbstractMeta, META
-from ._type_def import T
+from ._bases import AbstractMeta
+from ._type_def import META, T
 
 META_BY_DATACLASS: WeakKeyDictionary[type, META] = WeakKeyDictionary()
 BASE_META_CLS: type | None = None

@@ -2,26 +2,20 @@ from __future__ import annotations
 
 from datetime import tzinfo
 from typing import (TYPE_CHECKING, Callable, ClassVar, Literal,
-                    Mapping, Sequence, TypeVar)
+                    Mapping, Sequence)
 
-from .constants import TAG
 from ._decorators import cached_class_property
+from ._type_def import FrozenKeys
+from .constants import TAG
 from .enums import KeyAction, KeyCase, DateTimeTo, EnvKeyStrategy, EnvPrecedence
 from .models import Condition
-from ._type_def import FrozenKeys
 
-if TYPE_CHECKING:
-    from typing import Union
+if TYPE_CHECKING:  # pragma: no cover
     from ._path_util import EnvFilePaths, SecretsDirs
-    from ._bases_meta import ALLOWED_MODES, HookFn, PreDecoder
+    from ._bases import TypeToHook
+    from ._type_def import META
+    from ._bases_meta import PreDecoder
 
-    TypeToHook = Mapping[type, Union[tuple[ALLOWED_MODES, HookFn], HookFn, None]]
-
-# Create a generic variable that can be 'AbstractMeta', or any subclass.
-# Full word as `M` is already defined in another module
-META_ = TypeVar('META_', 'AbstractMeta', 'AbstractEnvMeta')
-# Use `type` here explicitly, because we will never have an `META_` object.
-META = type[META_]
 
 
 class ABCOrAndMeta(type):
@@ -478,7 +472,7 @@ class AbstractEnvMeta(BaseMeta):
     env_file: ClassVar[EnvFilePaths] = None
 
     # Prefix for all environment variables. Defaults to `None`.
-    env_prefix: ClassVar[str] = None
+    env_prefix: ClassVar[str | None] = None
 
     # secrets_dir: The secret files directory or a sequence of directories. Defaults to `None`.
     secrets_dir: ClassVar[SecretsDirs] = None
@@ -486,11 +480,11 @@ class AbstractEnvMeta(BaseMeta):
     # The key lookup strategy to use for Env Var Names.
     #
     # The default strategy is `SCREAMING_SNAKE_CASE` > `snake_case`.
-    load_case: ClassVar[EnvKeyStrategy | str] = None
+    load_case: ClassVar[EnvKeyStrategy | str | None] = None
 
     # Environment Precedence (order) to search for values
     # Defaults to EnvPrecedence.SECRETS_ENV_DOTENV
-    env_precedence: ClassVar[EnvPrecedence] = None
+    env_precedence: ClassVar[EnvPrecedence | None] = None
 
     # A custom mapping of dataclass fields to their env vars (keys) used
     # during deserialization only.

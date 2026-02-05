@@ -14,12 +14,11 @@ from uuid import UUID
 
 from ._log import LOG
 from ._models_date import UTC
-from ._bases import AbstractMeta, BaseLoadHook, META
-from ._sentinels import UNSET
-from ._class_helper import (is_subclass_safe,
-                           resolve_dataclass_field_to_alias_for_load,
-                           DATACLASS_FIELD_TO_ALIAS_PATH_FOR_LOAD,
-                           CLASS_TO_LOADER, set_class_loader, create_new_class)
+from ._bases import AbstractMeta, BaseLoadHook
+from ._class_helper import (resolve_dataclass_field_to_alias_for_load,
+                            DATACLASS_FIELD_TO_ALIAS_PATH_FOR_LOAD,
+                            CLASS_TO_LOADER, set_class_loader)
+from ._type_utils import create_new_class, is_subclass_safe
 from ._meta_cache import get_meta
 # noinspection PyUnresolvedReferences
 from .constants import CATCH_ALL, TAG, PY311_OR_ABOVE, PACKAGE_NAME, _LOAD_HOOKS
@@ -37,7 +36,7 @@ from ._type_conv import (
     as_datetime, as_date, as_int,
     as_time, as_timedelta, TRUTHY_VALUES,
 )
-from ._type_def import DefFactory, JSONObject, NoneType, PyLiteralString, T
+from ._type_def import META, UNSET, DefFactory, JSONObject, NoneType, PyLiteralString, T
 from .utils._dataclass_compat import (dataclass_fields,
                                       dataclass_init_fields,
                                       dataclass_init_field_names,

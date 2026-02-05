@@ -4,20 +4,19 @@ import types
 from collections import defaultdict, deque
 from dataclasses import MISSING, Field as _Field
 from datetime import datetime, date, time, tzinfo
-from typing import TYPE_CHECKING, Any, TypedDict, cast, NewType, Mapping
+from typing import Any, TypedDict, cast, NewType, Mapping
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from ._models_date import UTC
 from ._decorators import setup_recursive_safe_function
 from .constants import PY310_OR_ABOVE, PY311_OR_ABOVE, PY314_OR_ABOVE
 from ._log import LOG
-from ._type_def import DefFactory, ExplicitNull, PyNotRequired, NoneType
+from ._type_conv import as_datetime, as_date, as_time
+from ._type_def import META, DefFactory, ExplicitNull, PyNotRequired, NoneType
+from ._type_utils import is_builtin
 from .utils._function_builder import FunctionBuilder
 from .utils._object_path import split_object_path
 from .utils._typing_compat import get_origin_v2
-
-if TYPE_CHECKING:  # pragma: no cover
-    from ._bases import META
 
 
 # Define a simple type (alias) for the `CatchAll` field
@@ -399,8 +398,6 @@ class PatternBase:
 
     @setup_recursive_safe_function(add_cls=False)
     def load_to_pattern(self, tp, extras):
-        from ._type_conv import as_datetime, as_date, as_time
-
         v = tp.v()
 
         pb = cast(PatternBase, tp.origin)
@@ -1327,9 +1324,6 @@ def get_skip_if_condition(skip_if, _locals, operand_2=None, condition_i=None, co
         >>> get_skip_if_condition(cond, locals_dict, 'other_var')
         '== other_var'
     """
-    # TODO: To avoid circular import
-    from ._class_helper import is_builtin
-
     if skip_if is None:
         return False
 

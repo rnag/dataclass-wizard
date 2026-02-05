@@ -166,6 +166,18 @@ else:
 FREF = TypeVar('FREF', str, PyForwardRef)
 
 
+class _UnsetType:
+    __slots__ = ()
+    def __repr__(self) -> str:
+        return 'UNSET'
+
+UNSET = _UnsetType()
+
+
+# runtime placeholders so "from x import META" works
+META = ENV_META = type
+
+
 class ExplicitNullType:
     __slots__ = ()  # Saves memory by preventing the creation of instance dictionaries
 

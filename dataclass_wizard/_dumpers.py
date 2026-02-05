@@ -19,16 +19,16 @@ from uuid import UUID
 
 from ._log import LOG
 from ._models_date import ZERO, UTC
-from ._bases import AbstractMeta, BaseDumpHook, META
+from ._bases import AbstractMeta, BaseDumpHook
 from ._class_helper import (
     DATACLASS_FIELD_TO_ALIAS_PATH_FOR_DUMP,
-    is_subclass_safe,
     resolve_dataclass_field_to_alias_for_dump,
     dataclass_field_to_skip_if,
     CLASS_TO_DUMPER,
     set_class_dumper,
-    create_new_class,
 )
+from ._type_def import META
+from ._type_utils import create_new_class, is_subclass_safe
 from ._meta_cache import get_meta
 # noinspection PyUnresolvedReferences
 from .constants import CATCH_ALL, TAG, PACKAGE_NAME, _DUMP_HOOKS

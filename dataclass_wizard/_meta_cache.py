@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from weakref import WeakKeyDictionary
 
-from ._bases import AbstractMeta, META
+from ._bases import AbstractMeta
+from ._type_def import META
 
 
 META_BY_DATACLASS = WeakKeyDictionary()
