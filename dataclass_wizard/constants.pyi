@@ -6,8 +6,7 @@ PACKAGE_NAME: str
 # Library Log Level
 LOG_LEVEL: str
 # Current system Python version
-_version_info = type(sys.version_info)
-_PY_VERSION: _version_info = sys.version_info[:2]
+_PY_VERSION: tuple[int, int] = sys.version_info[:2]
 # Check if currently running Python 3.x or higher
 PY310_OR_ABOVE: bool
 PY311_OR_ABOVE: bool

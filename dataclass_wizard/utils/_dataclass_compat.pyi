@@ -34,7 +34,7 @@ def dataclass_fields(cls: type) -> tuple[Field, ...]:
     """
 
 @overload
-def dataclass_init_fields(cls: type, as_list: Literal[True] = False) -> list[Field]:
+def dataclass_init_fields(cls: type, as_list: Literal[True] = True) -> list[Field]:
     """Get only the dataclass fields that would be passed into the constructor."""
 
 
