@@ -1,21 +1,20 @@
 from __future__ import annotations
 
-from datetime import tzinfo
 from typing import (TYPE_CHECKING, Callable, ClassVar, Literal,
                     Mapping, Sequence)
 
 from ._decorators import cached_class_property
-from ._type_def import FrozenKeys
 from .constants import TAG
-from .enums import KeyAction, KeyCase, DateTimeTo, EnvKeyStrategy, EnvPrecedence
-from .models import Condition
 
 if TYPE_CHECKING:  # pragma: no cover
-    from ._path_util import EnvFilePaths, SecretsDirs
+    from datetime import tzinfo
+    from .enums import (KeyAction, KeyCase, DateTimeTo,
+                        EnvKeyStrategy, EnvPrecedence)
+    from .models import Condition
     from ._bases import TypeToHook
-    from ._type_def import META
     from ._bases_meta import PreDecoder
-
+    from ._path_util import EnvFilePaths, SecretsDirs
+    from ._type_def import META, FrozenKeys
 
 
 class ABCOrAndMeta(type):
@@ -161,12 +160,12 @@ class BaseMeta(metaclass=ABCOrAndMeta):
 
     # Determines the :class:`Condition` to skip / omit dataclass
     # fields in the serialization process.
-    skip_if: ClassVar[Condition] = None
+    skip_if: ClassVar[Condition | None] = None
 
     # Determines the condition to skip / omit fields with default values
     # (based on the `default` or `default_factory` argument specified for
     # the :func:`dataclasses.field`) in the serialization process.
-    skip_defaults_if: ClassVar[Condition] = None
+    skip_defaults_if: ClassVar[Condition | None] = None
 
     # Enable Debug mode for more verbose log output.
     #
@@ -179,7 +178,7 @@ class BaseMeta(metaclass=ABCOrAndMeta):
     # - Detailed error messages for invalid types during unmarshalling.
     #
     # Note: Enabling Debug mode may have a minor performance impact.
-    debug: ClassVar['bool | int | str'] = False
+    debug: ClassVar[bool | int | str] = False
 
     # Custom load hooks for extending type support.
     #
@@ -255,7 +254,7 @@ class BaseMeta(metaclass=ABCOrAndMeta):
     # By default, values are serialized using ISO 8601 string format.
     #
     # Supported values are defined by :class:`DateTimeTo`.
-    dump_date_time_as: ClassVar[DateTimeTo | str] = None
+    dump_date_time_as: ClassVar[DateTimeTo | str | None] = None
 
     # Specifies the timezone to assume for naive :class:`datetime` values
     # during serialization.
@@ -295,7 +294,7 @@ class BaseMeta(metaclass=ABCOrAndMeta):
     # the literal string ``'None'`` for ``str`` fields.
     #
     # For ``Optional[str]`` fields, ``None`` is preserved by default.
-    coerce_none_to_empty_str: ClassVar[bool] = None
+    coerce_none_to_empty_str: ClassVar[bool | None] = None
 
     # Controls how leaf (non-recursive) types are detected during serialization.
     #
@@ -308,7 +307,7 @@ class BaseMeta(metaclass=ABCOrAndMeta):
     # Note:
     #     The default "exact" mode avoids treating third-party scalar-like
     #     objects (e.g. NumPy scalars) as built-in leaf types.
-    leaf_handling: ClassVar[Literal['exact', 'issubclass']] = None
+    leaf_handling: ClassVar[Literal['exact', 'issubclass'] | None] = None
 
     # noinspection PyMethodParameters
     @cached_class_property
@@ -402,7 +401,7 @@ class AbstractMeta(BaseMeta):
     #
     # When set, this mapping overrides `field_to_alias` for load behavior
     # only.
-    field_to_alias_load: ClassVar[Mapping[str, str | Sequence[str] | None]] = None
+    field_to_alias_load: ClassVar[Mapping[str, str | Sequence[str]] | None] = None
 
     # Defines the action to take when an unknown JSON key is encountered during
     # `from_dict` or `from_json` calls. An unknown key is one that does not map
@@ -413,7 +412,7 @@ class AbstractMeta(BaseMeta):
     # - `"warn"`: Log a warning for each unknown key. Requires `debug`
     #   to be `True` and properly configured logging.
     # - `"raise"`: Raise an `UnknownKeyError` for the first unknown key encountered.
-    on_unknown_key: ClassVar[KeyAction] = None
+    on_unknown_key: ClassVar[KeyAction | None] = None
 
     @classmethod
     def bind_to(cls, dataclass: type, create=True, is_default=True):
