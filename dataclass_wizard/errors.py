@@ -100,7 +100,7 @@ class JSONWizardError(ABC, Exception):
         return self._class_name or self._default_class_name
 
     @class_name.setter
-    def class_name(self, cls: type | None):
+    def class_name(self, cls: str | type | None) -> None:
         # Set parent class for errors
         self.parent_cls = cls
         # Set class name
@@ -246,7 +246,7 @@ class ExtraData(JSONWizardError):
 
         super().__init__()
 
-        self.class_name: str = type_name(cls)
+        self.class_name = type_name(cls)
         self.extra_kwargs = extra_kwargs
         self.field_names = field_names
 
