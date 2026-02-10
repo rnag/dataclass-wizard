@@ -4,7 +4,7 @@ from typing import (Callable, Mapping, dataclass_transform, TypedDict,
                     NotRequired, TypeVar, ClassVar, Collection, AnyStr)
 
 from ._loaders import LoadMixin as V1LoadMixIn
-from .models import Extras
+from .models import Extras, TypeInfo
 from ._bases import AbstractEnvMeta
 from ._bases_meta import BaseEnvWizardMeta, HookFn
 from ._type_def import ENV_META, Unpack, JSONObject, T, Encoder
@@ -87,7 +87,7 @@ class EnvWizard:
 
     def to_json(self: E_, *,
                 encoder: Encoder = json.dumps,
-                **encoder_kwargs) -> AnyStr:
+                **encoder_kwargs) -> str:
         """
         Converts the dataclass instance to a JSON `string` representation.
         """
@@ -105,7 +105,7 @@ def _add_missing_var(missing_vars: dict | None, name, env_prefix, var_name, tp):
 def generate_field_code(cls_loader: LoadMixin,
                         extras: Extras,
                         field: Field,
-                        field_i: int) -> 'str | TypeInfo': ...
+                        field_i: int) -> str | TypeInfo: ...
 
 def re_raise(e, cls, o, fields, field, value): ...
 

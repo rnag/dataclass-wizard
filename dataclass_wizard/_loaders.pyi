@@ -1,4 +1,3 @@
-import datetime
 from _typeshed import Incomplete
 from ._bases import AbstractMeta as AbstractMeta, BaseLoadHook as BaseLoadHook
 from ._class_helper import resolve_dataclass_field_to_alias_for_load as resolve_dataclass_field_to_alias_for_load, set_class_loader as set_class_loader
@@ -16,11 +15,11 @@ from .utils._object_path import safe_get as safe_get
 from .utils._string_conv import possible_json_keys as possible_json_keys
 from .utils._typing_compat import eval_forward_ref_if_needed as eval_forward_ref_if_needed, get_keys_for_typed_dict as get_keys_for_typed_dict, get_origin_v2 as get_origin_v2, is_annotated as is_annotated, is_typed_dict as is_typed_dict, is_typed_dict_type_qualifier as is_typed_dict_type_qualifier, is_union as is_union
 from dataclasses import Field
-from datetime import date
+from datetime import date, datetime, timezone
 from typing import Callable, ClassVar, TypeVar
 
 LEAF_TYPES: frozenset
-UTC: datetime.timezone
+UTC: timezone
 TRUTHY_VALUES: frozenset
 CLASS_TO_LOADER: dict
 CATCH_ALL: str

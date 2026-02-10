@@ -3,13 +3,14 @@ from weakref import WeakKeyDictionary
 
 from ._type_def import T
 
+K = TypeVar('K')
 V = TypeVar('V')
 
 def per_cls(
     cache: WeakKeyDictionary[type, V],
     cls: type,
-    factory: Callable[[], V] = dict,
-) -> V: ...
+    factory: Callable[[], dict[K, V]] = dict,
+) -> dict[K, V]: ...
 
 def is_builtin(o: Any) -> bool:
     """Check if an object/singleton/class is a builtin in Python."""

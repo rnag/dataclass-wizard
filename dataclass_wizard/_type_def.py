@@ -209,7 +209,7 @@ class Encoder(PyProtocol):
     `json.dumps`
     """
 
-    def __call__(self, obj: Union[JSONObject, JSONList],
+    def __call__(self, obj,
                  /,
                  *args,
                  **kwargs) -> str:
@@ -222,9 +222,10 @@ class FileEncoder(PyProtocol):
     `json.dump`
     """
 
-    def __call__(self, obj: Union[JSONObject, JSONList],
-                 file: Union[TextIO, BinaryIO],
-                 **kwargs) -> AnyStr:
+    def __call__(self, obj, file,
+                 /,
+                 *args,
+                 **kwargs) -> None:
         ...
 
 

@@ -1,8 +1,9 @@
-__all__ = ['Buffer', 'Unpack', 'PyForwardRef', 'PyProtocol', 'PyDeque', 'PyTypedDict', 'PyRequired', 'PyNotRequired', 'PyReadOnly', 'PyLiteralString', 'FrozenKeys', 'DefFactory', 'NoneType', 'ExplicitNullType', 'ExplicitNull', 'JSONList', 'JSONObject', 'ListOfJSONObject', 'JSONValue', 'FileType', 'EnvFileType', 'StrCollection', 'ParseFloat', 'Encoder', 'FileEncoder', 'Decoder', 'FileDecoder', 'NUMBERS', 'T', 'E', 'U', 'M', 'NT', 'DT', 'DD', 'N', 'S', 'LT', 'LSQ', 'FREF', 'dataclass_transform', 'UNSET', 'META', 'ENV_META']
+__all__ = ['Buffer', 'Unpack', 'PyForwardRef', 'PyProtocol', 'PyDeque', 'PyTypedDict', 'PyRequired', 'PyNotRequired', 'PyReadOnly', 'PyLiteralString', 'FrozenKeys', 'DefFactory', 'NoneType', 'ExplicitNullType', 'ExplicitNull', 'JSONList', 'JSONObject', 'ListOfJSONObject', 'JSONValue', 'FileType', 'EnvFileType', 'StrCollection', 'ParseFloat', 'Encoder', 'FileEncoder', 'Decoder', 'FileDecoder', 'NUMBERS', 'T', 'E', 'U', 'M', 'NT', 'DT', 'DD', 'N', 'S', 'LT', 'LSQ', 'FREF', 'dataclass_transform', 'UNSET', 'META', 'ENV_META', '_META', '_ENV_META']
 
 import _abc
 import typing
 from collections.abc import Buffer as Buffer
+from enum import Enum
 from os import PathLike
 from typing import (ClassVar, Deque as PyDeque, ForwardRef as PyForwardRef,
                     LiteralString as PyLiteralString,
@@ -44,8 +45,8 @@ _ENV_META = typing.TypeVar('_ENV_META', bound=AbstractEnvMeta)
 ENV_META = type[_ENV_META]
 
 NUMBERS: tuple
-T: typing.TypeVar
-E: typing.TypeVar
+T = typing.TypeVar('T')
+E = typing.TypeVar('E', bound=Enum)
 U: typing.TypeVar
 M: typing.TypeVar
 NT: typing.TypeVar
@@ -54,7 +55,7 @@ DD: typing.TypeVar
 S: typing.TypeVar
 LT: typing.TypeVar
 LSQ: typing.TypeVar
-FREF: typing.TypeVar
+FREF = typing.TypeVar('FREF', str, PyForwardRef)
 
 class _UnsetType: ...
 UNSET: _UnsetType
@@ -67,12 +68,7 @@ class ExplicitNullType:
 ExplicitNull: ExplicitNullType
 
 class Encoder(typing.Protocol):
-    __parameters__: ClassVar[tuple] = ...
-    _is_protocol: ClassVar[bool] = ...
-    __abstractmethods__: ClassVar[frozenset] = ...
-    _abc_impl: ClassVar[_abc._abc_data] = ...
-    __protocol_attrs__: ClassVar[set] = ...
-    def __call__(self, obj, *args, **kwargs) -> str: ...
+    def __call__(self, obj: JSONObject | JSONList, /, *args: typing.Any, **kwargs: typing.Any) -> str: ...
     @classmethod
     def __subclasshook__(cls, other): ...
     def __init__(self, *args, **kwargs) -> None: ...
@@ -83,7 +79,11 @@ class FileEncoder(typing.Protocol):
     __abstractmethods__: ClassVar[frozenset] = ...
     _abc_impl: ClassVar[_abc._abc_data] = ...
     __protocol_attrs__: ClassVar[set] = ...
-    def __call__(self, obj, file, **kwargs) -> typing.AnyStr: ...
+
+    def __call__(self, obj: JSONObject | JSONList,
+                 file: typing.TextIO | typing.BinaryIO,
+                 **kwargs) -> None: ...
+
     @classmethod
     def __subclasshook__(cls, other): ...
     def __init__(self, *args, **kwargs) -> None: ...

@@ -74,7 +74,7 @@ class TOMLWizard(SerializerHookMixin):
                 *encoder_args,
                 encoder: Encoder | None = None,
                 multiline_strings: bool = False,
-                indent: int = 4) -> AnyStr:
+                indent: int = 4) -> str:
         ...
 
     def to_toml_file(self: T, file: FileType, mode: str = 'wb',

@@ -49,7 +49,7 @@ class AbstractEnvWizard(ABC):
         """
 
     @abstractmethod
-    def to_json(self: E, indent=None) -> AnyStr:
+    def to_json(self: E, indent=None) -> str:
         """
         Converts an instance of a `EnvWizard` subclass to a JSON `string`
         representation.

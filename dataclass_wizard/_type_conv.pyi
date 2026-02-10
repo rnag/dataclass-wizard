@@ -1,9 +1,9 @@
 from _typeshed import Incomplete
 from collections.abc import Callable
 from datetime import date, time, datetime, timedelta, timezone, tzinfo
-from typing import Any, AnyStr, Callable as _Callable, N
+from typing import Any, AnyStr, Callable as _Callable
 
-from ._type_def import E
+from ._type_def import N, E
 
 __all__ = ['TRUTHY_VALUES', 'as_int', 'as_datetime', 'as_date', 'as_time', 'as_timedelta', 'datetime_to_timestamp', 'as_collection', 'as_list', 'as_dict', 'as_enum']
 
