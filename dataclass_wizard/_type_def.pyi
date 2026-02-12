@@ -1,9 +1,9 @@
 __all__ = ['Buffer', 'Unpack', 'PyForwardRef', 'PyProtocol', 'PyDeque', 'PyTypedDict', 'PyRequired', 'PyNotRequired', 'PyReadOnly', 'PyLiteralString', 'FrozenKeys', 'DefFactory', 'NoneType', 'ExplicitNullType', 'ExplicitNull', 'JSONList', 'JSONObject', 'ListOfJSONObject', 'JSONValue', 'FileType', 'EnvFileType', 'StrCollection', 'ParseFloat', 'Encoder', 'FileEncoder', 'Decoder', 'FileDecoder', 'NUMBERS', 'T', 'E', 'U', 'M', 'NT', 'DT', 'DD', 'N', 'S', 'LT', 'LSQ', 'FREF', 'dataclass_transform', 'UNSET', 'META', 'ENV_META', '_META', '_ENV_META']
 
-import _abc
 import typing
 from _typeshed import SupportsRead, SupportsWrite
 from collections.abc import Buffer as Buffer
+from datetime import date, time, datetime
 from enum import Enum
 from os import PathLike
 from typing import (ClassVar, Deque as PyDeque, ForwardRef as PyForwardRef,
@@ -17,8 +17,6 @@ from typing import (ClassVar, Deque as PyDeque, ForwardRef as PyForwardRef,
                     dataclass_transform as dataclass_transform)
 
 from ._bases import AbstractMeta, AbstractEnvMeta
-
-DefFactory = typing.Callable[[], T]
 
 FrozenKeys = frozenset[str]
 JSONList = list[typing.Any]
@@ -47,11 +45,17 @@ ENV_META = type[_ENV_META]
 
 NUMBERS: tuple
 T = typing.TypeVar('T')
+T_co = typing.TypeVar('T_co', covariant=True)
+
+@typing.type_check_only
+class DefFactory(typing.Protocol[T_co]):
+    def __call__(self) -> T_co: ...
+
 E = typing.TypeVar('E', bound=Enum)
 U: typing.TypeVar
 M: typing.TypeVar
 NT: typing.TypeVar
-DT: typing.TypeVar
+DT = typing.TypeVar('DT', date, time, datetime)
 DD: typing.TypeVar
 S: typing.TypeVar
 LT: typing.TypeVar

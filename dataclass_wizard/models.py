@@ -683,7 +683,7 @@ if PY314_OR_ABOVE:
         hash=None,
         compare=True,
         metadata=None,
-        kw_only=False,
+        kw_only=MISSING,
         doc=None,
     ):
 
@@ -719,7 +719,7 @@ if PY314_OR_ABOVE:
         hash=None,
         compare=True,
         metadata=None,
-        kw_only=False,
+        kw_only=MISSING,
         doc=None,
     ):
         all, load, dump = _normalize_alias_path_args(all, load, dump)
@@ -835,7 +835,7 @@ elif PY310_OR_ABOVE:  # pragma: no cover
               default_factory=MISSING,
               init=True, repr=True,
               hash=None, compare=True,
-              metadata=None, kw_only=False):
+              metadata=None, kw_only=MISSING):
 
         all, load, dump, env = _normalize_alias_args(default, default_factory, all, load, dump, env)
 
@@ -864,7 +864,7 @@ elif PY310_OR_ABOVE:  # pragma: no cover
                   default_factory=MISSING,
                   init=True, repr=True,
                   hash=None, compare=True,
-                  metadata=None, kw_only=False):
+                  metadata=None, kw_only=MISSING):
         all, load, dump = _normalize_alias_path_args(all, load, dump)
 
         return Field(

@@ -72,6 +72,7 @@ NUMBERS = int, float
 
 # Generic type
 T = TypeVar('T')
+T_co = TypeVar('T_co', covariant=True)
 TT = TypeVar('TT')
 
 # Enum subclass type

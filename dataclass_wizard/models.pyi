@@ -1,7 +1,8 @@
-from dataclasses import MISSING, Field as _Field, dataclass
+from dataclasses import MISSING, Field as _Field, dataclass, _MISSING_TYPE
 from datetime import datetime, date, time, tzinfo
+from types import EllipsisType
 from typing import (Collection, Callable,
-                    Generic, Sequence, TypeAlias, Mapping)
+                    Generic, Sequence, TypeAlias, Mapping, Literal, TypeVar, type_check_only, Protocol)
 from typing import TypedDict, overload, Any, NotRequired, Self
 from zoneinfo import ZoneInfo
 
@@ -33,7 +34,6 @@ def ensure_type_ref(extras: 'Extras', tp: type, *,
 
 @dataclass(order=True)
 class TypeInfo:
-    __slots__ = ...
     # type origin (ex. `List[str]` -> `List`)
     origin: type
     # type arguments (ex. `Dict[str, int]` -> `(str, int)`)
@@ -71,7 +71,7 @@ class TypeInfo:
              prefix='',
              *, bound: type | None = None) -> Self: ...
     def wrap_builtin(self, bound: type, result: str, extras: Extras) -> Self: ...
-    def wrap_dd(self, default_factory: DefFactory, result: str, extras: Extras) -> Self: ...
+    def wrap_dd(self, default_factory: DefFactory[T], result: str, extras: Extras) -> Self: ...
     def _wrap_inner(self, extras: Extras,
                     tp: type | DefFactory | None = None,
                     prefix: str = '',
@@ -101,13 +101,13 @@ class PatternBase:
     # a sequence of custom (non-ISO format) date string patterns
     patterns: tuple[str, ...]
 
-    tz_info: tzinfo | Ellipsis
+    tz_info: tzinfo | EllipsisType
 
     def __init__(self, base: type[DT],
-                 patterns: tuple[str, ...] = None,
-                 tz_info: tzinfo | Ellipsis | None = None): ...
+                 patterns: tuple[str, ...] | None = None,
+                 tz_info: tzinfo | EllipsisType | None = None): ...
 
-    def with_tz(self, tz_info: tzinfo | Ellipsis) -> Self: ...
+    def with_tz(self, tz_info: tzinfo | EllipsisType) -> Self: ...
 
     def __getitem__(self, patterns: tuple[str, ...]) -> type[DT]: ...
 
@@ -137,9 +137,9 @@ class Pattern(PatternBase):
     ... class MyClass:
     ...     my_date_field: Annotated[date, Pattern('%m-%d-%y')]
     """
-    __class_getitem__ = __getitem__ = __init__
     # noinspection PyInitNewSignature
     def __init__(self, pattern): ...
+    __class_getitem__ = __getitem__ = __init__
 
 
 class AwarePattern(PatternBase):
@@ -165,7 +165,6 @@ class AwarePattern(PatternBase):
     ... class MyClass:
     ...     my_time_field: Annotated[list[time], AwarePattern('US/Eastern', '%H:%M:%S')]
     """
-    __class_getitem__ = __getitem__ = __init__
     # noinspection PyInitNewSignature
     def __init__(self, timezone, pattern): ...
 
@@ -191,9 +190,9 @@ class UTCPattern(PatternBase):
     ... class MyClass:
     ...     my_utc_field: Annotated[datetime, UTCPattern('%Y-%m-%d %H:%M:%S')]
     """
-    __class_getitem__ = __getitem__ = __init__
     # noinspection PyInitNewSignature
     def __init__(self, pattern): ...
+    __class_getitem__ = __getitem__ = __init__
 
 
 class AwareTimePattern(time, Generic[T]):
@@ -217,9 +216,9 @@ class AwareTimePattern(time, Generic[T]):
     ... class MyClass:
     ...     my_aware_dt_field: AwareTimePattern['Europe/London', '%H:%M:%Z']
     """
-    __getitem__ = __init__
     # noinspection PyInitNewSignature
     def __init__(self, timezone, pattern): ...
+    __getitem__ = __init__
 
 
 class AwareDateTimePattern(datetime, Generic[T]):
@@ -243,9 +242,9 @@ class AwareDateTimePattern(datetime, Generic[T]):
     ... class MyClass:
     ...     my_aware_dt_field: AwareDateTimePattern['Asia/Tokyo', '%m-%Y-%H:%M-%Z']
     """
-    __getitem__ = __init__
     # noinspection PyInitNewSignature
     def __init__(self, timezone, pattern): ...
+    __getitem__ = __init__
 
 
 class DatePattern(date, Generic[T]):
@@ -268,9 +267,9 @@ class DatePattern(date, Generic[T]):
     ... class MyClass:
     ...     my_date_field: DatePattern['%Y/%m/%d']
     """
-    __getitem__ = __init__
     # noinspection PyInitNewSignature
     def __init__(self, pattern): ...
+    __getitem__ = __init__
 
 
 class TimePattern(time, Generic[T]):
@@ -293,9 +292,9 @@ class TimePattern(time, Generic[T]):
     ... class MyClass:
     ...     my_time_field: TimePattern['%H:%M:%S']
     """
-    __getitem__ = __init__
     # noinspection PyInitNewSignature
     def __init__(self, pattern): ...
+    __getitem__ = __init__
 
 
 class DateTimePattern(datetime, Generic[T]):
@@ -318,9 +317,9 @@ class DateTimePattern(datetime, Generic[T]):
     ... class MyClass:
     ...     my_time_field: DateTimePattern['%d, %b, %Y %I:%M:%S %p']
     """
-    __getitem__ = __init__
     # noinspection PyInitNewSignature
     def __init__(self, pattern): ...
+    __getitem__ = __init__
 
 
 class UTCTimePattern(time, Generic[T]):
@@ -342,9 +341,9 @@ class UTCTimePattern(time, Generic[T]):
     ... class MyClass:
     ...     my_utc_time_field: UTCTimePattern['%H:%M:%S']
     """
-    __getitem__ = __init__
     # noinspection PyInitNewSignature
     def __init__(self, pattern): ...
+    __getitem__ = __init__
 
 
 class UTCDateTimePattern(datetime, Generic[T]):
@@ -366,9 +365,9 @@ class UTCDateTimePattern(datetime, Generic[T]):
     ... class MyClass:
     ...     my_utc_datetime_field: UTCDateTimePattern['%Y-%m-%d %H:%M:%S']
     """
-    __getitem__ = __init__
     # noinspection PyInitNewSignature
     def __init__(self, pattern): ...
+    __getitem__ = __init__
 
 
 # noinspection PyPep8Naming
@@ -378,7 +377,7 @@ def AliasPath(*all: PathType | str,
               env: PathType | str | bool | None = None,
               skip: bool = False,
               default: Any = MISSING,
-              default_factory: Callable[[], MISSING] = MISSING,
+              default_factory: DefFactory[T] | Literal[_MISSING_TYPE.MISSING] = MISSING,
               init: bool = True,
               repr: bool = True,
               hash: bool | None = None,
@@ -467,7 +466,7 @@ def Alias(*all: str,
           env: str | Sequence[str] | None = None,
           skip: bool = False,
           default=MISSING,
-          default_factory: Callable[[], MISSING] = MISSING,
+          default_factory: DefFactory[T] | Literal[_MISSING_TYPE.MISSING] = MISSING,
           init=True, repr=True,
           hash=None, compare=True, metadata=None, kw_only=False):
     """
@@ -545,7 +544,7 @@ def Alias(*all: str,
 # noinspection PyPep8Naming
 def Env(*load: str,
         default=MISSING,
-        default_factory: Callable[[], MISSING] = MISSING,
+        default_factory: DefFactory[T] | Literal[_MISSING_TYPE.MISSING] = MISSING,
         init=True, repr=True,
         hash=None, compare=True, metadata=None, kw_only=False):
     """
@@ -613,10 +612,10 @@ def Env(*load: str,
 
 def skip_if_field(condition: Condition, *,
                   default=MISSING,
-                  default_factory: Callable[[], MISSING] = MISSING,
+                  default_factory: DefFactory[T] | Literal[_MISSING_TYPE.MISSING] = MISSING,
                   init=True, repr=True,
                   hash=None, compare=True, metadata=None,
-                  kw_only: bool = MISSING):
+                  kw_only: bool | Literal[_MISSING_TYPE.MISSING] = MISSING):
     """
     Defines a dataclass field with a ``SkipIf`` condition.
 
@@ -794,7 +793,7 @@ def finalize_skip_if(skip_if: Condition,
 
 def get_skip_if_condition(skip_if: Condition,
                           _locals: dict[str, Any],
-                          operand_2: str = None,
-                          condition_i: int = None,
+                          operand_2: str | None = None,
+                          condition_i: int | None = None,
                           condition_var: str = '_skip_if_') -> 'str | bool':
     ...
