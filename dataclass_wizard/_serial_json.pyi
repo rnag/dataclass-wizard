@@ -12,9 +12,9 @@ def set_from_dict_and_to_dict_if_needed(cls: type) -> None: ...
 def configure_wizard_class(cls: type,
                            str: bool = False,
                            debug: bool | int = False,
-                           case: KeyCase | str = None,
-                           dump_case: KeyCase | str = None,
-                           load_case: KeyCase | str  = None):
+                           case: KeyCase | str | None = None,
+                           dump_case: KeyCase | str | None = None,
+                           load_case: KeyCase | str | None  = None):
     ...
 
 class SerializerHookMixin(Protocol):

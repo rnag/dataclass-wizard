@@ -88,7 +88,7 @@ class TOMLWizard(SerializerHookMixin):
                      instances: list[T],
                      header: str = 'items',
                      encoder: Encoder | None = None,
-                     **encoder_kwargs) -> AnyStr:
+                     **encoder_kwargs) -> str:
         ...
 
 
@@ -112,7 +112,7 @@ class YAMLWizard(SerializerHookMixin):
 
     def to_yaml(self: T, *,
                 encoder: Encoder | None = None,
-                **encoder_kwargs) -> AnyStr:
+                **encoder_kwargs) -> str:
         ...
 
     def to_yaml_file(self: T, file: FileType, mode: str = 'w',
@@ -124,5 +124,5 @@ class YAMLWizard(SerializerHookMixin):
     def list_to_yaml(cls: type[T],
                      instances: list[T],
                      encoder: Encoder | None = None,
-                     **encoder_kwargs) -> AnyStr:
+                     **encoder_kwargs) -> str:
         ...
