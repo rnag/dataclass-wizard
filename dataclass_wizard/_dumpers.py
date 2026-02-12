@@ -27,7 +27,6 @@ from ._class_helper import (
     CLASS_TO_DUMPER,
     set_class_dumper,
 )
-from ._type_def import META
 from ._type_utils import create_new_class, is_subclass_safe
 from ._meta_cache import get_meta
 # noinspection PyUnresolvedReferences
@@ -37,10 +36,11 @@ from ._decorators import (setup_recursive_safe_function,
 from .enums import KeyCase, DateTimeTo
 from .errors import (ParseError, MissingFields, MissingData, JSONWizardError)
 from .models import (Extras, TypeInfo, PatternBase,
+                     get_skip_if_condition, finalize_skip_if,
                      LEAF_TYPES, LEAF_TYPES_NO_BYTES)
-from .models import get_skip_if_condition, finalize_skip_if
 from ._type_conv import datetime_to_timestamp
 from ._type_def import (
+    META,
     NoneType, JSONObject,
     PyLiteralString,
     T, ExplicitNull

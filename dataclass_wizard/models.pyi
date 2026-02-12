@@ -93,7 +93,7 @@ class Extras(TypedDict):
     recursion_guard: dict[Any, str]
 
 
-class PatternBase:
+class PatternBase(Generic[DT]):
 
     # base type for pattern, a type (or subtype) of `DT`
     base: type[DT]

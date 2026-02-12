@@ -4,9 +4,9 @@ from typing import List, Optional, Dict
 import pytest
 from pytest_mock import MockerFixture
 
-from dataclass_wizard.mixins import (
-    JSONListWizard, JSONFileWizard, TOMLWizard, YAMLWizard
-)
+from dataclass_wizard.mixins.yaml import YAMLWizard
+from dataclass_wizard.mixins.toml import TOMLWizard
+from dataclass_wizard.mixins.json import JSONListWizard, JSONFileWizard
 from dataclass_wizard.utils.containers import Container
 from .conftest import SampleClass
 
@@ -32,8 +32,18 @@ class Inner:
 
 
 @pytest.fixture
-def mock_open(mocker: MockerFixture):
-    return mocker.patch('dataclass_wizard.mixins.open')
+def mock_json_open(mocker: MockerFixture):
+    return mocker.patch('dataclass_wizard.mixins.json.open')
+
+
+@pytest.fixture
+def mock_toml_open(mocker: MockerFixture):
+    return mocker.patch('dataclass_wizard.mixins.toml.open')
+
+
+@pytest.fixture
+def mock_yaml_open(mocker: MockerFixture):
+    return mocker.patch('dataclass_wizard.mixins.yaml.open')
 
 
 def test_json_list_wizard_methods():
@@ -50,7 +60,7 @@ def test_json_list_wizard_methods():
     assert c2 == c3
 
 
-def test_json_file_wizard_methods(mocker: MockerFixture, mock_open):
+def test_json_file_wizard_methods(mocker: MockerFixture, mock_json_open):
     """Test and coverage the base methods in JSONFileWizard."""
     filename = 'my_file.json'
     my_dict = {'f1': 'Hello world!', 'f2': 123}
@@ -61,16 +71,16 @@ def test_json_file_wizard_methods(mocker: MockerFixture, mock_open):
     c = MyFileWizard.from_json_file(filename,
                                     decoder=mock_decoder)
 
-    mock_open.assert_called_once_with(filename)
+    mock_json_open.assert_called_once_with(filename)
     mock_decoder.assert_called_once()
 
     mock_encoder = mocker.Mock()
-    mock_open.reset_mock()
+    mock_json_open.reset_mock()
 
     c.to_json_file(filename,
                    encoder=mock_encoder)
 
-    mock_open.assert_called_once_with(filename, 'w')
+    mock_json_open.assert_called_once_with(filename, 'w')
     mock_encoder.assert_called_once_with(my_dict, mocker.ANY)
 
 
@@ -86,7 +96,7 @@ def test_yaml_wizard_methods(mocker: MockerFixture):
     """
 
     # Patch open() to return a file-like object which returns our string data.
-    m = mocker.patch('dataclass_wizard.mixins.open',
+    m = mocker.patch('dataclass_wizard.mixins.yaml.open',
                      mocker.mock_open(read_data=yaml_data))
 
     filename = 'my_file.yaml'
@@ -100,7 +110,7 @@ def test_yaml_wizard_methods(mocker: MockerFixture):
                                inner=Inner(my_float=1.2,
                                            my_list=['hello, world!', '123']))
 
-    mock_open.return_value = mocker.mock_open()
+    mock_yaml_open.return_value = mocker.mock_open()
 
     obj.to_yaml_file(filename)
 
@@ -194,15 +204,15 @@ my_list = ["hello, world!", "123"]
     """
 
     # Mock open to return the TOML data as a string directly.
-    mock_open = mocker.patch("dataclass_wizard.mixins.open", mocker.mock_open(read_data=toml_data))
+    mock_toml_open = mocker.patch("dataclass_wizard.mixins.toml.open", mocker.mock_open(read_data=toml_data))
 
     filename = 'my_file.toml'
 
     # Test reading from TOML file
     obj = MyTOMLWizard.from_toml_file(filename)
 
-    mock_open.assert_called_once_with(filename, 'rb')
-    mock_open.reset_mock()
+    mock_toml_open.assert_called_once_with(filename, 'rb')
+    mock_toml_open.reset_mock()
 
     assert obj == MyTOMLWizard(my_str="test value",
                                inner=Inner(my_float=1.2,
@@ -211,7 +221,7 @@ my_list = ["hello, world!", "123"]
     # Test writing to TOML file
     # Mock open for writing to the TOML file.
     mock_open_write = mocker.mock_open()
-    mocker.patch("dataclass_wizard.mixins.open", mock_open_write)
+    mocker.patch("dataclass_wizard.mixins.toml.open", mock_open_write)
 
     obj.to_toml_file(filename)
 
