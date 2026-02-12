@@ -14,7 +14,7 @@ import attr
 import mashumaro
 
 from dataclass_wizard import JSONWizard, LoadMeta
-from dataclass_wizard.class_helper import create_new_class
+from dataclass_wizard._type_utils import create_new_class
 from dataclass_wizard.constants import PY314_OR_ABOVE
 from dataclass_wizard.utils._string_case import to_snake_case
 

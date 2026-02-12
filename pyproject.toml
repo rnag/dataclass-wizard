@@ -49,7 +49,7 @@ Documentation = "https://dcw.ritviknag.com"
 "Bug Tracker" = "https://github.com/rnag/dataclass-wizard/issues"
 
 [project.scripts]
-wiz = "dataclass_wizard.wizard_cli.cli:main"
+wiz = "dataclass_wizard.cli.cli:main"
 
 [project.optional-dependencies]
 dotenv = ["python-dotenv>=1,<2"]
