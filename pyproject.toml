@@ -219,6 +219,7 @@ ignore = [
 branch = true
 omit = [
     "*/__version__.py",
+    "*/v0/**",
 ]
 
 [tool.coverage.report]

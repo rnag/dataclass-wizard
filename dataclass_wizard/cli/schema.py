@@ -101,7 +101,7 @@ def _as_datetime(o: 'str | Number | datetime',
     try:
         # We can assume that `o` is a string, as generally this will be the
         # case. Also, :func:`fromisoformat` does an instance check separately.
-        return base_type.fromisoformat(o.replace('Z', '+00:00', 1))
+        return base_type.fromisoformat(o.replace('Z', '+00:00', 1))  # type: ignore[union-attr,arg-type]
     except Exception:
         t = type(o)
         if t is str:
@@ -150,7 +150,7 @@ def _as_time(o: 'str | time', base_type=time, default=None, raise_=True):
     try:
         # We can assume that `o` is a string, as generally this will be the
         # case. Also, :func:`fromisoformat` does an instance check separately.
-        return base_type.fromisoformat(o.replace('Z', '+00:00', 1))
+        return base_type.fromisoformat(o.replace('Z', '+00:00', 1))  # type: ignore[arg-type]
     except Exception:
         t = type(o)
         if t is str:
@@ -188,9 +188,9 @@ class PyCodeGenerator:
     # The rest of these fields are just for internal use.
     parser: 'JSONRootParser' = field(init=False)
     data: JSONBlobType = field(init=False)
-    _py_code_lines: List[str] = field(default=None, init=False)
+    _py_code_lines: Optional[list[str]] = field(default=None, init=False)
 
-    def __post_init__(self, file_name: str, file_contents: str,
+    def __post_init__(self, file_name: str, file_contents: Union[str, bytes],
                       force_strings: bool, experimental: bool):
 
         # Set global flags
@@ -213,13 +213,13 @@ class PyCodeGenerator:
             # Generate Python code for the dataclass(es)
             dataclass_code: str = repr(self.parser)
             # Add any imports used at the top of the code
-            self._py_code_lines = ModuleImporter.imports
+            self._py_code_lines: list[str] = ModuleImporter.imports  # type: ignore
             if self._py_code_lines:
                 self._py_code_lines.append('')
             # Generate final Python code - imports + dataclass(es)
-            self._py_code_lines.append(dataclass_code)
+            self._py_code_lines.append(dataclass_code)  # type: ignore[union-attr]
 
-        return '\n'.join(self._py_code_lines)
+        return '\n'.join(self._py_code_lines)  # type: ignore[arg-type]
 
 
 # Global flags (generally passed in via command-line) which are shared by
@@ -350,8 +350,8 @@ class classproperty:
         self.f = method
 
     def __get__(
-            self, instance: Optional[_S], cls: Optional[Type[_S]] = None) -> T:
-        return self.f(cls)
+            self, instance: Optional[_S], cls: Optional[Type[_S]] = None) -> _S:
+        return self.f(cls)  # type: ignore[return-value]
 
     def getter(self, method):
         self.f = method
@@ -424,8 +424,8 @@ class ModuleImporter:
 
         lines = []
 
-        for lvl in sorted(cls._MOD_IMPORTS):
-            modules = cls._MOD_IMPORTS[lvl]
+        for lvl in sorted(cls._MOD_IMPORTS):  # type: ignore[attr-defined]
+            modules = cls._MOD_IMPORTS[lvl]  # type: ignore[attr-defined]
             for mod in sorted(modules):
                 imported = sorted(modules[mod])
                 lines.append(f'from {mod} import {", ".join(imported)}')
@@ -724,7 +724,7 @@ def possible_types_for_string_value(string: str) -> PyDataTypeOrSeq:
         # If force-resolve is enabled, just return the inferred type if one
         # was determined.
         # noinspection PyUnresolvedReferences
-        if Globals.force_strings and possible_types:
+        if Globals.force_strings and possible_types:  # type: ignore
             return possible_types[0]
 
         possible_types.append(PyDataType.STRING)
@@ -855,11 +855,11 @@ class PyDataclassGenerator(metaclass=property_wizard):
             **constructor_kwargs
     ) -> T:
 
-        obj = cls({}, **constructor_kwargs)
+        obj = cls({}, **constructor_kwargs)  # type: ignore[call-arg]
 
         for k, typ in parsed_types.items():
             underscored_field = to_snake_case(k)
-            obj.parsed_types[underscored_field].append(typ)
+            obj.parsed_types[underscored_field].append(typ)  # type: ignore[attr-defined]
 
         return obj
 
@@ -870,13 +870,13 @@ class PyDataclassGenerator(metaclass=property_wizard):
             typ = json_to_python_type(v)
 
             if typ is PyDataType.DICT:
-                typ = PyDataclassGenerator(
+                typ = PyDataclassGenerator(  # type: ignore[assignment]
                     v, k,
                     nested_lvl=nested_lvl,
                 )
             elif typ is PyDataType.LIST:
                 nested_lvl += 1
-                typ = PyListGenerator(
+                typ = PyListGenerator(  # type: ignore[assignment]
                     v, k, k,
                     nested_lvl=nested_lvl,
                 )
@@ -912,14 +912,14 @@ class PyDataclassGenerator(metaclass=property_wizard):
         nested_parts = []
 
         # noinspection PyUnresolvedReferences
-        if Globals.insert_comments:
+        if Globals.insert_comments:  # type: ignore[union-attr]
             class_parts.append(
                 textwrap.indent('"""', self.indent))
             class_parts.append(
                 textwrap.indent(f'{self.name} dataclass', self.indent))
 
             # noinspection PyUnresolvedReferences
-            if Globals.newline_after_class_def:
+            if Globals.newline_after_class_def:  # type: ignore[union-attr]
                 class_parts.append('')
 
             class_parts.append(textwrap.indent(
@@ -987,14 +987,14 @@ class PyListGenerator(metaclass=property_wizard):
     data: JSONList
 
     container_name: str = 'container'
-    _name: str = None
+    _name: Optional[str] = None
 
     indent: str = ' ' * 4
 
     is_root: InitVar[bool] = False
     nested_lvl: InitVar[int] = 0
 
-    root: PyDataclassGenerator = field(init=False, default=None)
+    root: PyDataclassGenerator = field(init=False, default=None)  # type: ignore
 
     parsed_types: TypeContainer = field(init=False,
                                         default_factory=TypeContainer)
@@ -1002,7 +1002,7 @@ class PyListGenerator(metaclass=property_wizard):
     # Model is our model dataclass object, which may or may not be present
     # in the list. If there are multiple models (i.e. dicts), their keys
     # and the associated type defs should be merged into one model.
-    model: PyDataclassGenerator = field(init=False, default=None)
+    model: PyDataclassGenerator = field(init=False, default=None)  # type: ignore
 
     @property
     def name(self):
@@ -1035,7 +1035,7 @@ class PyListGenerator(metaclass=property_wizard):
 
             if typ is PyDataType.DICT:
 
-                typ = PyDataclassGenerator(elem, self.name,
+                typ = PyDataclassGenerator(elem, self.name,  # type: ignore
                                            nested_lvl=nested_lvl,
                                            is_root=is_root)
 
@@ -1043,13 +1043,13 @@ class PyListGenerator(metaclass=property_wizard):
                     self.model |= typ
                     continue
 
-                self.model = typ
+                self.model = typ  # type: ignore
 
             else:
                 # Nested lists.
                 if typ is PyDataType.LIST:
                     nested_lvl += 1
-                    typ = PyListGenerator(elem, nested_lvl=nested_lvl)
+                    typ = PyListGenerator(elem, nested_lvl=nested_lvl)  # type: ignore[assignment]
 
                 data_list.append(typ)
 
@@ -1062,12 +1062,12 @@ class PyListGenerator(metaclass=property_wizard):
             data_dict = {self.name: self.model} if self.model else {}
 
             data_dict.update({
-                f'field_{i + 1}': elem
+                f'field_{i + 1}': elem  # type: ignore
                 for i, elem in enumerate(data_list)
             })
 
             self.root = PyDataclassGenerator.load_parsed(
-                data_dict,
+                data_dict,  # type: ignore
                 nested_lvl=nested_lvl
             )
             self.root.name = self.container_name
