@@ -73,13 +73,12 @@ class SerializerHookMixin(Protocol):
         ...
 
 
-class JSONWizardImpl(AbstractJSONWizard, SerializerHookMixin):
+class _JSONWizardMixin(AbstractJSONWizard, SerializerHookMixin):
     """
     Mixin class to allow a `dataclass` sub-class to be easily converted
     to and from JSON.
 
     """
-    __slots__ = ()
 
     class Meta(BaseJSONWizardMeta):
         """
@@ -197,11 +196,11 @@ class JSONWizardImpl(AbstractJSONWizard, SerializerHookMixin):
 
 
 @dataclass_transform()
-class DataclassWizard(JSONWizardImpl):
+class DataclassWizard(_JSONWizardMixin):
     ...
 
 
-class JSONWizard(JSONWizardImpl): ...
+class JSONWizard(_JSONWizardMixin): ...
 
 
 def _str_fn() -> Callable[[W], str]:

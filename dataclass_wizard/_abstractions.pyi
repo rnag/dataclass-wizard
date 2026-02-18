@@ -66,7 +66,6 @@ class AbstractJSONWizard(ABC):
     be properly loaded from, and serialized to, JSON.
 
     """
-    __slots__ = ()
 
     @classmethod
     @abstractmethod
