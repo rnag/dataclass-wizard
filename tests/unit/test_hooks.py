@@ -20,7 +20,7 @@ def test_register_type_ipv4address_roundtrip():
         s: str | None = None
         c: IPv4Address | None = None
 
-    NewFoo.register_type(IPv4Address)
+    register_type(NewFoo, IPv4Address)
 
     data = {"b": "AAAA", "c": "127.0.0.1", "s": "foobar"}
 

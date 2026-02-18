@@ -1,14 +1,17 @@
+from __future__ import annotations
+
 import json
 import logging
 from dataclasses import dataclass, MISSING
 
 from ._log import enable_library_debug_logging
-from ._bases_meta import BaseJSONWizardMeta, LoadMeta, register_type
+from ._bases_meta import BaseJSONWizardMeta, LoadMeta
 from ._class_helper import call_meta_initializer_if_needed
 from .constants import PACKAGE_NAME
 from ._dumpers import asdict
 from ._loaders import fromdict, fromlist
 from ._type_def import UNSET, dataclass_transform
+from .enums import KeyCase
 # noinspection PyProtectedMember
 from .utils._dataclass_compat import (dataclass_needs_refresh,
                                       set_new_attribute, str_pprint_fn)
@@ -47,11 +50,11 @@ def set_from_dict_and_to_dict_if_needed(cls):
 
 # noinspection PyShadowingBuiltins
 def configure_wizard_class(cls,
-                           str=False,
-                           debug=False,
-                           case=None,
-                           dump_case=None,
-                           load_case=None):
+                           str: bool = False,
+                           debug: bool | str | int = False,
+                           case: KeyCase | str | None = None,
+                           dump_case: KeyCase | str | None = None,
+                           load_case: KeyCase | str | None = None):
     load_meta_kwargs = {}
 
     if case is not None:
@@ -101,8 +104,6 @@ class DataclassWizard:
 
         def __init_subclass__(cls):
             return cls._init_subclass()
-
-    register_type = classmethod(register_type)
 
     @classmethod
     def from_json(cls, string, *,

@@ -85,22 +85,8 @@ class _JSONWizardMixin(AbstractJSONWizard, SerializerHookMixin):
         Inner meta class that can be extended by sub-classes for additional
         customization with the JSON load / dump process.
         """
-        __slots__ = ()
-
         # Class attribute to enable detection of the class type.
         __is_inner_meta__ = True
-
-        def __init_subclass__(cls):
-            # Set the `__init_subclass__` method here, so we can ensure it
-            # doesn't run for the `JSONSerializable.Meta` class.
-            ...
-
-    @classmethod
-    def register_type(cls, tp: type, *,
-                      load: HookFn | None = None,
-                      dump: HookFn | None = None,
-                      mode: str | None = None) -> None:
-        ...
 
     @classmethod
     def from_json(cls: type[W], string: AnyStr, *,
@@ -173,35 +159,22 @@ class _JSONWizardMixin(AbstractJSONWizard, SerializerHookMixin):
         """
         ...
 
-    def __init_subclass__(cls,
-                          str: bool = False,
-                          debug: bool | str | int = False,
-                          case: KeyCase | str | None = None,
-                          dump_case: KeyCase | str | None = None,
-                          load_case: KeyCase | str | None = None,
-                          _apply_dataclass: bool = True,
-                          **dc_kwargs):
-        """
-        Checks for optional settings and flags that may be passed in by the
-        sub-class, and calls the Meta initializer when :class:`Meta` is sub-classed.
-
-        :param str: True to add a default ``__str__`` method to the subclass.
-        :param debug: True to enable debug mode and setup logging, so that
-          this library's DEBUG (and above) log messages are visible. If
-          ``debug`` is a string or integer, it is assumed to be the desired
-          "minimum logging level", and will be passed to ``logging.setLevel``.
-
-        """
-        ...
-
-
 @dataclass_transform()
 class DataclassWizard(_JSONWizardMixin):
-    ...
-
+    class Meta(BaseJSONWizardMeta):
+        ...
+    @classmethod
+    def from_dict(cls: type[W], o: JSONObject) -> W: ...
+    @classmethod
+    def from_list(cls: type[W], o: ListOfJSONObject) -> list[W]: ...
+    @classmethod
+    def from_json(cls: type[W], string: AnyStr, *, decoder: Decoder = ..., **decoder_kwargs) -> W | list[W]: ...
+    def to_dict(self: W, *, dict_factory=..., exclude: Collection[str] | None = ..., skip_defaults: bool | None = ...) -> JSONObject: ...
+    def to_json(self: W, *, encoder: Encoder = ..., **encoder_kwargs) -> str: ...
+    @classmethod
+    def list_to_json(cls: type[W], instances: list[W], encoder: Encoder = ..., **encoder_kwargs) -> str: ...
 
 class JSONWizard(_JSONWizardMixin): ...
-
 
 def _str_fn() -> Callable[[W], str]:
     """
@@ -209,4 +182,3 @@ def _str_fn() -> Callable[[W], str]:
     representation, when the `str()` method is invoked.
     """
     ...
-
