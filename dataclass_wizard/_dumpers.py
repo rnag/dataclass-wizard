@@ -35,7 +35,8 @@ from ._decorators import (setup_recursive_safe_function,
                          setup_recursive_safe_function_for_generic)
 from .enums import KeyCase, DateTimeTo
 from .errors import (ParseError, MissingFields, MissingData, JSONWizardError)
-from .models import (Extras, TypeInfo, get_skip_if_condition, finalize_skip_if,
+from ._models import (TypeInfo, Extras,
+                      get_skip_if_condition, finalize_skip_if,
                      LEAF_TYPES, LEAF_TYPES_NO_BYTES)
 from ._type_conv import datetime_to_timestamp
 from ._type_def import (

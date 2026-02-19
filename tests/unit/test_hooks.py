@@ -9,7 +9,7 @@ from dataclass_wizard import (register_type, JSONWizard,
                               LoadMeta, fromdict, asdict)
 from dataclass_wizard.mixins import DumpMixin, LoadMixin
 from dataclass_wizard.errors import ParseError
-from dataclass_wizard.models import TypeInfo, Extras
+from dataclass_wizard._models import TypeInfo, Extras
 
 
 def test_register_type_ipv4address_roundtrip():

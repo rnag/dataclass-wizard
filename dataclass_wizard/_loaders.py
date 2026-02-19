@@ -36,7 +36,7 @@ from .errors import (JSONWizardError,
                      MissingFields,
                      ParseError,
                      UnknownKeysError)
-from .models import Extras, TypeInfo, LEAF_TYPES
+from ._models import TypeInfo, Extras, LEAF_TYPES
 from .utils._dataclass_compat import (dataclass_fields,
                                       dataclass_init_fields,
                                       dataclass_init_field_names,

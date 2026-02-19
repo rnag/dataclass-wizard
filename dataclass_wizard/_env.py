@@ -28,7 +28,7 @@ from .errors import (JSONWizardError,
                      MissingData,
                      ParseError,
                      type_name, MissingVars)
-from .models import Extras, TypeInfo, SEQUENCE_ORIGINS, MAPPING_ORIGINS
+from ._models import TypeInfo, Extras, SEQUENCE_ORIGINS, MAPPING_ORIGINS
 from .utils._dataclass_compat import (apply_env_wizard_dataclass,
                                       dataclass_fields,
                                       dataclass_field_names,

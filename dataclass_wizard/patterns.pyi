@@ -2,33 +2,25 @@ from datetime import datetime, date, time, tzinfo
 from types import EllipsisType
 from typing import (Generic)
 from typing import Self
-
+from zoneinfo import ZoneInfo
 from ._type_def import DT, T
-from .models import TypeInfo, Extras
+from ._models import TypeInfo, Extras
 
+def get_zoneinfo(key: str) -> ZoneInfo: ...
 
 class PatternBase(Generic[DT]):
-
     # base type for pattern, a type (or subtype) of `DT`
     base: type[DT]
-
     # a sequence of custom (non-ISO format) date string patterns
     patterns: tuple[str, ...]
-
     tz_info: tzinfo | EllipsisType
-
     def __init__(self, base: type[DT],
                  patterns: tuple[str, ...] | None = None,
                  tz_info: tzinfo | EllipsisType | None = None): ...
-
     def with_tz(self, tz_info: tzinfo | EllipsisType) -> Self: ...
-
     def __getitem__(self, patterns: tuple[str, ...]) -> type[DT]: ...
-
     def __call__(self, *patterns: str) -> type[DT]: ...
-
     def load_to_pattern(self, tp: TypeInfo, extras: Extras): ...
-
 
 class Pattern(PatternBase):
     """
@@ -54,7 +46,6 @@ class Pattern(PatternBase):
     # noinspection PyInitNewSignature
     def __init__(self, pattern): ...
     __class_getitem__ = __getitem__ = __init__
-
 
 class AwarePattern(PatternBase):
     """
@@ -82,7 +73,6 @@ class AwarePattern(PatternBase):
     # noinspection PyInitNewSignature
     def __init__(self, timezone, pattern): ...
 
-
 class UTCPattern(PatternBase):
     """
     Pattern class for UTC parsing of time and datetime objects.
@@ -107,7 +97,6 @@ class UTCPattern(PatternBase):
     # noinspection PyInitNewSignature
     def __init__(self, pattern): ...
     __class_getitem__ = __getitem__ = __init__
-
 
 class AwareTimePattern(time, Generic[T]):
     """
@@ -134,7 +123,6 @@ class AwareTimePattern(time, Generic[T]):
     def __init__(self, timezone, pattern): ...
     __getitem__ = __init__
 
-
 class AwareDateTimePattern(datetime, Generic[T]):
     """
     Pattern class for timezone-aware parsing of datetime objects.
@@ -160,7 +148,6 @@ class AwareDateTimePattern(datetime, Generic[T]):
     def __init__(self, timezone, pattern): ...
     __getitem__ = __init__
 
-
 class DatePattern(date, Generic[T]):
     """
     An annotated type representing a date pattern (i.e. format string). Upon
@@ -184,7 +171,6 @@ class DatePattern(date, Generic[T]):
     # noinspection PyInitNewSignature
     def __init__(self, pattern): ...
     __getitem__ = __init__
-
 
 class TimePattern(time, Generic[T]):
     """
@@ -210,7 +196,6 @@ class TimePattern(time, Generic[T]):
     def __init__(self, pattern): ...
     __getitem__ = __init__
 
-
 class DateTimePattern(datetime, Generic[T]):
     """
     An annotated type representing a datetime pattern (i.e. format string). Upon
@@ -235,7 +220,6 @@ class DateTimePattern(datetime, Generic[T]):
     def __init__(self, pattern): ...
     __getitem__ = __init__
 
-
 class UTCTimePattern(time, Generic[T]):
     """
     Pattern class for UTC parsing of time objects.
@@ -258,7 +242,6 @@ class UTCTimePattern(time, Generic[T]):
     # noinspection PyInitNewSignature
     def __init__(self, pattern): ...
     __getitem__ = __init__
-
 
 class UTCDateTimePattern(datetime, Generic[T]):
     """

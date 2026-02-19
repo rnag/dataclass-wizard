@@ -4,7 +4,7 @@ from typing import (Callable, Mapping, dataclass_transform, TypedDict,
                     NotRequired, TypeVar, ClassVar, Collection, AnyStr)
 
 from ._loaders import LoadMixin as V1LoadMixIn
-from .models import Extras, TypeInfo
+from ._models import TypeInfo, Extras
 from ._bases import AbstractEnvMeta
 from ._bases_meta import BaseEnvWizardMeta, HookFn
 from ._type_def import ENV_META, Unpack, JSONObject, T, Encoder

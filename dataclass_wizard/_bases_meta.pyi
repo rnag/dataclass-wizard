@@ -13,7 +13,7 @@ from .constants import TAG
 from .enums import KeyAction, KeyCase, DateTimeTo, EnvPrecedence, EnvKeyStrategy
 from ._loaders import LoadMixin
 from .conditions import Condition
-from .models import TypeInfo, Extras
+from ._models import TypeInfo, Extras
 from ._type_def import META, ENV_META, E, T
 
 

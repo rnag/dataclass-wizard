@@ -5,7 +5,7 @@ import json
 from abc import ABC, abstractmethod
 from typing import AnyStr, TypeVar, ClassVar
 
-from .models import Extras, TypeInfo
+from ._models import TypeInfo, Extras
 from ._type_def import Encoder, JSONObject, ListOfJSONObject
 
 

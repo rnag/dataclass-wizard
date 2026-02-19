@@ -10,7 +10,7 @@ from .utils._function_builder import FunctionBuilder
 from .utils._typing_compat import is_union
 
 if TYPE_CHECKING:  # pragma: no cover
-    from .models import Extras, TypeInfo
+    from ._models import TypeInfo, Extras
 
 
 def process_patterned_date_time(func: Callable) -> Callable:

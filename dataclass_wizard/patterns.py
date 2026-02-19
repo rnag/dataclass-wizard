@@ -16,14 +16,33 @@ __all__ = [
 ]
 
 import hashlib
+import sys
 from datetime import tzinfo, datetime, date, time
 from typing import cast
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from ._decorators import setup_recursive_safe_function
 from ._models_date import UTC
 from ._type_conv import as_datetime, as_date, as_time
 from .constants import PY311_OR_ABOVE
-from .models import get_zoneinfo
+
+
+def get_zoneinfo(key: str) -> ZoneInfo:
+    try:
+        return ZoneInfo(key)
+    except ZoneInfoNotFoundError:
+        if sys.platform.startswith('win'):
+            try:
+                import tzdata  # noqa: F401
+            except Exception:
+                raise ZoneInfoNotFoundError(
+                    f'No time zone found with key {key!r}. '
+                    'On Windows, install tzdata or install Dataclass Wizard with the tz extra:\n'
+                    '    pip install dataclass-wizard[tz]'
+                ) from None
+            else:
+                return ZoneInfo(key)
+        raise
 
 
 class PatternBase:
