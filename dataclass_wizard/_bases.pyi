@@ -73,7 +73,7 @@ class _BaseHookRegistry:
     def get_hook(cls, typ: type) -> Callable | None: ...
 
 class BaseLoadHook(_BaseHookRegistry):
-    __HOOKS__: _ClassVar[dict] = ...
+    __HOOKS__: _ClassVar[dict[type, Callable]]
 
 class BaseDumpHook(_BaseHookRegistry):
-    __HOOKS__: _ClassVar[dict] = ...
+    __HOOKS__: _ClassVar[dict[type, Callable]]

@@ -6,7 +6,7 @@ from .._serial_json import JSONWizard, SerializerHookMixin
 from .._type_def import FileType, Decoder, ListOfJSONObject, T, FileDecoder, FileEncoder
 from ..utils.containers import Container
 
-class JSONListWizard(JSONWizard, str=False):
+class JSONListWizard(JSONWizard):
 
     @classmethod
     def from_json(cls: type[W], string: AnyStr, *,
