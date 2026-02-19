@@ -12,31 +12,31 @@ from pathlib import Path
 from typing import Any, Callable, Literal, NamedTuple, cast
 from uuid import UUID
 
-from ._log import LOG
-from ._models_date import UTC
 from ._bases import AbstractMeta, BaseLoadHook
 from ._class_helper import (resolve_dataclass_field_to_alias_for_load,
                             DATACLASS_FIELD_TO_ALIAS_PATH_FOR_LOAD,
                             CLASS_TO_LOADER, set_class_loader)
-from ._type_utils import create_new_class, is_subclass_safe
-from ._meta_cache import get_meta
-# noinspection PyUnresolvedReferences
-from .constants import CATCH_ALL, TAG, PY311_OR_ABOVE, PACKAGE_NAME, _LOAD_HOOKS
 from ._decorators import (process_patterned_date_time,
-                         setup_recursive_safe_function,
-                         setup_recursive_safe_function_for_generic)
+                          setup_recursive_safe_function,
+                          setup_recursive_safe_function_for_generic)
+from ._log import LOG
+from ._meta_cache import get_meta
+from ._models_date import UTC
+from ._type_conv import (
+    as_datetime, as_date, as_int,
+    as_time, as_timedelta, TRUTHY_VALUES,
+)
+from ._type_def import META, UNSET, DefFactory, JSONObject, NoneType, PyLiteralString, T
+from ._type_utils import create_new_class, is_subclass_safe
+# noinspection PyUnresolvedReferences
+from .constants import CATCH_ALL, TAG, PY311_OR_ABOVE, PACKAGE_NAME, _HOOKS
 from .enums import KeyAction, KeyCase
 from .errors import (JSONWizardError,
                      MissingData,
                      MissingFields,
                      ParseError,
                      UnknownKeysError)
-from .models import Extras, PatternBase, TypeInfo, LEAF_TYPES
-from ._type_conv import (
-    as_datetime, as_date, as_int,
-    as_time, as_timedelta, TRUTHY_VALUES,
-)
-from ._type_def import META, UNSET, DefFactory, JSONObject, NoneType, PyLiteralString, T
+from .models import Extras, TypeInfo, LEAF_TYPES
 from .utils._dataclass_compat import (dataclass_fields,
                                       dataclass_init_fields,
                                       dataclass_init_field_names,
@@ -70,9 +70,10 @@ class LoadMixin(BaseLoadHook):
     """
     __slots__ = ()
 
-    def __init_subclass__(cls, **kwargs):
-        super().__init_subclass__()
-        setup_default_loader(cls)
+    def __init_subclass__(cls, _setup_defaults=True, **kwargs):
+        super().__init_subclass__(**kwargs)
+        if _setup_defaults:
+            setup_default_loader(cls)
 
     transform_json_field = None
 
@@ -850,7 +851,7 @@ class LoadMixin(BaseLoadHook):
 
             # Check for Custom Patterns for date / time / datetime
             for extra in field_extras:
-                if isinstance(extra, PatternBase):
+                if getattr(extra, '__dcw_pattern__', False):
                     extras['pattern'] = extra
 
         elif is_typed_dict_type_qualifier(origin):
@@ -970,7 +971,7 @@ class LoadMixin(BaseLoadHook):
                 except ValueError:
                     args = Any,
 
-        elif isinstance(origin, PatternBase):
+        elif getattr(origin, '__dcw_pattern__', False):
             load_hook = origin.load_to_pattern
 
         else:
@@ -1018,6 +1019,35 @@ class LoadMixin(BaseLoadHook):
         raise pe from None
 
 
+def get_default_load_hooks(loader=LoadMixin):
+    return {
+        # Simple types
+        str: loader.load_to_str,
+        float: loader.load_to_float,
+        bool: loader.load_to_bool,
+        int: loader.load_to_int,
+        bytes: loader.load_to_bytes,
+        bytearray: loader.load_to_bytearray,
+        NoneType: loader.load_to_none,
+        # Complex types
+        UUID: loader.load_to_uuid,
+        set: loader.load_to_iterable,
+        frozenset: loader.load_to_iterable,
+        deque: loader.load_to_iterable,
+        list: loader.load_to_iterable,
+        tuple: loader.load_to_tuple,
+        defaultdict: loader.load_to_defaultdict,
+        dict: loader.load_to_dict,
+        Decimal: loader.load_to_decimal,
+        Path: loader.load_to_path,
+        # Dates and times
+        datetime: loader.load_to_datetime,
+        time: loader.load_to_time,
+        date: loader.load_to_date,
+        timedelta: loader.load_to_timedelta,
+    }
+
+
 def setup_default_loader(cls=LoadMixin):
     """
     Set up the default type hooks to use when converting `str` (json) or a
@@ -1025,32 +1055,16 @@ def setup_default_loader(cls=LoadMixin):
 
     Note: `cls` must be :class:`LoadMixIn` or a subclass of it.
     """
-    # TODO maybe `dict.update` might be better?
+    if '__HOOKS__' in cls.__dict__:
+        return
 
-    # Simple types
-    cls.register_hook(str, cls.load_to_str)
-    cls.register_hook(float, cls.load_to_float)
-    cls.register_hook(bool, cls.load_to_bool)
-    cls.register_hook(int, cls.load_to_int)
-    cls.register_hook(bytes, cls.load_to_bytes)
-    cls.register_hook(bytearray, cls.load_to_bytearray)
-    cls.register_hook(NoneType, cls.load_to_none)
-    # Complex types
-    cls.register_hook(UUID, cls.load_to_uuid)
-    cls.register_hook(set, cls.load_to_iterable)
-    cls.register_hook(frozenset, cls.load_to_iterable)
-    cls.register_hook(deque, cls.load_to_iterable)
-    cls.register_hook(list, cls.load_to_iterable)
-    cls.register_hook(tuple, cls.load_to_tuple)
-    cls.register_hook(defaultdict, cls.load_to_defaultdict)
-    cls.register_hook(dict, cls.load_to_dict)
-    cls.register_hook(Decimal, cls.load_to_decimal)
-    cls.register_hook(Path, cls.load_to_path)
-    # Dates and times
-    cls.register_hook(datetime, cls.load_to_datetime)
-    cls.register_hook(time, cls.load_to_time)
-    cls.register_hook(date, cls.load_to_date)
-    cls.register_hook(timedelta, cls.load_to_timedelta)
+    parent_hooks = getattr(cls, '__HOOKS__', None)
+
+    hooks = get_default_load_hooks(cls)
+    if parent_hooks:
+        hooks |= parent_hooks  # parent / custom wins
+
+    cls.__HOOKS__ = hooks
 
 
 def check_and_raise_missing_fields(
@@ -1599,7 +1613,7 @@ def get_loader(class_or_instance=None,
 
     except KeyError:
 
-        if hasattr(class_or_instance, _LOAD_HOOKS):
+        if hasattr(class_or_instance, _HOOKS):
             return set_class_loader(
                 CLASS_TO_LOADER, class_or_instance, class_or_instance)
 

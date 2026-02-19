@@ -6,7 +6,7 @@ from weakref import WeakKeyDictionary, WeakSet
 from ._type_utils import per_cls, get_class_name, get_class
 from .constants import CATCH_ALL, PACKAGE_NAME
 from .errors import InvalidConditionError
-from .models import CatchAll, Condition, Field
+from .models import CatchAll, Field
 from ._type_def import ExplicitNull
 from .utils._dataclass_compat import dataclass_fields, SEEN_DEFAULT
 from .utils._typing_compat import (eval_forward_ref_if_needed,
@@ -174,7 +174,7 @@ def setup_config_for_cls(cls):
                                    load_dataclass_field_to_env,
                                    dump_dataclass_field_to_alias)
             elif value := f.metadata.get('__skip_if__'):
-                if isinstance(value, Condition):
+                if getattr(value, '__dcw_condition__', False):
                     field_to_skip_if[f.name] = value
 
         # Check for a "Catch All" field
@@ -196,7 +196,7 @@ def setup_config_for_cls(cls):
                                    load_dataclass_field_to_alias,
                                    load_dataclass_field_to_env,
                                    dump_dataclass_field_to_alias)
-                elif isinstance(extra, Condition):
+                elif getattr(extra, '__dcw_condition__', False):
                     field_to_skip_if[f.name] = extra
                     if not getattr(extra, '_wrapped', False):
                         raise InvalidConditionError(cls, f.name) from None

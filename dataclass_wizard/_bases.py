@@ -526,10 +526,6 @@ class _BaseHookRegistry:
     __slots__ = ()
     __HOOKS__: ClassVar[dict[type, Callable]]
 
-    def __init_subclass__(cls):
-        # (Re)assign the dict object so we have a fresh copy per class
-        cls.__HOOKS__ = {}
-
     @classmethod
     def register_hook(cls, typ: type, func: Callable):
         cls.__HOOKS__[typ] = func

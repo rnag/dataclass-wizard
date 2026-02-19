@@ -26,13 +26,9 @@ PY313_OR_ABOVE = _PY_VERSION >= (3, 13)
 # Check if currently running Python 3.14 or higher
 PY314_OR_ABOVE = _PY_VERSION >= (3, 14)
 
-# The name of the dictionary object that contains `load` hooks for each
+# The name of the dictionary object that contains `load / dump` hooks for each
 # object type. Also used to check if a class is a :class:`BaseLoadHook`
-_LOAD_HOOKS = '__LOAD_HOOKS__'
-
-# The name of the dictionary object that contains `dump` hooks for each
-# object type. Also used to check if a class is a :class:`BaseDumpHook`
-_DUMP_HOOKS = '__DUMP_HOOKS__'
+_HOOKS = '__HOOKS__'
 
 # Attribute name that will be defined for single-arg alias functions and
 # methods; mainly for internal use.

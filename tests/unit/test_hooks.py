@@ -6,8 +6,8 @@ from dataclasses import dataclass
 from ipaddress import IPv4Address
 
 from dataclass_wizard import (register_type, JSONWizard,
-                              LoadMeta, fromdict, asdict,
-                              DumpMixin, LoadMixin)
+                              LoadMeta, fromdict, asdict)
+from dataclass_wizard.mixins import DumpMixin, LoadMixin
 from dataclass_wizard.errors import ParseError
 from dataclass_wizard.models import TypeInfo, Extras
 

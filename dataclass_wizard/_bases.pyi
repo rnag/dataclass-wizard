@@ -4,7 +4,7 @@ from datetime import tzinfo
 from ._decorators import cached_class_property as cached_class_property
 from ._type_def import META
 from .enums import DateTimeTo as DateTimeTo, EnvKeyStrategy as EnvKeyStrategy, EnvPrecedence as EnvPrecedence, KeyAction as KeyAction, KeyCase as KeyCase
-from .models import Condition as Condition
+from .conditions import Condition
 from typing import Callable, ClassVar as _ClassVar
 from ._path_util import EnvFilePaths, SecretsDirs
 from ._bases_meta import ALLOWED_MODES, HookFn, PreDecoder
@@ -67,8 +67,6 @@ class AbstractEnvMeta(BaseMeta):
     def bind_to(cls, env_class: type, create: bool = ..., is_default: bool = ...): ...
 
 class _BaseHookRegistry:
-    @classmethod
-    def __init_subclass__(cls): ...
     @classmethod
     def register_hook(cls, typ: type, func: Callable): ...
     @classmethod

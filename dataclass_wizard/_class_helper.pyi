@@ -1,9 +1,10 @@
-from typing import Any, Callable, Sequence, TypeVar
+from typing import Callable, Sequence, Mapping
 from weakref import WeakKeyDictionary, WeakSet
 
 from ._abstractions import W, E, AbstractLoaderGenerator, AbstractDumperGenerator
+from ._type_def import T
+from .conditions import Condition
 from .constants import PACKAGE_NAME
-from .models import Condition
 from .utils._object_path import PathType
 
 # A mapping of dataclass to its loader.
@@ -37,12 +38,16 @@ DATACLASS_FIELD_TO_SKIP_IF: WeakKeyDictionary[type, dict[str, Condition]]
 # Cache: owner class -> its `Meta` inner class (only present when subclassed)
 META_INITIALIZER: dict[str, Callable[[type[W]], None]] = {}
 
-def set_class_loader(cls_to_loader, class_or_instance, loader: type[AbstractLoaderGenerator]):
+def set_class_loader(cls_to_loader: Mapping[type, type[AbstractLoaderGenerator]],
+                     class_or_instance: type[T] | T,
+                     loader: type[AbstractLoaderGenerator]):
     """
     Set (and return) the loader for a dataclass.
     """
 
-def set_class_dumper(cls: type, dumper: type[AbstractDumperGenerator]):
+def set_class_dumper(cls_to_dumper: Mapping[type, type[AbstractDumperGenerator]],
+                     class_or_instance: type[T] | T,
+                     dumper: type[AbstractDumperGenerator]):
     """
     Set (and return) the dumper for a dataclass.
     """

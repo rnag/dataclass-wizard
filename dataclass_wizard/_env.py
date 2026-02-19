@@ -9,26 +9,26 @@ from dataclasses import Field, MISSING
 from dataclasses import _FIELD_INITVAR, _POST_INIT_NAME  # type: ignore
 from typing import Any, Callable, Mapping, TYPE_CHECKING
 
-from ._path_util import get_secrets_map, get_dotenv_map
-from .enums import EnvKeyStrategy, EnvPrecedence
-from ._loaders import LoadMixin as V1LoadMixin, get_loader
-from .models import Extras, TypeInfo, SEQUENCE_ORIGINS, MAPPING_ORIGINS
-from ._type_conv import as_list, as_dict
 from ._bases import AbstractEnvMeta
 from ._bases_meta import BaseEnvWizardMeta, EnvMeta, register_type
 from ._class_helper import (resolve_dataclass_field_to_env_for_load,
-                           DATACLASS_FIELD_TO_ALIAS_PATH_FOR_LOAD,
-                           call_meta_initializer_if_needed)
-from ._meta_cache import get_meta
-from .constants import CATCH_ALL, PACKAGE_NAME
+                            DATACLASS_FIELD_TO_ALIAS_PATH_FOR_LOAD,
+                            call_meta_initializer_if_needed)
 from ._decorators import cached_class_property
 from ._dumpers import asdict
+from ._loaders import LoadMixin as V1LoadMixin, get_loader
+from ._log import LOG, enable_library_debug_logging
+from ._meta_cache import get_meta
+from ._path_util import get_secrets_map, get_dotenv_map
+from ._type_conv import as_list, as_dict
+from ._type_def import META, T, JSONObject, dataclass_transform
+from .constants import CATCH_ALL, PACKAGE_NAME
+from .enums import EnvKeyStrategy, EnvPrecedence
 from .errors import (JSONWizardError,
                      MissingData,
                      ParseError,
                      type_name, MissingVars)
-from ._log import LOG, enable_library_debug_logging
-from ._type_def import META, T, JSONObject, dataclass_transform
+from .models import Extras, TypeInfo, SEQUENCE_ORIGINS, MAPPING_ORIGINS
 from .utils._dataclass_compat import (apply_env_wizard_dataclass,
                                       dataclass_fields,
                                       dataclass_field_names,
@@ -625,7 +625,7 @@ def re_raise(e, cls, o, fields, field, value):
     raise e from None
 
 
-class LoadMixin(V1LoadMixin):
+class LoadMixin(V1LoadMixin, _setup_defaults=False):
     """
     This Mixin class derives its name from the eponymous `json.loads`
     function. Essentially it contains helper methods to convert JSON strings
@@ -638,9 +638,6 @@ class LoadMixin(V1LoadMixin):
 
     """
     __slots__ = ()
-
-    def __init_subclass__(cls, **kwargs):
-        super().__init_subclass__()
 
     @staticmethod
     def is_none(tp: TypeInfo, extras: Extras) -> str:

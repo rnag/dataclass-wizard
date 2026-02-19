@@ -1,5 +1,7 @@
 import datetime
 from _typeshed import Incomplete
+from types import EllipsisType
+
 from ._bases import AbstractMeta as AbstractMeta, BaseDumpHook as BaseDumpHook
 from ._class_helper import dataclass_field_to_skip_if as dataclass_field_to_skip_if, \
     resolve_dataclass_field_to_alias_for_dump as resolve_dataclass_field_to_alias_for_dump, set_class_dumper as set_class_dumper
@@ -8,7 +10,7 @@ from ._meta_cache import get_meta as get_meta, create_meta as create_meta
 from ._decorators import setup_recursive_safe_function as setup_recursive_safe_function, setup_recursive_safe_function_for_generic as setup_recursive_safe_function_for_generic
 from .enums import DateTimeTo as DateTimeTo, KeyCase as KeyCase
 from .errors import JSONWizardError as JSONWizardError, MissingData as MissingData, MissingFields as MissingFields, ParseError as ParseError
-from .models import Extras as Extras, PatternBase as PatternBase, TypeInfo as TypeInfo, finalize_skip_if as finalize_skip_if, get_skip_if_condition as get_skip_if_condition
+from .models import Extras as Extras, TypeInfo as TypeInfo, finalize_skip_if as finalize_skip_if, get_skip_if_condition as get_skip_if_condition
 from ._type_conv import datetime_to_timestamp as datetime_to_timestamp
 from ._type_def import ExplicitNull as ExplicitNull, T as T, JSONObject
 from .utils._dataclass_compat import dataclass_field_names as dataclass_field_names, dataclass_fields as dataclass_fields, set_new_attribute as set_new_attribute
@@ -30,15 +32,16 @@ _DUMP_HOOKS: str
 _KNOWN_FACTORY_LITERALS: dict
 D = TypeVar('D', bound=DumpMixin)
 
+def get_default_dump_hooks(dumper: type[D] = DumpMixin) -> dict[type, Callable]: ...
 def default_compare_expr(f: Field[Any], locals_ns: dict[str, Any], default_name: str, *, allow_calling_unknown_factories: bool = ...) -> str | None: ...
 def _type_returns_value_unchanged(arg, leaf_handling_as_subclass, origin: Incomplete | None = ...): ...
 def _all_return_value_unchanged(args, leaf_handling_as_subclass): ...
 
 class DumpMixin(BaseDumpHook):
-    transform_dataclass_field: ClassVar[None] = ...
-    __DUMP_HOOKS__: ClassVar[dict] = ...
+    transform_dataclass_field: ClassVar[None | EllipsisType] = ...
+    __HOOKS__: ClassVar[dict[type, Callable] | EllipsisType] = ...
     @classmethod
-    def __init_subclass__(cls, **kwargs): ...
+    def __init_subclass__(cls, _setup_defaults: bool = True, **kwargs): ...
     @staticmethod
     def dump_fallback(tp: TypeInfo, _extras: Extras): ...
     @staticmethod

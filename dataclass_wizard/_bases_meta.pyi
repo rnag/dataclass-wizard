@@ -12,7 +12,7 @@ from ._bases import AbstractMeta, AbstractEnvMeta, TypeToHook
 from .constants import TAG
 from .enums import KeyAction, KeyCase, DateTimeTo, EnvPrecedence, EnvKeyStrategy
 from ._loaders import LoadMixin
-from .models import Condition
+from .conditions import Condition
 from .models import TypeInfo, Extras
 from ._type_def import META, ENV_META, E, T
 

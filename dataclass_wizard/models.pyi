@@ -1,15 +1,14 @@
 from dataclasses import MISSING, Field as _Field, dataclass, _MISSING_TYPE
-from datetime import datetime, date, time, tzinfo
-from types import EllipsisType
 from typing import (Collection, Callable,
-                    Generic, Sequence, TypeAlias, Mapping, Literal, TypeVar, type_check_only, Protocol)
+                    Sequence, TypeAlias, Mapping, Literal)
 from typing import TypedDict, overload, Any, NotRequired, Self
 from zoneinfo import ZoneInfo
 
-from ._type_def import DefFactory, DT, T, META
+from .conditions import Condition
+from .patterns import PatternBase
+from ._type_def import DefFactory, T, META
 from .utils._function_builder import FunctionBuilder
 from .utils._object_path import PathType
-
 
 # Define a simple type (alias) for the `CatchAll` field
 CatchAll: TypeAlias = Mapping | None
@@ -93,288 +92,10 @@ class Extras(TypedDict):
     recursion_guard: dict[Any, str]
 
 
-class PatternBase(Generic[DT]):
-
-    # base type for pattern, a type (or subtype) of `DT`
-    base: type[DT]
-
-    # a sequence of custom (non-ISO format) date string patterns
-    patterns: tuple[str, ...]
-
-    tz_info: tzinfo | EllipsisType
-
-    def __init__(self, base: type[DT],
-                 patterns: tuple[str, ...] | None = None,
-                 tz_info: tzinfo | EllipsisType | None = None): ...
-
-    def with_tz(self, tz_info: tzinfo | EllipsisType) -> Self: ...
-
-    def __getitem__(self, patterns: tuple[str, ...]) -> type[DT]: ...
-
-    def __call__(self, *patterns: str) -> type[DT]: ...
-
-    def load_to_pattern(self, tp: TypeInfo, extras: Extras): ...
-
-
-class Pattern(PatternBase):
-    """
-    Base class for custom patterns used in date, time, or datetime parsing.
-
-    Parameters
-    ----------
-    pattern : str
-        The string pattern used for parsing, e.g., '%m-%d-%y'.
-
-    Examples
-    --------
-    Using Pattern with `Annotated` inside a dataclass:
-
-    >>> from typing import Annotated
-    >>> from datetime import date
-    >>> from dataclasses import dataclass
-    >>> from dataclass_wizard import Pattern
-    >>> @dataclass
-    ... class MyClass:
-    ...     my_date_field: Annotated[date, Pattern('%m-%d-%y')]
-    """
-    # noinspection PyInitNewSignature
-    def __init__(self, pattern): ...
-    __class_getitem__ = __getitem__ = __init__
-
-
-class AwarePattern(PatternBase):
-    """
-    Pattern class for timezone-aware parsing of time and datetime objects.
-
-    Parameters
-    ----------
-    timezone : str
-        The timezone to use, e.g., 'US/Eastern'.
-    pattern : str
-        The string pattern used for parsing, e.g., '%H:%M:%S'.
-
-    Examples
-    --------
-    Using AwarePattern with `Annotated` inside a dataclass:
-
-    >>> from typing import Annotated
-    >>> from datetime import time
-    >>> from dataclasses import dataclass
-    >>> from dataclass_wizard import AwarePattern
-    >>> @dataclass
-    ... class MyClass:
-    ...     my_time_field: Annotated[list[time], AwarePattern('US/Eastern', '%H:%M:%S')]
-    """
-    # noinspection PyInitNewSignature
-    def __init__(self, timezone, pattern): ...
-
-
-class UTCPattern(PatternBase):
-    """
-    Pattern class for UTC parsing of time and datetime objects.
-
-    Parameters
-    ----------
-    pattern : str
-        The string pattern used for parsing, e.g., '%Y-%m-%d %H:%M:%S'.
-
-    Examples
-    --------
-    Using UTCPattern with `Annotated` inside a dataclass:
-
-    >>> from typing import Annotated
-    >>> from datetime import datetime
-    >>> from dataclasses import dataclass
-    >>> from dataclass_wizard import UTCPattern
-    >>> @dataclass
-    ... class MyClass:
-    ...     my_utc_field: Annotated[datetime, UTCPattern('%Y-%m-%d %H:%M:%S')]
-    """
-    # noinspection PyInitNewSignature
-    def __init__(self, pattern): ...
-    __class_getitem__ = __getitem__ = __init__
-
-
-class AwareTimePattern(time, Generic[T]):
-    """
-    Pattern class for timezone-aware parsing of time objects.
-
-    Parameters
-    ----------
-    timezone : str
-        The timezone to use, e.g., 'Europe/London'.
-    pattern : str
-        The string pattern used for parsing, e.g., '%H:%M:%Z'.
-
-    Examples
-    --------
-    Using ``AwareTimePattern`` inside a dataclass:
-
-    >>> from dataclasses import dataclass
-    >>> from dataclass_wizard import AwareTimePattern
-    >>> @dataclass
-    ... class MyClass:
-    ...     my_aware_dt_field: AwareTimePattern['Europe/London', '%H:%M:%Z']
-    """
-    # noinspection PyInitNewSignature
-    def __init__(self, timezone, pattern): ...
-    __getitem__ = __init__
-
-
-class AwareDateTimePattern(datetime, Generic[T]):
-    """
-    Pattern class for timezone-aware parsing of datetime objects.
-
-    Parameters
-    ----------
-    timezone : str
-        The timezone to use, e.g., 'Asia/Tokyo'.
-    pattern : str
-        The string pattern used for parsing, e.g., '%m-%Y-%H:%M-%Z'.
-
-    Examples
-    --------
-    Using ``AwareDateTimePattern`` inside a dataclass:
-
-    >>> from dataclasses import dataclass
-    >>> from dataclass_wizard import AwareDateTimePattern
-    >>> @dataclass
-    ... class MyClass:
-    ...     my_aware_dt_field: AwareDateTimePattern['Asia/Tokyo', '%m-%Y-%H:%M-%Z']
-    """
-    # noinspection PyInitNewSignature
-    def __init__(self, timezone, pattern): ...
-    __getitem__ = __init__
-
-
-class DatePattern(date, Generic[T]):
-    """
-    An annotated type representing a date pattern (i.e. format string). Upon
-    de-serialization, the resolved type will be a ``date`` instead.
-
-    Parameters
-    ----------
-    pattern : str
-        The string pattern used for parsing, e.g., '%Y/%m/%d'.
-
-    Examples
-    --------
-    Using ``DatePattern`` inside a dataclass:
-
-    >>> from dataclasses import dataclass
-    >>> from dataclass_wizard import DatePattern
-    >>> @dataclass
-    ... class MyClass:
-    ...     my_date_field: DatePattern['%Y/%m/%d']
-    """
-    # noinspection PyInitNewSignature
-    def __init__(self, pattern): ...
-    __getitem__ = __init__
-
-
-class TimePattern(time, Generic[T]):
-    """
-    An annotated type representing a time pattern (i.e. format string). Upon
-    de-serialization, the resolved type will be a ``time`` instead.
-
-    Parameters
-    ----------
-    pattern : str
-        The string pattern used for parsing, e.g., '%H:%M:%S'.
-
-    Examples
-    --------
-    Using ``TimePattern`` inside a dataclass:
-
-    >>> from dataclasses import dataclass
-    >>> from dataclass_wizard import TimePattern
-    >>> @dataclass
-    ... class MyClass:
-    ...     my_time_field: TimePattern['%H:%M:%S']
-    """
-    # noinspection PyInitNewSignature
-    def __init__(self, pattern): ...
-    __getitem__ = __init__
-
-
-class DateTimePattern(datetime, Generic[T]):
-    """
-    An annotated type representing a datetime pattern (i.e. format string). Upon
-    de-serialization, the resolved type will be a ``datetime`` instead.
-
-    Parameters
-    ----------
-    pattern : str
-        The string pattern used for parsing, e.g., '%d, %b, %Y %I:%M:%S %p'.
-
-    Examples
-    --------
-    Using DateTimePattern with `Annotated` inside a dataclass:
-
-    >>> from dataclasses import dataclass
-    >>> from dataclass_wizard import DateTimePattern
-    >>> @dataclass
-    ... class MyClass:
-    ...     my_time_field: DateTimePattern['%d, %b, %Y %I:%M:%S %p']
-    """
-    # noinspection PyInitNewSignature
-    def __init__(self, pattern): ...
-    __getitem__ = __init__
-
-
-class UTCTimePattern(time, Generic[T]):
-    """
-    Pattern class for UTC parsing of time objects.
-
-    Parameters
-    ----------
-    pattern : str
-        The string pattern used for parsing, e.g., '%H:%M:%S'.
-
-    Examples
-    --------
-    Using ``UTCTimePattern`` inside a dataclass:
-
-    >>> from dataclasses import dataclass
-    >>> from dataclass_wizard import UTCTimePattern
-    >>> @dataclass
-    ... class MyClass:
-    ...     my_utc_time_field: UTCTimePattern['%H:%M:%S']
-    """
-    # noinspection PyInitNewSignature
-    def __init__(self, pattern): ...
-    __getitem__ = __init__
-
-
-class UTCDateTimePattern(datetime, Generic[T]):
-    """
-    Pattern class for UTC parsing of datetime objects.
-
-    Parameters
-    ----------
-    pattern : str
-        The string pattern used for parsing, e.g., '%Y-%m-%d %H:%M:%S'.
-
-    Examples
-    --------
-    Using ``UTCDateTimePattern`` inside a dataclass:
-
-    >>> from dataclasses import dataclass
-    >>> from dataclass_wizard import UTCDateTimePattern
-    >>> @dataclass
-    ... class MyClass:
-    ...     my_utc_datetime_field: UTCDateTimePattern['%Y-%m-%d %H:%M:%S']
-    """
-    # noinspection PyInitNewSignature
-    def __init__(self, pattern): ...
-    __getitem__ = __init__
-
-
 # noinspection PyPep8Naming
 def AliasPath(*all: PathType | str,
               load: PathType | str | None = None,
               dump: PathType | str | None = None,
-              env: PathType | str | bool | None = None,
               skip: bool = False,
               default: Any = MISSING,
               default_factory: DefFactory[T] | Literal[_MISSING_TYPE.MISSING] = MISSING,
@@ -640,6 +361,7 @@ def skip_if_field(condition: Condition, *,
 
     Example:
         >>> from dataclasses import dataclass
+        >>> from dataclass_wizard.conditions import IS_NOT
         >>> @dataclass
         >>> class Example:
         >>>     my_str: str = skip_if_field(IS_NOT(True))
@@ -707,82 +429,6 @@ class Field(_Field):
                  default, default_factory, init, repr, hash, compare,
                  metadata):
         ...
-
-
-class Condition:
-
-    op: str         # Operator
-    val: Any        # Value
-    t_or_f: bool    # Truthy or falsy
-    _wrapped: bool  # True if wrapped in `SkipIf()`
-
-    def __init__(self, operator: str, value: Any):
-        ...
-
-    def __str__(self):
-        ...
-
-    def evaluate(self, other) -> bool:
-        ...
-
-
-# Aliases for conditions
-# noinspection PyPep8Naming
-def EQ(value: Any) -> Condition:
-    """Create a condition for equality (==)."""
-
-
-# noinspection PyPep8Naming
-def NE(value: Any) -> Condition:
-    """Create a condition for inequality (!=)."""
-
-
-# noinspection PyPep8Naming
-def LT(value: Any) -> Condition:
-    """Create a condition for less than (<)."""
-
-
-# noinspection PyPep8Naming
-def LE(value: Any) -> Condition:
-    """Create a condition for less than or equal to (<=)."""
-
-
-# noinspection PyPep8Naming
-def GT(value: Any) -> Condition:
-    """Create a condition for greater than (>)."""
-
-
-# noinspection PyPep8Naming
-def GE(value: Any) -> Condition:
-    """Create a condition for greater than or equal to (>=)."""
-
-
-# noinspection PyPep8Naming
-def IS(value: Any) -> Condition:
-    """Create a condition for identity (is)."""
-
-
-# noinspection PyPep8Naming
-def IS_NOT(value: Any) -> Condition:
-    """Create a condition for non-identity (is not)."""
-
-
-# noinspection PyPep8Naming
-def IS_TRUTHY() -> Condition:
-    """Create a "truthy" condition for evaluation (if <var>)."""
-
-
-# noinspection PyPep8Naming
-def IS_FALSY() -> Condition:
-    """Create a "falsy" condition for evaluation (if not <var>)."""
-
-
-# noinspection PyPep8Naming
-def SkipIf(condition: Condition) -> Condition:
-    ...
-
-
-SkipIfNone: Condition
 
 
 def finalize_skip_if(skip_if: Condition,

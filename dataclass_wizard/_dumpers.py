@@ -30,13 +30,12 @@ from ._class_helper import (
 from ._type_utils import create_new_class, is_subclass_safe
 from ._meta_cache import get_meta
 # noinspection PyUnresolvedReferences
-from .constants import CATCH_ALL, TAG, PACKAGE_NAME, _DUMP_HOOKS
+from .constants import CATCH_ALL, TAG, PACKAGE_NAME, _HOOKS
 from ._decorators import (setup_recursive_safe_function,
                          setup_recursive_safe_function_for_generic)
 from .enums import KeyCase, DateTimeTo
 from .errors import (ParseError, MissingFields, MissingData, JSONWizardError)
-from .models import (Extras, TypeInfo, PatternBase,
-                     get_skip_if_condition, finalize_skip_if,
+from .models import (Extras, TypeInfo, get_skip_if_condition, finalize_skip_if,
                      LEAF_TYPES, LEAF_TYPES_NO_BYTES)
 from ._type_conv import datetime_to_timestamp
 from ._type_def import (
@@ -135,9 +134,10 @@ class DumpMixin(BaseDumpHook):
     """
     __slots__ = ()
 
-    def __init_subclass__(cls, **kwargs):
-        super().__init_subclass__()
-        setup_default_dumper(cls)
+    def __init_subclass__(cls, _setup_defaults=True, **kwargs):
+        super().__init_subclass__(**kwargs)
+        if _setup_defaults:
+            setup_default_dumper(cls)
 
     transform_dataclass_field = None
 
@@ -550,7 +550,7 @@ class DumpMixin(BaseDumpHook):
             name = getattr(origin, '__name__', origin)
             # Check for Custom Patterns for date / time / datetime
             for extra in field_extras:
-                if isinstance(extra, PatternBase):
+                if getattr(extra, '__dcw_pattern__', False):
                     extras['pattern'] = extra
 
         elif is_typed_dict_type_qualifier(origin):
@@ -680,7 +680,7 @@ class DumpMixin(BaseDumpHook):
                 except ValueError:
                     args = Any,
 
-        elif isinstance(origin, PatternBase):
+        elif getattr(origin, '__dcw_pattern__', False):
             __base__ = origin.base
 
             if issubclass(__base__, datetime):
@@ -731,6 +731,39 @@ class DumpMixin(BaseDumpHook):
         raise pe from None
 
 
+def get_default_dump_hooks(dumper):
+    return {
+        # Technically a complex type, however check this
+        # first, since `StrEnum` and `IntEnum` are subclasses
+        # of `str` and `int`
+        Enum: dumper.dump_from_enum,
+        # Simple types
+        str: dumper.dump_from_str,
+        float: dumper.dump_from_float,
+        bool: dumper.dump_from_bool,
+        int: dumper.dump_from_int,
+        bytes: dumper.dump_from_bytes,
+        bytearray: dumper.dump_from_bytearray,
+        NoneType: dumper.dump_from_none,
+        # Complex types
+        UUID: dumper.dump_from_uuid,
+        set: dumper.dump_from_iterable,
+        frozenset: dumper.dump_from_iterable,
+        deque: dumper.dump_from_iterable,
+        list: dumper.dump_from_iterable,
+        tuple: dumper.dump_from_tuple,
+        defaultdict: dumper.dump_from_defaultdict,
+        dict: dumper.dump_from_dict,
+        Decimal: dumper.dump_from_decimal,
+        Path: dumper.dump_from_path,
+        # Dates and times
+        datetime: dumper.dump_from_datetime,
+        time: dumper.dump_from_time,
+        date: dumper.dump_from_date,
+        timedelta: dumper.dump_from_timedelta,
+    }
+
+
 def setup_default_dumper(cls=DumpMixin):
     """
     Setup the default type hooks to use when converting
@@ -739,39 +772,16 @@ def setup_default_dumper(cls=DumpMixin):
 
     Note: `cls` must be :class:`DumpMixIn` or a sub-class of it.
     """
-    # TODO maybe `dict.update` might be better?
+    if '__HOOKS__' in cls.__dict__:
+        return
 
-    # Technically a complex type, however check this
-    # first, since `StrEnum` and `IntEnum` are subclasses
-    # of `str` and `int`
-    cls.register_hook(Enum, cls.dump_from_enum)
-    # Simple types
-    cls.register_hook(str, cls.dump_from_str)
-    cls.register_hook(float, cls.dump_from_float)
-    cls.register_hook(bool, cls.dump_from_bool)
-    cls.register_hook(int, cls.dump_from_int)
-    cls.register_hook(bytes, cls.dump_from_bytes)
-    cls.register_hook(bytearray, cls.dump_from_bytearray)
-    cls.register_hook(NoneType, cls.dump_from_none)
-    # Complex types
-    cls.register_hook(UUID, cls.dump_from_uuid)
-    cls.register_hook(set, cls.dump_from_iterable)
-    cls.register_hook(frozenset, cls.dump_from_iterable)
-    cls.register_hook(deque, cls.dump_from_iterable)
-    cls.register_hook(list, cls.dump_from_iterable)
-    cls.register_hook(tuple, cls.dump_from_tuple)
-    # `typing` Generics
-    # cls.register_hook(Literal, cls.dump_from_literal)
-    # noinspection PyTypeChecker
-    cls.register_hook(defaultdict, cls.dump_from_defaultdict)
-    cls.register_hook(dict, cls.dump_from_dict)
-    cls.register_hook(Decimal, cls.dump_from_decimal)
-    cls.register_hook(Path, cls.dump_from_path)
-    # Dates and times
-    cls.register_hook(datetime, cls.dump_from_datetime)
-    cls.register_hook(time, cls.dump_from_time)
-    cls.register_hook(date, cls.dump_from_date)
-    cls.register_hook(timedelta, cls.dump_from_timedelta)
+    parent_hooks = getattr(cls, '__HOOKS__', None)
+
+    hooks = get_default_dump_hooks(cls)
+    if parent_hooks:
+        hooks |= parent_hooks  # parent / custom wins
+
+    cls.__HOOKS__ = hooks
 
 
 def check_and_raise_missing_fields(
@@ -1207,7 +1217,7 @@ def get_dumper(class_or_instance=None, create=True,
     except KeyError:
         # TODO figure out type errors
 
-        if hasattr(class_or_instance, _DUMP_HOOKS):
+        if hasattr(class_or_instance, _HOOKS):
             return set_class_dumper(
                 CLASS_TO_DUMPER, class_or_instance, class_or_instance)
 

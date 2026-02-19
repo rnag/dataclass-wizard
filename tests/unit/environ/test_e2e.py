@@ -5,8 +5,10 @@ from typing import Optional, Union, NamedTuple, Literal
 
 import pytest
 
-from dataclass_wizard import (Alias, CatchAll, DataclassWizard,
-                              EnvWizard, env_config, AliasPath)
+from dataclass_wizard import (Alias, DataclassWizard,
+                              EnvWizard, AliasPath)
+from dataclass_wizard.env import env_config
+from dataclass_wizard.models import CatchAll
 from dataclass_wizard.errors import ParseError, MissingVars, MissingFields
 from ..models import TN, CN, EnvContTF, EnvContTT, EnvContAllReq, Sub2
 

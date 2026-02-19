@@ -68,96 +68,11 @@ For full documentation and more advanced usage, please see
 :copyright: (c) 2021-2026 by Ritvik Nag.
 :license: Apache 2.0, see LICENSE for more details.
 """
+from logging import NullHandler
 
-__all__ = [
-    # TODO DEDUP
-    # Base exports
-    'LoadMixin',
-    'DumpMixin',
-    # Models
-    'Alias',
-    'AliasPath',
-    'Env',
-    # Abstract Pattern
-    'Pattern',
-    'AwarePattern',
-    'UTCPattern',
-    # "Naive" Date/Time Patterns
-    'DatePattern',
-    'DateTimePattern',
-    'TimePattern',
-    # Timezone "Aware" Date/Time Patterns
-    'AwareDateTimePattern',
-    'AwareTimePattern',
-    # UTC Date/Time Patterns
-    'UTCDateTimePattern',
-    'UTCTimePattern',
-    # Env Wizard
-    'EnvWizard',
-    'env_config',
-    # Base exports
-    'DataclassWizard',
-    'JSONWizard',
-    'register_type',
-    'LoadMixin',
-    'DumpMixin',
-    # Wizard Mixins
-    'EnvWizard',
-    # Helper serializer functions + meta config
-    'fromlist',
-    'fromdict',
-    'asdict',
-    'LoadMeta',
-    'DumpMeta',
-    'EnvMeta',
-    # Models
-    'skip_if_field',
-    'Pattern',
-    'DatePattern',
-    'TimePattern',
-    'DateTimePattern',
-    'CatchAll',
-    'SkipIf',
-    'SkipIfNone',
-    'EQ',
-    'NE',
-    'LT',
-    'LE',
-    'GT',
-    'GE',
-    'IS',
-    'IS_NOT',
-    'IS_TRUTHY',
-    'IS_FALSY',
-    # Logging
-    'LOG',
-]
-
-import logging
-
-from ._bases_meta import LoadMeta, DumpMeta, EnvMeta, register_type
-from ._dumpers import DumpMixin, setup_default_dumper, asdict
-from ._loaders import LoadMixin, setup_default_loader, fromdict, fromlist
-from ._env import EnvWizard, env_config
 from ._log import LOG
-from ._serial_json import DataclassWizard, JSONWizard
-from .models import (Alias, AliasPath, CatchAll, Env,
-                     SkipIf, SkipIfNone,
-                     skip_if_field,
-                     AwarePattern, AwareTimePattern, AwareDateTimePattern,
-                     UTCPattern, UTCTimePattern, UTCDateTimePattern,
-                     Pattern, DatePattern, TimePattern, DateTimePattern,
-                     EQ, NE, LT, LE, GT, GE, IS, IS_NOT, IS_TRUTHY, IS_FALSY
-                     )
+from ._public import *
 
 # Set up logging to ``/dev/null`` like a library is supposed to.
 # http://docs.python.org/3.3/howto/logging.html#configuring-logging-for-a-library
-LOG.addHandler(logging.NullHandler())
-
-# Setup the default type hooks to use when converting `str` (json) or a Python
-# `dict` object to a `dataclass` instance.
-setup_default_loader()
-
-# Setup the default type hooks to use when converting `dataclass` instances to
-# a JSON `string` or a Python `dict` object.
-setup_default_dumper()
+LOG.addHandler(NullHandler())

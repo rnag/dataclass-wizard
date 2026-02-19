@@ -6,7 +6,7 @@ from collections import Counter
 from collections.abc import Mapping
 from typing import TYPE_CHECKING, TypeVar
 
-from dataclass_wizard import env_config
+from dataclass_wizard.env import env_config
 
 
 if TYPE_CHECKING:

@@ -14,8 +14,7 @@ PY312_OR_ABOVE: bool
 PY313_OR_ABOVE: bool
 PY314_OR_ABOVE: bool
 # The name of the dictionary object that contains `dump` or `load` hooks
-_DUMP_HOOKS: str
-_LOAD_HOOKS: str
+_HOOKS: str
 # Attribute names (mostly internal)
 SINGLE_ARG_ALIAS: str
 IDENTITY: str

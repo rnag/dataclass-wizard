@@ -22,12 +22,15 @@ from zoneinfo import ZoneInfo
 import pytest
 
 from dataclass_wizard import *
+from dataclass_wizard.conditions import *
+from dataclass_wizard.patterns import *
+from dataclass_wizard.models import CatchAll
 from dataclass_wizard.mixins.toml import TOMLWizard
 from dataclass_wizard.constants import TAG
 from dataclass_wizard.errors import (
     ParseError, MissingFields, UnknownKeysError, MissingData, InvalidConditionError
 )
-from dataclass_wizard.models import PatternBase
+from dataclass_wizard.patterns import PatternBase
 from dataclass_wizard._type_def import NoneType
 from tests.unit.conftest import MyUUIDSubclass
 from tests.conftest import *
