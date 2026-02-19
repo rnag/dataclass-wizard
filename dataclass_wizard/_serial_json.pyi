@@ -1,11 +1,10 @@
 import json
-from typing import AnyStr, Collection, Callable, Protocol, dataclass_transform, Any
+from typing import AnyStr, Collection, Callable, Protocol, dataclass_transform, Any, Self
 
 from ._abstractions import AbstractJSONWizard, W
-from ._bases_meta import BaseJSONWizardMeta, HookFn
-from .enums import KeyCase
+from ._bases_meta import BaseJSONWizardMeta
 from ._type_def import Decoder, Encoder, JSONObject, ListOfJSONObject
-
+from .enums import KeyCase
 
 def first_declared_attr_in_mro(cls: type, name: str) -> Callable | Any | None: ...
 def set_from_dict_and_to_dict_if_needed(cls: type) -> None: ...
@@ -19,7 +18,7 @@ def configure_wizard_class(cls: type,
 
 class SerializerHookMixin(Protocol):
     @classmethod
-    def _pre_from_dict(cls: type[W], o: JSONObject) -> JSONObject:
+    def _pre_from_dict(cls: type[Self], o: JSONObject) -> JSONObject:
         """
         Optional hook that runs before the dataclass instance is
         loaded, and before it is converted from a dictionary object
