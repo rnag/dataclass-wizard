@@ -27,7 +27,7 @@ from ._type_conv import as_datetime, as_date, as_time
 from .constants import PY311_OR_ABOVE
 
 
-def get_zoneinfo(key: str) -> ZoneInfo:
+def _get_zoneinfo(key: str) -> ZoneInfo:
     try:
         return ZoneInfo(key)
     except ZoneInfoNotFoundError:
@@ -68,7 +68,7 @@ class PatternBase:
             # expect time zone as first argument
             tz_info, *patterns = patterns
             if isinstance(tz_info, str):
-                tz_info = get_zoneinfo(tz_info)
+                tz_info = _get_zoneinfo(tz_info)
         else:
             patterns = (patterns, ) if patterns.__class__ is str else patterns
 

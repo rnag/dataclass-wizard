@@ -6,7 +6,7 @@ from zoneinfo import ZoneInfo
 from ._type_def import DT, T
 from ._models import TypeInfo, Extras
 
-def get_zoneinfo(key: str) -> ZoneInfo: ...
+def _get_zoneinfo(key: str) -> ZoneInfo: ...
 
 class PatternBase(Generic[DT]):
     # base type for pattern, a type (or subtype) of `DT`
