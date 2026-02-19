@@ -46,7 +46,6 @@ IDENTITY = '__IDENTITY__'
 # via the :attr:`tag_key` field.
 TAG = '__tag__'
 
-
 # INTERNAL USE ONLY: The dictionary key that the library
 # sets/uses to identify a "catch all" field, which captures
 # JSON key/values that don't map to any known dataclass fields.
