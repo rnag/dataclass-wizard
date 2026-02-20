@@ -40,7 +40,8 @@ DATACLASS_FIELD_TO_ENV_FOR_LOAD = WeakKeyDictionary()
 # Dump: A cached mapping, per dataclass, of instance field name to alias
 DATACLASS_FIELD_TO_ALIAS_FOR_DUMP = WeakKeyDictionary()
 
-# A cached mapping, per dataclass, of instance field name to `SkipIf` condition
+# A cached mapping, per dataclass, of instance field name to `SkipIf`
+# condition
 DATACLASS_FIELD_TO_SKIP_IF = WeakKeyDictionary()
 
 # Cache: owner class -> its `Meta` inner class (only present when subclassed)
@@ -127,18 +128,24 @@ def _process_field(name: str,
         if f.skip:
             dump_dataclass_field_to_alias[name] = ExplicitNull
         elif (dump := f.dump_alias) is not None:
-            dump_dataclass_field_to_alias[name] = dump if isinstance(dump, str) else dump[0]
+            dump_dataclass_field_to_alias[name] = dump if isinstance(
+                dump, str) else dump[0]
 
 
 
 # Set up load and dump config for dataclass
 def setup_config_for_cls(cls):
-    load_dataclass_field_to_alias = per_cls(DATACLASS_FIELD_TO_ALIAS_FOR_LOAD, cls)
-    load_dataclass_field_to_env = per_cls(DATACLASS_FIELD_TO_ENV_FOR_LOAD, cls)
-    dump_dataclass_field_to_alias = per_cls(DATACLASS_FIELD_TO_ALIAS_FOR_DUMP, cls)
+    load_dataclass_field_to_alias = per_cls(
+        DATACLASS_FIELD_TO_ALIAS_FOR_LOAD, cls)
+    load_dataclass_field_to_env = per_cls(
+        DATACLASS_FIELD_TO_ENV_FOR_LOAD, cls)
+    dump_dataclass_field_to_alias = per_cls(
+        DATACLASS_FIELD_TO_ALIAS_FOR_DUMP, cls)
 
-    dataclass_field_to_path = per_cls(DATACLASS_FIELD_TO_ALIAS_PATH_FOR_LOAD, cls)
-    dump_dataclass_field_to_path = per_cls(DATACLASS_FIELD_TO_ALIAS_PATH_FOR_DUMP, cls)
+    dataclass_field_to_path = per_cls(
+        DATACLASS_FIELD_TO_ALIAS_PATH_FOR_LOAD, cls)
+    dump_dataclass_field_to_path = per_cls(
+        DATACLASS_FIELD_TO_ALIAS_PATH_FOR_DUMP, cls)
 
     set_paths = False if dataclass_field_to_path else True
     field_to_skip_if = per_cls(DATACLASS_FIELD_TO_SKIP_IF, cls)

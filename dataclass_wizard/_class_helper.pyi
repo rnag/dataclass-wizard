@@ -24,36 +24,44 @@ CLASS_TO_DUMPER: WeakKeyDictionary[type, type[AbstractDumperGenerator]]
 IS_CONFIG_SETUP: WeakSet[type]
 
 # A cached mapping, per dataclass, of instance field name to JSON path
-DATACLASS_FIELD_TO_ALIAS_PATH_FOR_LOAD: WeakKeyDictionary[type, dict[str, Sequence[PathType]]]
+DATACLASS_FIELD_TO_ALIAS_PATH_FOR_LOAD: WeakKeyDictionary[
+    type, dict[str, Sequence[PathType]]]
 
 # Dump: A cached mapping, per dataclass, of instance field name to alias path
-DATACLASS_FIELD_TO_ALIAS_PATH_FOR_DUMP: WeakKeyDictionary[type, dict[str, Sequence[PathType]]]
+DATACLASS_FIELD_TO_ALIAS_PATH_FOR_DUMP: WeakKeyDictionary[
+    type, dict[str, Sequence[PathType]]]
 
 # A cached mapping, per dataclass, of instance field name to alias
-DATACLASS_FIELD_TO_ALIAS_FOR_LOAD: WeakKeyDictionary[type, dict[str, Sequence[str]]]
+DATACLASS_FIELD_TO_ALIAS_FOR_LOAD: WeakKeyDictionary[
+    type, dict[str, Sequence[str]]]
 
 # A cached mapping, per dataclass, of instance field name to env var
-DATACLASS_FIELD_TO_ENV_FOR_LOAD: WeakKeyDictionary[type, dict[str, Sequence[str]]]
+DATACLASS_FIELD_TO_ENV_FOR_LOAD: WeakKeyDictionary[
+    type, dict[str, Sequence[str]]]
 
 # A cached mapping, per dataclass, of instance field name to alias
-DATACLASS_FIELD_TO_ALIAS_FOR_DUMP: WeakKeyDictionary[type, dict[str, str]]
+DATACLASS_FIELD_TO_ALIAS_FOR_DUMP: WeakKeyDictionary[
+    type, dict[str, str]]
 
 # A cached mapping, per dataclass, of instance field name to `SkipIf` condition
-DATACLASS_FIELD_TO_SKIP_IF: WeakKeyDictionary[type, dict[str, Condition]]
+DATACLASS_FIELD_TO_SKIP_IF: WeakKeyDictionary[
+    type, dict[str, Condition]]
 
 # Cache: owner class -> its `Meta` inner class (only present when subclassed)
 META_INITIALIZER: dict[str, Callable[[type[W]], None]] = {}
 
-def set_class_loader(cls_to_loader: Mapping[type, type[AbstractLoaderGenerator]],
-                     class_or_instance: type[T] | T,
-                     loader: type[AbstractLoaderGenerator]):
+def set_class_loader(
+        cls_to_loader: Mapping[type, type[AbstractLoaderGenerator]],
+        class_or_instance: type[T] | T,
+        loader: type[AbstractLoaderGenerator]):
     """
     Set (and return) the loader for a dataclass.
     """
 
-def set_class_dumper(cls_to_dumper: Mapping[type, type[AbstractDumperGenerator]],
-                     class_or_instance: type[T] | T,
-                     dumper: type[AbstractDumperGenerator]):
+def set_class_dumper(
+        cls_to_dumper: Mapping[type, type[AbstractDumperGenerator]],
+        class_or_instance: type[T] | T,
+        dumper: type[AbstractDumperGenerator]):
     """
     Set (and return) the dumper for a dataclass.
     """
@@ -63,9 +71,12 @@ def dataclass_field_to_skip_if(cls: type) -> dict[str, Condition]:
     Returns a mapping of dataclass field to SkipIf condition.
     """
 
-def resolve_dataclass_field_to_alias_for_dump(cls: type) -> dict[str, Sequence[str]]: ...
-def resolve_dataclass_field_to_alias_for_load(cls: type) -> dict[str, Sequence[str]]: ...
-def resolve_dataclass_field_to_env_for_load(cls: type) -> dict[str, Sequence[str]]: ...
+def resolve_dataclass_field_to_alias_for_dump(
+    cls: type) -> dict[str, Sequence[str]]: ...
+def resolve_dataclass_field_to_alias_for_load(
+    cls: type) -> dict[str, Sequence[str]]: ...
+def resolve_dataclass_field_to_env_for_load(
+    cls: type) -> dict[str, Sequence[str]]: ...
 
 def setup_config_for_cls(cls: type):
     """
