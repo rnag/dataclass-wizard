@@ -33,7 +33,8 @@ elif PY310_OR_ABOVE:
         return get_annotations(obj, eval_str=True)
 
 else:
-    # Python 3.9: use typing_extensions backport (supports get_annotations + format/eval_str behavior)
+    # Python 3.9: use typing_extensions backport
+    # (supports get_annotations + format/eval_str behavior)
     # noinspection PyUnresolvedReferences,PyProtectedMember
     from typing_extensions import get_annotations
     def get_resolved_annotations(obj):
