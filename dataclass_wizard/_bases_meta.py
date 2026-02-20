@@ -7,24 +7,29 @@ both import directly from `bases`.
 from __future__ import annotations
 
 import logging
-from typing import Mapping
+from collections.abc import Mapping
 
-from ._log import LOG
-from ._meta_cache import META_BY_DATACLASS, get_meta, set_base_meta_cls
-from ._bases import AbstractMeta, AbstractEnvMeta
+from ._bases import AbstractEnvMeta, AbstractMeta
 from ._class_helper import (
-    META_INITIALIZER,
+    DATACLASS_FIELD_TO_ALIAS_FOR_DUMP,
     DATACLASS_FIELD_TO_ALIAS_FOR_LOAD,
     DATACLASS_FIELD_TO_ENV_FOR_LOAD,
-    DATACLASS_FIELD_TO_ALIAS_FOR_DUMP)
-from ._type_utils import per_cls, create_new_class, get_class_name, get_outer_class_name
+    META_INITIALIZER,
+)
 from ._dumpers import DumpMixin, get_dumper
-from .enums import KeyAction, KeyCase, DateTimeTo, EnvKeyStrategy, EnvPrecedence
-
-from .errors import ParseError
 from ._loaders import LoadMixin, get_loader
+from ._log import LOG
+from ._meta_cache import META_BY_DATACLASS, get_meta, set_base_meta_cls
 from ._type_conv import as_enum
 from ._type_def import E
+from ._type_utils import (
+    create_new_class,
+    get_class_name,
+    get_outer_class_name,
+    per_cls,
+)
+from .enums import DateTimeTo, EnvKeyStrategy, EnvPrecedence, KeyAction, KeyCase
+from .errors import ParseError
 
 ALLOWED_MODES = ('runtime', 'codegen')
 
@@ -66,7 +71,7 @@ def _enable_debug_mode_if_needed(possible_lvl):
         LOG.info('DEBUG Mode is enabled')
 
 
-def _as_enum_safe(cls: type, name: str, base_type: type[E]) -> 'E | None':
+def _as_enum_safe(cls: type, name: str, base_type: type[E]) -> E | None:
     """
     Attempt to return the value for class attribute :attr:`attr_name` as
     a :type:`base_type`.

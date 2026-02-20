@@ -4,7 +4,7 @@ import collections.abc as abc
 import dataclasses
 from base64 import b64decode
 from collections import defaultdict, deque
-from dataclasses import is_dataclass, Field, MISSING
+from dataclasses import MISSING, Field, is_dataclass
 from datetime import date, datetime, time, timedelta
 from decimal import Decimal
 from enum import Enum
@@ -13,47 +13,71 @@ from typing import Any, Callable, Literal, NamedTuple, cast
 from uuid import UUID
 
 from ._bases import AbstractMeta, BaseLoadHook
-from ._class_helper import (resolve_dataclass_field_to_alias_for_load,
-                            DATACLASS_FIELD_TO_ALIAS_PATH_FOR_LOAD,
-                            CLASS_TO_LOADER, set_class_loader)
-from ._decorators import (process_patterned_date_time,
-                          setup_recursive_safe_function,
-                          setup_recursive_safe_function_for_generic)
+from ._class_helper import (
+    CLASS_TO_LOADER,
+    DATACLASS_FIELD_TO_ALIAS_PATH_FOR_LOAD,
+    resolve_dataclass_field_to_alias_for_load,
+    set_class_loader,
+)
+from ._decorators import (
+    process_patterned_date_time,
+    setup_recursive_safe_function,
+    setup_recursive_safe_function_for_generic,
+)
 from ._log import LOG
 from ._meta_cache import get_meta
+from ._models import LEAF_TYPES, Extras, TypeInfo
 from ._models_date import UTC
 from ._type_conv import (
-    as_datetime, as_date, as_int,
-    as_time, as_timedelta, TRUTHY_VALUES,
+    TRUTHY_VALUES,
+    as_date,
+    as_datetime,
+    as_int,
+    as_time,
+    as_timedelta,
 )
-from ._type_def import META, UNSET, DefFactory, JSONObject, NoneType, PyLiteralString, T
+from ._type_def import (
+    META,
+    UNSET,
+    DefFactory,
+    JSONObject,
+    NoneType,
+    PyLiteralString,
+    T,
+)
 from ._type_utils import create_new_class, is_subclass_safe
+
 # noinspection PyUnresolvedReferences
-from .constants import CATCH_ALL, TAG, PY311_OR_ABOVE, PACKAGE_NAME, _HOOKS
+from .constants import _HOOKS, CATCH_ALL, PACKAGE_NAME, PY311_OR_ABOVE, TAG
 from .enums import KeyAction, KeyCase
-from .errors import (JSONWizardError,
-                     MissingData,
-                     MissingFields,
-                     ParseError,
-                     UnknownKeysError)
-from ._models import TypeInfo, Extras, LEAF_TYPES
-from .utils._dataclass_compat import (dataclass_fields,
-                                      dataclass_init_fields,
-                                      dataclass_init_field_names,
-                                      dataclass_kw_only_init_field_names,
-                                      set_new_attribute,
-                                      SEEN_DEFAULT)
+from .errors import (
+    JSONWizardError,
+    MissingData,
+    MissingFields,
+    ParseError,
+    UnknownKeysError,
+)
+from .utils._dataclass_compat import (
+    SEEN_DEFAULT,
+    dataclass_fields,
+    dataclass_init_field_names,
+    dataclass_init_fields,
+    dataclass_kw_only_init_field_names,
+    set_new_attribute,
+)
 from .utils._function_builder import FunctionBuilder
 from .utils._object_path import safe_get
 from .utils._string_conv import possible_json_keys
-from .utils._typing_compat import (eval_forward_ref_if_needed,
-                                   get_args,
-                                   get_keys_for_typed_dict,
-                                   get_origin_v2,
-                                   is_annotated,
-                                   is_typed_dict,
-                                   is_typed_dict_type_qualifier,
-                                   is_union)
+from .utils._typing_compat import (
+    eval_forward_ref_if_needed,
+    get_args,
+    get_keys_for_typed_dict,
+    get_origin_v2,
+    is_annotated,
+    is_typed_dict,
+    is_typed_dict_type_qualifier,
+    is_union,
+)
 
 
 class LoadMixin(BaseLoadHook):
@@ -354,7 +378,7 @@ class LoadMixin(BaseLoadHook):
 
             if all_optionals:  # NamedTuple has no required fields
                 len_condition = 'n'
-                ret_value_with_input = f'return cls(*args)'
+                ret_value_with_input = 'return cls(*args)'
             else:
                 len_condition = f'n > {opt_fields_start_i}'
                 ret_value_with_input = f'return cls({req_args}, *args)'
@@ -790,7 +814,7 @@ class LoadMixin(BaseLoadHook):
             _date_part = _opt_cls = ''
 
         else:  # date or a subclass
-            _fromtimestamp = f'__datetime_fromtimestamp'
+            _fromtimestamp = '__datetime_fromtimestamp'
             name_to_func[_fromtimestamp] = datetime.fromtimestamp
             _as_func = '__as_date'
             name_to_func[_as_func] = as_date
@@ -1408,7 +1432,7 @@ def load_func_for_dataclass(
                 fn_gen.add_line("re_raise(e, cls, o, fields, field, locals().get('v1'))")
 
         if has_catch_all:
-            catch_all_def = f'{{k: o[k] for k in o if k not in aliases}}'
+            catch_all_def = '{k: o[k] for k in o if k not in aliases}'
 
             if catch_all_field.endswith('?'):  # Default value
                 with fn_gen.if_('len(o) != i'):
@@ -1485,7 +1509,7 @@ def generate_field_code(cls_loader: LoadMixin,
                         extras: Extras,
                         field: Field,
                         field_i: int,
-                        var_name=None) -> 'str | TypeInfo':
+                        var_name=None) -> str | TypeInfo:
     cls = extras['cls']
     field_type = field.type = eval_forward_ref_if_needed(field.type, cls)
 

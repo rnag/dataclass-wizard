@@ -9,11 +9,10 @@ import textwrap
 from gettext import gettext as _
 from json import JSONDecodeError
 from pathlib import Path
-from typing import TextIO, Optional
+from typing import Optional, TextIO
 
-from .schema import PyCodeGenerator
 from ..__version__ import __version__
-
+from .schema import PyCodeGenerator
 
 # Define the top-level parser
 parser: argparse.ArgumentParser

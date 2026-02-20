@@ -42,21 +42,41 @@ __all__ = [
     'dataclass_transform',
 ]
 
-from collections import deque, defaultdict
-from datetime import date, time, datetime
+from collections import defaultdict, deque
+from collections.abc import Collection, Iterable, Mapping, Sequence
+from datetime import date, datetime, time
 from enum import Enum
 from os import PathLike
 from typing import (
-    Any, TypeVar, Sequence, Mapping,
-    Union, NamedTuple, Callable, AnyStr, TextIO, BinaryIO,
+    Any,
+    AnyStr,
+    BinaryIO,
+    Callable,
+    NamedTuple,
+    TextIO,
+    TypeVar,
+    Union,
+)
+from typing import (
     Deque as PyDeque,
+)
+from typing import (
     ForwardRef as PyForwardRef,
+)
+from typing import (
     Protocol as PyProtocol,
-    TypedDict as PyTypedDict, Iterable, Collection,
+)
+from typing import (
+    TypedDict as PyTypedDict,
 )
 from uuid import UUID
 
-from .constants import PY310_OR_ABOVE, PY311_OR_ABOVE, PY313_OR_ABOVE, PY312_OR_ABOVE
+from .constants import (
+    PY310_OR_ABOVE,
+    PY311_OR_ABOVE,
+    PY312_OR_ABOVE,
+    PY313_OR_ABOVE,
+)
 
 # The class of the `None` singleton, cached for re-usability
 if PY310_OR_ABOVE:
@@ -134,33 +154,29 @@ StrCollection = Union[str, Collection[str]]
 
 if PY313_OR_ABOVE:  # pragma: no cover
     from collections.abc import Buffer
-
-    from typing import (Unpack,
-                        Required as PyRequired,
-                        NotRequired as PyNotRequired,
-                        ReadOnly as PyReadOnly,
-                        LiteralString as PyLiteralString,
-                        dataclass_transform)
+    from typing import LiteralString as PyLiteralString
+    from typing import NotRequired as PyNotRequired
+    from typing import ReadOnly as PyReadOnly
+    from typing import Required as PyRequired
+    from typing import Unpack, dataclass_transform
 elif PY311_OR_ABOVE:  # pragma: no cover
     if PY312_OR_ABOVE:
         from collections.abc import Buffer
     else:
         from typing_extensions import Buffer
 
-    from typing import (Unpack,
-                        Required as PyRequired,
-                        NotRequired as PyNotRequired,
-                        LiteralString as PyLiteralString,
-                        dataclass_transform)
+    from typing import LiteralString as PyLiteralString
+    from typing import NotRequired as PyNotRequired
+    from typing import Required as PyRequired
+    from typing import Unpack, dataclass_transform
+
     from typing_extensions import ReadOnly as PyReadOnly
 else:
-    from typing_extensions import (Unpack,
-                                   Buffer,
-                                   Required as PyRequired,
-                                   NotRequired as PyNotRequired,
-                                   ReadOnly as PyReadOnly,
-                                   LiteralString as PyLiteralString,
-                                   dataclass_transform)
+    from typing_extensions import Buffer, Unpack, dataclass_transform
+    from typing_extensions import LiteralString as PyLiteralString
+    from typing_extensions import NotRequired as PyNotRequired
+    from typing_extensions import ReadOnly as PyReadOnly
+    from typing_extensions import Required as PyRequired
 
 # Forward references can be either strings or explicit `ForwardRef` objects.
 # noinspection SpellCheckingInspection
@@ -187,7 +203,7 @@ class ExplicitNullType:
 
     def __new__(cls):
         if cls._instance is None:
-            cls._instance = super(ExplicitNullType, cls).__new__(cls)
+            cls._instance = super().__new__(cls)
         return cls._instance
 
     def __bool__(self):

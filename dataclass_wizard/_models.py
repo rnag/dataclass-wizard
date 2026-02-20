@@ -1,9 +1,9 @@
 import types
 from collections import defaultdict, deque
-from typing import TYPE_CHECKING, TypedDict, Any
+from typing import TYPE_CHECKING, Any, TypedDict
 
 from ._log import LOG
-from ._type_def import META, DefFactory, PyNotRequired, NoneType
+from ._type_def import META, DefFactory, NoneType, PyNotRequired
 from ._type_utils import is_builtin
 from .utils._function_builder import FunctionBuilder
 from .utils._typing_compat import get_origin_v2
@@ -194,7 +194,7 @@ class TypeInfo:
         tn = self._wrap_inner(extras, is_builtin=True, bound=defaultdict)
         tn_df = self._wrap_inner(extras, default_factory)
         result = f'{tn}({tn_df}, {result})'
-        setattr(self, '_wrapped', result)
+        self._wrapped = result
         return self
 
     def multi_wrap(self, extras, prefix='', *result, force=False):
@@ -209,14 +209,14 @@ class TypeInfo:
         if tn is not None:
             result = f'{tn}({result})'
 
-        setattr(self, '_wrapped', result)
+        self._wrapped = result
         return self
 
     def wrap_builtin(self, bound, result, extras):
         tn = self._wrap_inner(extras, is_builtin=True, bound=bound)
         result = f'{tn}({result})'
 
-        setattr(self, '_wrapped', result)
+        self._wrapped = result
         return self
 
     def _wrap_inner(self, extras,

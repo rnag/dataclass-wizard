@@ -1,7 +1,7 @@
 from .._bases_meta import DumpMeta
 from .._dumpers import asdict
-from .._loaders import  fromdict, fromlist
 from .._lazy_imports import toml, toml_w
+from .._loaders import fromdict, fromlist
 from .._meta_cache import META_BY_DATACLASS
 
 

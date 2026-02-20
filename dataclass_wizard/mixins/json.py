@@ -1,7 +1,7 @@
 import json
 
 from .._dumpers import asdict
-from .._loaders import  fromdict, fromlist
+from .._loaders import fromdict, fromlist
 from .._serial_json import JSONWizard
 from ..utils.containers import Container
 

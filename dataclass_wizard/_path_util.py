@@ -1,4 +1,4 @@
-from os import PathLike, fspath, sep, altsep, getcwd
+from os import PathLike, altsep, fspath, getcwd, sep
 from os.path import isabs
 from pathlib import Path
 

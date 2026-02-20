@@ -1,5 +1,5 @@
+from collections.abc import Sequence
 from os import PathLike
-from typing import Sequence
 
 from ._env import E
 

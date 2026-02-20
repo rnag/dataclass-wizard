@@ -1,8 +1,12 @@
 import enum
 import typing
+
 from _typeshed import Incomplete
-from .utils._string_case import to_camel_case as to_camel_case, to_lisp_case as to_lisp_case, to_pascal_case as to_pascal_case, to_snake_case as to_snake_case
-from typing import ClassVar
+
+from .utils._string_case import to_camel_case as to_camel_case
+from .utils._string_case import to_lisp_case as to_lisp_case
+from .utils._string_case import to_pascal_case as to_pascal_case
+from .utils._string_case import to_snake_case as to_snake_case
 
 class FuncWrapper:
     f: Incomplete

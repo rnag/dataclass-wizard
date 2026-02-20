@@ -10,7 +10,7 @@ from .utils._function_builder import FunctionBuilder
 from .utils._typing_compat import is_union
 
 if TYPE_CHECKING:  # pragma: no cover
-    from ._models import TypeInfo, Extras
+    from ._models import Extras, TypeInfo
 
 
 def process_patterned_date_time(func: Callable) -> Callable:
@@ -267,7 +267,7 @@ def setup_recursive_safe_function_for_generic(func: Callable = None,
 
 # TODO see if we can remove this
 # noinspection PyPep8Naming
-class cached_class_property(object):
+class cached_class_property:
     """
     Descriptor decorator implementing a class-level, read-only property,
     which caches the attribute on-demand on the first use.
@@ -292,7 +292,7 @@ class cached_class_property(object):
         return attr
 
 
-class cached_property(object):
+class cached_property:
     """
     Descriptor decorator implementing an instance-level, read-only property,
     which caches the attribute on-demand on the first use.

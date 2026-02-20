@@ -4,51 +4,68 @@ from __future__ import annotations
 import collections.abc as abc
 from base64 import b64encode
 from collections import defaultdict, deque
-from dataclasses import is_dataclass, MISSING, Field
-from datetime import datetime, time, date, timedelta
+from collections.abc import Collection
+from dataclasses import MISSING, Field, is_dataclass
+from datetime import date, datetime, time, timedelta
 from decimal import Decimal
 from enum import Enum
 from pathlib import Path
+
 # noinspection PyUnresolvedReferences,PyProtectedMember
 from typing import (
-    cast, Any, Type, Dict, List, Tuple, Iterable, Sequence, Union,
-    NamedTupleMeta, SupportsFloat, AnyStr, Text, Callable, Optional,
-    Literal, Annotated, NamedTuple, Collection,
+    Any,
+    Callable,
+    Literal,
+    NamedTuple,
+    Union,
+    cast,
 )
 from uuid import UUID
 
-from ._log import LOG
-from ._models_date import ZERO, UTC
 from ._bases import AbstractMeta, BaseDumpHook
 from ._class_helper import (
-    DATACLASS_FIELD_TO_ALIAS_PATH_FOR_DUMP,
-    resolve_dataclass_field_to_alias_for_dump,
-    dataclass_field_to_skip_if,
     CLASS_TO_DUMPER,
+    DATACLASS_FIELD_TO_ALIAS_PATH_FOR_DUMP,
+    dataclass_field_to_skip_if,
+    resolve_dataclass_field_to_alias_for_dump,
     set_class_dumper,
 )
-from ._type_utils import create_new_class, is_subclass_safe
+from ._decorators import (
+    setup_recursive_safe_function,
+    setup_recursive_safe_function_for_generic,
+)
+from ._log import LOG
 from ._meta_cache import get_meta
-# noinspection PyUnresolvedReferences
-from .constants import CATCH_ALL, TAG, PACKAGE_NAME, _HOOKS
-from ._decorators import (setup_recursive_safe_function,
-                         setup_recursive_safe_function_for_generic)
-from .enums import KeyCase, DateTimeTo
-from .errors import (ParseError, MissingFields, MissingData, JSONWizardError)
-from ._models import (TypeInfo, Extras,
-                      get_skip_if_condition, finalize_skip_if,
-                     LEAF_TYPES, LEAF_TYPES_NO_BYTES)
+from ._models import (
+    LEAF_TYPES,
+    LEAF_TYPES_NO_BYTES,
+    Extras,
+    TypeInfo,
+    finalize_skip_if,
+    get_skip_if_condition,
+)
+from ._models_date import UTC, ZERO
 from ._type_conv import datetime_to_timestamp
 from ._type_def import (
     META,
-    NoneType, JSONObject,
+    ExplicitNull,
+    JSONObject,
+    NoneType,
     PyLiteralString,
-    T, ExplicitNull
+    T,
 )
-from .utils._dataclass_compat import (dataclass_fields,
-                                      dataclass_field_names,
-                                      set_new_attribute,
-                                      SEEN_DEFAULT)
+from ._type_utils import create_new_class, is_subclass_safe
+
+# noinspection PyUnresolvedReferences
+from .constants import _HOOKS, CATCH_ALL, PACKAGE_NAME, TAG
+from .enums import DateTimeTo, KeyCase
+from .errors import JSONWizardError, MissingData, MissingFields, ParseError
+from .utils._dataclass_compat import (
+    SEEN_DEFAULT,
+    dataclass_field_names,
+    dataclass_fields,
+    set_new_attribute,
+)
 from .utils._dict_helper import NestedDict
 from .utils._function_builder import FunctionBuilder
 from .utils._typing_compat import (
@@ -61,7 +78,6 @@ from .utils._typing_compat import (
     is_typed_dict_type_qualifier,
     is_union,
 )
-
 
 _KNOWN_FACTORY_LITERALS: dict[Callable[[], Any], str] = {
     list: '[]',
@@ -1090,7 +1106,9 @@ def dump_func_for_dataclass(
         if has_catch_all:
             # noinspection PyUnresolvedReferences,PyProtectedMember
             # TODO
-            from dataclasses import _asdict_inner as __dataclasses_asdict_inner__
+            from dataclasses import (
+                _asdict_inner as __dataclasses_asdict_inner__,
+            )
 
             if (default_value := default_compare_expr(
                     catch_all_field,
@@ -1102,7 +1120,7 @@ def dump_func_for_dataclass(
                 condition = f'v1 := o.{catch_all_name_stripped}'
 
             with fn_gen.if_(condition):
-                with fn_gen.for_(f"k, v in v1.items()"):
+                with fn_gen.for_("k, v in v1.items()"):
                     fn_gen.globals['__asdict_inner__'] = __dataclasses_asdict_inner__
                     fn_gen.add_line('result[k] = __asdict_inner__(v,dict_factory)')
 
@@ -1115,7 +1133,7 @@ def dump_func_for_dataclass(
 
         # Now pass the arguments to the dict_factory method, and return
         # the new dict_factory instance.
-        fn_gen.add_line(f'return result if dict_factory is dict else dict_factory(result)')
+        fn_gen.add_line('return result if dict_factory is dict else dict_factory(result)')
 
     # Save the dump function for the main dataclass, so we don't need to run
     # this logic each time.
@@ -1147,7 +1165,7 @@ def generate_field_code(cls_dumper: DumpMixin,
                         extras: Extras,
                         field: Field,
                         field_i: int,
-                        var_name=None) -> 'str | TypeInfo':
+                        var_name=None) -> str | TypeInfo:
     cls = extras['cls']
     field_type = field.type = eval_forward_ref_if_needed(field.type, cls)
 
@@ -1179,8 +1197,8 @@ def re_raise(e, cls, o, fields, field, value):
     # If field name is missing or not known, make a "best effort"
     # to resolve it.
     if field == '<UNK>' and cls and fields:
-        if len((names := [f.name for f in fields
-                          if getattr(o, f.name, MISSING) == e.obj])) == 1:
+        if len(names := [f.name for f in fields
+                          if getattr(o, f.name, MISSING) == e.obj]) == 1:
             field = e.field_name = names[0]
 
     # We run into a parsing error while dumping the field value;

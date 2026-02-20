@@ -14,17 +14,15 @@ __all__ = ['TRUTHY_VALUES',
            ]
 
 import csv
-
 from collections.abc import Callable
-from datetime import datetime, time, date, timedelta, timezone, tzinfo
-from json import loads, JSONDecodeError
-from typing import Union, Any, AnyStr
+from datetime import date, datetime, time, timedelta, timezone, tzinfo
+from json import JSONDecodeError, loads
+from typing import Any, AnyStr, Union
 
-from .errors import ParseError
 from ._lazy_imports import pytimeparse
-from ._type_def import E, N, NUMBERS
-from ._models_date import ZERO, UTC
-
+from ._models_date import UTC, ZERO
+from ._type_def import NUMBERS, E, N
+from .errors import ParseError
 
 # What values are considered "truthy" when converting to a boolean type.
 # noinspection SpellCheckingInspection

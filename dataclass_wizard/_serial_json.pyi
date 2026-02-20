@@ -1,5 +1,13 @@
 import json
-from typing import AnyStr, Collection, Callable, Protocol, dataclass_transform, Any, Self
+from collections.abc import Collection
+from typing import (
+    Any,
+    AnyStr,
+    Callable,
+    Protocol,
+    Self,
+    dataclass_transform,
+)
 
 from ._abstractions import AbstractJSONWizard, W
 from ._bases_meta import BaseJSONWizardMeta

@@ -2,19 +2,23 @@ from __future__ import annotations
 
 import json
 import logging
-from dataclasses import dataclass, MISSING
+from dataclasses import MISSING, dataclass
 
-from ._log import enable_library_debug_logging
 from ._bases_meta import BaseJSONWizardMeta, LoadMeta
 from ._class_helper import call_meta_initializer_if_needed
-from .constants import PACKAGE_NAME
 from ._dumpers import asdict
 from ._loaders import fromdict, fromlist
+from ._log import enable_library_debug_logging
 from ._type_def import UNSET, dataclass_transform
+from .constants import PACKAGE_NAME
 from .enums import KeyCase
+
 # noinspection PyProtectedMember
-from .utils._dataclass_compat import (dataclass_needs_refresh,
-                                      set_new_attribute, str_pprint_fn)
+from .utils._dataclass_compat import (
+    dataclass_needs_refresh,
+    set_new_attribute,
+    str_pprint_fn,
+)
 
 
 def first_declared_attr_in_mro(cls, name):

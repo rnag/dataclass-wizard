@@ -1,13 +1,20 @@
 import json
-from dataclasses import dataclass, Field, InitVar
-from typing import (Callable, Mapping, dataclass_transform, TypedDict,
-                    NotRequired, TypeVar, ClassVar, Collection, AnyStr)
+from collections.abc import Collection, Mapping
+from dataclasses import Field, InitVar, dataclass
+from typing import (
+    Callable,
+    ClassVar,
+    NotRequired,
+    TypedDict,
+    TypeVar,
+    dataclass_transform,
+)
 
-from ._loaders import LoadMixin as V1LoadMixIn
-from ._models import TypeInfo, Extras
 from ._bases import AbstractEnvMeta
 from ._bases_meta import BaseEnvWizardMeta, HookFn
-from ._type_def import ENV_META, Unpack, JSONObject, T, Encoder
+from ._loaders import LoadMixin as V1LoadMixIn
+from ._models import Extras, TypeInfo
+from ._type_def import ENV_META, Encoder, JSONObject, T, Unpack
 
 E_ = TypeVar('E_', bound=EnvWizard)
 E = type[E_]

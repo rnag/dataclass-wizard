@@ -1,8 +1,7 @@
 from typing import overload
 from weakref import WeakKeyDictionary
 
-
-from ._type_def import META, _ENV_META, _META
+from ._type_def import _ENV_META, _META, META
 
 META_BY_DATACLASS: WeakKeyDictionary[type, META] = WeakKeyDictionary()
 BASE_META_CLS: type | None = None

@@ -1,7 +1,7 @@
-from typing import AnyStr, TextIO, BinaryIO
+from typing import AnyStr, BinaryIO, TextIO
 
 from .._serial_json import SerializerHookMixin
-from .._type_def import FileType, T, Decoder, FileDecoder, Encoder, FileEncoder
+from .._type_def import Decoder, Encoder, FileDecoder, FileEncoder, FileType, T
 from ..enums import KeyCase
 
 class YAMLWizard(SerializerHookMixin):

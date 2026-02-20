@@ -3,11 +3,10 @@ Contains implementations for Abstract Base Classes
 """
 import json
 from abc import ABC, abstractmethod
-from typing import AnyStr, TypeVar, ClassVar
+from typing import AnyStr, ClassVar, TypeVar
 
-from ._models import TypeInfo, Extras
+from ._models import Extras, TypeInfo
 from ._type_def import Encoder, JSONObject, ListOfJSONObject
-
 
 # Create a generic variable that can be 'AbstractEnvWizard', or any subclass.
 E = TypeVar('E', bound='AbstractEnvWizard')
@@ -382,7 +381,7 @@ class AbstractDumperGenerator(ABC):
 
     @staticmethod
     @abstractmethod
-    def dump_from_float(tp: TypeInfo, extras: Extras) -> 'str | TypeInfo':
+    def dump_from_float(tp: TypeInfo, extras: Extras) -> str | TypeInfo:
         """
         Generate code to dump a value from a float field.
         """
@@ -396,14 +395,14 @@ class AbstractDumperGenerator(ABC):
 
     @staticmethod
     @abstractmethod
-    def dump_from_bytes(tp: TypeInfo, extras: Extras) -> 'str | TypeInfo':
+    def dump_from_bytes(tp: TypeInfo, extras: Extras) -> str | TypeInfo:
         """
         Generate code to dump a value from a bytes field.
         """
 
     @staticmethod
     @abstractmethod
-    def dump_from_bytearray(tp: TypeInfo, extras: Extras) -> 'str | TypeInfo':
+    def dump_from_bytearray(tp: TypeInfo, extras: Extras) -> str | TypeInfo:
         """
         Generate code to dump a value from a bytearray field.
         """
@@ -417,91 +416,91 @@ class AbstractDumperGenerator(ABC):
 
     @staticmethod
     @abstractmethod
-    def dump_from_literal(tp: TypeInfo, extras: Extras) -> 'str | TypeInfo':
+    def dump_from_literal(tp: TypeInfo, extras: Extras) -> str | TypeInfo:
         """
         Generate code to dump a literal.
         """
 
     @classmethod
     @abstractmethod
-    def dump_from_union(cls, tp: TypeInfo, extras: Extras) -> 'str | TypeInfo':
+    def dump_from_union(cls, tp: TypeInfo, extras: Extras) -> str | TypeInfo:
         """
         Generate code to dump a value from a `Union[X, Y, ...]` (one of [X, Y, ...] possible types)
         """
 
     @staticmethod
     @abstractmethod
-    def dump_from_enum(tp: TypeInfo, extras: Extras) -> 'str | TypeInfo':
+    def dump_from_enum(tp: TypeInfo, extras: Extras) -> str | TypeInfo:
         """
         Generate code to dump a value from an Enum field.
         """
 
     @staticmethod
     @abstractmethod
-    def dump_from_uuid(tp: TypeInfo, extras: Extras) -> 'str | TypeInfo':
+    def dump_from_uuid(tp: TypeInfo, extras: Extras) -> str | TypeInfo:
         """
         Generate code to dump a value from a UUID field.
         """
 
     @staticmethod
     @abstractmethod
-    def dump_from_iterable(tp: TypeInfo, extras: Extras) -> 'str | TypeInfo':
+    def dump_from_iterable(tp: TypeInfo, extras: Extras) -> str | TypeInfo:
         """
         Generate code to dump a value from an iterable field (list, set, etc.).
         """
 
     @staticmethod
     @abstractmethod
-    def dump_from_tuple(tp: TypeInfo, extras: Extras) -> 'str | TypeInfo':
+    def dump_from_tuple(tp: TypeInfo, extras: Extras) -> str | TypeInfo:
         """
         Generate code to dump a value from a tuple field.
         """
 
     @staticmethod
     @abstractmethod
-    def dump_from_named_tuple(tp: TypeInfo, extras: Extras) -> 'str | TypeInfo':
+    def dump_from_named_tuple(tp: TypeInfo, extras: Extras) -> str | TypeInfo:
         """
         Generate code to dump a value from a named tuple field.
         """
 
     @classmethod
     @abstractmethod
-    def dump_from_named_tuple_untyped(cls, tp: TypeInfo, extras: Extras) -> 'str | TypeInfo':
+    def dump_from_named_tuple_untyped(cls, tp: TypeInfo, extras: Extras) -> str | TypeInfo:
         """
         Generate code to dump a value from an untyped named tuple.
         """
 
     @staticmethod
     @abstractmethod
-    def dump_from_dict(tp: TypeInfo, extras: Extras) -> 'str | TypeInfo':
+    def dump_from_dict(tp: TypeInfo, extras: Extras) -> str | TypeInfo:
         """
         Generate code to dump a value from a dictionary field.
         """
 
     @staticmethod
     @abstractmethod
-    def dump_from_defaultdict(tp: TypeInfo, extras: Extras) -> 'str | TypeInfo':
+    def dump_from_defaultdict(tp: TypeInfo, extras: Extras) -> str | TypeInfo:
         """
         Generate code to dump a value from a defaultdict field.
         """
 
     @staticmethod
     @abstractmethod
-    def dump_from_typed_dict(tp: TypeInfo, extras: Extras) -> 'str | TypeInfo':
+    def dump_from_typed_dict(tp: TypeInfo, extras: Extras) -> str | TypeInfo:
         """
         Generate code to dump a value from a typed dictionary field.
         """
 
     @staticmethod
     @abstractmethod
-    def dump_from_decimal(tp: TypeInfo, extras: Extras) -> 'str | TypeInfo':
+    def dump_from_decimal(tp: TypeInfo, extras: Extras) -> str | TypeInfo:
         """
         Generate code to dump a value from a Decimal field.
         """
 
     @staticmethod
     @abstractmethod
-    def dump_from_path(tp: TypeInfo, extras: Extras) -> 'str | TypeInfo':
+    def dump_from_path(tp: TypeInfo, extras: Extras) -> str | TypeInfo:
         """
         Generate code to dump a value from a Decimal field.
         """
@@ -522,20 +521,20 @@ class AbstractDumperGenerator(ABC):
 
     @staticmethod
     @abstractmethod
-    def dump_from_date(tp: TypeInfo, extras: Extras) -> 'str | TypeInfo':
+    def dump_from_date(tp: TypeInfo, extras: Extras) -> str | TypeInfo:
         """
         Generate code to dump a value from a date field.
         """
 
     @staticmethod
     @abstractmethod
-    def dump_from_timedelta(tp: TypeInfo, extras: Extras) -> 'str | TypeInfo':
+    def dump_from_timedelta(tp: TypeInfo, extras: Extras) -> str | TypeInfo:
         """
         Generate code to dump a value from a timedelta field.
         """
 
     @staticmethod
-    def dump_from_dataclass(tp: TypeInfo, extras: Extras) -> 'str | TypeInfo':
+    def dump_from_dataclass(tp: TypeInfo, extras: Extras) -> str | TypeInfo:
         """
         Generate code to dump a value from a `dataclass` type field.
         """
@@ -544,7 +543,7 @@ class AbstractDumperGenerator(ABC):
     @abstractmethod
     def dump_dispatcher_for_annotation(cls,
                                        tp: TypeInfo,
-                                       extras: Extras) -> 'str | TypeInfo':
+                                       extras: Extras) -> str | TypeInfo:
         """
         Resolve the dump dispatcher for a given annotation type.
 

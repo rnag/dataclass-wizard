@@ -1,4 +1,5 @@
-from typing import Any, Sequence, TypeAlias, Union
+from collections.abc import Sequence
+from typing import Any, TypeAlias, Union
 
 PathPart: TypeAlias = Union[str, int, float, bool]
 PathType: TypeAlias = Sequence[PathPart]

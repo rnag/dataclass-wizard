@@ -1,7 +1,6 @@
 import os
 import sys
 
-
 # Package name
 PACKAGE_NAME = 'dataclass_wizard'
 

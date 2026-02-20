@@ -1,9 +1,9 @@
 import warnings
 from abc import ABC, abstractmethod
+from collections.abc import Collection, Iterable, Sequence
 from dataclasses import Field, dataclass
 from json import JSONEncoder
-from typing import (Any, ClassVar, Iterable, Callable, Collection, Sequence)
-
+from typing import Any, Callable, ClassVar
 
 # added as we can't import from `type_def`, as we run into a circular import.
 JSONObject = dict[str, Any]

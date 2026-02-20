@@ -1,7 +1,8 @@
 # noinspection PyProtectedMember
-from dataclasses import MISSING, Field as _Field, _MISSING_TYPE
-from typing import Sequence, TypeAlias, Mapping, Literal
-from typing import overload, Any
+from collections.abc import Mapping, Sequence
+from dataclasses import _MISSING_TYPE, MISSING
+from dataclasses import Field as _Field
+from typing import Any, Literal, TypeAlias, overload
 
 from ._type_def import DefFactory, T
 from .conditions import Condition

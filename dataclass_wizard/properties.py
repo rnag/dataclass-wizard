@@ -2,12 +2,13 @@ __all__ = [
     'property_wizard',
 ]
 
-from dataclasses import MISSING, Field, field as dataclass_field
+from dataclasses import MISSING, Field
+from dataclasses import field as dataclass_field
 from functools import wraps
-from typing import Any, Union, Literal
+from typing import Any, Literal, Union
 
-from .constants import PY314_OR_ABOVE, PY310_OR_ABOVE
 from ._type_def import NoneType
+from .constants import PY310_OR_ABOVE, PY314_OR_ABOVE
 from .utils._typing_compat import (
     eval_forward_ref_if_needed,
     get_args,
@@ -19,7 +20,7 @@ from .utils._typing_compat import (
 # Python 3.14+: annotationlib.get_annotations supports explicit formats
 if PY314_OR_ABOVE:  # type: ignore
     # noinspection PyUnresolvedReferences
-    from annotationlib import get_annotations, Format  # 3.14+
+    from annotationlib import Format, get_annotations  # 3.14+
     def get_resolved_annotations(obj):
         # noinspection PyArgumentList
         return get_annotations(obj, format=Format.VALUE)

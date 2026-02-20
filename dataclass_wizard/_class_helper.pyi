@@ -1,7 +1,13 @@
-from typing import Callable, Sequence, Mapping
+from collections.abc import Mapping, Sequence
+from typing import Callable
 from weakref import WeakKeyDictionary, WeakSet
 
-from ._abstractions import W, E, AbstractLoaderGenerator, AbstractDumperGenerator
+from ._abstractions import (
+    AbstractDumperGenerator,
+    AbstractLoaderGenerator,
+    E,
+    W,
+)
 from ._type_def import T
 from .conditions import Condition
 from .constants import PACKAGE_NAME

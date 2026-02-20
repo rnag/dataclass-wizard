@@ -1,7 +1,15 @@
+from collections.abc import Collection
 from dataclasses import dataclass
-from typing import Callable, Any, Self, TypedDict, NotRequired, TypeAlias, Collection
+from typing import (
+    Any,
+    Callable,
+    NotRequired,
+    Self,
+    TypeAlias,
+    TypedDict,
+)
 
-from ._type_def import DefFactory, T, META
+from ._type_def import META, DefFactory, T
 from .conditions import Condition
 from .patterns import PatternBase
 from .utils._function_builder import FunctionBuilder
@@ -74,7 +82,7 @@ class Extras(TypedDict):
     recursion_guard: dict[Any, str]
 
 
-def ensure_type_ref(extras: 'Extras', tp: type, *,
+def ensure_type_ref(extras: Extras, tp: type, *,
                     name: str | None = None,
                     prefix: str = '',
                     is_builtin: bool = False) -> str: ...
@@ -89,5 +97,5 @@ def get_skip_if_condition(skip_if: Condition,
                           _locals: dict[str, Any],
                           operand_2: str | None = None,
                           condition_i: int | None = None,
-                          condition_var: str = '_skip_if_') -> 'str | bool':
+                          condition_var: str = '_skip_if_') -> str | bool:
     ...

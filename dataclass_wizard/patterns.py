@@ -17,13 +17,13 @@ __all__ = [
 
 import hashlib
 import sys
-from datetime import tzinfo, datetime, date, time
+from datetime import date, datetime, time, tzinfo
 from typing import cast
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from ._decorators import setup_recursive_safe_function
 from ._models_date import UTC
-from ._type_conv import as_datetime, as_date, as_time
+from ._type_conv import as_date, as_datetime, as_time
 from .constants import PY311_OR_ABOVE
 
 
@@ -136,7 +136,7 @@ class PatternBase:
             _strptime = f'__{tn}_strptime'
             name_to_func[_strptime] = __base__.strptime
         else:
-            _strptime = f'__datetime_strptime'
+            _strptime = '__datetime_strptime'
             name_to_func[_strptime] = datetime.strptime
 
         if is_datetime:

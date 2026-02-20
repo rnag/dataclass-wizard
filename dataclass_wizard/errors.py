@@ -1,18 +1,15 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from dataclasses import Field, MISSING
-from dataclasses import is_dataclass
-from datetime import datetime, time, date
+from collections.abc import Collection, Iterable, Sequence
+from dataclasses import MISSING, Field, is_dataclass
+from datetime import date, datetime, time
 from enum import Enum
-from json import dumps, JSONEncoder
-from typing import Any, Callable
-from typing import (ClassVar,
-                    Iterable, Collection, Sequence)
+from json import JSONEncoder, dumps
+from typing import Any, Callable, ClassVar
 from uuid import UUID
 
 from .utils._string_conv import normalize
-
 
 # added as we can't import from `type_def`, as we run into a circular import.
 JSONObject = dict[str, Any]
@@ -321,8 +318,8 @@ class MissingFields(JSONWizardError):
         normalized_json_keys = [normalize(key) for key in obj]
         if (is_dataclass(self.parent_cls) and
             next((f for f in self.missing_fields if normalize(f) in normalized_json_keys), None)):
-            from .enums import KeyCase
             from ._loaders import get_loader
+            from .enums import KeyCase
 
             key_transform = get_loader(self.parent_cls).transform_json_field
             if isinstance(key_transform, KeyCase):

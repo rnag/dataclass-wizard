@@ -5,7 +5,6 @@ from weakref import WeakKeyDictionary
 from ._bases import AbstractMeta
 from ._type_def import META
 
-
 META_BY_DATACLASS = WeakKeyDictionary()
 
 # Injected at runtime by bases_meta.py

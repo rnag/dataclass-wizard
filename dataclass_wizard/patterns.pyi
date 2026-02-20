@@ -1,10 +1,10 @@
-from datetime import datetime, date, time, tzinfo
+from datetime import date, datetime, time, tzinfo
 from types import EllipsisType
-from typing import (Generic)
-from typing import Self
+from typing import Generic, Self
 from zoneinfo import ZoneInfo
+
+from ._models import Extras, TypeInfo
 from ._type_def import DT, T
-from ._models import TypeInfo, Extras
 
 def _get_zoneinfo(key: str) -> ZoneInfo: ...
 

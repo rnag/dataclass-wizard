@@ -54,28 +54,34 @@ __all__ = [
 import json
 import re
 import textwrap
-from collections import defaultdict
-from collections import deque
-from collections.abc import Iterable
-from dataclasses import dataclass, field, InitVar
+from collections import defaultdict, deque
+from collections.abc import Iterable, Sequence
+from dataclasses import InitVar, dataclass, field
 from datetime import date, datetime, time
 from enum import Enum
 from numbers import Number
 from pathlib import Path
-from typing import Callable, Any, Optional, TypeVar, Type, ClassVar
-from typing import DefaultDict, Set, List
 from typing import (
-    Union, Dict, Sequence
+    Any,
+    Callable,
+    ClassVar,
+    DefaultDict,
+    Dict,
+    List,
+    Optional,
+    Set,
+    Type,
+    TypeVar,
+    Union,
 )
 
-from ..properties import property_wizard
-from ..constants import PACKAGE_NAME
-from .._type_utils import get_class_name
 from .._models_date import UTC
-from .._type_def import PyDeque, JSONList, JSONObject, JSONValue, T, NUMBERS
-from ..utils._string_case import to_pascal_case, to_snake_case
 from .._type_conv import TRUTHY_VALUES
-
+from .._type_def import NUMBERS, JSONList, JSONObject, JSONValue, PyDeque, T
+from .._type_utils import get_class_name
+from ..constants import PACKAGE_NAME
+from ..properties import property_wizard
+from ..utils._string_case import to_pascal_case, to_snake_case
 
 # Some unconstrained type variables.  These are used by the container types.
 # (These are not for export.)
@@ -592,7 +598,7 @@ class TypeContainer(List[TypeContainerElements]):
             # For example, `uuid` and `datetime` objects.
             ModuleImporter.register_import(o.value)
 
-        super(TypeContainer, self).append(o)
+        super().append(o)
 
     def __or__(self, other):
         """

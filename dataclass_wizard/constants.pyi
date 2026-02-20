@@ -1,6 +1,5 @@
 import sys
 
-
 # Package name
 PACKAGE_NAME: str
 # Library Log Level

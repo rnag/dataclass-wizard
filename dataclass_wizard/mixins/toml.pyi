@@ -1,7 +1,15 @@
 from typing import AnyStr, BinaryIO
 
 from .._serial_json import SerializerHookMixin
-from .._type_def import FileType, T, Decoder, ParseFloat, FileDecoder, Encoder, FileEncoder
+from .._type_def import (
+    Decoder,
+    Encoder,
+    FileDecoder,
+    FileEncoder,
+    FileType,
+    ParseFloat,
+    T,
+)
 
 class TOMLWizard(SerializerHookMixin):
 

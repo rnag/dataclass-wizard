@@ -1,20 +1,26 @@
 from __future__ import annotations
 
-from typing import (TYPE_CHECKING, Callable, ClassVar, Literal,
-                    Mapping, Sequence)
+from collections.abc import Mapping, Sequence
+from typing import TYPE_CHECKING, Callable, ClassVar, Literal
 
 from ._decorators import cached_class_property
 from .constants import TAG
 
 if TYPE_CHECKING:  # pragma: no cover
     from datetime import tzinfo
-    from .enums import (KeyAction, KeyCase, DateTimeTo,
-                        EnvKeyStrategy, EnvPrecedence)
-    from .models import Condition
+
     from ._bases import TypeToHook
     from ._bases_meta import PreDecoder
     from ._path_util import EnvFilePaths, SecretsDirs
     from ._type_def import META, FrozenKeys
+    from .conditions import Condition
+    from .enums import (
+        DateTimeTo,
+        EnvKeyStrategy,
+        EnvPrecedence,
+        KeyAction,
+        KeyCase,
+    )
 
 
 class ABCOrAndMeta(type):

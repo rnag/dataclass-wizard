@@ -1,6 +1,5 @@
 from typing import Any
 
-
 class Condition:
 
     op: str         # Operator

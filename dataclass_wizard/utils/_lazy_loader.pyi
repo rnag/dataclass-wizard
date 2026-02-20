@@ -1,5 +1,6 @@
 import types
-from typing import Any, MutableMapping
+from collections.abc import MutableMapping
+from typing import Any
 
 class LazyLoader(types.ModuleType):
     def __init__(

@@ -3,7 +3,14 @@ from typing import AnyStr
 
 from .._abstractions import W
 from .._serial_json import JSONWizard, SerializerHookMixin
-from .._type_def import FileType, Decoder, ListOfJSONObject, T, FileDecoder, FileEncoder
+from .._type_def import (
+    Decoder,
+    FileDecoder,
+    FileEncoder,
+    FileType,
+    ListOfJSONObject,
+    T,
+)
 from ..utils.containers import Container
 
 class JSONListWizard(JSONWizard):

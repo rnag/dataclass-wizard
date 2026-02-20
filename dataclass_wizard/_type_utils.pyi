@@ -1,4 +1,4 @@
-from typing import Any, TypeVar, Callable
+from typing import Any, Callable, TypeVar
 from weakref import WeakKeyDictionary
 
 from ._type_def import T

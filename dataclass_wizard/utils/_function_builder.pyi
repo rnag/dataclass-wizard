@@ -1,7 +1,8 @@
 import dataclasses
 import types
-from _typeshed import Incomplete
 from typing import Any
+
+from _typeshed import Incomplete
 
 def is_builtin_class(cls: type) -> bool: ...
 

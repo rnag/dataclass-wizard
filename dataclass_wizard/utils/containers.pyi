@@ -1,8 +1,7 @@
 import json
 
 from .._decorators import cached_property
-from .._type_def import T, Encoder, FileEncoder
-
+from .._type_def import Encoder, FileEncoder, T
 
 class Container(list[T]):
     """Convenience wrapper around a collection of dataclass instances.

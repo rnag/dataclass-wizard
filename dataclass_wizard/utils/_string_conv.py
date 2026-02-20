@@ -3,10 +3,11 @@ __all__ = ['normalize',
            'possible_env_vars',
            'repl_or_with_union']
 
-from typing import Iterable, Dict, List
+from collections.abc import Iterable
+from typing import Dict, List
 
-from ._string_case import to_camel_case, to_lisp_case, to_snake_case
 from ..enums import EnvKeyStrategy
+from ._string_case import to_camel_case, to_lisp_case, to_snake_case
 
 
 def normalize(string: str) -> str:

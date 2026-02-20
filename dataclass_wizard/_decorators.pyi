@@ -1,5 +1,6 @@
-from _typeshed import Incomplete
 from typing import Callable
+
+from _typeshed import Incomplete
 
 from ._type_def import DT as DT
 from .utils._function_builder import FunctionBuilder as FunctionBuilder

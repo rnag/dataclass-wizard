@@ -19,16 +19,19 @@ __all__ = [
 import functools
 import sys
 import typing
-# noinspection PyUnresolvedReferences,PyProtectedMember
-from typing import Literal, Union, _AnnotatedAlias  # type: ignore
 
-from ._string_conv import repl_or_with_union
+# noinspection PyUnresolvedReferences,PyProtectedMember
+from typing import Union, _AnnotatedAlias  # type: ignore
+
+from .._type_def import (
+    FREF,
+    PyForwardRef,
+    PyNotRequired,
+    PyReadOnly,
+    PyRequired,
+)
 from ..constants import PY310_OR_ABOVE, PY313_OR_ABOVE
-from .._type_def import (FREF,
-                        PyRequired,
-                        PyNotRequired,
-                        PyReadOnly,
-                        PyForwardRef)
+from ._string_conv import repl_or_with_union
 
 # noinspection PyTypedDict
 _TYPED_DICT_TYPE_QUALIFIERS = frozenset(

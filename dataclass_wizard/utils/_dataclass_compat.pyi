@@ -1,7 +1,15 @@
-from _typeshed import DataclassInstance
+from collections.abc import Mapping, MutableMapping, Sequence
 from dataclasses import MISSING, Field
-from typing import Any, MutableMapping, Callable, Mapping, TypeVar, overload, Literal, Sequence
+from typing import (
+    Any,
+    Callable,
+    Literal,
+    TypeVar,
+    overload,
+)
 from weakref import WeakKeyDictionary
+
+from _typeshed import DataclassInstance
 
 _T = TypeVar('_T')
 

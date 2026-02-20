@@ -3,12 +3,11 @@ Pulling some functions removed in recent versions of Python into the module for 
 All function names and bodies are left exactly as they were prior to being removed.
 """
 
-from dataclasses import MISSING, is_dataclass, fields, dataclass
+from dataclasses import MISSING, dataclass, fields, is_dataclass
 from types import FunctionType
 from weakref import WeakKeyDictionary
 
 from ..constants import PY310_OR_ABOVE
-
 
 FIELDS = WeakKeyDictionary()
 SEEN_DEFAULT = WeakKeyDictionary()

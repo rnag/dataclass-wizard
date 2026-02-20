@@ -3,16 +3,17 @@ from __future__ import annotations
 from dataclasses import MISSING
 from weakref import WeakKeyDictionary, WeakSet
 
-from ._type_utils import per_cls, get_class_name, get_class
+from ._type_def import ExplicitNull
+from ._type_utils import get_class, get_class_name, per_cls
 from .constants import CATCH_ALL, PACKAGE_NAME
 from .errors import InvalidConditionError
 from .models import CatchAll, Field
-from ._type_def import ExplicitNull
-from .utils._dataclass_compat import dataclass_fields, SEEN_DEFAULT
-from .utils._typing_compat import (eval_forward_ref_if_needed,
-                                   get_args,
-                                   is_annotated)
-
+from .utils._dataclass_compat import SEEN_DEFAULT, dataclass_fields
+from .utils._typing_compat import (
+    eval_forward_ref_if_needed,
+    get_args,
+    is_annotated,
+)
 
 # A mapping of dataclass to its loader.
 CLASS_TO_LOADER = WeakKeyDictionary()

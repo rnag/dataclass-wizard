@@ -1,10 +1,11 @@
-from dataclasses import MISSING, Field as _Field
-from typing import NewType, Mapping
+from collections.abc import Mapping
+from dataclasses import MISSING
+from dataclasses import Field as _Field
+from typing import NewType
 
 from ._type_def import ExplicitNull
 from .constants import PY310_OR_ABOVE, PY314_OR_ABOVE
 from .utils._object_path import split_object_path
-
 
 # Define a simple type (alias) for the `CatchAll` field
 #

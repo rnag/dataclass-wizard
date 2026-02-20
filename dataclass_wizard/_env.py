@@ -4,46 +4,60 @@ import json
 import logging
 import os
 from collections import ChainMap
-from dataclasses import Field, MISSING
+from collections.abc import Mapping
+
 # noinspection PyUnresolvedReferences,PyProtectedMember
-from dataclasses import _FIELD_INITVAR, _POST_INIT_NAME  # type: ignore
-from typing import Any, Callable, Mapping, TYPE_CHECKING
+from dataclasses import (  # type: ignore
+    _FIELD_INITVAR,
+    _POST_INIT_NAME,
+    MISSING,
+    Field,
+)
+from typing import TYPE_CHECKING, Any, Callable
 
 from ._bases import AbstractEnvMeta
 from ._bases_meta import BaseEnvWizardMeta, EnvMeta, register_type
-from ._class_helper import (resolve_dataclass_field_to_env_for_load,
-                            DATACLASS_FIELD_TO_ALIAS_PATH_FOR_LOAD,
-                            call_meta_initializer_if_needed)
+from ._class_helper import (
+    DATACLASS_FIELD_TO_ALIAS_PATH_FOR_LOAD,
+    call_meta_initializer_if_needed,
+    resolve_dataclass_field_to_env_for_load,
+)
 from ._decorators import cached_class_property
 from ._dumpers import asdict
-from ._loaders import LoadMixin as V1LoadMixin, get_loader
+from ._loaders import LoadMixin as V1LoadMixin
+from ._loaders import get_loader
 from ._log import LOG, enable_library_debug_logging
 from ._meta_cache import get_meta
-from ._path_util import get_secrets_map, get_dotenv_map
-from ._type_conv import as_list, as_dict
-from ._type_def import META, T, JSONObject, dataclass_transform
+from ._models import MAPPING_ORIGINS, SEQUENCE_ORIGINS, Extras, TypeInfo
+from ._path_util import get_dotenv_map, get_secrets_map
+from ._type_conv import as_dict, as_list
+from ._type_def import META, JSONObject, T, dataclass_transform
 from .constants import CATCH_ALL, PACKAGE_NAME
 from .enums import EnvKeyStrategy, EnvPrecedence
-from .errors import (JSONWizardError,
-                     MissingData,
-                     ParseError,
-                     type_name, MissingVars)
-from ._models import TypeInfo, Extras, SEQUENCE_ORIGINS, MAPPING_ORIGINS
-from .utils._dataclass_compat import (apply_env_wizard_dataclass,
-                                      dataclass_fields,
-                                      dataclass_field_names,
-                                      dataclass_init_fields,
-                                      dataclass_init_field_names,
-                                      dataclass_needs_refresh,
-                                      set_new_attribute,
-                                      SEEN_DEFAULT)
+from .errors import (
+    JSONWizardError,
+    MissingData,
+    MissingVars,
+    ParseError,
+    type_name,
+)
+from .utils._dataclass_compat import (
+    SEEN_DEFAULT,
+    apply_env_wizard_dataclass,
+    dataclass_field_names,
+    dataclass_fields,
+    dataclass_init_field_names,
+    dataclass_init_fields,
+    dataclass_needs_refresh,
+    set_new_attribute,
+)
 from .utils._function_builder import FunctionBuilder
 from .utils._object_path import env_safe_get
 from .utils._string_conv import possible_env_vars
 from .utils._typing_compat import eval_forward_ref_if_needed
 
 if TYPE_CHECKING:
-    from ._env import EnvInit, E_
+    from ._env import E_, EnvInit
 
 
 def env_config(**kw):
@@ -481,7 +495,7 @@ def load_func_for_dataclass(
             init_params.pop()  # remove trailing `*` in function params
 
         if has_catch_all:
-            catch_all_def = f'{{k: env[k] for k in env if k not in aliases}}'
+            catch_all_def = '{k: env[k] for k in env if k not in aliases}'
 
             if catch_all_field.endswith('?'):  # Default value
                 with fn_gen.if_('len(env) != i'):
@@ -571,7 +585,7 @@ def _add_missing_var(missing_vars: dict | None, name, var_name, tp):
 def generate_field_code(cls_loader: LoadMixin,
                         extras: Extras,
                         field: Field,
-                        field_i: int) -> 'str | TypeInfo':
+                        field_i: int) -> str | TypeInfo:
 
     cls = extras['cls']
     field_type = field.type = eval_forward_ref_if_needed(field.type, cls)

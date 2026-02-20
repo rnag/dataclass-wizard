@@ -1,3 +1,3 @@
-from ._bases_meta import LoadMeta, DumpMeta, EnvMeta
+from ._bases_meta import DumpMeta, EnvMeta, LoadMeta
 
 __all__ = ['LoadMeta', 'DumpMeta', 'EnvMeta']
