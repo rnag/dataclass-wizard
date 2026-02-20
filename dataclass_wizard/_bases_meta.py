@@ -65,7 +65,8 @@ def _enable_debug_mode_if_needed(possible_lvl):
         # use `debug` for log level if it's a str or int.
         default_lvl = logging.DEBUG
         # minimum logging level for logs by this library.
-        min_level = default_lvl if isinstance(possible_lvl, bool) else possible_lvl
+        min_level = default_lvl if isinstance(
+            possible_lvl, bool) else possible_lvl
         # set the logging level of this library's logger.
         LOG.setLevel(min_level)
         LOG.info('DEBUG Mode is enabled')
@@ -106,7 +107,8 @@ def _infer_mode(hook) -> str:
     if argc == 2:
         return 'codegen'
 
-    raise TypeError('hook must accept 1 arg (runtime) or 2 args (TypeInfo, Extras)')
+    raise TypeError('hook must accept 1 arg (runtime) '
+                    'or 2 args (TypeInfo, Extras)')
 
 
 def _normalize_hooks(hooks: Mapping | None) -> None:
@@ -116,7 +118,9 @@ def _normalize_hooks(hooks: Mapping | None) -> None:
     for tp, hook in hooks.items():
         if isinstance(hook, tuple):
             if len(hook) != 2:
-                raise ValueError(f"hook tuple must be (mode, hook), got {hook!r}") from None
+                raise ValueError(
+                    'hook tuple must be (mode, hook), '
+                    f'got {hook!r}') from None
 
             mode, fn = hook
             if mode not in ALLOWED_MODES:
@@ -195,7 +199,8 @@ class BaseJSONWizardMeta(AbstractMeta):
             _enable_debug_mode_if_needed(cls.debug)
 
         if cls.dump_date_time_as is not None:
-            cls.dump_date_time_as = _as_enum_safe(cls, 'dump_date_time_as', DateTimeTo)
+            cls.dump_date_time_as = _as_enum_safe(
+                cls, 'dump_date_time_as', DateTimeTo)
 
         if (key_case := cls.case) is not None:
             cls.load_case = cls.dump_case = key_case
@@ -217,7 +222,8 @@ class BaseJSONWizardMeta(AbstractMeta):
             cls.field_to_alias_load = field_to_alias
 
         if (field_to_alias := cls.field_to_alias_dump) is not None:
-            per_cls(DATACLASS_FIELD_TO_ALIAS_FOR_DUMP, dataclass).update(field_to_alias)
+            per_cls(DATACLASS_FIELD_TO_ALIAS_FOR_DUMP, dataclass).update(
+                field_to_alias)
 
         if (field_to_alias := cls.field_to_alias_load) is not None:
             per_cls(DATACLASS_FIELD_TO_ALIAS_FOR_LOAD, dataclass).update({
@@ -226,7 +232,8 @@ class BaseJSONWizardMeta(AbstractMeta):
             })
 
         if cls.on_unknown_key is not None:
-            cls.on_unknown_key = _as_enum_safe(cls, 'on_unknown_key', KeyAction)
+            cls.on_unknown_key = _as_enum_safe(
+                cls, 'on_unknown_key', KeyAction)
 
         _normalize_hooks(cls.type_to_load_hook)
         _normalize_hooks(cls.type_to_dump_hook)
@@ -235,8 +242,9 @@ class BaseJSONWizardMeta(AbstractMeta):
         # will allow us to access this config as part of the JSON load/dump
         # process if needed.
         if is_default:
-            # Check if the dataclass already has a Meta config; if so, we need to
-            # copy over special attributes so they don't get overwritten.
+            # Check if the dataclass already has a Meta config; if so, we
+            # need to copy over special attributes so they don't get
+            # overwritten.
             if dataclass in META_BY_DATACLASS:
                 META_BY_DATACLASS[dataclass] &= cls
             else:
@@ -310,7 +318,8 @@ class BaseEnvWizardMeta(AbstractEnvMeta):
             cls, 'dump_case', KeyCase)
 
         if (field_to_alias := cls.field_to_alias_dump) is not None:
-            per_cls(DATACLASS_FIELD_TO_ALIAS_FOR_DUMP, env_class).update(field_to_alias)
+            per_cls(DATACLASS_FIELD_TO_ALIAS_FOR_DUMP, env_class).update(
+                field_to_alias)
 
         if (field_to_env := cls.field_to_env_load) is not None:
             per_cls(DATACLASS_FIELD_TO_ENV_FOR_LOAD, env_class).update({
@@ -323,7 +332,8 @@ class BaseEnvWizardMeta(AbstractEnvMeta):
         cls.on_unknown_key = None
 
         # if cls.on_unknown_key is not None:
-        #     cls.on_unknown_key = _as_enum_safe(cls, 'on_unknown_key', KeyAction)
+        #     cls.on_unknown_key = _as_enum_safe(
+        #       cls, 'on_unknown_key', KeyAction)
 
         _normalize_hooks(cls.type_to_load_hook)
         _normalize_hooks(cls.type_to_dump_hook)
@@ -332,8 +342,9 @@ class BaseEnvWizardMeta(AbstractEnvMeta):
         # will allow us to access this config as part of the JSON load/dump
         # process if needed.
         if is_default:
-            # Check if the dataclass already has a Meta config; if so, we need to
-            # copy over special attributes so they don't get overwritten.
+            # Check if the dataclass already has a Meta config; if so, we
+            # need to copy over special attributes so they don't get
+            # overwritten.
             if env_class in META_BY_DATACLASS:
                 META_BY_DATACLASS[env_class] &= cls
             else:
@@ -424,8 +435,8 @@ def EnvMeta(**kwargs):
     Helper function to setup the ``Meta`` Config for the EnvWizard.
 
     For descriptions on what each of these params does, refer to the `Docs`_
-    below, or check out the :class:`AbstractEnvMeta` definition (I want to avoid
-    duplicating the descriptions for params here).
+    below, or check out the :class:`AbstractEnvMeta` definition (I want
+    to avoid duplicating the descriptions for params here).
 
     Examples::
 
