@@ -77,7 +77,9 @@ class ABCOrAndMeta(type):
         # a new class, so use the superclass type instead.
         if src.__is_inner_meta__:
             # In a reversed MRO, the inheritance tree looks like this:
-            #   |___ object -> BaseMeta -> AbstractMeta -> BaseJSONWizardMeta -> ...
+            #   |___ object -> BaseMeta
+            #               -> AbstractMeta
+            #               -> BaseJSONWizardMeta -> ...
             # So here, we want to choose the third-to-last class in the list.
             # noinspection PyUnresolvedReferences
             src = src.__mro__[-4]
@@ -192,7 +194,8 @@ class BaseMeta(metaclass=ABCOrAndMeta):
     #
     # A hook must accept either:
     #   - one positional argument (runtime hook): value -> object
-    #   - two positional arguments (codegen hook): (TypeInfo, Extras) -> str | TypeInfo
+    #   - two positional arguments (codegen
+    #     hook): (TypeInfo, Extras) -> str | TypeInfo
     #
     # The hook is invoked when loading a value annotated with the given type.
     type_to_load_hook: ClassVar[TypeToHook | None] = None
@@ -202,18 +205,20 @@ class BaseMeta(metaclass=ABCOrAndMeta):
     # Mapping: {Type -> hook}
     #
     # A hook must accept either:
-    #   - one positional argument (runtime hook): object -> JSON-serializable value
-    #   - two positional arguments (codegen hook): (TypeInfo, Extras) -> str | TypeInfo
+    #   - one positional argument (runtime hook): object -> JSON-serializable
+    #     value
+    #   - two positional arguments (codegen
+    #     hook): (TypeInfo, Extras) -> str | TypeInfo
     #
     # The hook is invoked when dumping a value whose runtime type matches
     # the given type.
     type_to_dump_hook: ClassVar[TypeToHook | None] = None
 
     # ``pre_decoder``: Optional hook called before type loading.
-    # Receives the container type plus (cls, TypeInfo, Extras) and may return a
-    # transformed ``TypeInfo`` (e.g., wrapped in a function which decodes
-    # JSON/delimited strings into list/dict for env loading). Returning the
-    # input value leaves behavior unchanged.
+    # Receives the container type plus (cls, TypeInfo, Extras) and may
+    # return a transformed ``TypeInfo`` (e.g., wrapped in a function
+    # which decodes JSON/delimited strings into list/dict for env
+    # loading). Returning the input value leaves behavior unchanged.
     #
     #  Pre-decoder signature:
     #   (cls, container_tp, tp, extras) -> new_tp
@@ -293,19 +298,23 @@ class BaseMeta(metaclass=ABCOrAndMeta):
     #   This option enforces strict shape matching for performance reasons.
     namedtuple_as_dict: ClassVar[bool | None] = None
 
-    # If True (default: False), ``None`` is coerced to an empty string (``""``)
+    # If True (default: False), ``None`` is coerced to an empty
+    # string (``""``)
     # when loading ``str`` fields.
     #
-    # When False, ``None`` is coerced using ``str(value)``, so ``None`` becomes
-    # the literal string ``'None'`` for ``str`` fields.
+    # When False, ``None`` is coerced using ``str(value)``, so ``None``
+    # becomes the literal string ``'None'`` for ``str`` fields.
     #
     # For ``Optional[str]`` fields, ``None`` is preserved by default.
     coerce_none_to_empty_str: ClassVar[bool | None] = None
 
-    # Controls how leaf (non-recursive) types are detected during serialization.
+    # Controls how leaf (non-recursive) types are detected during
+    # serialization.
     #
-    # - "exact" (DEFAULT): only exact built-in leaf types are treated as leaf values.
-    # - "issubclass": subclasses of leaf types are also treated as leaf values.
+    # - "exact" (DEFAULT): only exact built-in leaf types are treated
+    #   as leaf values.
+    # - "issubclass": subclasses of leaf types are also treated
+    #   as leaf values.
     #
     # Leaf types are returned without recursive traversal. Bytes are still
     # handled separately according to their serialization rules.
@@ -352,7 +361,8 @@ class AbstractMeta(BaseMeta):
     # Class attribute which enables us to detect a `JSONWizard.Meta` subclass.
     __is_inner_meta__ = False
 
-    # Specifies the letter case to use for JSON keys when both loading and dumping.
+    # Specifies the letter case to use for JSON keys when both loading and
+    # dumping.
     #
     # This is a convenience setting that applies the same key casing rule to
     # both deserialization (load) and serialization (dump).
@@ -388,7 +398,8 @@ class AbstractMeta(BaseMeta):
     #
     # Values may be a single alias string or a sequence of alias strings.
     #
-    # - During deserialization (load), any listed alias for a field is accepted.
+    # - During deserialization (load), any listed alias for a field is
+    #   accepted.
     # - During serialization (dump), the first alias is used by default.
     #
     # This mapping overrides default key casing and implicit field-to-key
@@ -407,17 +418,19 @@ class AbstractMeta(BaseMeta):
     #
     # When set, this mapping overrides `field_to_alias` for load behavior
     # only.
-    field_to_alias_load: ClassVar[Mapping[str, str | Sequence[str]] | None] = None
+    field_to_alias_load: ClassVar[
+        Mapping[str, str | Sequence[str]] | None] = None
 
-    # Defines the action to take when an unknown JSON key is encountered during
-    # `from_dict` or `from_json` calls. An unknown key is one that does not map
-    # to any dataclass field.
+    # Defines the action to take when an unknown JSON key is encountered
+    # during `from_dict` or `from_json` calls. An unknown key is one that
+    # does not map to any dataclass field.
     #
     # Valid options are:
     # - `"ignore"` (default): Silently ignore unknown keys.
     # - `"warn"`: Log a warning for each unknown key. Requires `debug`
     #   to be `True` and properly configured logging.
-    # - `"raise"`: Raise an `UnknownKeyError` for the first unknown key encountered.
+    # - `"raise"`: Raise an `UnknownKeyError` for the first unknown key
+    #   encountered.
     on_unknown_key: ClassVar[KeyAction | None] = None
 
     @classmethod
@@ -479,7 +492,8 @@ class AbstractEnvMeta(BaseMeta):
     # Prefix for all environment variables. Defaults to `None`.
     env_prefix: ClassVar[str | None] = None
 
-    # secrets_dir: The secret files directory or a sequence of directories. Defaults to `None`.
+    # secrets_dir: The secret files directory or a sequence of directories.
+    # Defaults to `None`.
     secrets_dir: ClassVar[SecretsDirs] = None
 
     # The key lookup strategy to use for Env Var Names.
@@ -497,24 +511,26 @@ class AbstractEnvMeta(BaseMeta):
     # Values may be a single alias string or a sequence of alias strings.
     # Any listed alias is accepted when mapping input env vars to
     # dataclass fields.
-    field_to_env_load: ClassVar[Mapping[str, str | Sequence[str]] | None] = None
+    field_to_env_load: ClassVar[
+        Mapping[str, str | Sequence[str]] | None] = None
 
-    # Defines the action to take when an unknown JSON key is encountered during
-    # `from_dict` or `from_json` calls. An unknown key is one that does not map
-    # to any dataclass field.
+    # Defines the action to take when an unknown JSON key is encountered
+    # during `from_dict` or `from_json` calls. An unknown key is one
+    # that does not map to any dataclass field.
     #
     # Valid options are:
     # - `"ignore"` (default): Silently ignore unknown keys.
     # - `"warn"`: Log a warning for each unknown key. Requires `debug`
     #   to be `True` and properly configured logging.
-    # - `"raise"`: Raise an `UnknownKeyError` for the first unknown key encountered.
+    # - `"raise"`: Raise an `UnknownKeyError` for the first unknown key
+    #   encountered.
     # on_unknown_key: ClassVar[KeyAction] = None
 
     @classmethod
     def bind_to(cls, env_class: type, create=True, is_default=True):
         """
-        Initialize hook which applies the Meta config to `env_class`, which is
-        typically a subclass of :class:`EnvWizard`.
+        Initialize hook which applies the Meta config to `env_class`,
+        which is typically a subclass of :class:`EnvWizard`.
 
         :param env_class: A sub-class of :class:`EnvWizard`.
         :param create: When true, a separate loader/dumper will be created
