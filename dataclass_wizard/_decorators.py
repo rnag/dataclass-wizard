@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 from dataclasses import MISSING
 from functools import wraps
-from typing import TYPE_CHECKING, Callable, Union, cast
+from typing import TYPE_CHECKING, Callable, cast
 
 from ._type_def import DT
 from .utils._function_builder import FunctionBuilder
@@ -110,7 +110,7 @@ def _canonical_union_args(args):
 def setup_recursive_safe_function(
     func: Callable = None,
     *,
-    fn_name: Union[str, None] = None,
+    fn_name: str | None = None,
     is_generic: bool = False,
     add_cls: bool = True,
     prefix: str = 'load',

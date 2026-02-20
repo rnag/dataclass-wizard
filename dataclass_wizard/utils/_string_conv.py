@@ -4,7 +4,6 @@ __all__ = ['normalize',
            'repl_or_with_union']
 
 from collections.abc import Iterable
-from typing import Dict, List
 
 from ..enums import EnvKeyStrategy
 from ._string_case import to_camel_case, to_lisp_case, to_snake_case
@@ -202,7 +201,7 @@ def _sub_strings(s: str, split_indices: Iterable[int]):
     yield s[prev+1:]
 
 
-def _outer_comma_and_pipe_indices(s: str) -> Dict[str, List[int]]:
+def _outer_comma_and_pipe_indices(s: str) -> dict[str, list[int]]:
     """Return any indices of ',' and '|' that are outside of braces."""
     indices = {OR: [], COMMA: []}
     brace_dict = {OPEN_BRACKET: 1, CLOSE_BRACKET: -1}

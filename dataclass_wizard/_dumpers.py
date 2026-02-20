@@ -1,4 +1,3 @@
-# TODO cleanup imports
 from __future__ import annotations
 
 import collections.abc as abc
@@ -17,7 +16,6 @@ from typing import (
     Callable,
     Literal,
     NamedTuple,
-    Union,
     cast,
 )
 from uuid import UUID
@@ -465,7 +463,7 @@ class DumpMixin(BaseDumpHook):
 
         if has_dataclass:
 
-            for field_i, (dataclass, name, tag, line) in enumerate(dataclass_and_line, start=1):
+            for field_i, (dataclass, _name, tag, line) in enumerate(dataclass_and_line, start=1):
                 cls_name = TypeInfo(dataclass).type_name(extras)
                 with fn_gen.if_(f't is {cls_name}', comment=f'{tag!r}' if tag else ''):
                     fn_gen.add_line(line)
@@ -823,7 +821,7 @@ def dump_func_for_dataclass(
     extras: Extras | None = None,
     dumper_cls=DumpMixin,
     base_meta_cls: type = AbstractMeta,
-) -> Union[Callable[[T], JSONObject], str]:
+) -> Callable[[T], JSONObject] | str:
     # TODO dynamically generate for multiple nested classes at once
 
     # Tuple describing the fields of this dataclass.

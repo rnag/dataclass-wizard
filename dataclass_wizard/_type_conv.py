@@ -17,7 +17,7 @@ import csv
 from collections.abc import Callable
 from datetime import date, datetime, time, timedelta, timezone, tzinfo
 from json import JSONDecodeError, loads
-from typing import Any, AnyStr, Union
+from typing import Any, AnyStr
 
 from ._lazy_imports import pytimeparse
 from ._models_date import UTC, ZERO
@@ -29,7 +29,7 @@ from .errors import ParseError
 TRUTHY_VALUES = frozenset({'true', 't', 'yes', 'y', 'on', '1'})
 
 
-def as_int(o: Union[float, bool],
+def as_int(o: float | bool,
            tp: type,
            base_type=int):
     """
@@ -66,7 +66,7 @@ def as_int(o: Union[float, bool],
         raise
 
 
-def as_datetime(o: Union[int, float, datetime],
+def as_datetime(o: int | float | datetime,
                 _from_timestamp: Callable[[float, tzinfo], datetime],
                 _tz=None):
     """
@@ -106,7 +106,7 @@ def as_datetime(o: Union[int, float, datetime],
         raise
 
 
-def as_date(o: Union[int, float, date],
+def as_date(o: int | float | date,
             _from_timestamp: Callable[[float, tzinfo], datetime],
             _tz=None,
             _cls=date):
@@ -147,7 +147,7 @@ def as_date(o: Union[int, float, date],
         raise
 
 
-def as_time(o: Union[time, Any], base_type: type[time]):
+def as_time(o: time | Any, base_type: type[time]):
     """
     V1: Attempt to convert an object `o` to a :class:`time` object using the
     below logic.
@@ -167,7 +167,7 @@ def as_time(o: Union[time, Any], base_type: type[time]):
     raise TypeError(f'Unsupported type, value={o!r}, type={type(o)}')
 
 
-def as_timedelta(o: Union[str, N, timedelta],
+def as_timedelta(o: str | N | timedelta,
                  base_type=timedelta, default=None, raise_=True):
     """
     Attempt to convert an object `o` to a :class:`timedelta` object using the

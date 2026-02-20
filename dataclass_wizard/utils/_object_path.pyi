@@ -1,7 +1,7 @@
 from collections.abc import Sequence
-from typing import Any, TypeAlias, Union
+from typing import Any, TypeAlias
 
-PathPart: TypeAlias = Union[str, int, float, bool]
+PathPart: TypeAlias = str | int | float | bool
 PathType: TypeAlias = Sequence[PathPart]
 
 
