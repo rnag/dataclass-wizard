@@ -144,10 +144,12 @@ class AbstractLoaderGenerator(ABC):
     @abstractmethod
     def load_fallback(tp: TypeInfo, extras: Extras) -> str:
         """
-        Generate code for the fallback load handler when no specialized type matches.
+        Generate code for the fallback load handler
+        when no specialized type matches.
 
-        The default fallback implementation is typically an identity / passthrough,
-        but subclasses may override this behavior.
+        The default fallback implementation is typically
+        an identity / passthrough, but subclasses may
+        override this behavior.
         """
 
     @staticmethod
@@ -212,7 +214,8 @@ class AbstractLoaderGenerator(ABC):
     @abstractmethod
     def load_to_union(cls, tp: TypeInfo, extras: Extras) -> str | TypeInfo:
         """
-        Generate code to load a value into a `Union[X, Y, ...]` (one of [X, Y, ...] possible types)
+        Generate code to load a value into a `Union[X, Y, ...]`
+        (one of [X, Y, ...] possible types)
         """
 
     @staticmethod
@@ -233,7 +236,8 @@ class AbstractLoaderGenerator(ABC):
     @abstractmethod
     def load_to_iterable(tp: TypeInfo, extras: Extras) -> str | TypeInfo:
         """
-        Generate code to load a value into an iterable field (list, set, etc.).
+        Generate code to load a value into an iterable field
+        (list, set, etc.).
         """
 
     @staticmethod
@@ -245,14 +249,16 @@ class AbstractLoaderGenerator(ABC):
 
     @classmethod
     @abstractmethod
-    def load_to_named_tuple(cls, tp: TypeInfo, extras: Extras) -> str | TypeInfo:
+    def load_to_named_tuple(
+            cls, tp: TypeInfo, extras: Extras) -> str | TypeInfo:
         """
         Generate code to load a value into a named tuple field.
         """
 
     @classmethod
     @abstractmethod
-    def load_to_named_tuple_untyped(cls, tp: TypeInfo, extras: Extras) -> str | TypeInfo:
+    def load_to_named_tuple_untyped(
+            cls, tp: TypeInfo, extras: Extras) -> str | TypeInfo:
         """
         Generate code to load a value into an untyped named tuple.
         """
@@ -359,10 +365,12 @@ class AbstractDumperGenerator(ABC):
     @abstractmethod
     def dump_fallback(tp: TypeInfo, extras: Extras) -> str:
         """
-        Generate code for the fallback dump handler when no specialized type matches.
+        Generate code for the fallback dump handler when no
+        specialized type matches.
 
-        The default fallback implementation is typically an identity / passthrough,
-        but subclasses may override this behavior.
+        The default fallback implementation is typically
+        an identity / passthrough, but subclasses may
+        override this behavior.
         """
 
     @staticmethod
@@ -425,7 +433,8 @@ class AbstractDumperGenerator(ABC):
     @abstractmethod
     def dump_from_union(cls, tp: TypeInfo, extras: Extras) -> str | TypeInfo:
         """
-        Generate code to dump a value from a `Union[X, Y, ...]` (one of [X, Y, ...] possible types)
+        Generate code to dump a value from a `Union[X, Y, ...]`
+        (one of [X, Y, ...] possible types)
         """
 
     @staticmethod
@@ -446,7 +455,8 @@ class AbstractDumperGenerator(ABC):
     @abstractmethod
     def dump_from_iterable(tp: TypeInfo, extras: Extras) -> str | TypeInfo:
         """
-        Generate code to dump a value from an iterable field (list, set, etc.).
+        Generate code to dump a value from an iterable field
+        (list, set, etc.).
         """
 
     @staticmethod
@@ -465,7 +475,8 @@ class AbstractDumperGenerator(ABC):
 
     @classmethod
     @abstractmethod
-    def dump_from_named_tuple_untyped(cls, tp: TypeInfo, extras: Extras) -> str | TypeInfo:
+    def dump_from_named_tuple_untyped(
+            cls, tp: TypeInfo, extras: Extras) -> str | TypeInfo:
         """
         Generate code to dump a value from an untyped named tuple.
         """
@@ -547,6 +558,6 @@ class AbstractDumperGenerator(ABC):
         """
         Resolve the dump dispatcher for a given annotation type.
 
-        Returns either a string reference to a dispatcher or a TypeInfo object,
-        depending on how the annotation is handled.
+        Returns either a string reference to a dispatcher or a TypeInfo
+        object, depending on how the annotation is handled.
         """

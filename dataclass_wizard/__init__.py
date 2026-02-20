@@ -34,7 +34,8 @@ Sample Usage:
     >>>
     >>>     @my_dt.setter
     >>>     def my_dt(self, new_dt: datetime):
-    >>>     # A sample `setter` which sets the inverse (roughly) of the `month` and `day`
+    >>>     # A sample `setter` which sets the inverse (roughly) of
+    >>>     # the `month` and `day`
     >>>         self._my_dt = new_dt.replace(month=13 - new_dt.month,
     >>>                                      day=30 - new_dt.day)
     >>>
