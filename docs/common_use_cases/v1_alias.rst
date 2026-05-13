@@ -1,16 +1,9 @@
-.. currentmodule:: dataclass_wizard.v1
-.. title:: Alias in V1 (v0.35.0+)
+.. title:: Alias
 
-Alias in V1 (``v0.35.0+``)
-==========================
+Alias
+=====
 
 .. tip::
-
-    The following documentation introduces support for :func:`Alias` and :func:`AliasPath`
-    added in ``v0.35.0``. This feature is part of an experimental "V1 Opt-in" mode,
-    detailed in the `Field Guide to V1 Opt-in`_.
-
-    V1 features are available starting from ``v0.33.0``. See `Enabling V1 Experimental Features`_ for more details.
 
     :func:`Alias` and :func:`AliasPath` provide mechanisms to map JSON keys or nested paths to dataclass fields, enhancing serialization
     and deserialization in the ``dataclass-wizard`` library. These utilities build upon Python's :func:`dataclasses.field`, enabling
@@ -22,7 +15,7 @@ You can specify an alias in the following ways:
 
 * Using :func:`Alias` and passing alias(es) to ``all``, ``load``, or ``dump``
 
-* Using ``Meta`` setting ``v1_field_to_alias``
+* Using ``Meta`` setting ``field_to_alias``
 
 For examples of how to use ``all``, ``load``, and ``dump``, see `Field Aliases`_.
 
@@ -58,17 +51,10 @@ You can use a single alias for both serialization and deserialization by passing
 
 .. code-block:: python3
 
-    from dataclasses import dataclass
-
-    from dataclass_wizard import JSONPyWizard
-    from dataclass_wizard.v1 import Alias
+    from dataclass_wizard import Alias, DataclassWizard
 
 
-    @dataclass
-    class User(JSONPyWizard):
-        class _(JSONPyWizard.Meta):
-            v1 = True
-
+    class User(DataclassWizard):
         name: str = Alias('username')
 
 
@@ -85,17 +71,10 @@ To define distinct aliases for `load` and `dump` operations:
 
 .. code-block:: python3
 
-    from dataclasses import dataclass
-
-    from dataclass_wizard import JSONPyWizard
-    from dataclass_wizard.v1 import Alias
+    from dataclass_wizard import Alias, DataclassWizard
 
 
-    @dataclass
-    class User(JSONPyWizard):
-        class _(JSONPyWizard.Meta):
-            v1 = True
-
+    class User(DataclassWizard):
         name: str = Alias(load='username', dump='user_name')
 
 
@@ -112,17 +91,10 @@ To exclude a field during serialization, use the ``skip`` parameter:
 
 .. code-block:: python3
 
-    from dataclasses import dataclass
-
-    from dataclass_wizard import JSONPyWizard
-    from dataclass_wizard.v1 import Alias
+    from dataclass_wizard import Alias, DataclassWizard
 
 
-    @dataclass
-    class User(JSONPyWizard):
-        class _(JSONPyWizard.Meta):
-            v1 = True
-
+    class User(DataclassWizard):
         name: str = Alias('username', skip=True)
 
 
@@ -132,25 +104,20 @@ To exclude a field during serialization, use the ``skip`` parameter:
 Advanced Usage
 ^^^^^^^^^^^^^^
 
-Aliases can be combined with :obj:`typing.Annotated` to support complex scenarios. You can also use the ``v1_field_to_alias`` meta-setting
+Aliases can be combined with :obj:`typing.Annotated` to support complex scenarios. You can also use the ``field_to_alias`` meta-setting
 for bulk aliasing:
 
 .. code-block:: python3
 
-    from dataclasses import dataclass
     from typing import Annotated
-    from dataclass_wizard import JSONPyWizard
-    from dataclass_wizard.v1 import Alias
+    from dataclass_wizard import Alias, DataclassWizard
 
 
-    @dataclass
-    class Test(JSONPyWizard):
-        class _(JSONPyWizard.Meta):
-            v1 = True
-            v1_case = 'CAMEL'
-            v1_field_to_alias = {
+    class Test(DataclassWizard):
+        class _(DataclassWizard.Meta):
+            load_case = 'CAMEL'
+            field_to_alias_dump = {
                 'my_int': 'MyInt',
-                '__load__': False,
             }
 
         my_str: str = Alias(load=('a_str', 'other_str'))
@@ -173,35 +140,26 @@ Maps one or more nested JSON paths to a dataclass field. See documentation on :f
 Mapping multiple nested paths to a field::
 
     from dataclasses import dataclass
-    from dataclass_wizard import fromdict, LoadMeta
-    from dataclass_wizard.v1 import AliasPath
+    from dataclass_wizard import fromdict, AliasPath
+
 
     @dataclass
     class Example:
         my_str: str = AliasPath('a.b.c.1', 'x.y["-1"].z', default="default_value")
 
-    LoadMeta(v1=True).bind_to(Example)
 
     print(fromdict(Example, {'x': {'y': {'-1': {'z': 'some_value'}}}}))
     # > Example(my_str='some_value')
 
 Using :obj:`typing.Annotated` with nested paths::
 
-    from dataclasses import dataclass
     from typing import Annotated
-    from dataclass_wizard import JSONPyWizard
-    from dataclass_wizard.v1 import AliasPath
+    from dataclass_wizard import AliasPath, DataclassWizard
 
-    @dataclass
-    class Example(JSONPyWizard):
-        class _(JSONPyWizard.Meta):
-            v1 = True
 
+    class Example(DataclassWizard):
         my_str: Annotated[str, AliasPath('my."7".nested.path.-321')]
+
 
     ex = Example.from_dict({'my': {'7': {'nested': {'path': {-321: 'Test'}}}}})
     print(ex)  # > Example(my_str='Test')
-
-
-.. _`Enabling V1 Experimental Features`: https://github.com/rnag/dataclass-wizard/wiki/V1:-Enabling-Experimental-Features
-.. _`Field Guide to V1 Opt-in`: https://github.com/rnag/dataclass-wizard/wiki/Field-Guide-to-V1-Opt%E2%80%90in
