@@ -3,18 +3,6 @@
 Serialization Options
 =====================
 
-.. note::
-
-    **Future Behavior Change**: Starting in ``v1.0.0``, keys will no longer be automatically converted to `camelCase`.
-    Instead, the default behavior will match the field names defined in the dataclass.
-
-    To preserve the current `camelCase` conversion, you can explicitly enable it using :class:`JSONPyWizard`.
-
-    For a deeper dive into upcoming changes and new features introduced in **V1 Opt-in**, refer to the
-    `Field Guide to V1 Opt‐in`_.
-
-.. _Field Guide to V1 Opt‐in: https://github.com/rnag/dataclass-wizard/wiki/Field-Guide-to-V1-Opt%E2%80%90in
-
 The following parameters can be used to fine-tune and control how the serialization of a
 dataclass instance to a Python ``dict`` object or JSON string is handled.
 
@@ -61,7 +49,7 @@ approaches is shown below.
     string = c.to_json()
     print(string)
 
-    assert string == '{"myStr": "abc"}'
+    assert string == '{"my_str": "abc"}'
 
     print('-- Dump (with `skip_defaults=False`)')
     print(c.to_dict(skip_defaults=False))
@@ -84,23 +72,20 @@ Additionally, here is an example to demonstrate usage of both these approaches:
 
 .. code:: python3
 
-    from dataclasses import dataclass
     from typing import Annotated
 
-    from dataclass_wizard import JSONWizard, json_key, json_field
+    from dataclass_wizard import DataclassWizard, Alias
 
 
-    @dataclass
-    class MyClass(JSONWizard):
-
+    class MyClass(DataclassWizard):
         my_str: str
         my_int: int
-        other_str: Annotated[str, json_key('AnotherStr', dump=False)]
-        my_bool: bool = json_field('TestBool', dump=False)
+        other_str: Annotated[str, Alias('AnotherStr', skip=True)]
+        my_bool: bool = Alias('TestBool', skip=True)
 
 
-    data = {'MyStr': 'my string',
-            'myInt': 1,
+    data = {'my_str': 'my string',
+            'my_int': 1,
             'AnotherStr': 'testing 123',
             'TestBool': True}
 
@@ -115,7 +100,7 @@ Additionally, here is an example to demonstrate usage of both these approaches:
     out_dict = c.to_dict(exclude=additional_exclude)
     print(out_dict)
 
-    assert out_dict == {'myStr': 'my string'}
+    assert out_dict == {'my_str': 'my string'}
 
 "Skip If" Functionality
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -142,12 +127,12 @@ Use the ``skip_if`` option in your dataclass's ``Meta`` configuration to skip fi
 
 .. code-block:: python3
 
-    from dataclasses import dataclass
-    from dataclass_wizard import JSONWizard, IS_NOT
+    from dataclass_wizard import DataclassWizard
+    from dataclass_wizard.conditions import IS_NOT
 
-    @dataclass
-    class Example(JSONWizard):
-        class _(JSONWizard.Meta):
+
+    class Example(DataclassWizard):
+        class _(DataclassWizard.Meta):
             skip_if = IS_NOT(True)  # Skip if the field is not `True`.
 
         my_str: 'str | None'
@@ -164,18 +149,22 @@ Use the ``skip_defaults_if`` option to skip serializing **fields with default va
 
 .. code-block:: python3
 
-    from dataclasses import dataclass
-    from dataclass_wizard import JSONWizard, IS
+    from dataclass_wizard import DataclassWizard
+    from dataclass_wizard.conditions import IS
 
-    @dataclass
-    class Example(JSONWizard):
-        class _(JSONWizard.Meta):
+
+    class Example(DataclassWizard):
+        class _(DataclassWizard.Meta):
             skip_defaults_if = IS(None)  # Skip fields with default value `None`.
 
         my_str: str | None
-        my_bool: bool = False
+        my_bool: bool | None = False
+
 
     ex = Example(my_str=None)
+    assert ex.to_dict() == {'my_str': None, 'my_bool': False}
+
+    ex.my_bool = None
     assert ex.to_dict() == {'my_str': None}  # Explicitly set `None` values are not skipped.
 
 1.3 Skip Fields Based on Truthy/Falsy Values
@@ -185,16 +174,17 @@ Use the ``IS_TRUTHY`` and ``IS_FALSY`` helpers for conditions based on truthines
 
 .. code-block:: python3
 
-    from dataclasses import dataclass
-    from dataclass_wizard import JSONWizard, IS_TRUTHY
+    from dataclass_wizard import DataclassWizard
+    from dataclass_wizard.conditions import IS_TRUTHY
 
-    @dataclass
-    class Example(JSONWizard):
-        class _(JSONWizard.Meta):
+
+    class Example(DataclassWizard):
+        class _(DataclassWizard.Meta):
             skip_if = IS_TRUTHY()  # Skip fields that evaluate to True.
 
         my_bool: bool
         my_none: None = None
+
 
     ex = Example(my_bool=True, my_none=None)
     assert ex.to_dict() == {'my_none': None}  # Only `my_none` is serialized.
@@ -211,12 +201,12 @@ You can use ``SkipIf`` in conjunction with ``Annotated`` to conditionally skip i
 
 .. code-block:: python3
 
-    from dataclasses import dataclass
     from typing import Annotated
-    from dataclass_wizard import JSONWizard, SkipIf, IS
+    from dataclass_wizard import DataclassWizard
+    from dataclass_wizard.conditions import SkipIf, IS
 
-    @dataclass
-    class Example(JSONWizard):
+
+    class Example(DataclassWizard):
         my_str: Annotated['str | None', SkipIf(IS(None))]  # Skip if `my_str is None`.
 
 2.2 Using ``skip_if_field`` Wrapper
@@ -226,11 +216,11 @@ Use ``skip_if_field`` to add conditions directly to ``dataclasses.Field``:
 
 .. code-block:: python3
 
-    from dataclasses import dataclass
-    from dataclass_wizard import JSONWizard, skip_if_field, EQ
+    from dataclass_wizard import DataclassWizard, skip_if_field
+    from dataclass_wizard.conditions import EQ
 
-    @dataclass
-    class Example(JSONWizard):
+
+    class Example(DataclassWizard):
         third_str: 'str | None' = skip_if_field(EQ(''), default=None)  # Skip if empty string.
 
 2.3 Combined Example
@@ -240,14 +230,15 @@ Both approaches can be used together to achieve granular control:
 
 .. code-block:: python3
 
-    from dataclasses import dataclass
     from typing import Annotated
-    from dataclass_wizard import JSONWizard, SkipIf, skip_if_field, IS, EQ
+    from dataclass_wizard import DataclassWizard, skip_if_field
+    from dataclass_wizard.conditions import SkipIf, IS, EQ
 
-    @dataclass
-    class Example(JSONWizard):
+
+    class Example(DataclassWizard):
         my_str: Annotated['str | None', SkipIf(IS(None))]  # Skip if `my_str is None`.
         third_str: 'str | None' = skip_if_field(EQ(''), default=None)  # Skip if `third_str` is ''.
+
 
     ex = Example(my_str='test', third_str='')
     assert ex.to_dict() == {'my_str': 'test'}

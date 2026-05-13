@@ -708,6 +708,9 @@ class DumpMixin(BaseDumpHook):
                 dump_hook = cls.dump_from_time
                 origin = time
 
+        elif origin is None:
+            dump_hook = cls.dump_from_none
+
         else:
 
             # TODO everything should use `get_origin_v2`
