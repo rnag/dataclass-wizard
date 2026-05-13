@@ -1072,7 +1072,7 @@ def dump_func_for_dataclass(
                     line = f'{lvalue} = {rvalue}'
                     def_condition = f'add_defaults or {var_name} != {default_name}'
 
-                    if skip_defaults_if_condition:
+                    if skip_defaults_if_condition and key is not ExplicitNull:
                         _final_skip_if = finalize_skip_if(
                             meta.skip_defaults_if, var_name, skip_defaults_if_condition)
                         # TODO missing skip individual condition!!
