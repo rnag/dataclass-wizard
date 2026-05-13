@@ -1,14 +1,7 @@
-.. title:: Patterned Date and Time in V1 (v0.35.0+)
+.. title:: Patterned Date and Time
 
-Patterned Date and Time in V1 (``v0.35.0+``)
-============================================
-
-.. tip::
-    The following documentation introduces support for patterned date and time strings
-    added in ``v0.35.0``. This feature is part of an experimental "V1 Opt-in" mode,
-    detailed in the `Field Guide to V1 Opt-in`_.
-
-    V1 features are available starting from ``v0.33.0``. See `Enabling V1 Experimental Features`_ for more details.
+Patterned Date and Time
+=======================
 
 This feature, introduced in **v0.35.0**, allows parsing
 custom date and time formats into Python's :class:`date`,
@@ -67,23 +60,20 @@ These patterns support the most common date formats.
 
 .. code:: python3
 
-    from dataclasses import dataclass
-    from dataclass_wizard import JSONPyWizard
-    from dataclass_wizard.v1 import DatePattern, TimePattern
+    from dataclass_wizard import DataclassWizard
+    from dataclass_wizard.patterns import DatePattern, TimePattern
 
-    @dataclass
-    class MyClass(JSONPyWizard):
-        class _(JSONPyWizard.Meta):
-            v1 = True
 
+    class MyClass(DataclassWizard):
         date_field: DatePattern['%b %d, %Y']
         time_field: TimePattern['%I:%M %p']
+
 
     data = {'date_field': 'Jan 3, 2022', 'time_field': '3:45 PM'}
     c1 = MyClass.from_dict(data)
     print(c1)
     print(c1.to_dict())
-    assert c1 == MyClass.from_dict(c1.to_dict())  #> True
+    assert c1 == MyClass.from_dict(c1.to_dict())  # > True
 
 Timezone-Aware Date and Time Patterns
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -120,23 +110,23 @@ correctly relative to the given timezone.
     from pprint import pprint
     from typing import Annotated
 
-    from dataclass_wizard import LoadMeta, DumpMeta, fromdict, asdict
-    from dataclass_wizard.v1 import AwareTimePattern, AwareDateTimePattern, Alias
+    from dataclass_wizard import Alias, fromdict, asdict
+    from dataclass_wizard.patterns import AwareTimePattern, AwareDateTimePattern
+
 
     @dataclass
     class MyClass:
         my_aware_dt: AwareTimePattern['Europe/London', '%H:%M:%S']
         my_aware_dt2: Annotated[AwareDateTimePattern['Asia/Tokyo', '%m-%Y-%H:%M-%Z'], Alias('key')]
 
-    LoadMeta(v1=True).bind_to(MyClass)
-    DumpMeta(key_transform='NONE').bind_to(MyClass)
+
 
     d = {'my_aware_dt': '6:15:45', 'key': '10-2020-15:30-UTC'}
     c = fromdict(MyClass, d)
 
     pprint(c)
     print(asdict(c))
-    assert c == fromdict(MyClass, asdict(c))  #> True
+    assert c == fromdict(MyClass, asdict(c))  # > True
 
 UTC Date and Time Patterns
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -160,19 +150,16 @@ correctly set to ``UTC``.
 
 .. code:: python3
 
-    from dataclasses import dataclass
     from typing import Annotated
 
-    from dataclass_wizard import JSONPyWizard
-    from dataclass_wizard.v1 import UTCTimePattern, UTCDateTimePattern, Alias
+    from dataclass_wizard import Alias, DataclassWizard
+    from dataclass_wizard.patterns import UTCTimePattern, UTCDateTimePattern
 
-    @dataclass
-    class MyClass(JSONPyWizard):
-        class _(JSONPyWizard.Meta):
-            v1 = True
 
+    class MyClass(DataclassWizard):
         my_utc_time: UTCTimePattern['%H:%M:%S']
         my_utc_dt: Annotated[UTCDateTimePattern['%m-%Y-%H:%M-%Z'], Alias('key')]
+
 
     d = {'my_utc_time': '6:15:45', 'key': '10-2020-15:30-UTC'}
     c = MyClass.from_dict(d)
@@ -197,31 +184,29 @@ you can use :obj:`typing.Annotated` with one of ``Pattern``,
 
 .. code:: python3
 
-    from dataclasses import dataclass
     from datetime import time
     from typing import Annotated
-    from dataclass_wizard import JSONPyWizard
-    from dataclass_wizard.v1 import Pattern
+    from dataclass_wizard import DataclassWizard
+    from dataclass_wizard.patterns import Pattern
+
 
     class MyTime(time):
         def get_hour(self):
             return self.hour
 
-    @dataclass
-    class MyClass(JSONPyWizard):
-        class _(JSONPyWizard.Meta):
-            v1 = True
 
+    class MyClass(DataclassWizard):
         time_field: Annotated[list[MyTime], Pattern['%I:%M %p']]
+
 
     data = {'time_field': ['3:45 PM', '1:20 am', '12:30 pm']}
     c1 = MyClass.from_dict(data)
-    print(c1)  #> MyClass(time_field=[MyTime(15, 45), MyTime(1, 20), MyTime(12, 30)])
+    print(c1)  # > MyClass(time_field=[MyTime(15, 45), MyTime(1, 20), MyTime(12, 30)])
 
 Multiple Date and Time Patterns
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-In **V1 Opt-in**, you can now use multiple date and time patterns (format codes) to parse and serialize your date and time fields.
+You can also use multiple date and time patterns (format codes) to parse and serialize your date and time fields.
 This feature allows for flexibility when handling different formats, making it easier to work with various date and time strings.
 
 Example: Using Multiple Patterns
@@ -231,17 +216,14 @@ In the example below, the ``DatePattern`` and ``TimePattern`` are configured to 
 
 .. code:: python3
 
-    from dataclasses import dataclass
-    from dataclass_wizard import JSONPyWizard
-    from dataclass_wizard.v1 import DatePattern, UTCTimePattern
+    from dataclass_wizard import DataclassWizard
+    from dataclass_wizard.patterns import DatePattern, UTCTimePattern
 
-    @dataclass
-    class MyClass(JSONPyWizard):
-        class _(JSONPyWizard.Meta):
-            v1 = True
 
+    class MyClass(DataclassWizard):
         date_field: DatePattern['%b %d, %Y', '%I %p %Y-%m-%d']
         time_field: UTCTimePattern['%I:%M %p', '(%H)+(%S)']
+
 
     # Using the first date pattern format: 'Jan 3, 2022'
     data = {'date_field': 'Jan 3, 2022', 'time_field': '3:45 PM'}
@@ -249,7 +231,7 @@ In the example below, the ``DatePattern`` and ``TimePattern`` are configured to 
 
     print(c1)
     print(c1.to_dict())
-    assert c1 == MyClass.from_dict(c1.to_dict())  #> True
+    assert c1 == MyClass.from_dict(c1.to_dict())  # > True
     print()
 
     # Using the second date pattern format: '3 PM 2025-01-15'
@@ -257,7 +239,7 @@ In the example below, the ``DatePattern`` and ``TimePattern`` are configured to 
     c2 = MyClass.from_dict(data)
     print(c2)
     print(c2.to_dict())
-    assert c2 == MyClass.from_dict(c2.to_dict())  #> True
+    assert c2 == MyClass.from_dict(c2.to_dict())  # > True
     print()
 
     # ERROR! The date is not a valid format for the available patterns.
@@ -303,12 +285,6 @@ All date-time objects are serialized as ISO 8601 format strings by default. This
 
 **Note:** Parsing uses ``datetime.fromisoformat`` for ISO 8601 strings, which is `much faster`_ than ``datetime.strptime``.
 
----
-
-For more information, see the full `Field Guide to V1 Opt-in`_.
-
-.. _`Enabling V1 Experimental Features`: https://github.com/rnag/dataclass-wizard/wiki/V1:-Enabling-Experimental-Features
-.. _`Field Guide to V1 Opt-in`: https://github.com/rnag/dataclass-wizard/wiki/Field-Guide-to-V1-Opt%E2%80%90in
 .. _much faster: https://stackoverflow.com/questions/13468126/a-faster-strptime
 .. _`Coordinated Universal Time (UTC)`: https://en.wikipedia.org/wiki/Coordinated_Universal_Time
 .. _Naive datetime: https://stackoverflow.com/questions/9999226/timezone-aware-vs-timezone-naive-in-python

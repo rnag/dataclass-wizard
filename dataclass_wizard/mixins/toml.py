@@ -27,7 +27,6 @@ class TOMLWizard:
         """Allow easy setup of common config, such as key casing transform."""
         # Only add the key transform if Meta config has not been specified
         # for the dataclass.
-        # TODO
         if dump_case and cls not in META_BY_DATACLASS:
             DumpMeta(case=dump_case).bind_to(cls)
 
