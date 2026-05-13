@@ -42,7 +42,7 @@ Example: `ipaddress.IPv4Address`_
 
     from ipaddress import IPv4Address
 
-    from dataclass_wizard import DataclassWizard
+    from dataclass_wizard import DataclassWizard, register_type
 
 
     class Foo(DataclassWizard):
@@ -50,7 +50,7 @@ Example: `ipaddress.IPv4Address`_
         c: IPv4Address | None = None
 
 
-    Foo.register_type(IPv4Address)
+    register_type(Foo, IPv4Address)
 
     foo = Foo.from_dict({"c": "127.0.0.1"})
     assert foo.c == IPv4Address("127.0.0.1")
@@ -74,7 +74,7 @@ API (``fromdict``/``asdict``).
     from dataclasses import dataclass
     from ipaddress import IPv4Address
 
-    from dataclass_wizard import LoadMeta, asdict, fromdict, register_type
+    from dataclass_wizard import asdict, fromdict, register_type
 
 
     @dataclass
@@ -83,8 +83,6 @@ API (``fromdict``/``asdict``).
         s: str | None = None
         c: IPv4Address | None = None
 
-
-    LoadMeta(v1=True).bind_to(Foo)
 
     # Register IPv4Address with default hooks (load=IPv4Address, dump=str)
     register_type(Foo, IPv4Address)
@@ -108,7 +106,7 @@ You can override the defaults by providing custom functions. In general:
 
     from decimal import Decimal, ROUND_HALF_UP
 
-    from dataclass_wizard import DataclassWizard
+    from dataclass_wizard import DataclassWizard, register_type
 
 
     def load_decimal(v):
@@ -126,16 +124,16 @@ You can override the defaults by providing custom functions. In general:
 
 
     # Override the built-in Decimal behavior
-    Invoice.register_type(Decimal, load=load_decimal, dump=dump_decimal)
+    register_type(Invoice, Decimal, load=load_decimal, dump=dump_decimal)
 
     invoice = Invoice.from_dict({'total': '1.235'})
-    print(invoice)              # Invoice(total=Decimal('1.24'))
-    print(invoice.to_dict())    # {'total': '1.24'}
+    print(invoice)  # Invoice(total=Decimal('1.24'))
+    print(invoice.to_dict())  # {'total': '1.24'}
 
-V1 code generation hooks (advanced)
------------------------------------
+Code generation hooks (advanced)
+--------------------------------
 
-If you have v1 enabled, you may choose to provide **v1 codegen hooks**.
+Starting in ``v1.x``, you may choose to provide **codegen hooks**.
 These hooks accept ``(TypeInfo, Extras)`` and return a **string expression**
 (or ``TypeInfo``) used by the v1 compiler.
 
@@ -146,58 +144,55 @@ pipeline.
    Most users should start with ``register_type()`` and only use codegen hooks
    when needed.
 
-Example: ``IPv4Address`` with v1 codegen hooks
-
-.. code-block:: python3
-
-   from dataclasses import dataclass
-   from ipaddress import IPv4Address
-
-   from dataclass_wizard import JSONWizard
-   from dataclass_wizard.v1.models import TypeInfo, Extras
-
-
-   def load_to_ipv4_address(tp: TypeInfo, extras: Extras) -> str:
-       # Wrap the value expression using the type's constructor
-       return tp.wrap(tp.v(), extras)
-
-   def dump_from_ipv4_address(tp: TypeInfo, extras: Extras) -> str:
-       # Dump an IPv4Address by converting to string
-       return f"str({tp.v()})"
-
-
-   @dataclass
-   class Foo(JSONWizard):
-       class Meta(JSONWizard.Meta):
-           v1 = True
-           v1_type_to_load_hook = {IPv4Address: load_to_ipv4_address}
-           v1_type_to_dump_hook = {IPv4Address: dump_from_ipv4_address}
-
-       c: IPv4Address | None = None
-
-
-   foo = Foo.from_dict({"c": "127.0.0.1"})
-   assert foo.to_dict() == {"c": "127.0.0.1"}
-
-Declaring hooks via Meta
-------------------------
-
-If you prefer a declarative style, you can set hooks in ``Meta``. This is
-especially useful for v1.
+Example: ``IPv4Address`` with codegen hooks
 
 .. code-block:: python3
 
     from ipaddress import IPv4Address
 
     from dataclass_wizard import DataclassWizard
+    from dataclass_wizard._models import TypeInfo, Extras
 
 
-    # DataclassWizard sets `v1=True` and auto-applies @dataclass to subclasses
+    def load_to_ipv4_address(tp: TypeInfo, extras: Extras) -> TypeInfo | str:
+        # Wrap the value expression using the type's constructor
+        return tp.wrap(tp.v(), extras)
+
+
+    def dump_from_ipv4_address(tp: TypeInfo, extras: Extras) -> str:
+        # Dump an IPv4Address by converting to string
+        return f"str({tp.v()})"
+
+
+    class Foo(DataclassWizard):
+        class Meta(DataclassWizard.Meta):
+            type_to_load_hook = {IPv4Address: load_to_ipv4_address}
+            type_to_dump_hook = {IPv4Address: dump_from_ipv4_address}
+
+        c: IPv4Address | None = None
+
+
+    foo = Foo.from_dict({"c": "127.0.0.1"})
+    assert foo.to_dict() == {"c": "127.0.0.1"}
+
+Declaring hooks via Meta
+------------------------
+
+If you prefer a declarative style, you can set hooks in ``Meta``.
+
+.. code-block:: python3
+
+    from ipaddress import IPv4Address
+
+    from dataclass_wizard import DataclassWizard, register_type
+
+
+    # DataclassWizard auto-applies @dataclass to subclasses
     class Foo(DataclassWizard):
         c: IPv4Address | None = None
 
 
-    Foo.register_type(IPv4Address)
+    register_type(Foo, IPv4Address)
 
 If you want to avoid method calls entirely, you can also register via ``Meta``.
 (Exact configuration options may vary depending on the engine you use.)
@@ -215,13 +210,13 @@ If you want to avoid method calls entirely, you can also register via ``Meta``.
     @dataclass
     class Foo(JSONWizard):
         class Meta(JSONWizard.Meta):
-            v1 = True
-            # Equivalent of Foo.register_type(IPv4Address)
+            # Equivalent of register_type(Foo, IPv4Address)
             # Defaults: load=IPv4Address, dump=str
-            v1_type_to_load_hook = {IPv4Address: IPv4Address}
-            v1_type_to_dump_hook = {IPv4Address: str}
+            type_to_load_hook = {IPv4Address: IPv4Address}
+            type_to_dump_hook = {IPv4Address: str}
 
         c: IPv4Address | None = None
+
 
     assert Foo.from_dict({'c': '1.2.3.4'}).c == IPv4Address('1.2.3.4')  # True
 
@@ -236,7 +231,7 @@ override the default behavior using type hooks.
 
     from enum import Enum
 
-    from dataclass_wizard import DataclassWizard
+    from dataclass_wizard import DataclassWizard, register_type
 
 
     class MyEnum(Enum):
@@ -260,7 +255,7 @@ override the default behavior using type hooks.
 
 
     # Override the built-in Enum behavior
-    MyClass.register_type(MyEnum, load=load_enum_by_name, dump=dump_enum_by_name)
+    register_type(MyClass, MyEnum, load=load_enum_by_name, dump=dump_enum_by_name)
 
     data = {'my_str': 'my string', 'my_enum': 'NAME 1'}
 
@@ -268,8 +263,8 @@ override the default behavior using type hooks.
     assert c.my_enum is MyEnum.NAME_1
     assert c.to_dict() == data
 
-Runtime vs v1 codegen hooks
----------------------------
+Runtime vs. codegen hooks
+-------------------------
 
 Dataclass Wizard supports two styles of hooks:
 
@@ -279,7 +274,7 @@ Runtime hooks
    - load hook: ``fn(value) -> object``
    - dump hook: ``fn(object) -> json_value``
 
-V1 codegen hooks
+Codegen hooks
    Functions used by the v1 compiler.
 
    - hook: ``fn(TypeInfo, Extras) -> str | TypeInfo``
@@ -304,7 +299,7 @@ If your dump hook returns a non-JSON value
    Ensure your dump hook returns JSON-compatible primitives (or nested
    structures composed of primitives).
 
-If you see name errors in v1 generated code
+If you see name errors in generated code
    Your codegen hook must reference names that are in scope for the generated
    function. Prefer builtins (like ``str``) or ensure the type/function is
    available to the compiler (via locals injection, if applicable).

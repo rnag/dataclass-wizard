@@ -55,7 +55,7 @@ class SerializerHookMixin(Protocol):
         """
         ...
 
-    def _pre_dict(self):
+    def _pre_to_dict(self: Self) -> Self:
         # noinspection PyDunderSlots, PyUnresolvedReferences
         """
         Optional hook that runs before the dataclass instance is processed and
@@ -72,8 +72,9 @@ class SerializerHookMixin(Protocol):
         >>> class MyClass(JSONWizard):
         >>>     my_str: str
         >>>
-        >>>     def _pre_dict(self):
+        >>>     def _pre_to_dict(self):
         >>>         self.my_str = self.my_str.swapcase()
+        >>>         return self
         >>>
         >>> assert MyClass('test').to_dict() == {'myStr': 'TEST'}
         """

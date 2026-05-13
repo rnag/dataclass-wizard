@@ -23,7 +23,7 @@ To customize the load process:
   by the ``dataclass`` decorator.
 
 To customize the dump process, simply implement
-a ``_pre_dict`` method which will be called
+a ``_pre_to_dict`` method which will be called
 whenever you invoke the ``to_dict`` or ``to_json``
 methods. Please note that this will pass in the
 original dataclass instance, so updating any values
@@ -35,8 +35,9 @@ A simple example to illustrate both approaches is shown below:
 .. code:: python3
 
     from dataclasses import dataclass
+    from typing import Any
+
     from dataclass_wizard import JSONWizard
-    from dataclass_wizard.type_def import JSONObject
 
 
     @dataclass
@@ -50,23 +51,23 @@ A simple example to illustrate both approaches is shown below:
             self.my_int *= 2
 
         @classmethod
-        def _pre_from_dict(cls, o: JSONObject) -> JSONObject:
+        def _pre_from_dict(cls, o: dict[str, Any]) -> dict[str, Any]:
             # o = o.copy()  # Copying the `dict` object is optional
             o['my_bool'] = True  # Adds a new key/value pair
             return o
 
-        def _pre_dict(self):
+        def _pre_to_dict(self):
             self.my_str = self.my_str.swapcase()
+            return self
 
 
-    data = {"my_str": "my string", "myInt": "10"}
+    data = {"my_str": "my string", "my_int": "10"}
 
     c = MyClass.from_dict(data)
-    print(repr(c))
-    # prints:
-    #   MyClass(my_str='My String', my_int=20, my_bool=True)
+    print(c)
+    # > MyClass(my_str='My String', my_int=20, my_bool=True)
 
     string = c.to_json()
     print(string)
     # prints:
-    #   {"myStr": "mY sTRING", "myInt": 20, "myBool": true}
+    #   {"my_str": "mY sTRING", "my_int": 20, "my_bool": true}
