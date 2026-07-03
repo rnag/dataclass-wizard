@@ -2,6 +2,19 @@
 History
 =======
 
+1.0.0 (2026-07-02)
+-------------------
+
+**Major Release**
+
+- Released Dataclass Wizard v1.0.
+- Made the v1 serialization and deserialization behavior the default.
+- Improved support for automatic type conversion across common Python types.
+- Continued support for JSON, YAML, TOML, and environment variable loading.
+- Improved alias handling, nested paths, recursive types, and union handling.
+- Updated documentation and examples for the v1 release.
+- Removed legacy v1 opt-in messaging from the README.
+
 0.39.1 (2026-01-05)
 -------------------
 
