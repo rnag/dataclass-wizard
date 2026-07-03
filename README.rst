@@ -24,7 +24,7 @@
    :target: https://pepy.tech/project/dataclass-wizard
    :alt: Downloads per Month
 
-**Dataclass Wizard** is a fast, well-tested serialization library for Python dataclasses.
+**Dataclass Wizard** is a fast, well-tested serialization library for Python dataclasses with automatic type conversion and support for JSON, YAML, TOML, and environment variables.
 
 -------------------
 
