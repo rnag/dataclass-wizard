@@ -1,19 +1,25 @@
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
-from dataclasses import Field, MISSING, is_dataclass
-from typing import (Any, Type, Dict, Tuple, ClassVar,
-                    Optional, Union, Iterable, Callable, Collection, Sequence)
+from collections.abc import Collection, Iterable, Sequence
+from dataclasses import MISSING, Field, is_dataclass
+from datetime import date, datetime, time
+from enum import Enum
+from json import JSONEncoder, dumps
+from typing import Any, Callable, ClassVar
+from uuid import UUID
 
-from .constants import PACKAGE_NAME
-from .utils.string_conv import normalize
-
+from .utils._string_conv import normalize
 
 # added as we can't import from `type_def`, as we run into a circular import.
-JSONObject = Dict[str, Any]
+JSONObject = dict[str, Any]
+
+_SafeEncoder = None
 
 
 def type_name(obj: type) -> str:
     """Return the type or class name of an object"""
-    from .utils.typing_compat import is_generic
+    from .utils._typing_compat import is_generic
 
     # for type generics like `dict[str, float]`, we want to return
     # the subscripted value as is, rather than simply accessing the
@@ -25,7 +31,7 @@ def type_name(obj: type) -> str:
 
 
 def show_deprecation_warning(
-    fn: 'Callable | str',
+    fn: Callable | str,
     reason: str,
     fmt: str = "Deprecated function {name} ({reason})."
 ) -> None:
@@ -45,6 +51,40 @@ def show_deprecation_warning(
     )
 
 
+def _get_safe_encoder() -> type[JSONEncoder]:
+    from ._dumpers import asdict
+
+    global _SafeEncoder
+    if _SafeEncoder is not None:
+        return _SafeEncoder
+
+    class _LocalSafeEncoder(JSONEncoder):
+        def default(self, o: Any) -> Any:
+            if is_dataclass(o):
+                return asdict(o)
+            if isinstance(o, Enum):
+                return o.value
+            if isinstance(o, UUID):
+                return o.hex
+            if isinstance(o, (datetime, time)):
+                return o.isoformat().replace('+00:00', 'Z', 1)
+            if isinstance(o, date):
+                return o.isoformat()
+            return str(o)
+
+    _SafeEncoder = _LocalSafeEncoder
+    return _SafeEncoder
+
+
+def safe_dumps(o: Any, **kwargs: Any) -> str:
+    # never let callers override cls; this is for errors, not a general API
+    try:
+        return dumps(o, cls=_get_safe_encoder(), **kwargs)
+    except TypeError:
+        # returning `o` here is inconsistent; callers expect str
+        return str(o)
+
+
 class JSONWizardError(ABC, Exception):
     """
     Base error class, for errors raised by this library.
@@ -53,11 +93,11 @@ class JSONWizardError(ABC, Exception):
     _TEMPLATE: ClassVar[str]
 
     @property
-    def class_name(self) -> Optional[str]:
+    def class_name(self) -> str | None:
         return self._class_name or self._default_class_name
 
     @class_name.setter
-    def class_name(self, cls: Optional[Type]):
+    def class_name(self, cls: str | type | None) -> None:
         # Set parent class for errors
         self.parent_cls = cls
         # Set class name
@@ -66,11 +106,11 @@ class JSONWizardError(ABC, Exception):
             self._class_name = self.name(cls)
 
     @property
-    def parent_cls(self) -> Optional[type]:
+    def parent_cls(self) -> type | None:
         return self._parent_cls
 
     @parent_cls.setter
-    def parent_cls(self, cls: Optional[type]):
+    def parent_cls(self, cls: type | None):
         # noinspection PyAttributeOutsideInit
         self._parent_cls = cls
 
@@ -106,10 +146,10 @@ class ParseError(JSONWizardError):
 
     def __init__(self, base_err: Exception,
                  obj: Any,
-                 ann_type: Optional[Union[Type, Iterable]],
+                 ann_type: type | Iterable | None,
                  phase: str,
-                 _default_class: Optional[type] = None,
-                 _field_name: Optional[str] = None,
+                 _default_class: type | None = None,
+                 _field_name: str | None = None,
                  _json_object: Any = None,
                  **kwargs):
 
@@ -129,11 +169,11 @@ class ParseError(JSONWizardError):
         self.fields = None
 
     @property
-    def field_name(self) -> Optional[str]:
+    def field_name(self) -> str | None:
         return self._field_name
 
     @field_name.setter
-    def field_name(self, name: Optional[str]):
+    def field_name(self, name: str | None):
         if self._field_name is None:
             self._field_name = name
 
@@ -169,7 +209,6 @@ class ParseError(JSONWizardError):
             ann_type=ann_type)
 
         if self.json_object:
-            from .utils.json_util import safe_dumps
             self.kwargs['json_object'] = safe_dumps(self.json_object)
 
         if self.kwargs:
@@ -198,13 +237,13 @@ class ExtraData(JSONWizardError):
                  'arguments are handled.')
 
     def __init__(self,
-                 cls: Type,
+                 cls: type,
                  extra_kwargs: Collection[str],
                  field_names: Collection[str]):
 
         super().__init__()
 
-        self.class_name: str = type_name(cls)
+        self.class_name = type_name(cls)
         self.extra_kwargs = extra_kwargs
         self.field_names = field_names
 
@@ -232,13 +271,13 @@ class MissingFields(JSONWizardError):
                  '  Input JSON: {json_string}'
                  '{e}')
 
-    def __init__(self, base_err: 'Exception | None',
+    def __init__(self, base_err: Exception | None,
                  obj: JSONObject,
-                 cls: Type,
-                 cls_fields: Tuple[Field, ...],
-                 cls_kwargs: 'JSONObject | None' = None,
-                 missing_fields: 'Collection[str] | None' = None,
-                 missing_keys: 'Collection[str] | None' = None,
+                 cls: type,
+                 cls_fields: tuple[Field, ...],
+                 cls_kwargs: JSONObject | None = None,
+                 missing_fields: Collection[str] | None = None,
+                 missing_keys: Collection[str] | None = None,
                  **kwargs):
 
         super().__init__()
@@ -267,14 +306,6 @@ class MissingFields(JSONWizardError):
 
     @property
     def message(self) -> str:
-        from .class_helper import get_meta
-        from .utils.json_util import safe_dumps
-
-        # need to determine this, as we can't
-        # directly import `class_helper.py`
-        meta = get_meta(self.parent_cls)
-        v1 = meta.v1
-
         if isinstance(self.obj, list):
             keys = [f.name for f in self.all_fields]
             obj = dict(zip(keys, self.obj))
@@ -287,12 +318,11 @@ class MissingFields(JSONWizardError):
         normalized_json_keys = [normalize(key) for key in obj]
         if (is_dataclass(self.parent_cls) and
             next((f for f in self.missing_fields if normalize(f) in normalized_json_keys), None)):
-            from .enums import LetterCase
-            from .v1.enums import KeyCase
-            from .loader_selection import get_loader
+            from ._loaders import get_loader
+            from .enums import KeyCase
 
             key_transform = get_loader(self.parent_cls).transform_json_field
-            if isinstance(key_transform, (LetterCase, KeyCase)):
+            if isinstance(key_transform, KeyCase):
                 if key_transform.value is None:
                     key_transform = f'{key_transform.name}'
                 else:
@@ -303,10 +333,9 @@ class MissingFields(JSONWizardError):
             self.kwargs['Key Transform'] = key_transform
             self.kwargs['Resolution'] = 'For more details, please see https://github.com/rnag/dataclass-wizard/issues/54'
 
-        if v1:
-            self.kwargs['Resolution'] = ('Ensure that all required fields are provided in the input. '
-                                         'For more details, see:\n'
-                                         '    https://github.com/rnag/dataclass-wizard/discussions/167')
+        self.kwargs['Resolution'] = ('Ensure that all required fields are provided in the input. '
+                                     'For more details, see:\n'
+                                     '    https://github.com/rnag/dataclass-wizard/discussions/167')
 
         if self.base_error is not None:
             e = f'\n  error: {self.base_error!s}'
@@ -341,7 +370,7 @@ class UnknownKeysError(JSONWizardError):
     encountered in the JSON load process.
 
     Note that this error class is only raised when the
-    `raise_on_unknown_json_key` flag is enabled in
+    `on_unknown_key='RAISE'` flag is enabled in
     the :class:`Meta` class.
     """
 
@@ -351,10 +380,10 @@ class UnknownKeysError(JSONWizardError):
                  '  Input JSON object: {json_string}')
 
     def __init__(self,
-                 unknown_keys: 'list[str] | str',
+                 unknown_keys: list[str] | str,
                  obj: JSONObject,
-                 cls: Type,
-                 cls_fields: Tuple[Field, ...], **kwargs):
+                 cls: type,
+                 cls_fields: tuple[Field, ...], **kwargs):
         super().__init__()
 
         self.unknown_keys = unknown_keys
@@ -373,7 +402,6 @@ class UnknownKeysError(JSONWizardError):
 
     @property
     def message(self) -> str:
-        from .utils.json_util import safe_dumps
         if not isinstance(self.unknown_keys, str) and len(self.unknown_keys) > 1:
             s = 's'
         else:
@@ -411,7 +439,7 @@ class MissingData(ParseError):
                  '  resolution: annotate the field as '
                  '`Optional[{nested_cls}]` or `{nested_cls} | None`')
 
-    def __init__(self, nested_cls: Type, **kwargs):
+    def __init__(self, nested_cls: type, **kwargs):
         super().__init__(self, None, nested_cls, 'load', **kwargs)
         self.nested_class_name: str = self.name(nested_cls)
 
@@ -419,8 +447,6 @@ class MissingData(ParseError):
 
     @property
     def message(self) -> str:
-        from .utils.json_util import safe_dumps
-
         msg = self._TEMPLATE.format(
             cls=self.class_name,
             nested_cls=self.nested_class_name,
@@ -437,30 +463,6 @@ class MissingData(ParseError):
         return msg
 
 
-class RecursiveClassError(JSONWizardError):
-    """
-    Error raised when we encounter a `RecursionError` due to cyclic
-    or self-referential dataclasses.
-    """
-
-    _TEMPLATE = ('Failure parsing class `{cls}`. '
-                 'Consider updating the Meta config to enable '
-                 'the `recursive_classes` flag.\n\n'
-                f'Example with `{PACKAGE_NAME}.LoadMeta`:\n'
-                 ' >>> LoadMeta(recursive_classes=True).bind_to({cls})\n\n'
-                 'For more info, please see:\n'
-                 '  https://github.com/rnag/dataclass-wizard/issues/62')
-
-    def __init__(self, cls: Type):
-        super().__init__()
-
-        self.class_name: str = self.name(cls)
-
-    @property
-    def message(self) -> str:
-        return self._TEMPLATE.format(cls=self.class_name)
-
-
 class InvalidConditionError(JSONWizardError):
     """
     Error raised when a condition is not wrapped in ``SkipIf``.
@@ -471,7 +473,7 @@ class InvalidConditionError(JSONWizardError):
                  '  dataclass field: {field!r}\n'
                  '  resolution: Wrap conditions inside SkipIf().`')
 
-    def __init__(self, cls: Type, field_name: str):
+    def __init__(self, cls: type, field_name: str):
         super().__init__()
 
         self.class_name: str = self.name(cls)
@@ -499,8 +501,8 @@ class MissingVars(JSONWizardError):
                  '    {init_resolution}')
 
     def __init__(self,
-                 cls: Type,
-                 missing_vars: Sequence[Tuple[str, 'str | None', str, Any]]):
+                 cls: type,
+                 missing_vars: Sequence[tuple[str, str | None, str, Any]]):
 
         super().__init__()
 

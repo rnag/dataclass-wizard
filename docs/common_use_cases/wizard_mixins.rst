@@ -1,7 +1,7 @@
 Wizard Mixin Classes
 ====================
 
-In addition to the :class:`JSONWizard`, here a few extra Wizard Mixin
+In addition to the :class:`DataclassWizard`, here a few extra Wizard Mixin
 classes that might prove to be quite convenient to use.
 
 
@@ -17,27 +17,51 @@ For a detailed example and advanced features:
 
 - 📖 `Full Documentation <https://dcw.ritviknag.com/en/latest/env_magic.html>`_
 
-:class:`JSONPyWizard`
-~~~~~~~~~~~~~~~~~~~~~
+:class:`DataclassWizard`
+~~~~~~~~~~~~~~~~~~~~~~~~
 
-A subclass of :class:`JSONWizard` that disables the default key transformation behavior,
-ensuring that keys are not transformed during JSON serialization (e.g., no ``camelCase`` transformation).
+Provides helpful Mixin methods for de/serialization.
+Internally, decorates the class with ``@dataclass``.
 
 .. code-block:: python3
 
-    class JSONPyWizard(JSONWizard):
-        """Helper for JSONWizard that ensures dumping to JSON keeps keys as-is."""
+    from dataclass_wizard import DataclassWizard
 
-        def __init_subclass__(cls, str=True, debug=False):
-            """Bind child class to DumpMeta with no key transformation."""
-            DumpMeta(key_transform='NONE').bind_to(cls)
-            super().__init_subclass__(str, debug)
 
+    class MyClass(DataclassWizard):
+        my_str: str
+        my_int: int = 0
+
+
+    print(MyClass.from_dict({'my_str': 'hello world'}))
+    # > MyClass(my_str='hello world', my_int=0)
+
+:class:`JSONWizard`
+~~~~~~~~~~~~~~~~~~~
+
+A subclass of :class:`DataclassWizard` that provides helpful Mixin methods for de/serialization.
+however, decorating the class with ``@dataclass`` is still required.
+
+.. code-block:: python3
+
+    from dataclasses import dataclass
+    from dataclass_wizard import JSONWizard
+
+
+    @dataclass
+    class MyClass(JSONWizard):
+        my_str: str
+        my_int: int = 0
+
+
+    print(MyClass.from_dict({'my_str': 'hello world'}))
+    # > MyClass(my_str='hello world', my_int=0)
 
 Use Case
 --------
 
-Use :class:`JSONPyWizard` when you want to prevent the automatic ``camelCase`` conversion of dictionary keys during serialization, keeping them in their original ``snake_case`` format.
+Use :class:`JSONWizard` when you want to easily pass arguments
+to the ``@dataclass`` decorator, e.g. ``dataclass(kw_only=True)``.
 
 :class:`JSONListWizard`
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -64,8 +88,10 @@ Simple example of usage below:
     from __future__ import annotations  # Note: In 3.10+, this import can be removed
 
     from dataclasses import dataclass
+    from typing import Any
 
-    from dataclass_wizard import JSONListWizard, Container
+    from dataclass_wizard.mixins.json import JSONListWizard
+    from dataclass_wizard.utils.containers import Container
 
 
     @dataclass
@@ -79,17 +105,17 @@ Simple example of usage below:
         other_str: str
 
 
-    my_list = [
+    my_list: list[dict[str, Any]] = [
         {"my_str": 20,
-         "inner": [{"otherStr": "testing 123"}]},
+         "inner": [{"other_str": "testing 123"}]},
         {"my_str": "hello",
-         "inner": [{"otherStr": "world"}]},
+         "inner": [{"other_str": "world"}]},
     ]
 
     # De-serialize the JSON string into a list of `MyClass` objects
     c = Outer.from_list(my_list)
 
-    # Container is just a sub-class of list
+    # Container is just a subclass of list
     assert isinstance(c, list)
     assert type(c) == Container
 
@@ -125,7 +151,7 @@ It comes with only two added methods: :meth:`from_json_file` and
 
     from dataclasses import dataclass
 
-    from dataclass_wizard import JSONFileWizard
+    from dataclass_wizard.mixins.json import JSONFileWizard
 
 
     @dataclass
@@ -141,7 +167,7 @@ It comes with only two added methods: :meth:`from_json_file` and
     c1.to_json_file('my_file.json')
 
     # contents of my_file.json:
-    #> {"myStr": "Hello, world!", "myInt": 14}
+    # > {"my_str": "Hello, world!", "my_int": 14}
 
     c2 = MyClass.from_json_file('my_file.json')
 
@@ -161,7 +187,7 @@ dataclass instances to/from YAML.
   from :class:`JSONWizard`, as shown below.
 
       >>> @dataclass
-      >>> class MyClass(YAMLWizard, key_transform='CAMEL'):
+      >>> class MyClass(YAMLWizard, dump_case='CAMEL'):
       >>>     ...
 
 A (mostly) complete example of using the :class:`YAMLWizard` is as follows:
@@ -172,7 +198,7 @@ A (mostly) complete example of using the :class:`YAMLWizard` is as follows:
 
     from dataclasses import dataclass, field
 
-    from dataclass_wizard import YAMLWizard
+    from dataclass_wizard.mixins.yaml import YAMLWizard
 
 
     @dataclass
@@ -187,7 +213,7 @@ A (mostly) complete example of using the :class:`YAMLWizard` is as follows:
         my_int: int = 14
 
 
-    c1 = MyClass.from_yaml("""
+    c1: MyClass = MyClass.from_yaml("""
     str-or-num: 23
     nested:
         ListOfMap:
@@ -195,19 +221,19 @@ A (mostly) complete example of using the :class:`YAMLWizard` is as follows:
               222: World!
             - 333: 'Testing'
               444: 123
-    """)
+    """)  # type: ignore[assignment]
 
     # serialize the dataclass instance to a YAML file
     c1.to_yaml_file('my_file.yaml')
 
     # sample contents of `my_file.yaml` would be:
-    #> nested:
-    #>   list-of-map:
-    #>   - 111: Hello,
-    #>   ...
+    # > nested:
+    # >   list-of-map:
+    # >   - 111: Hello,
+    # >   ...
 
     # now read it back...
-    c2 = MyClass.from_yaml_file('my_file.yaml')
+    c2: MyClass = MyClass.from_yaml_file('my_file.yaml')  # type: ignore[assignment]
 
     # assert we get back the same data
     assert c1 == c2
@@ -230,17 +256,13 @@ A (mostly) complete example of using the :class:`YAMLWizard` is as follows:
 :class:`TOMLWizard`
 ~~~~~~~~~~~~~~~~~~~
 
-.. admonition:: **Added in v0.28.0**
-
-   The :class:`TOMLWizard` was introduced in version 0.28.0.
-
 The TOML Wizard provides an easy, convenient interface for converting ``dataclass`` instances to/from `TOML`_. This mixin enables simple loading, saving, and flexible serialization of TOML data, including support for custom key casing transforms.
 
 .. note::
-   By default, *NO* key transform is used in the TOML dump process. This means that a `snake_case` field name in Python is saved as `snake_case` in TOML. However, this can be customized without subclassing from :class:`JSONWizard`, as below.
+   By default, *NO* key transform is used in the TOML dump process. This means that a `snake_case` field name in Python is saved as `snake_case` in TOML. However, this can be customized without subclassing from :class:`DataclassWizard`, as below.
 
        >>> @dataclass
-       >>> class MyClass(TOMLWizard, key_transform='CAMEL'):
+       >>> class MyClass(TOMLWizard, dump_case='CAMEL'):
        >>>     ...
 
 Dependencies
@@ -261,7 +283,7 @@ A (mostly) complete example of using the :class:`TOMLWizard` is as follows:
 .. code:: python3
 
     from dataclasses import dataclass, field
-    from dataclass_wizard import TOMLWizard
+    from dataclass_wizard.mixins.toml import TOMLWizard
 
 
     @dataclass
@@ -290,18 +312,18 @@ A (mostly) complete example of using the :class:`TOMLWizard` is as follows:
     """
 
     # Load from TOML string
-    data = MyData.from_toml(toml_string)
+    data: MyData = MyData.from_toml(toml_string)  # type: ignore[assignment]
 
     # Sample output of `data` after loading from TOML:
-    #> my_str = 'example'
-    #> my_dict = {'key1': 1, 'key2': 2}
-    #> inner_data = InnerData(my_float=2.718, my_list=['apple', 'banana', 'cherry'])
+    # > my_str = 'example'
+    # > my_dict = {'key1': 1, 'key2': 2}
+    # > inner_data = InnerData(my_float=2.718, my_list=['apple', 'banana', 'cherry'])
 
     # Save to TOML file
     data.to_toml_file('data.toml')
 
     # Now read it back from the TOML file
-    new_data = MyData.from_toml_file('data.toml')
+    new_data: MyData = MyData.from_toml_file('data.toml')  # type: ignore[assignment]
 
     # Assert we get back the same data
     assert data == new_data, "Data read from TOML file does not match the original."

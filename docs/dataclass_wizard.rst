@@ -7,10 +7,10 @@ Subpackages
 .. toctree::
    :maxdepth: 4
 
-   dataclass_wizard.environ
+   dataclass_wizard.cli
+   dataclass_wizard.mixins
    dataclass_wizard.utils
-   dataclass_wizard.v1
-   dataclass_wizard.wizard_cli
+   dataclass_wizard.v0
 
 Submodules
 ----------

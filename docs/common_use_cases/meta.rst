@@ -10,12 +10,12 @@ objects to their ISO 8601 string representation via
 `isoformat <https://docs.python.org/3/library/datetime.html#datetime.datetime.isoformat>`__.
 
 Such common behaviors can be easily specified on a per-class basis by
-defining an inner class which extends from ``JSONSerializable.Meta`` (or the
+defining an inner class which extends from ``DataclassWizard.Meta`` (or the
 aliased name ``JSONWizard.Meta``), as shown below. The name of the inner class
 does not matter, but for demo purposes it's named the same as the base class here.
 
 .. note::
-  As of *v0.18.0*, the Meta config for the main dataclass will "cascade down"
+  The Meta config for the main dataclass will "cascade down"
   and be merged with the Meta config (if specified) of each nested dataclass. To
   disable this behavior, you can pass in ``recursive=False`` to the Meta config.
 

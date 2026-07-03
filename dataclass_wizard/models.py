@@ -1,16 +1,11 @@
-import json
-from dataclasses import MISSING, Field
-from datetime import date, datetime, time
-from typing import Generic, Mapping, NewType, Any, TypedDict
+from collections.abc import Mapping
+from dataclasses import MISSING
+from dataclasses import Field as _Field
+from typing import NewType
 
+from ._type_def import ExplicitNull
 from .constants import PY310_OR_ABOVE, PY314_OR_ABOVE
-from .decorators import cached_property
-from .type_def import T, DT, PyNotRequired
-# noinspection PyProtectedMember
-from .utils.dataclass_compat import _create_fn
-from .utils.object_path import split_object_path
-from .utils.type_conv import as_datetime, as_time, as_date
-
+from .utils._object_path import split_object_path
 
 # Define a simple type (alias) for the `CatchAll` field
 #
@@ -22,85 +17,112 @@ from .utils.type_conv import as_datetime, as_time, as_date
 # if PY312_OR_ABOVE:
 #     type CatchAll = Mapping
 CatchAll = NewType('CatchAll', Mapping)
-# A date, time, datetime sub type, or None.
-# DT_OR_NONE = Optional[DT]
 
 
-class Extras(TypedDict):
-    """
-    "Extra" config that can be used in the load / dump process.
-    """
-    config: PyNotRequired['META']
-    cls: type
-    cls_name: str
-    fn_gen: 'FunctionBuilder'
-    locals: dict[str, Any]
-    pattern: PyNotRequired['PatternedDT']
+def _normalize_alias_path_args(all_paths, load, dump):
+    """Normalize `AliasPath` arguments and canonicalize path values."""
+    if load is not None:
+        all_paths = load
+        load = None
+        dump = ExplicitNull
+
+    elif dump is not None:
+        all_paths = dump
+        dump = None
+        load = ExplicitNull
+
+    if isinstance(all_paths, str):
+        all_paths = (split_object_path(all_paths),)
+    else:
+        all_paths = tuple([
+            split_object_path(a) if isinstance(a, str) else a
+            for a in all_paths
+        ])
+
+    return all_paths, load, dump
 
 
-# noinspection PyShadowingBuiltins
-def json_key(*keys: str, all=False, dump=True):
-    return JSON(*keys, all=all, dump=dump)
-
-
-# noinspection PyPep8Naming,PyShadowingBuiltins
-def KeyPath(keys, all=True, dump=True):
-    if isinstance(keys, str):
-        keys = split_object_path(keys)
-
-    return JSON(*keys, all=all, dump=dump, path=True)
-
-
-# noinspection PyShadowingBuiltins
-def json_field(keys, *,
-               all=False, dump=True,
-               default=MISSING,
-               default_factory=MISSING,
-               init=True, repr=True,
-               hash=None, compare=True, metadata=None):
+def _normalize_alias_args(default, default_factory, all_aliases, load, dump, env):
+    """Normalize `Alias` arguments and canonicalize alias values."""
 
     if default is not MISSING and default_factory is not MISSING:
         raise ValueError('cannot specify both default and default_factory')
 
-    return JSONField(keys, all, dump, default, default_factory, init, repr,
-                     hash, compare, metadata)
+    if all_aliases:
+        load = dump = all_aliases
+
+    elif load is not None and isinstance(load, str):
+        load = (load,)
+
+    elif env is not None:
+        if isinstance(env, str):
+            env = (env,)
+        elif env is True:
+            env = load
+
+    return all_aliases, load, dump, env
 
 
-env_field = json_field
+# Instances of Field are only ever created from within this module,
+# and only from the field() function, although Field instances are
+# exposed externally as (conceptually) read-only objects.
+#
+# name and type are filled in after the fact, not in __init__.
+# They're not known at the time this class is instantiated, but it's
+# convenient if they're available later.
 
+# noinspection PyPep8Naming,PyShadowingBuiltins
+def Env(*load,
+        default=MISSING,
+        default_factory=MISSING,
+        init=True, repr=True,
+        hash=None, compare=True, metadata=None,
+        **field_kwargs):
 
-class JSON:
+    # noinspection PyTypeChecker
+    return Alias(
+        env=load,
+        default=default,
+        default_factory=default_factory,
+        init=init,
+        repr=repr,
+        hash=hash,
+        compare=compare,
+        metadata=metadata,
+        **field_kwargs,
+    )
 
-    __slots__ = ('keys',
-                 'all',
-                 'dump',
-                 'path')
+# In Python 3.14, dataclasses adds a new parameter to the :class:`Field`
+# constructor: `doc`
+#
+# Ref: https://docs.python.org/3.14/library/dataclasses.html#dataclasses.field
+if PY314_OR_ABOVE:
+    # noinspection PyPep8Naming,PyShadowingBuiltins
+    def Alias(
+        *all,
+        load=None,
+        dump=None,
+        env=None,
+        skip=False,
+        default=MISSING,
+        default_factory=MISSING,
+        init=True,
+        repr=True,
+        hash=None,
+        compare=True,
+        metadata=None,
+        kw_only=MISSING,
+        doc=None,
+    ):
 
-    # noinspection PyShadowingBuiltins
-    def __init__(self, *keys, all=False, dump=True, path=False):
+        all, load, dump, env = _normalize_alias_args(default, default_factory, all, load, dump, env)
 
-        self.keys = (split_object_path(keys)
-                     if path and isinstance(keys, str) else keys)
-        self.all = all
-        self.dump = dump
-        self.path = path
-
-
-class JSONField(Field):
-
-    __slots__ = ('json', )
-
-    # In Python 3.14, dataclasses adds a new parameter to the :class:`Field`
-    # constructor: `doc`
-    #
-    # Ref: https://docs.python.org/3.14/library/dataclasses.html#dataclasses.field
-    if PY314_OR_ABOVE:  # pragma: no cover
-        # noinspection PyShadowingBuiltins
-        def __init__(
-            self,
-            keys,
-            all: bool,
-            dump: bool,
+        return Field(
+            load,
+            dump,
+            env,
+            skip,
+            None,
             default,
             default_factory,
             init,
@@ -108,252 +130,46 @@ class JSONField(Field):
             hash,
             compare,
             metadata,
-            path: bool = False,
-        ):
-
-            super().__init__(
-                default,
-                default_factory,
-                init,
-                repr,
-                hash,
-                compare,
-                metadata,
-                False,
-                None,
-            )
-
-            if isinstance(keys, str):
-                keys = split_object_path(keys) if path else (keys,)
-            elif keys is ...:
-                keys = ()
-
-            self.json = JSON(*keys, all=all, dump=dump, path=path)
-
-    # In Python 3.10, dataclasses adds a new parameter to the :class:`Field`
-    # constructor: `kw_only`
-    #
-    # Ref: https://docs.python.org/3.10/library/dataclasses.html#dataclasses.dataclass
-    elif PY310_OR_ABOVE:  # pragma: no cover
-        # noinspection PyShadowingBuiltins
-        def __init__(self, keys, all: bool, dump: bool,
-                     default, default_factory, init, repr, hash, compare,
-                     metadata, path: bool = False):
-
-            super().__init__(default, default_factory, init, repr, hash,
-                             compare, metadata, False)
-
-            if isinstance(keys, str):
-                keys = split_object_path(keys) if path else (keys,)
-            elif keys is ...:
-                keys = ()
-
-            self.json = JSON(*keys, all=all, dump=dump, path=path)
-
-    else:  # pragma: no cover
-        # noinspection PyArgumentList,PyShadowingBuiltins
-        def __init__(self, keys, all: bool, dump: bool,
-                     default, default_factory, init, repr, hash, compare,
-                     metadata, path: bool = False):
-
-            super().__init__(default, default_factory, init, repr, hash,
-                             compare, metadata)
-
-            if isinstance(keys, str):
-                keys = split_object_path(keys) if path else (keys,)
-            elif keys is ...:
-                keys = ()
-
-            self.json = JSON(*keys, all=all, dump=dump, path=path)
-
-
-# noinspection PyPep8Naming
-def Pattern(pattern):
-    return PatternedDT(pattern)
-
-
-class _PatternBase:
-    __slots__ = ()
-
-    def __class_getitem__(cls, pattern):
-        return PatternedDT(pattern, cls.__base__)
-
-    __getitem__ = __class_getitem__
-
-
-class DatePattern(date, _PatternBase):
-    __slots__ = ()
-
-
-class TimePattern(time, _PatternBase):
-    __slots__ = ()
-
-
-class DateTimePattern(datetime, _PatternBase):
-    __slots__ = ()
-
-
-class PatternedDT(Generic[DT]):
-
-    # `cls` is the date/time/datetime type or subclass.
-    # `pattern` is the format string to pass in to `datetime.strptime`.
-    __slots__ = ('cls',
-                 'pattern')
-
-    def __init__(self, pattern, cls = None):
-        self.cls = cls
-        self.pattern = pattern
-
-    def get_transform_func(self):
-        cls = self.cls
-
-        # Parse with `fromisoformat` first, because its *much* faster than
-        # `datetime.strptime` - see linked article above for more details.
-        body_lines = [
-            'dt = default_load_func(date_string, cls, raise_=False)',
-            'if dt is not None:',
-            '  return dt',
-            'dt = datetime.strptime(date_string, pattern)',
-        ]
-
-        locals_ns = {'datetime': datetime,
-                     'pattern': self.pattern,
-                     'cls': cls}
-
-        if cls is datetime:
-            default_load_func = as_datetime
-            body_lines.append('return dt')
-        elif cls is date:
-            default_load_func = as_date
-            body_lines.append('return dt.date()')
-        elif cls is time:
-            default_load_func = as_time
-            # temp fix for Python 3.11+, since `time.fromisoformat` is updated
-            # to support more formats, such as "-" and "+" in strings.
-            if '-' in self.pattern or '+' in self.pattern:
-                body_lines = ['try:',
-                              '  return datetime.strptime(date_string, pattern).time()',
-                              'except (ValueError, TypeError):',
-                              '  dt = default_load_func(date_string, cls, raise_=False)',
-                              '  if dt is not None:',
-                              '    return dt']
-            else:
-                body_lines.append('return dt.time()')
-        elif issubclass(cls, datetime):
-            default_load_func = as_datetime
-            locals_ns['datetime'] = cls
-            body_lines.append('return dt')
-        elif issubclass(cls, date):
-            default_load_func = as_date
-            body_lines.append('return cls(dt.year, dt.month, dt.day)')
-        elif issubclass(cls, time):
-            default_load_func = as_time
-            # temp fix for Python 3.11+, since `time.fromisoformat` is updated
-            # to support more formats, such as "-" and "+" in strings.
-            if '-' in self.pattern or '+' in self.pattern:
-                body_lines = ['try:',
-                              '  dt = datetime.strptime(date_string, pattern).time()',
-                              'except (ValueError, TypeError):',
-                              '  dt = default_load_func(date_string, cls, raise_=False)',
-                              '  if dt is not None:',
-                              '    return dt']
-
-            body_lines.append('return cls(dt.hour, dt.minute, dt.second, '
-                              'dt.microsecond, fold=dt.fold)')
-        else:
-            raise TypeError(f'Annotation for `Pattern` is of invalid type '
-                            f'({cls}). Expected a type or subtype of: '
-                            f'{DT.__constraints__}')
-
-        locals_ns['default_load_func'] = default_load_func
-
-        return _create_fn('pattern_to_dt',
-                          ('date_string', ),
-                          body_lines,
-                          locals=locals_ns,
-                          return_type=DT)
-
-    def __repr__(self):
-        repr_val = [f'{k}={getattr(self, k)!r}' for k in self.__slots__]
-        return f'{self.__class__.__name__}({", ".join(repr_val)})'
-
-
-class Container(list[T]):
-
-    __slots__ = ('__dict__',
-                 '__orig_class__')
-
-    @cached_property
-    def __model__(self):
-
-        try:
-            # noinspection PyUnresolvedReferences
-            return self.__orig_class__.__args__[0]
-        except AttributeError:
-            cls_name = self.__class__.__qualname__
-            msg = (f'A {cls_name} object needs to be instantiated with '
-                   f'a generic type T.\n\n'
-                   'Example:\n'
-                   f'  my_list = {cls_name}[T](...)')
-
-            raise TypeError(msg) from None
-
-    def __str__(self):
-
-        import pprint
-        return pprint.pformat(self)
-
-    def prettify(self, encoder = json.dumps,
-                 ensure_ascii=False,
-                 **encoder_kwargs):
-
-        return self.to_json(
-            indent=2,
-            encoder=encoder,
-            ensure_ascii=ensure_ascii,
-            **encoder_kwargs
+            kw_only,
+            doc,
         )
 
-    def to_json(self, encoder=json.dumps,
-                **encoder_kwargs):
+    # noinspection PyPep8Naming,PyShadowingBuiltins
+    def AliasPath(
+        *all,
+        load=None,
+        dump=None,
+        skip=False,
+        default=MISSING,
+        default_factory=MISSING,
+        init=True,
+        repr=True,
+        hash=None,
+        compare=True,
+        metadata=None,
+        kw_only=MISSING,
+        doc=None,
+    ):
+        all, load, dump = _normalize_alias_path_args(all, load, dump)
 
-        from .loader_selection import asdict
+        return Field(
+            load,
+            dump,
+            load,
+            skip,
+            all,
+            default,
+            default_factory,
+            init,
+            repr,
+            hash,
+            compare,
+            metadata,
+            kw_only,
+            doc,
+        )
 
-        cls = self.__model__
-        list_of_dict = [asdict(o, cls=cls) for o in self]
-
-        return encoder(list_of_dict, **encoder_kwargs)
-
-    def to_json_file(self, file, mode = 'w',
-                     encoder=json.dump,
-                     **encoder_kwargs):
-
-        from .loader_selection import asdict
-
-        cls = self.__model__
-        list_of_dict = [asdict(o, cls=cls) for o in self]
-
-        with open(file, mode) as out_file:
-            encoder(list_of_dict, out_file, **encoder_kwargs)
-
-
-# noinspection PyShadowingBuiltins
-def path_field(keys, *,
-               all=True, dump=True,
-               default=MISSING,
-               default_factory=MISSING,
-               init=True, repr=True,
-               hash=None, compare=True, metadata=None):
-
-    if default is not MISSING and default_factory is not MISSING:
-        raise ValueError('cannot specify both default and default_factory')
-
-    return JSONField(keys, all, dump, default, default_factory, init, repr,
-                    hash, compare, metadata, True)
-
-
-if PY314_OR_ABOVE:
-
+    # noinspection PyShadowingBuiltins
     def skip_if_field(
         condition,
         *,
@@ -376,9 +192,59 @@ if PY314_OR_ABOVE:
 
         metadata["__skip_if__"] = condition
 
-        return Field(
-            default, default_factory, init, repr, hash, compare, metadata, kw_only, doc
+        return _Field(
+            default,
+            default_factory,
+            init,
+            repr,
+            hash,
+            compare,
+            metadata,
+            kw_only,
+            doc,
         )
+
+    class Field(_Field):
+
+        __slots__ = ("load_alias", "dump_alias", "env_vars", "skip", "path")
+
+        # noinspection PyShadowingBuiltins
+        def __init__(
+            self,
+            load_alias,
+            dump_alias,
+            env_vars,
+            skip,
+            path,
+            default,
+            default_factory,
+            init,
+            repr,
+            hash,
+            compare,
+            metadata,
+            kw_only,
+            doc=None,
+        ):
+
+            # noinspection PyArgumentList
+            super().__init__(
+                default,
+                default_factory,
+                init,
+                repr,
+                hash,
+                compare,
+                metadata,
+                kw_only,
+                doc,
+            )
+
+            self.load_alias = load_alias
+            self.dump_alias = dump_alias
+            self.env_vars = env_vars
+            self.skip = skip
+            self.path = path
 
 
 # In Python 3.10, dataclasses adds a new parameter to the :class:`Field`
@@ -386,165 +252,387 @@ if PY314_OR_ABOVE:
 #
 # Ref: https://docs.python.org/3.10/library/dataclasses.html#dataclasses.dataclass
 elif PY310_OR_ABOVE:  # pragma: no cover
-    def skip_if_field(condition, *, default=MISSING, default_factory=MISSING, init=True, repr=True,
-                      hash=None, compare=True, metadata=None, kw_only=MISSING):
+
+    # noinspection PyPep8Naming,PyShadowingBuiltins
+    def Alias(*all,
+              load=None,
+              dump=None,
+              env=None,
+              skip=False,
+              default=MISSING,
+              default_factory=MISSING,
+              init=True, repr=True,
+              hash=None, compare=True,
+              metadata=None, kw_only=MISSING):
+
+        all, load, dump, env = _normalize_alias_args(default, default_factory, all, load, dump, env)
+
+        return Field(
+            load,
+            dump,
+            env,
+            skip,
+            None,
+            default,
+            default_factory,
+            init,
+            repr,
+            hash,
+            compare,
+            metadata,
+            kw_only,
+        )
+
+    # noinspection PyPep8Naming,PyShadowingBuiltins
+    def AliasPath(*all,
+                  load=None,
+                  dump=None,
+                  skip=False,
+                  default=MISSING,
+                  default_factory=MISSING,
+                  init=True, repr=True,
+                  hash=None, compare=True,
+                  metadata=None, kw_only=MISSING):
+        all, load, dump = _normalize_alias_path_args(all, load, dump)
+
+        return Field(
+            load,
+            dump,
+            load,
+            skip,
+            all,
+            default,
+            default_factory,
+            init,
+            repr,
+            hash,
+            compare,
+            metadata,
+            kw_only,
+        )
+
+    # noinspection PyShadowingBuiltins
+    def skip_if_field(
+        condition,
+        *,
+        default=MISSING,
+        default_factory=MISSING,
+        init=True,
+        repr=True,
+        hash=None,
+        compare=True,
+        metadata=None,
+        kw_only=MISSING
+    ):
 
         if default is not MISSING and default_factory is not MISSING:
-            raise ValueError('cannot specify both default and default_factory')
+            raise ValueError("cannot specify both default and default_factory")
 
         if metadata is None:
             metadata = {}
 
-        metadata['__skip_if__'] = condition
+        metadata["__skip_if__"] = condition
 
-        return Field(default, default_factory, init, repr, hash,
-                     compare, metadata, kw_only)
+        return _Field(
+            default,
+            default_factory,
+            init,
+            repr,
+            hash,
+            compare,
+            metadata,
+            kw_only,
+        )
+
+    class Field(_Field):
+
+        __slots__ = ('load_alias',
+                     'dump_alias',
+                     'env_vars',
+                     'skip',
+                     'path')
+
+        # noinspection PyShadowingBuiltins
+        def __init__(self,
+                     load_alias, dump_alias, env_vars, skip, path,
+                     default, default_factory, init, repr, hash, compare,
+                     metadata, kw_only):
+
+            super().__init__(default, default_factory, init, repr, hash,
+                             compare, metadata, kw_only)
+
+            if path is not None:
+                if isinstance(path, str):
+                    path = split_object_path(path) if path else (path, )
+
+            self.load_alias = load_alias
+            self.dump_alias = dump_alias
+            self.env_vars = env_vars
+            self.skip = skip
+            self.path = path
+
 else:  # pragma: no cover
-    def skip_if_field(condition, *, default=MISSING, default_factory=MISSING, init=True, repr=True,
-                      hash=None, compare=True, metadata=None):
+    # noinspection PyPep8Naming,PyShadowingBuiltins
+    def Alias(*all,
+              load=None,
+              dump=None,
+              env=None,
+              skip=False,
+              default=MISSING,
+              default_factory=MISSING,
+              init=True, repr=True,
+              hash=None, compare=True, metadata=None):
+
+        all, load, dump, env = _normalize_alias_args(default, default_factory, all, load, dump, env)
+
+        return Field(
+            load,
+            dump,
+            env,
+            skip,
+            None,
+            default,
+            default_factory,
+            init,
+            repr,
+            hash,
+            compare,
+            metadata,
+        )
+
+    # noinspection PyPep8Naming,PyShadowingBuiltins
+    def AliasPath(*all,
+                  load=None,
+                  dump=None,
+                  skip=False,
+                  default=MISSING,
+                  default_factory=MISSING,
+                  init=True, repr=True,
+                  hash=None, compare=True,
+                  metadata=None):
+        all, load, dump = _normalize_alias_path_args(all, load, dump)
+
+        return Field(
+            load,
+            dump,
+            load,
+            skip,
+            all,
+            default,
+            default_factory,
+            init,
+            repr,
+            hash,
+            compare,
+            metadata,
+        )
+
+    # noinspection PyShadowingBuiltins
+    def skip_if_field(
+        condition,
+        *,
+        default=MISSING,
+        default_factory=MISSING,
+        init=True,
+        repr=True,
+        hash=None,
+        compare=True,
+        metadata=None
+    ):
 
         if default is not MISSING and default_factory is not MISSING:
-            raise ValueError('cannot specify both default and default_factory')
+            raise ValueError("cannot specify both default and default_factory")
 
         if metadata is None:
             metadata = {}
 
-        metadata['__skip_if__'] = condition
+        metadata["__skip_if__"] = condition
 
         # noinspection PyArgumentList
-        return Field(default, default_factory, init, repr, hash,
-                     compare, metadata)
+        return _Field(
+            default,
+            default_factory,
+            init,
+            repr,
+            hash,
+            compare,
+            metadata,
+        )
+
+    class Field(_Field):
+
+        __slots__ = ('load_alias',
+                     'dump_alias',
+                     'env_vars',
+                     'skip',
+                     'path')
+
+        # noinspection PyArgumentList,PyShadowingBuiltins
+        def __init__(self,
+                     load_alias, dump_alias, env_vars, skip, path,
+                     default, default_factory, init, repr, hash, compare,
+                     metadata):
+
+            super().__init__(default, default_factory, init, repr, hash,
+                             compare, metadata)
+
+            if path is not None:
+                if isinstance(path, str):
+                    path = split_object_path(path) if path else (path,)
+
+            self.load_alias = load_alias
+            self.dump_alias = dump_alias
+            self.env_vars = env_vars
+            self.skip = skip
+            self.path = path
 
 
-class Condition:
+Alias.__doc__ = """
+    Maps one or more JSON key names to a dataclass field.
 
-    __slots__ = (
-        'op',
-        'val',
-        't_or_f',
-        '_wrapped',
-    )
+    This function acts as an alias for ``dataclasses.field(...)``, with additional
+    support for associating a field with one or more JSON keys. It customizes
+    serialization and deserialization behavior, including handling keys with
+    varying cases or alternative names.
 
-    def __init__(self, operator, value):
-        self.op = operator
-        self.val = value
-        self.t_or_f = operator in {'+', '!'}
+    The mapping is case-sensitive; JSON keys must match exactly (e.g., ``myField``
+    will not match ``myfield``). If multiple keys are provided, the first one
+    is used as the default for serialization.
 
-    def __str__(self):
-        return f"{self.op} {self.val!r}"
+    :param all: One or more JSON key names to associate with the dataclass field.
+    :type all: str
+    :param load: Key(s) to use for deserialization. Defaults to ``all`` if not specified.
+    :type load: str | Sequence[str] | None
+    :param dump: Key to use for serialization. Defaults to the first key in ``all``.
+    :type dump: str | None
+    :param skip: If ``True``, the field is excluded during serialization. Defaults to ``False``.
+    :type skip: bool
+    :param default: Default value for the field. Cannot be used with ``default_factory``.
+    :type default: Any
+    :param default_factory: Callable to generate the default value. Cannot be used with ``default``.
+    :type default_factory: Callable[[], Any]
+    :param init: Whether the field is included in the generated ``__init__`` method. Defaults to ``True``.
+    :type init: bool
+    :param repr: Whether the field appears in the ``__repr__`` output. Defaults to ``True``.
+    :type repr: bool
+    :param hash: Whether the field is included in the ``__hash__`` method. Defaults to ``None``.
+    :type hash: bool
+    :param compare: Whether the field is included in comparison methods. Defaults to ``True``.
+    :type compare: bool
+    :param metadata: Additional metadata for the field. Defaults to ``None``.
+    :type metadata: dict
+    :param kw_only: If ``True``, the field is keyword-only. Defaults to ``False``.
+    :type kw_only: bool
+    :return: A dataclass field with additional mappings to one or more JSON keys.
+    :rtype: Field
 
-    def evaluate(self, other) -> bool:  # pragma: no cover
-        # Optionally support runtime evaluation of the condition
-        operators = {
-            "==": lambda a, b: a == b,
-            "!=": lambda a, b: a != b,
-            "<": lambda a, b: a < b,
-            "<=": lambda a, b: a <= b,
-            ">": lambda a, b: a > b,
-            ">=": lambda a, b: a >= b,
-            "is": lambda a, b: a is b,
-            "is not": lambda a, b: a is not b,
-            "+": lambda a, _: True if a else False,
-            "!": lambda a, _: not a,
-        }
-        return operators[self.op](other, self.val)
+    **Examples**
+
+    **Example 1** -- Mapping multiple key names to a field::
+
+        from dataclasses import dataclass
+
+        from dataclass_wizard import Alias, LoadMeta, fromdict
+
+        @dataclass
+        class Example:
+            my_field: str = Alias('key1', 'key2', default="default_value")
+
+        print(fromdict(Example, {'key2': 'a value!'}))
+        #> Example(my_field='a value!')
+
+    **Example 2** -- Skipping a field during serialization::
+
+        from dataclasses import dataclass
+
+        from dataclass_wizard import Alias, JSONWizard
+
+        @dataclass
+        class Example(JSONWizard):
+            my_field: str = Alias('key', skip=True)
+
+        ex = Example.from_dict({'key': 'some value'})
+        print(ex)                  #> Example(my_field='a value!')
+        assert ex.to_dict() == {}  #> True
+"""
+
+AliasPath.__doc__ = """
+    Creates a dataclass field mapped to one or more nested JSON paths.
+
+    This function acts as an alias for ``dataclasses.field(...)``, with additional
+    functionality to associate a field with one or more nested JSON paths,
+    including complex or deeply nested structures.
+
+    The mapping is case-sensitive, meaning that JSON keys must match exactly
+    (e.g., "myField" will not match "myfield"). Nested paths can include dot
+    notations or bracketed syntax for accessing specific indices or keys.
+
+    :param all: One or more nested JSON paths to associate with
+        the dataclass field (e.g., ``a.b.c`` or ``a["nested"]["key"]``).
+    :type all: PathType | str
+    :param load: Path(s) to use for deserialization. Defaults to ``all`` if not specified.
+    :type load: PathType | str | None
+    :param dump: Path(s) to use for serialization. Defaults to ``all`` if not specified.
+    :type dump: PathType | str | None
+    :param skip: If True, the field is excluded during serialization. Defaults to False.
+    :type skip: bool
+    :param default: Default value for the field. Cannot be used with ``default_factory``.
+    :type default: Any
+    :param default_factory: A callable to generate the default value. Cannot be used with ``default``.
+    :type default_factory: Callable[[], Any]
+    :param init: Whether the field is included in the generated ``__init__`` method. Defaults to True.
+    :type init: bool
+    :param repr: Whether the field appears in the ``__repr__`` output. Defaults to True.
+    :type repr: bool
+    :param hash: Whether the field is included in the ``__hash__`` method. Defaults to None.
+    :type hash: bool
+    :param compare: Whether the field is included in comparison methods. Defaults to True.
+    :type compare: bool
+    :param metadata: Additional metadata for the field. Defaults to None.
+    :type metadata: dict
+    :param kw_only: If True, the field is keyword-only. Defaults to False.
+    :type kw_only: bool
+    :return: A dataclass field with additional mapping to one or more nested JSON paths.
+    :rtype: Field
+
+    **Examples**
+
+    **Example 1** -- Mapping multiple nested paths to a field::
+
+        from dataclasses import dataclass
+
+        from dataclass_wizard import AliasPath, fromdict
+
+        @dataclass
+        class Example:
+            my_str: str = AliasPath('a.b.c.1', 'x.y["-1"].z', default="default_value")
+
+        # Maps nested paths ('a', 'b', 'c', 1) and ('x', 'y', '-1', 'z')
+        # to the `my_str` attribute. '-1' is treated as a literal string key,
+        # not an index, for the second path.
+
+        print(fromdict(Example, {'x': {'y': {'-1': {'z': 'some_value'}}}}))
+        #> Example(my_str='some_value')
+
+    **Example 2** -- Using Annotated::
+
+        from dataclasses import dataclass
+        from typing import Annotated
+
+        from dataclass_wizard import AliasPath, JSONWizard
+
+        @dataclass
+        class Example(JSONWizard):
+            my_str: Annotated[str, AliasPath('my."7".nested.path.-321')]
 
 
-# Aliases for conditions
+        ex = Example.from_dict({'my': {'7': {'nested': {'path': {-321: 'Test'}}}}})
+        print(ex)  #> Example(my_str='Test')
+"""
 
-# noinspection PyPep8Naming
-def EQ(value): return Condition("==", value)
-# noinspection PyPep8Naming
-def NE(value): return Condition("!=", value)
-# noinspection PyPep8Naming
-def LT(value): return Condition("<", value)
-# noinspection PyPep8Naming
-def LE(value): return Condition("<=", value)
-# noinspection PyPep8Naming
-def GT(value): return Condition(">", value)
-# noinspection PyPep8Naming
-def GE(value): return Condition(">=", value)
-# noinspection PyPep8Naming
-def IS(value): return Condition("is", value)
-# noinspection PyPep8Naming
-def IS_NOT(value): return Condition("is not", value)
-# noinspection PyPep8Naming
-def IS_TRUTHY(): return Condition("+", None)
-# noinspection PyPep8Naming
-def IS_FALSY(): return Condition("!", None)
+Field.__doc__ = """
+    Alias to a :class:`dataclasses.Field`, but one which also represents a
+    mapping of one or more JSON key names to a dataclass field.
 
-
-# noinspection PyPep8Naming
-def SkipIf(condition):
-    """
-    Mark a condition to be used as a skip directive during serialization.
-    """
-    condition._wrapped = True  # Set a marker attribute
-    return condition
-
-
-# Convenience alias, to skip serializing field if value is None
-SkipIfNone = SkipIf(IS(None))
-
-
-def finalize_skip_if(skip_if, operand_1, conditional):
-    """
-    Finalizes the skip condition by generating the appropriate string based on the condition.
-
-    Args:
-        skip_if (Condition): The condition to evaluate, containing truthiness and operation info.
-        operand_1 (str): The primary operand for the condition (e.g., a variable or value).
-        conditional (str): The conditional operator to use (e.g., '==', '!=').
-
-    Returns:
-        str: The resulting skip condition as a string.
-
-    Example:
-        >>> cond = Condition(t_or_f=True, op='+', val=None)
-        >>> finalize_skip_if(cond, 'my_var', '==')
-        'my_var'
-    """
-    if skip_if.t_or_f:
-        return operand_1 if skip_if.op == '+' else f'not {operand_1}'
-
-    return f'{operand_1} {conditional}'
-
-
-def get_skip_if_condition(skip_if, _locals, operand_2=None, condition_i=None, condition_var='_skip_if_'):
-    """
-    Retrieves the skip condition based on the provided `Condition` object.
-
-    Args:
-        skip_if (Condition): The condition to evaluate.
-        _locals (dict[str, Any]): A dictionary of local variables for condition evaluation.
-        operand_2 (str): The secondary operand (e.g., a variable or value).
-        condition_i (Condition): The condition var index.
-        condition_var (str): The variable name to evaluate.
-
-    Returns:
-        Any: The result of the evaluated condition or a string representation for custom values.
-
-    Example:
-        >>> cond = Condition(t_or_f=False, op='==', val=10)
-        >>> locals_dict = {}
-        >>> get_skip_if_condition(cond, locals_dict, 'other_var')
-        '== other_var'
-    """
-    # TODO: To avoid circular import
-    from .class_helper import is_builtin
-
-    if skip_if is None:
-        return False
-
-    if skip_if.t_or_f:  # Truthy or falsy condition, no operand
-        return True
-
-    if is_builtin(skip_if.val):
-        return str(skip_if)
-
-    # Update locals (as `val` is not a builtin)
-    if operand_2 is None:
-        operand_2 = f'{condition_var}{condition_i}'
-
-    _locals[operand_2] = skip_if.val
-    return f'{skip_if.op} {operand_2}'
+    See the docs on the :func:`Alias` and :func:`AliasPath` for more info.
+"""

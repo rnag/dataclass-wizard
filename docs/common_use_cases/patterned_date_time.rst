@@ -1,172 +1,295 @@
+.. title:: Patterned Date and Time
+
 Patterned Date and Time
 =======================
 
-.. note::
-    **Important:** The current patterned date and time functionality is being phased out. Please refer to the new docs for **V1 Opt-in** features, which introduces enhanced support for patterned date-time strings. For more details, see the `Field Guide to V1 Opt‐in`_ and the `V1 Patterned Date and Time`_ documentation.
+This feature, introduced in **v0.35.0**, allows parsing
+custom date and time formats into Python's :class:`date`,
+:class:`time`, and :class:`datetime` objects.
+For example, strings like ``November 2, 2021`` can now
+be parsed using customizable patterns -- specified as `format codes`_.
 
-    This change is part of the ongoing improvements in version ``v0.35.0+``, and the old functionality will no longer be maintained in future releases.
+**Key Features:**
 
-.. _Field Guide to V1 Opt‐in: https://github.com/rnag/dataclass-wizard/wiki/Field-Guide-to-V1-Opt%E2%80%90in
-.. _V1 Patterned Date and Time: https://dcw.ritviknag.com/en/latest/common_use_cases/v1_patterned_date_time.html
+- Supports standard, timezone-aware, and UTC patterns.
+- Annotate fields using ``DatePattern``, ``TimePattern``, or ``DateTimePattern``.
+- Retains `ISO 8601`_ serialization for compatibility.
 
-Loading an `ISO 8601`_ format string into a :class:`date` / :class:`time` /
-:class:`datetime` object is already handled as part of the de-serialization
-process by default. For example, a date string in ISO format such as
-``2022-01-17T21:52:18.000Z`` is correctly parsed to :class:`datetime` as expected.
+**Supported Patterns:**
 
-However, what happens when you have a date string in |another format|_, such
-as ``November 2, 2021``, and you want to load it to a :class:`date`
-or :class:`datetime` object?
+    1. **Naive Patterns** (default)
+        * :class:`DatePattern`, :class:`DateTimePattern`, :class:`TimePattern`
+    2. **Timezone-Aware Patterns**
+        * :class:`AwareDateTimePattern`, :class:`AwareTimePattern`
+    3. **UTC Patterns**
+        * :class:`UTCDateTimePattern`, :class:`UTCTimePattern`
 
-As of *v0.20.0*, the accepted solution is to use the builtin support for
-parsing strings with custom date-time patterns; this internally calls
-:meth:`datetime.strptime` to match input strings against a specified pattern.
+Pattern Comparison
+~~~~~~~~~~~~~~~~~~
 
-There are two approaches (shown below) that can be used to specify custom patterns
-for date-time strings. The simplest approach is to annotate fields as either
-a :class:`DatePattern`, :class:`TimePattern`, or a :class:`DateTimePattern`.
+The following table compares the different types of date-time patterns: **Naive**, **Timezone-Aware**, and **UTC** patterns. It summarizes key features and example use cases for each.
 
-.. note::
-    The input date-time strings are parsed in the following sequence:
++-----------------------------+----------------------------+-----------------------------------------------------------+
+| Pattern Type                | Key Characteristics        | Example Use Cases                                         |
++=============================+============================+===========================================================+
+| **Naive Patterns**          | No timezone info           | * :class:`DatePattern` (local date)                       |
+|                             |                            | * :class:`TimePattern` (local time)                       |
+|                             |                            | * :class:`DateTimePattern` (local datetime)               |
++-----------------------------+----------------------------+-----------------------------------------------------------+
+| **Timezone-Aware Patterns** | Specifies a timezone       | * :class:`AwareDateTimePattern` (e.g., *'Europe/London'*) |
+|                             |                            | * :class:`AwareTimePattern` (timezone-aware time)         |
++-----------------------------+----------------------------+-----------------------------------------------------------+
+| **UTC Patterns**            | Interprets as UTC time     | * :class:`UTCDateTimePattern` (UTC datetime)              |
+|                             |                            | * :class:`UTCTimePattern` (UTC time)                      |
++-----------------------------+----------------------------+-----------------------------------------------------------+
 
-    - In case it's an `ISO 8601`_ format string, or a numeric timestamp,
-      we attempt to parse with the default load function such as
-      :func:`as_datetime`. Note that we initially parse strings using the
-      builtin :meth:`fromisoformat` method, as this is `much faster`_ than
-      using :meth:`datetime.strptime`. If the date string is matched, we
-      immediately return the new date-time object.
-    - Next, we parse with :meth:`datetime.strptime` by passing in the
-      *pattern* to match against. If the pattern is invalid, a
-      ``ParseError`` is raised at this stage.
+Standard Date-Time Patterns
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-In any case, the :class:`date`, :class:`time`, and :class:`datetime` objects
-are dumped (serialized) as `ISO 8601`_ format strings, which is the default
-behavior. As we initially attempt to parse with :meth:`fromisoformat` in the
-load (de-serialization) process as mentioned, it turns out
-`much faster`_ to load any data that has been previously serialized in
-ISO-8601 format.
+.. hint::
+    Note that the "naive" implementations :class:`TimePattern` and :class:`DateTimePattern`
+    do not store *timezone* information -- or :attr:`tzinfo` -- on the de-serialized
+    object (as explained in the `Naive datetime`_ concept). However, `Timezone-Aware Date and Time Patterns`_ *do* store this information.
 
-The usage is shown below, and is again pretty straightforward.
+    Additionally, :class:`date` does not have any *timezone*-related data, nor does its
+    counterpart :class:`DatePattern`.
+
+To use, simply annotate fields with ``DatePattern``, ``TimePattern``, or ``DateTimePattern``
+with supported `format codes`_.
+These patterns support the most common date formats.
+
+.. code:: python3
+
+    from dataclass_wizard import DataclassWizard
+    from dataclass_wizard.patterns import DatePattern, TimePattern
+
+
+    class MyClass(DataclassWizard):
+        date_field: DatePattern['%b %d, %Y']
+        time_field: TimePattern['%I:%M %p']
+
+
+    data = {'date_field': 'Jan 3, 2022', 'time_field': '3:45 PM'}
+    c1 = MyClass.from_dict(data)
+    print(c1)
+    print(c1.to_dict())
+    assert c1 == MyClass.from_dict(c1.to_dict())  # > True
+
+Timezone-Aware Date and Time Patterns
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. hint::
+    Timezone-aware date-time objects store timezone information,
+    as detailed in the Timezone-aware_ section. This is accomplished
+    using the built-in zoneinfo_ module in Python 3.9+.
+
+.. tip::
+   On Windows, install ``tzdata`` with the ``tz`` extra:
+
+   .. code-block:: bash
+
+      pip install dataclass-wizard[tz]
+
+   This is required because Windows does not ship IANA time zone data.
+
+To handle timezone-aware ``datetime`` and ``time`` values, use the following patterns:
+
+- :class:`AwareDateTimePattern`
+- :class:`AwareTimePattern`
+- :class:`AwarePattern` (with :obj:`typing.Annotated`)
+
+These patterns allow you to specify the timezone for the
+date and time, ensuring that the values are interpreted
+correctly relative to the given timezone.
+
+**Example: Using Timezone-Aware Patterns**
 
 .. code:: python3
 
     from dataclasses import dataclass
-    from datetime import datetime
-
+    from pprint import pprint
     from typing import Annotated
 
-    from dataclass_wizard import JSONWizard, Pattern, DatePattern, TimePattern
+    from dataclass_wizard import Alias, fromdict, asdict
+    from dataclass_wizard.patterns import AwareTimePattern, AwareDateTimePattern
 
 
     @dataclass
-    class MyClass(JSONWizard):
-        # 1 -- Annotate with `DatePattern`, `TimePattern`, or `DateTimePattern`.
-        #      Upon de-serialization, the underlying types will be `date`,
-        #      `time`, and `datetime` respectively.
-        date_field: DatePattern['%b %d, %Y']
-        time_field: TimePattern['%I:%M %p']
-        # 2 -- Use `Annotated` to annotate the field as `list[time]` for example,
-        #      and pass in `Pattern` as an extra.
-        dt_field: Annotated[datetime, Pattern('%m/%d/%y %H:%M:%S')]
+    class MyClass:
+        my_aware_dt: AwareTimePattern['Europe/London', '%H:%M:%S']
+        my_aware_dt2: Annotated[AwareDateTimePattern['Asia/Tokyo', '%m-%Y-%H:%M-%Z'], Alias('key')]
 
 
-    data = {'date_field': 'Jan 3, 2022',
-            'time_field': '3:45 PM',
-            'dt_field': '01/02/23 02:03:52'}
 
-    # Deserialize the data into a `MyClass` object
-    c1 = MyClass.from_dict(data)
+    d = {'my_aware_dt': '6:15:45', 'key': '10-2020-15:30-UTC'}
+    c = fromdict(MyClass, d)
 
-    print('Deserialized object:', repr(c1))
-    # MyClass(date_field=datetime.date(2022, 1, 3),
-    #         time_field=datetime.time(15, 45),
-    #         dt_field=datetime.datetime(2023, 1, 2, 2, 3, 52))
+    pprint(c)
+    print(asdict(c))
+    assert c == fromdict(MyClass, asdict(c))  # > True
 
-    # Print the prettified JSON representation. Note that date/times are
-    # converted to ISO 8601 format here.
-    print(c1)
-    # {
-    #   "dateField": "2022-01-03",
-    #   "timeField": "15:45:00",
-    #   "dtField": "2023-01-02T02:03:52"
-    # }
+UTC Date and Time Patterns
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    # Confirm that we can load the serialized data as expected.
-    c2 = MyClass.from_json(c1.to_json())
+.. hint::
+    For UTC-specific time, use UTC patterns, which handle Coordinated Universal Time
+    (UTC) as described in the UTC_ article.
 
-    # Assert that the data is the same
-    assert c1 == c2
+For UTC-specific ``datetime`` and ``time`` values, use the following patterns:
+
+- :class:`UTCDateTimePattern`
+- :class:`UTCTimePattern`
+- :class:`UTCPattern` (with :obj:`typing.Annotated`)
+
+These patterns are used when working with
+date and time in Coordinated Universal Time (UTC_),
+and ensure that *timezone* data -- or :attr:`tzinfo` -- is
+correctly set to ``UTC``.
+
+**Example: Using UTC Patterns**
+
+.. code:: python3
+
+    from typing import Annotated
+
+    from dataclass_wizard import Alias, DataclassWizard
+    from dataclass_wizard.patterns import UTCTimePattern, UTCDateTimePattern
+
+
+    class MyClass(DataclassWizard):
+        my_utc_time: UTCTimePattern['%H:%M:%S']
+        my_utc_dt: Annotated[UTCDateTimePattern['%m-%Y-%H:%M-%Z'], Alias('key')]
+
+
+    d = {'my_utc_time': '6:15:45', 'key': '10-2020-15:30-UTC'}
+    c = MyClass.from_dict(d)
+    print(c)
+    print(c.to_dict())
 
 Containers of Date and Time
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Suppose the type annotation for a dataclass field is more complex -- for example,
-an annotation might be a ``list[date]`` instead, representing an ordered
-collection of :class:`date` objects.
+For more complex annotations like ``list[date]``,
+you can use :obj:`typing.Annotated` with one of ``Pattern``,
+``AwarePattern``, or ``UTCPattern`` to specify custom date-time formats.
 
-In such cases, you can use ``Annotated`` along with :func:`Pattern`, as shown
-below. Note that this also allows you to more easily annotate using a subtype
-of date-time, for example a subclass of :class:`date` if so desired.
+
+.. tip::
+    The :obj:`typing.Annotated` type is used to apply additional metadata (like
+    timezone information) to a field. When combined with a date-time
+    pattern, it tells the library how to interpret the field’s value
+    in terms of its format or timezone.
+
+**Example: Using Pattern with Annotated**
 
 .. code:: python3
 
-    from dataclasses import dataclass
-    from datetime import datetime, time
-
+    from datetime import time
     from typing import Annotated
-
-    from dataclass_wizard import JSONWizard, Pattern
+    from dataclass_wizard import DataclassWizard
+    from dataclass_wizard.patterns import Pattern
 
 
     class MyTime(time):
-        """A custom `time` subclass"""
         def get_hour(self):
             return self.hour
 
 
-    @dataclass
-    class MyClass(JSONWizard):
-
-        time_field: Annotated[list[MyTime], Pattern('%I:%M %p')]
-        dt_mapping: Annotated[dict[int, datetime], Pattern('%b.%d.%y %H,%M,%S')]
+    class MyClass(DataclassWizard):
+        time_field: Annotated[list[MyTime], Pattern['%I:%M %p']]
 
 
-    data = {'time_field': ['3:45 PM', '1:20 am', '12:30 pm'],
-            'dt_mapping': {'1133': 'Jan.2.20 15,20,57',
-                           '5577': 'Nov.27.23 2,52,11'},
-            }
+    data = {'time_field': ['3:45 PM', '1:20 am', '12:30 pm']}
+    c1 = MyClass.from_dict(data)
+    print(c1)  # > MyClass(time_field=[MyTime(15, 45), MyTime(1, 20), MyTime(12, 30)])
 
-    # Deserialize the data into a `MyClass` object
+Multiple Date and Time Patterns
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+You can also use multiple date and time patterns (format codes) to parse and serialize your date and time fields.
+This feature allows for flexibility when handling different formats, making it easier to work with various date and time strings.
+
+Example: Using Multiple Patterns
+---------------------------------
+
+In the example below, the ``DatePattern`` and ``TimePattern`` are configured to support multiple formats. The class ``MyClass`` demonstrates how the fields can accept different formats for both dates and times.
+
+.. code:: python3
+
+    from dataclass_wizard import DataclassWizard
+    from dataclass_wizard.patterns import DatePattern, UTCTimePattern
+
+
+    class MyClass(DataclassWizard):
+        date_field: DatePattern['%b %d, %Y', '%I %p %Y-%m-%d']
+        time_field: UTCTimePattern['%I:%M %p', '(%H)+(%S)']
+
+
+    # Using the first date pattern format: 'Jan 3, 2022'
+    data = {'date_field': 'Jan 3, 2022', 'time_field': '3:45 PM'}
     c1 = MyClass.from_dict(data)
 
-    print('Deserialized object:', repr(c1))
-    # MyClass(time_field=[MyTime(15, 45), MyTime(1, 20), MyTime(12, 30)],
-    #         dt_mapping={1133: datetime.datetime(2020, 1, 2, 15, 20, 57),
-    #                     5577: datetime.datetime(2023, 11, 27, 2, 52, 11)})
-
-    # Print the prettified JSON representation. Note that date/times are
-    # converted to ISO 8601 format here.
     print(c1)
-    # {
-    #   "timeField": [
-    #     "15:45:00",
-    #     "01:20:00",
-    #     "12:30:00"
-    #   ],
-    #   "dtMapping": {
-    #     "1133": "2020-01-02T15:20:57",
-    #     "5577": "2023-11-27T02:52:11"
-    #   }
-    # }
+    print(c1.to_dict())
+    assert c1 == MyClass.from_dict(c1.to_dict())  # > True
+    print()
 
-    # Confirm that we can load the serialized data as expected.
-    c2 = MyClass.from_json(c1.to_json())
+    # Using the second date pattern format: '3 PM 2025-01-15'
+    data = {'date_field': '3 PM 2025-01-15', 'time_field': '(15)+(45)'}
+    c2 = MyClass.from_dict(data)
+    print(c2)
+    print(c2.to_dict())
+    assert c2 == MyClass.from_dict(c2.to_dict())  # > True
+    print()
 
-    # Assert that the data is the same
-    assert c1 == c2
+    # ERROR! The date is not a valid format for the available patterns.
+    data = {'date_field': '2025-01-15 3 PM', 'time_field': '(15)+(45)'}
+    _ = MyClass.from_dict(data)
 
-.. _ISO 8601: https://en.wikipedia.org/wiki/ISO_8601
+How It Works
+^^^^^^^^^^^^
+
+1. **DatePattern and TimePattern:** These are special types that support multiple patterns (format codes). Each pattern is tried in the order specified, and the first one that matches the input string is used for parsing or formatting.
+
+2. **DatePattern Usage:** The ``date_field`` in the example accepts two formats:
+
+   - ``%b %d, %Y`` (e.g., 'Jan 3, 2022')
+   - ``%I %p %Y-%m-%d`` (e.g., '3 PM 2025-01-15')
+
+3. **TimePattern Usage:** The ``time_field`` accepts two formats:
+
+   - ``%I:%M %p`` (e.g., '3:45 PM')
+   - ``(%H)+(%S)`` (e.g., '(15)+(45)')
+
+4. **Error Handling:** If the input string doesn't match any of the available patterns, an error will be raised.
+
+This feature is especially useful for handling date and time formats from various sources, ensuring flexibility in how data is parsed and serialized.
+
+Key Points
+----------
+
+- Multiple patterns are specified as a list of format codes in ``DatePattern`` and ``TimePattern``.
+- The system automatically tries each pattern in the order provided until a match is found.
+- If no match is found, an error is raised, as shown in the example with the invalid date format ``'2025-01-15 3 PM'``.
+
+---
+
+**Serialization:**
+
+.. hint::
+    **ISO 8601**: Serialization of all date-time objects follows
+    the `ISO 8601`_ standard, a widely-used format for representing
+    date and time.
+
+All date-time objects are serialized as ISO 8601 format strings by default. This ensures compatibility with other systems and optimizes parsing.
+
+**Note:** Parsing uses ``datetime.fromisoformat`` for ISO 8601 strings, which is `much faster`_ than ``datetime.strptime``.
+
 .. _much faster: https://stackoverflow.com/questions/13468126/a-faster-strptime
-.. See: https://stackoverflow.com/a/4836544/10237506
-.. |another format| replace:: *another* format
-.. _another format: https://docs.python.org/3/library/datetime.html#strftime-and-strptime-format-codes
+.. _`Coordinated Universal Time (UTC)`: https://en.wikipedia.org/wiki/Coordinated_Universal_Time
+.. _Naive datetime: https://stackoverflow.com/questions/9999226/timezone-aware-vs-timezone-naive-in-python
+.. _Timezone-aware: https://docs.python.org/3/library/datetime.html#datetime.tzinfo
+.. _UTC: https://en.wikipedia.org/wiki/Coordinated_Universal_Time
+.. _ISO 8601: https://en.wikipedia.org/wiki/ISO_8601
+.. _zoneinfo: https://docs.python.org/3/library/zoneinfo.html#using-zoneinfo
+.. _format codes: https://docs.python.org/3/library/datetime.html#format-codes

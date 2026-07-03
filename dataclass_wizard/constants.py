@@ -1,12 +1,8 @@
 import os
 import sys
 
-
 # Package name
 PACKAGE_NAME = 'dataclass_wizard'
-
-# _SPECIALIZED_FROM_DICT = f'__{PACKAGE_NAME}_specialized_from_dict__'
-# _SPECIALIZED_TO_DICT   = f'__{PACKAGE_NAME}_specialized_to_dict__'
 
 # Library Log Level
 LOG_LEVEL = os.getenv('WIZARD_LOG_LEVEL', 'ERROR').upper()
@@ -29,13 +25,9 @@ PY313_OR_ABOVE = _PY_VERSION >= (3, 13)
 # Check if currently running Python 3.14 or higher
 PY314_OR_ABOVE = _PY_VERSION >= (3, 14)
 
-# The name of the dictionary object that contains `load` hooks for each
+# The name of the dictionary object that contains `load / dump` hooks for each
 # object type. Also used to check if a class is a :class:`BaseLoadHook`
-_LOAD_HOOKS = '__LOAD_HOOKS__'
-
-# The name of the dictionary object that contains `dump` hooks for each
-# object type. Also used to check if a class is a :class:`BaseDumpHook`
-_DUMP_HOOKS = '__DUMP_HOOKS__'
+_HOOKS = '__HOOKS__'
 
 # Attribute name that will be defined for single-arg alias functions and
 # methods; mainly for internal use.
@@ -52,7 +44,6 @@ IDENTITY = '__IDENTITY__'
 # Note that this key can also be customized in the `Meta` config for a class,
 # via the :attr:`tag_key` field.
 TAG = '__tag__'
-
 
 # INTERNAL USE ONLY: The dictionary key that the library
 # sets/uses to identify a "catch all" field, which captures

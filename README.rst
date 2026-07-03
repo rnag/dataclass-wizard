@@ -24,7 +24,7 @@
    :target: https://pepy.tech/project/dataclass-wizard
    :alt: Downloads per Month
 
-**Dataclass Wizard** is a fast, well-tested serialization library for Python dataclasses.
+**Dataclass Wizard** is a fast, well-tested serialization library for Python dataclasses with automatic type conversion and support for JSON, YAML, TOML, and environment variables.
 
 -------------------
 
@@ -48,15 +48,6 @@
    The example above demonstrates automatic type coercion, key casing
    transforms, and support for nested dataclasses. ``DataclassWizard``
    also auto-applies ``@dataclass`` to subclasses.
-
-.. tip::
-
-   A new **v1 engine** is available as an opt-in, offering explicit
-   environment precedence, nested dataclass support, and improved performance.
-
-   ``EnvWizard`` v1 adds field-level configuration on top of these improvements.
-
-   See the `Field Guide to V1 Opt-in`_ and the `hands-on quickstart`_ for details.
 
 .. contents:: Contents
    :depth: 1
@@ -108,12 +99,12 @@ Quick Examples
     cfg = Config()
     assert cfg.debug is True
 
-.. rubric:: EnvWizard v1 (Opt-in)
+.. rubric:: EnvWizard
 
 .. code-block:: python3
 
     import os
-    from dataclass_wizard.v1 import EnvWizard, Env
+    from dataclass_wizard import EnvWizard, Env
 
     os.environ['DEBUG_MODE'] = 'true'
 
@@ -124,10 +115,6 @@ Quick Examples
 
     cfg = Config()
     assert cfg.debug is True
-
-.. tip::
-   EnvWizard v1 introduces explicit environment precedence and nested
-   dataclass support. See `Field Guide to V1 Opt-in`_ for full details.
 
 Installation
 ------------
@@ -206,7 +193,7 @@ See `Type Hooks`_ for details and examples.
 JSON Marshalling
 ----------------
 
-``JSONSerializable`` (aliased to ``JSONWizard``) is a Mixin_ class which
+``JSONWizard`` (or ``DataclassWizard`` which auto-applies ``@dataclass``) is a Mixin_ class which
 provides the following helper methods that are useful for serializing (and loading)
 a dataclass instance to/from JSON, as defined by the ``AbstractJSONWizard``
 interface.
@@ -257,11 +244,10 @@ representation of the dataclass instance, you can instead use
 ``repr(obj)`` or ``f'{obj!r}'``.
 
 To mark a dataclass as being JSON serializable (and
-de-serializable), simply sub-class from ``JSONSerializable`` as shown
-below. You can also extend from the aliased name ``JSONWizard``, if you
-prefer to use that instead.
+de-serializable), simply sub-class from ``JSONWizard`` as shown
+below.
 
-Check out a `more complete example`_ of using the ``JSONSerializable``
+Check out a `more complete example`_ of using the ``JSONWizard``
 Mixin class.
 
 No Inheritance Needed
@@ -314,9 +300,9 @@ Here is an example to demonstrate the usage of these helper functions:
         my_date: date | None = None
 
 
-    source_dict = {'createdAt': '2010-06-10 15:50:00Z',
-                   'List-Of-B': [
-                       {'MyStatus': '200', 'my_date': '2021-12-31'}
+    source_dict = {'created_at': '2010-06-10 15:50:00Z',
+                   'list_of_b': [
+                       {'my_status': '200', 'my_date': '2021-12-31'}
                    ]}
 
     # De-serialize the JSON dictionary object into an `A` instance.
@@ -331,15 +317,15 @@ Here is an example to demonstrate the usage of these helper functions:
     #
     # Note that `recursive=True` is the default, so this Meta config will be
     # merged with the Meta config (if specified) of each nested dataclass.
-    DumpMeta(marshal_date_time_as='TIMESTAMP',
-             key_transform='SNAKE',
+    DumpMeta(dump_date_time_as='TIMESTAMP',
+             case='SNAKE',
              # Finally, apply the Meta config to the main dataclass.
              ).bind_to(A)
 
     # Serialize the `A` instance to a Python dict object.
     json_dict = asdict(a)
 
-    expected_dict = {'created_at': 1276185000, 'list_of_b': [{'my_status': '200', 'my_date': 1640926800}]}
+    expected_dict = {'created_at': 1276185000, 'list_of_b': [{'my_status': '200', 'my_date': 1640908800}]}
 
     print(json_dict)
     # Assert that we get the expected dictionary object.
@@ -348,15 +334,8 @@ Here is an example to demonstrate the usage of these helper functions:
 Custom Key Mappings
 -------------------
 
-.. note::
-    **Important:** The functionality for **custom key mappings** (such as JSON-to-dataclass field mappings) is being re-imagined with the introduction of **V1 Opt-in**. Enhanced support for these features is now available, improving the user experience for working with custom mappings.
-
-    For more details, see the `Field Guide to V1 Opt-in`_ and the `V1 Alias`_ documentation.
-
-    This change is part of the ongoing improvements in version ``v0.35.0+``, and the old functionality will no longer be maintained in future releases.
-
 If you ever find the need to add a `custom mapping`_ of a JSON key to a dataclass
-field (or vice versa), the helper function ``json_field`` -- which can be
+field (or vice versa), the helper function ``Alias`` -- which can be
 considered an alias to ``dataclasses.field()`` -- is one approach that can
 resolve this.
 
@@ -364,15 +343,11 @@ Example below:
 
 .. code:: python3
 
-    from dataclasses import dataclass
-
-    from dataclass_wizard import JSONSerializable, json_field
+    from dataclass_wizard import DataclassWizard, Alias
 
 
-    @dataclass
-    class MyClass(JSONSerializable):
-
-        my_str: str = json_field('myString1', all=True)
+    class MyClass(DataclassWizard):
+        my_str: str = Alias('myString1')
 
 
     # De-serialize a dictionary object with the newly mapped JSON key.
@@ -389,25 +364,18 @@ Example below:
 Mapping Nested JSON Keys
 ------------------------
 
-.. note::
-    **Important:** The current "nested path" functionality is being re-imagined.
-    Please refer to the new docs for **V1 Opt-in** features, which introduce enhanced support for these use
-    cases. For more details, see the `Field Guide to V1 Opt-in`_ and the `V1 Alias`_ documentation.
-
-    This change is part of the ongoing improvements in version ``v0.35.0+``, and the old functionality will no longer be maintained in future releases.
-
 The ``dataclass-wizard`` library allows you to map deeply nested JSON keys to dataclass fields using custom path notation. This is ideal for handling complex or non-standard JSON structures.
 
-You can specify paths to JSON keys with the ``KeyPath`` or ``path_field`` helpers. For example, the deeply nested key ``data.items.myJSONKey`` can be mapped to a dataclass field, such as ``my_str``:
+You can specify paths to JSON keys with the ``AliasPath`` helpers. For example, the deeply nested key ``data.items.myJSONKey`` can be mapped to a dataclass field, such as ``my_str``:
 
 .. code:: python3
 
-    from dataclasses import dataclass
-    from dataclass_wizard import path_field, JSONWizard
+    from dataclass_wizard import AliasPath, DataclassWizard
 
-    @dataclass
-    class MyData(JSONWizard):
-        my_str: str = path_field('data.items.myJSONKey', default="default_value")
+
+    class MyData(DataclassWizard):
+        my_str: str = AliasPath('data.items.myJSONKey', default="default_value")
+
 
     input_dict = {'data': {'items': {'myJSONKey': 'Some value'}}}
     data_instance = MyData.from_dict(input_dict)
@@ -424,13 +392,13 @@ Example with nested and complex keys:
 
     from dataclasses import dataclass
     from typing import Annotated
-    from dataclass_wizard import JSONWizard, path_field, KeyPath
+    from dataclass_wizard import JSONWizard, AliasPath
 
 
     @dataclass
     class NestedData(JSONWizard):
-        my_str: str = path_field('data[0].details["key with space"]', default="default_value")
-        my_int: Annotated[int, KeyPath('data[0].items[3.14].True')] = 0
+        my_str: str = AliasPath('data[0].details["key with space"]', default="default_value")
+        my_int: Annotated[int, AliasPath('data[0].items[3.14].True')] = 0
 
 
     input_dict = {
@@ -483,16 +451,15 @@ along the way.
 
     @dataclass
     class MyClass(JSONWizard):
-
         class _(JSONWizard.Meta):
-            marshal_date_time_as = DateTimeTo.TIMESTAMP
-            key_transform_with_dump = 'SNAKE'
+            dump_date_time_as = DateTimeTo.TIMESTAMP
+            dump_case = 'SNAKE'
 
         my_str: str
         my_date: date
 
 
-    data = {'my_str': 'test', 'myDATE': '2010-12-30'}
+    data = {'my_str': 'test', 'my_date': '2010-12-30'}
 
     c = MyClass.from_dict(data)
 
@@ -503,7 +470,7 @@ along the way.
     string = c.to_json()
     print(string)
     # prints:
-    #   {"my_str": "test", "my_date": 1293685200}
+    #   {"my_str": "test", "my_date": 1293667200}
 
 Other Uses for ``Meta``
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -558,17 +525,16 @@ an unknown JSON key is encountered in the  *load* (de-serialization) process.
 
     @dataclass
     class Container(JSONWizard):
-
         class _(JSONWizard.Meta):
             # True to enable Debug mode for additional (more verbose) log output.
             #
             # Pass in a `str` to `int` to set the minimum log level:
             #   logging.getLogger('dataclass_wizard').setLevel('INFO')
-            debug_enabled = logging.INFO
+            debug = logging.INFO
             # True to raise an class:`UnknownJSONKey` when an unmapped JSON key is
             # encountered when `from_dict` or `from_json` is called. Note that by
             # default, this is also recursively applied to any nested dataclasses.
-            raise_on_unknown_json_key = True
+            on_unknown_key = 'RAISE'
 
         element: 'MyElement'
 
@@ -581,7 +547,7 @@ an unknown JSON key is encountered in the  *load* (de-serialization) process.
 
     d = {
         'element': {
-            'myStr': 'string',
+            'my_str': 'string',
             'my_float': '1.23',
             # Notice how this key is not mapped to a known dataclass field!
             'my_bool': 'Testing'
@@ -594,7 +560,7 @@ an unknown JSON key is encountered in the  *load* (de-serialization) process.
     except UnknownJSONKey as e:
         print('Received error:', type(e).__name__)
         print('Class:', e.class_name)
-        print('Unknown JSON key:', e.json_key)
+        print('Unknown JSON key:', e.unknown_keys)
         print('JSON object:', e.obj)
         print('Known Fields:', e.fields)
     else:
@@ -626,12 +592,12 @@ undefined keys, the field will default to an empty dictionary.
 
 .. code:: python
 
-    from dataclasses import dataclass
     from typing import Any
-    from dataclass_wizard import CatchAll, JSONWizard
+    from dataclass_wizard import DataclassWizard
+    from dataclass_wizard.models import CatchAll
 
-    @dataclass
-    class UnknownAPIDump(JSONWizard):
+
+    class UnknownAPIDump(DataclassWizard):
         endpoint: str
         data: dict[str, Any]
         unknown_things: CatchAll
@@ -666,9 +632,9 @@ Date and Time with Custom Patterns
 ----------------------------------
 
 .. tip::
-    As of **v0.35.0** with V1 Opt-in, Dataclass Wizard now supports timezone-aware and UTC ``datetime``
+    As of **v1.x**, Dataclass Wizard now supports timezone-aware and UTC ``datetime``
     and ``time`` patterns, as well as multiple pattern strings (i.e. multiple `custom formats`) for greater
-    flexibility in pattern matching. These features are **not** available in the current ``v0.*`` versions.
+    flexibility in pattern matching. These features are **not** available in the ``v0.*`` versions.
 
     The new features include:
 
@@ -676,7 +642,7 @@ Date and Time with Custom Patterns
     - UTC ``datetime`` and ``time`` patterns.
     - Multiple `custom formats`_ for a single field, providing more control over pattern matching.
 
-    For more details and examples on how to use these new features, refer to the `V1 Opt-in documentation for Patterned Date and Time`_.
+    For more details and examples on how to use these new features, refer to the `Documentation for Patterned Date and Time`_.
 
 As of **v0.20.0**, date and time strings in `custom formats`_ can be de-serialized using the ``DatePattern``,
 ``TimePattern``, and ``DateTimePattern`` type annotations, which represent patterned ``date``, ``time``, and
@@ -694,7 +660,8 @@ Here is an example demonstrating how to use these annotations:
     from datetime import time, datetime
     from typing import Annotated
 
-    from dataclass_wizard import fromdict, asdict, DatePattern, TimePattern, Pattern
+    from dataclass_wizard import fromdict, asdict
+    from dataclass_wizard.patterns import DatePattern, TimePattern, Pattern
 
 
     @dataclass
@@ -747,8 +714,8 @@ limitation is shown in the following toy example:
 
     a = A(a=A(a=A(a=A())))
 
-This was a `longstanding issue`_, but starting with ``v0.27.0``, Dataclass Wizard now supports
-recursive dataclasses, including cyclic references.
+This was a `longstanding issue`_, but in ``v1.x``, Dataclass Wizard now supports
+recursive dataclasses OOTB, including cyclic references.
 
 The example below demonstrates recursive
 dataclasses with cyclic dependencies, following the pattern ``A -> B -> A -> B``.
@@ -763,10 +730,6 @@ For more details, see the `Cyclic or "Recursive" Dataclasses`_ section in the do
 
     @dataclass
     class A(JSONWizard):
-        class _(JSONWizard.Meta):
-            # Enable support for self-referential / recursive dataclasses
-            recursive_classes = True
-
         b: 'B | None' = None
 
 
@@ -780,8 +743,8 @@ For more details, see the `Cyclic or "Recursive" Dataclasses`_ section in the do
 
     assert a == A(b=B(a=A(b=B())))
 
-Starting with version **0.34.0**, recursive types are supported *out of the box* (OOTB) with ``v1`` opt-in,
-removing the need for any ``Meta`` settings like ``recursive_classes = True``.
+Starting with version **1.x**, recursive types are supported *out of the box* (OOTB),
+removing the need for any ``Meta`` settings.
 
 This makes working with recursive dataclasses even easier and more streamlined. In addition, recursive types
 are now supported for the following Python type constructs:
@@ -812,11 +775,13 @@ Recursive ``Union``
 .. code-block:: python3
 
     from dataclasses import dataclass
-    from dataclass_wizard import JSONWizard
+    from dataclass_wizard import DataclassWizard
 
     # For Python 3.9, use this `Union` approach:
     from typing_extensions import TypeAlias
+
     JSON: TypeAlias = 'str | int | float | bool | dict[str, JSON] | list[JSON] | None'
+
 
     # For Python 3.10 and above, use this simpler approach:
     # JSON = str | int | float | bool | dict[str, 'JSON'] | list['JSON'] | None
@@ -824,15 +789,11 @@ Recursive ``Union``
     # For Python 3.12+, you can use the `type` statement:
     # type JSON = str | int | float | bool | dict[str, JSON] | list[JSON] | None
 
-    @dataclass
-    class MyTestClass(JSONWizard):
-
-        class _(JSONWizard.Meta):
-            v1 = True
-
+    class MyTestClass(DataclassWizard):
         name: str
         meta: str
         msg: JSON
+
 
     x = MyTestClass.from_dict(
         {
@@ -860,10 +821,6 @@ Recursive ``Union`` with Nested ``dataclasses``
 
     @dataclass
     class A(JSONWizard):
-
-        class _(JSONWizard.Meta):
-            v1 = True
-
         value: int
         nested: 'B'
         next: 'A | None' = None
@@ -979,11 +936,9 @@ dataclasses in ``Union`` types. For more info, check out the
 Supercharged ``Union`` Parsing
 ------------------------------
 
-**What about untagged dataclasses in** ``Union`` **types or** ``|`` **syntax?** With the major release **V1** opt-in, ``dataclass-wizard`` supercharges *Union* parsing, making it intuitive and flexible, even without tags.
+**What about untagged dataclasses in** ``Union`` **types or** ``|`` **syntax?** With the major release **V1**, ``dataclass-wizard`` supercharges *Union* parsing, making it intuitive and flexible, even without tags.
 
 This is especially useful for collections like ``list[Wizard]`` or when tags (discriminators) are not feasible.
-
-To enable this feature, opt in to **v1** using the ``Meta`` settings. For details, see the `Field Guide to V1 Opt-in`_.
 
 .. code-block:: python3
 
@@ -992,14 +947,12 @@ To enable this feature, opt in to **v1** using the ``Meta`` settings. For detail
     from dataclasses import dataclass
     from typing import Literal
 
-    from dataclass_wizard import JSONWizard
+    from dataclass_wizard import DataclassWizard
 
-    @dataclass
-    class MyClass(JSONWizard):
 
-        class _(JSONWizard.Meta):
-            v1 = True  # Enable v1 opt-in
-            v1_unsafe_parse_dataclass_in_union = True
+    class MyClass(DataclassWizard):
+        class _(DataclassWizard.Meta):
+            unsafe_parse_dataclass_in_union = True
 
         literal_or_float: Literal['Auto'] | float
         entry: int | MoreDetails
@@ -1016,7 +969,7 @@ To enable this feature, opt in to **v1** using the ``Meta`` settings. For detail
         "collection": [{"arg": "test"}]
     })
     print(repr(c))
-    #> MyClass(literal_or_float=1.23, entry=123, collection=[MoreDetails(arg='test')])
+    # > MyClass(literal_or_float=1.23, entry=123, collection=[MoreDetails(arg='test')])
 
     # OK: Handles primitive and dataclass parsing
     c = MyClass.from_dict({
@@ -1025,7 +978,7 @@ To enable this feature, opt in to **v1** using the ``Meta`` settings. For detail
         "collection": [123]
     })
     print(repr(c))
-    #> MyClass(literal_or_float='Auto', entry=MoreDetails(arg='example'), collection=[123])
+    # > MyClass(literal_or_float='Auto', entry=MoreDetails(arg='example'), collection=[123])
 
 Conditional Field Skipping
 --------------------------
@@ -1047,13 +1000,12 @@ Quick Examples
 
   .. code-block:: python3
 
-    from dataclasses import dataclass
-    from dataclass_wizard import JSONWizard, IS_NOT
+    from dataclass_wizard import DataclassWizard
+    from dataclass_wizard.conditions import IS_NOT
 
 
-    @dataclass
-    class Example(JSONWizard):
-        class _(JSONWizard.Meta):
+    class Example(DataclassWizard):
+        class _(DataclassWizard.Meta):
             skip_if = IS_NOT(True)  # Skip fields if the value is not `True`
 
         my_bool: bool
@@ -1061,7 +1013,7 @@ Quick Examples
 
 
     print(Example(my_bool=True, my_str=None).to_dict())
-    # Output: {'myBool': True}
+    # Output: {'my_bool': True}
 
 2. **Skip Defaults Based on a Condition**
 
@@ -1071,13 +1023,12 @@ Quick Examples
 
     from __future__ import annotations  # Can remove in PY 3.10+
 
-    from dataclasses import dataclass
-    from dataclass_wizard import JSONPyWizard, IS
+    from dataclass_wizard import DataclassWizard
+    from dataclass_wizard.conditions import IS
 
 
-    @dataclass
-    class Example(JSONPyWizard):
-        class _(JSONPyWizard.Meta):
+    class Example(DataclassWizard):
+        class _(DataclassWizard.Meta):
             skip_defaults_if = IS(None)  # Skip default `None` values.
 
         str_with_no_default: str | None
@@ -1086,7 +1037,7 @@ Quick Examples
 
 
     print(Example(str_with_no_default=None, my_str=None).to_dict())
-    #> {'str_with_no_default': None, 'my_bool': False}
+    # > {'str_with_no_default': None, 'my_bool': False}
 
 
   .. note::
@@ -1103,7 +1054,8 @@ Quick Examples
     from dataclasses import dataclass
     from typing import Annotated
 
-    from dataclass_wizard import JSONWizard, SkipIfNone, skip_if_field, EQ
+    from dataclass_wizard import JSONWizard, skip_if_field
+    from dataclass_wizard.conditions import SkipIfNone, EQ
 
 
     @dataclass
@@ -1121,7 +1073,8 @@ Quick Examples
    .. code-block:: python3
 
     from dataclasses import dataclass, field
-    from dataclass_wizard import JSONWizard, IS_FALSY
+    from dataclass_wizard import JSONWizard
+    from dataclass_wizard.conditions import IS_FALSY
 
 
     @dataclass
@@ -1134,7 +1087,7 @@ Quick Examples
         my_none: None = None
 
     print(ExampleWithFalsy(my_bool=False, my_list=[], my_none=None).to_dict())
-    #> {}
+    # > {}
 
 .. note::
 
@@ -1179,13 +1132,12 @@ result. An example of both these approaches is shown below.
 
     @dataclass
     class MyClass(JSONWizard):
-
         class _(JSONWizard.Meta):
             skip_defaults = True
 
         my_str: str
         other_str: str = 'any value'
-        optional_str: str = None
+        optional_str: 'str | None' = None
         my_list: list[str] = field(default_factory=list)
         my_dict: defaultdict[str, list[float]] = field(
             default_factory=lambda: defaultdict(list))
@@ -1199,7 +1151,7 @@ result. An example of both these approaches is shown below.
     string = c.to_json()
     print(string)
 
-    assert string == '{"myStr": "abc"}'
+    assert string == '{"my_str": "abc"}'
 
     print('-- Dump (with `skip_defaults=False`)')
     print(c.to_dict(skip_defaults=False))
@@ -1210,9 +1162,8 @@ Exclude Fields
 You can also exclude specific dataclass fields (and their values) from the serialization
 process. There are two approaches that can be used for this purpose:
 
-* The argument ``dump=False`` can be passed in to the ``json_key`` and ``json_field``
-  helper functions. Note that this is a more permanent option, as opposed to the one
-  below.
+* The argument ``skip=True`` can be passed in to the ``Alias`` helper function.
+  Note that this is a more permanent option, as opposed to the one below.
 
 * The ``to_dict`` method (or the ``asdict`` helper function ) can be passed
   an ``exclude`` argument, containing a list of one or more dataclass field names
@@ -1222,23 +1173,20 @@ Additionally, here is an example to demonstrate usage of both these approaches:
 
 .. code:: python3
 
-    from dataclasses import dataclass
     from typing import Annotated
 
-    from dataclass_wizard import JSONWizard, json_key, json_field
+    from dataclass_wizard import DataclassWizard, Alias
 
 
-    @dataclass
-    class MyClass(JSONWizard):
-
+    class MyClass(DataclassWizard):
         my_str: str
         my_int: int
-        other_str: Annotated[str, json_key('AnotherStr', dump=False)]
-        my_bool: bool = json_field('TestBool', dump=False)
+        other_str: Annotated[str, Alias('AnotherStr', skip=True)]
+        my_bool: bool = Alias('TestBool', skip=True)
 
 
-    data = {'MyStr': 'my string',
-            'myInt': 1,
+    data = {'my_str': 'my string',
+            'my_int': 1,
             'AnotherStr': 'testing 123',
             'TestBool': True}
 
@@ -1253,7 +1201,7 @@ Additionally, here is an example to demonstrate usage of both these approaches:
     out_dict = c.to_dict(exclude=additional_exclude)
     print(out_dict)
 
-    assert out_dict == {'myStr': 'my string'}
+    assert out_dict == {'my_str': 'my string'}
 
 ``Environ`` Magic
 -----------------
@@ -1308,23 +1256,24 @@ Advanced Example: Dynamic Prefix Handling
 .. code-block:: python3
 
     import os
-    from dataclass_wizard import EnvWizard, env_field
+    from dataclass_wizard import EnvWizard, Env
+
 
     # Define dataclass with custom prefix support
     class AppConfig(EnvWizard):
-
         class _(EnvWizard.Meta):
             env_prefix = 'APP_'  # Default prefix for env vars
 
-        name: str = env_field('A_NAME')  # Looks for `APP_A_NAME` by default
+        name: str = Env('A_NAME')  # Looks for `A_NAME` (explicit override)
         debug: bool
 
+
     # Set environment variables
-    os.environ['CUSTOM_A_NAME'] = 'Test!'
+    os.environ['A_NAME'] = 'Test!'
     os.environ['CUSTOM_DEBUG'] = 'yes'
 
     # Apply a dynamic prefix at runtime
-    config = AppConfig(_env_prefix='CUSTOM_')  # Looks for `CUSTOM_A_NAME` and `CUSTOM_DEBUG`
+    config = AppConfig(__env__={'prefix': 'CUSTOM_'})  # Looks for `A_NAME` and `CUSTOM_DEBUG`
 
     print(config)
     # > AppConfig(name='Test!', debug=True)
@@ -1343,123 +1292,11 @@ explicitly passed in via the constructor method.
 To use it, simply import
 the ``property_wizard`` helper function, and add it as a metaclass on
 any dataclass where you would benefit from using field properties with
-default values. The metaclass also pairs well with the ``JSONSerializable``
+default values. The metaclass also pairs well with the ``JSONWizard``
 mixin class.
 
 For more examples and important how-to's on properties with default values,
 refer to the `Using Field Properties`_ section in the documentation.
-
-What's New in v1.0
-------------------
-
-.. admonition:: Opt-in for v1 Now Available
-
-   The early opt-in for **v1** is now available with enhanced features, including intuitive ``Union`` parsing and optimized performance. To enable this,
-   set ``v1=True`` in your ``Meta`` settings.
-
-   For more details and migration guidance, see the `Field Guide to V1 Opt-in`_.
-
-.. warning:: *Important Changes in v1.0*
-
-    - **Default Key Transformation Update**
-
-      Starting with **v1.0.0**, the default key transformation for JSON serialization
-      will change to keep keys *as-is* instead of converting them to ``camelCase``.
-
-      **New Default Behavior**:
-      The default setting for key transformation will be ``key_transform='NONE'``.
-
-      **How to Prepare**:
-      You can enforce this behavior immediately by using the ``JSONPyWizard`` helper, as shown below:
-
-      .. code-block:: python3
-
-            from dataclasses import dataclass
-            from dataclass_wizard import JSONPyWizard
-
-            @dataclass
-            class MyModel(JSONPyWizard):
-                my_field: str
-
-            print(MyModel(my_field="value").to_dict())
-            # Output: {'my_field': 'value'}
-
-    - **String Coercion Change (None Handling)**
-
-      Starting with **v1.0**, ``None`` values for fields annotated as ``str`` are
-      converted using ``str(None)`` (i.e. ``'None'``) instead of being silently
-      coerced to the empty string.
-
-      ``Optional[str]`` fields continue to preserve ``None`` by default.
-
-      To restore the previous behavior and coerce ``None`` to ``''``, set:
-
-      .. code-block:: python3
-
-            class _(Meta):
-                v1 = True
-                v1_coerce_none_to_empty_str = True
-
-- **Default __str__() Behavior Change**
-
-      Starting with **v1.0.0**, we no longer pretty-print the serialized JSON value with keys in ``camelCase``.
-      Instead, we now use the ``pprint`` module to handle serialization formatting.
-
-      **New Default Behavior**:
-      The ``__str__()`` method in the ``JSONWizard`` class will use ``pprint`` by default.
-
-      **How to Prepare**:
-      You can immediately test this new behavior using the ``JSONPyWizard`` helper, as demonstrated below:
-
-      .. code-block:: python3
-
-            from dataclasses import dataclass
-            from dataclass_wizard import JSONWizard, JSONPyWizard
-
-            @dataclass
-            class CurrentModel(JSONWizard):
-                my_field: str
-
-            @dataclass
-            class NewModel(JSONPyWizard):
-                my_field: str
-
-            print(CurrentModel(my_field="value"))
-            #> {
-            #   "myField": "value"
-            # }
-
-            print(NewModel(my_field="value"))
-            #> NewModel(my_field='value')
-
-    - **Float to Int Conversion Change**
-      Starting with **v1.0**, floats or float strings with fractional parts (e.g., ``123.4`` or ``"123.4"``) will no longer be silently converted to integers. Instead, they will raise an error. However, floats without fractional parts (e.g., ``3.0`` or ``"3.0"``) will continue to convert to integers as before.
-
-      **How to Prepare**:
-      You can opt in to **v1** via ``v1=True`` to test this behavior right now. Additionally, to ensure compatibility with the new behavior:
-
-      - Use ``float`` annotations for fields that may include fractional values.
-      - Review your data to avoid passing fractional values (e.g., ``123.4``) to fields annotated as ``int``.
-      - Update tests or logic that depend on the current rounding behavior.
-
-      .. code-block:: python3
-
-            from dataclasses import dataclass
-            from dataclass_wizard import JSONPyWizard
-
-            @dataclass
-            class Test(JSONPyWizard):
-                class _(JSONPyWizard.Meta):
-                    v1 = True
-
-                list_of_int: list[int]
-
-            input_dict = {'list_of_int': [1, '2.0', '3.', -4, '-5.00', '6', '-7']}
-            t = Test.from_dict(input_dict)
-            print(t)  #> Test(list_of_int=[1, 2, 3, -4, -5, 6, -7])
-
-            # ERROR!
-            _ = Test.from_dict({'list_of_int': [123.4]})
 
 Contributing
 ------------
@@ -1516,7 +1353,7 @@ This package was created with Cookiecutter_ and the `rnag/cookiecutter-pypackage
 .. _annotations: https://docs.python.org/3/library/typing.html#typing.Annotated
 .. _typing: https://docs.python.org/3/library/typing.html
 .. _dataclasses: https://docs.python.org/3/library/dataclasses.html
-.. _V1 Opt-in documentation for Patterned Date and Time: https://dcw.ritviknag.com/en/latest/common_use_cases/v1_patterned_date_time.html
+.. _Documentation for Patterned Date and Time: https://dcw.ritviknag.com/en/latest/common_use_cases/patterned_date_time.html
 .. _`Field Guide to V1 Opt-in`: https://github.com/rnag/dataclass-wizard/wiki/Field-Guide-to-V1-Opt%E2%80%90in
 .. _hands-on quickstart: https://github.com/rnag/dataclass-wizard/wiki/EnvWizard-v1-%E2%80%94-Quickstart-(Opt%E2%80%90In)
 .. _V1 Alias: https://dcw.ritviknag.com/en/latest/common_use_cases/v1_alias.html

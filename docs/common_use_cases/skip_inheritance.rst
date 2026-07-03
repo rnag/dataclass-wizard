@@ -2,7 +2,7 @@ Skip the Class Inheritance
 --------------------------
 
 It is important to note that the main purpose of sub-classing from
-``JSONWizard`` Mixin class is to provide helper methods like :meth:`from_dict`
+``DataclassWizard`` Mixin class is to provide helper methods like :meth:`from_dict`
 and :meth:`to_dict`, which makes it much more convenient and easier to load or
 dump your data class from and to JSON.
 
@@ -27,7 +27,7 @@ Here is an example to demonstrate the usage of these helper functions:
     from datetime import datetime
     from typing import Optional, Union
 
-    from dataclass_wizard import fromdict, asdict, DumpMeta
+    from dataclass_wizard import fromdict, asdict, DumpMeta, LoadMeta
 
 
     @dataclass
@@ -50,22 +50,20 @@ Here is an example to demonstrate the usage of these helper functions:
                        {'order_index': '222', 'status_code': 404}
                    ]}
 
+    LoadMeta(case='CAMEL').bind_to(Container)
+    LoadMeta(case='AUTO').bind_to(MyElement)
+    DumpMeta(dump_date_time_as='TIMESTAMP').bind_to(Container)
+
     # De-serialize the JSON dictionary object into a `Container` instance.
     c = fromdict(Container, source_dict)
 
     print(repr(c))
     # prints:
-    #   Container(id=123, created_at=datetime.datetime(2021, 1, 1, 5, 0), my_elements=[MyElement(order_index=111, status_code='200'), MyElement(order_index=222, status_code=404)])
-
-    # (Optional) Set up dump config for the inner class, as unfortunately there's
-    # no option currently to have the meta config apply in a recursive fashion.
-    _ = DumpMeta(MyElement, key_transform='SNAKE')
+    #   Container(id=123, created_at=datetime.datetime(2021, 1, 1, 5, 0, tzinfo=datetime.timezone.utc), my_elements=[MyElement(order_index=111, status_code='200'), MyElement(order_index=222, status_code=404)])
 
     # Serialize the `Container` instance to a Python dict object with a custom
     # dump config, for example one which converts field names to snake case.
-    json_dict = asdict(c, DumpMeta(Container,
-                                   key_transform='SNAKE',
-                                   marshal_date_time_as='TIMESTAMP'))
+    json_dict = asdict(c)
 
     expected_dict = {'id': 123,
                      'created_at': 1609477200,

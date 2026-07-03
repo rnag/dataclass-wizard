@@ -11,11 +11,12 @@ Sample Usage:
     >>> from datetime import datetime
     >>> from typing import Optional
     >>>
-    >>> from dataclass_wizard import JSONSerializable, property_wizard
+    >>> from dataclass_wizard import JSONWizard
+    >>> from dataclass_wizard.properties import property_wizard
     >>>
     >>>
     >>> @dataclass
-    >>> class MyClass(JSONSerializable, metaclass=property_wizard):
+    >>> class MyClass(JSONWizard, metaclass=property_wizard):
     >>>
     >>>     my_str: Optional[str]
     >>>     list_of_int: list[int] = field(default_factory=list)
@@ -33,7 +34,8 @@ Sample Usage:
     >>>
     >>>     @my_dt.setter
     >>>     def my_dt(self, new_dt: datetime):
-    >>>     # A sample `setter` which sets the inverse (roughly) of the `month` and `day`
+    >>>     # A sample `setter` which sets the inverse (roughly) of
+    >>>     # the `month` and `day`
     >>>         self._my_dt = new_dt.replace(month=13 - new_dt.month,
     >>>                                      day=30 - new_dt.day)
     >>>
@@ -64,88 +66,14 @@ Sample Usage:
 For full documentation and more advanced usage, please see
 <https://dcw.ritviknag.com>.
 
-:copyright: (c) 2021-2025 by Ritvik Nag.
+:copyright: (c) 2021-2026 by Ritvik Nag.
 :license: Apache 2.0, see LICENSE for more details.
 """
+from logging import NullHandler
 
-__all__ = [
-    # Base exports
-    'DataclassWizard',
-    'JSONSerializable',
-    'JSONPyWizard',
-    'JSONWizard',
-    'register_type',
-    'LoadMixin',
-    'DumpMixin',
-    'property_wizard',
-    # Wizard Mixins
-    'EnvWizard',
-    'JSONListWizard',
-    'JSONFileWizard',
-    'TOMLWizard',
-    'YAMLWizard',
-    # Helper serializer functions + meta config
-    'fromlist',
-    'fromdict',
-    'asdict',
-    'LoadMeta',
-    'DumpMeta',
-    'EnvMeta',
-    # Models
-    'env_field',
-    'json_field',
-    'json_key',
-    'path_field',
-    'skip_if_field',
-    'KeyPath',
-    'Container',
-    'Pattern',
-    'DatePattern',
-    'TimePattern',
-    'DateTimePattern',
-    'CatchAll',
-    'SkipIf',
-    'SkipIfNone',
-    'EQ',
-    'NE',
-    'LT',
-    'LE',
-    'GT',
-    'GE',
-    'IS',
-    'IS_NOT',
-    'IS_TRUTHY',
-    'IS_FALSY',
-    # Logging
-    'LOG',
-]
-
-import logging
-
-from .bases_meta import LoadMeta, DumpMeta, EnvMeta, register_type
-from .dumpers import DumpMixin, setup_default_dumper
-from .environ.wizard import EnvWizard
-from .loader_selection import asdict, fromlist, fromdict
-from .loaders import LoadMixin, setup_default_loader
-from .log import LOG
-from .models import (env_field, json_field, json_key, path_field, skip_if_field,
-                     KeyPath, Container,
-                     Pattern, DatePattern, TimePattern, DateTimePattern,
-                     CatchAll, SkipIf, SkipIfNone,
-                     EQ, NE, LT, LE, GT, GE, IS, IS_NOT, IS_TRUTHY, IS_FALSY)
-from .property_wizard import property_wizard
-from .serial_json import DataclassWizard, JSONWizard, JSONPyWizard, JSONSerializable
-from .wizard_mixins import JSONListWizard, JSONFileWizard, TOMLWizard, YAMLWizard
-
+from ._log import LOG
+from ._public import *
 
 # Set up logging to ``/dev/null`` like a library is supposed to.
 # http://docs.python.org/3.3/howto/logging.html#configuring-logging-for-a-library
-LOG.addHandler(logging.NullHandler())
-
-# Setup the default type hooks to use when converting `str` (json) or a Python
-# `dict` object to a `dataclass` instance.
-setup_default_loader()
-
-# Setup the default type hooks to use when converting `dataclass` instances to
-# a JSON `string` or a Python `dict` object.
-setup_default_dumper()
+LOG.addHandler(NullHandler())

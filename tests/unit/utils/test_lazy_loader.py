@@ -1,12 +1,12 @@
 import pytest
 from pytest_mock import MockerFixture
 
-from dataclass_wizard.utils.lazy_loader import LazyLoader
+from dataclass_wizard.utils._lazy_loader import LazyLoader
 
 
 @pytest.fixture
 def mock_logging(mocker: MockerFixture):
-    return mocker.patch('dataclass_wizard.utils.lazy_loader.logging')
+    return mocker.patch('dataclass_wizard.utils._lazy_loader.logging')
 
 
 def test_lazy_loader_when_module_not_found():

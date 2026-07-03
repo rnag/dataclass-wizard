@@ -1,0 +1,146 @@
+import datetime
+from collections.abc import Collection
+from dataclasses import Field
+from types import EllipsisType
+from typing import Any, Callable, ClassVar, TypeVar
+
+from _typeshed import Incomplete
+
+from ._bases import AbstractMeta as AbstractMeta
+from ._bases import BaseDumpHook as BaseDumpHook
+from ._class_helper import (
+    dataclass_field_to_skip_if as dataclass_field_to_skip_if,
+)
+from ._class_helper import (
+    resolve_dataclass_field_to_alias_for_dump as resolve_dataclass_field_to_alias_for_dump,
+)
+from ._class_helper import set_class_dumper as set_class_dumper
+from ._decorators import (
+    setup_recursive_safe_function as setup_recursive_safe_function,
+)
+from ._decorators import (
+    setup_recursive_safe_function_for_generic as setup_recursive_safe_function_for_generic,
+)
+from ._meta_cache import create_meta as create_meta
+from ._meta_cache import get_meta as get_meta
+from ._models import Extras, TypeInfo
+from ._type_conv import datetime_to_timestamp as datetime_to_timestamp
+from ._type_def import ExplicitNull as ExplicitNull
+from ._type_def import JSONObject
+from ._type_def import T as T
+from ._type_utils import create_new_class as create_new_class
+from ._type_utils import is_subclass_safe as is_subclass_safe
+from .enums import DateTimeTo as DateTimeTo
+from .enums import KeyCase as KeyCase
+from .errors import JSONWizardError as JSONWizardError
+from .errors import MissingData as MissingData
+from .errors import MissingFields as MissingFields
+from .errors import ParseError as ParseError
+from .utils._dataclass_compat import (
+    dataclass_field_names as dataclass_field_names,
+)
+from .utils._dataclass_compat import dataclass_fields as dataclass_fields
+from .utils._dataclass_compat import set_new_attribute as set_new_attribute
+from .utils._dict_helper import NestedDict as NestedDict
+from .utils._function_builder import FunctionBuilder as FunctionBuilder
+from .utils._typing_compat import (
+    eval_forward_ref_if_needed as eval_forward_ref_if_needed,
+)
+from .utils._typing_compat import (
+    get_keys_for_typed_dict as get_keys_for_typed_dict,
+)
+from .utils._typing_compat import get_origin_v2 as get_origin_v2
+from .utils._typing_compat import is_annotated as is_annotated
+from .utils._typing_compat import is_typed_dict as is_typed_dict
+from .utils._typing_compat import (
+    is_typed_dict_type_qualifier as is_typed_dict_type_qualifier,
+)
+from .utils._typing_compat import is_union as is_union
+
+LEAF_TYPES: frozenset
+LEAF_TYPES_NO_BYTES: frozenset
+ZERO: datetime.timedelta
+UTC: datetime.timezone
+CLASS_TO_DUMPER: dict
+CATCH_ALL: str
+TAG: str
+PACKAGE_NAME: str
+_DUMP_HOOKS: str
+_KNOWN_FACTORY_LITERALS: dict
+D = TypeVar('D', bound=DumpMixin)
+
+def get_default_dump_hooks(dumper: type[D]) -> dict[type, Callable]: ...
+def default_compare_expr(f: Field[Any], locals_ns: dict[str, Any], default_name: str, *, allow_calling_unknown_factories: bool = ...) -> str | None: ...
+def _type_returns_value_unchanged(arg, leaf_handling_as_subclass, origin: Incomplete | None = ...): ...
+def _all_return_value_unchanged(args, leaf_handling_as_subclass): ...
+
+class DumpMixin(BaseDumpHook):
+    transform_dataclass_field: ClassVar[None | EllipsisType] = ...
+    __HOOKS__: ClassVar[dict[type, Callable]]
+    @classmethod
+    def __init_subclass__(cls, _setup_defaults: bool = True, **kwargs): ...
+    @staticmethod
+    def dump_fallback(tp: TypeInfo, _extras: Extras): ...
+    @staticmethod
+    def dump_from_str(tp: TypeInfo, _extras: Extras): ...
+    @staticmethod
+    def dump_from_int(tp: TypeInfo, _extras: Extras): ...
+    @staticmethod
+    def dump_from_float(tp: TypeInfo, _extras: Extras): ...
+    @staticmethod
+    def dump_from_bool(tp: TypeInfo, _extras: Extras): ...
+    @staticmethod
+    def dump_from_literal(tp: TypeInfo, _extras: Extras): ...
+    @staticmethod
+    def dump_from_bytes(tp: TypeInfo, extras: Extras): ...
+    @classmethod
+    def dump_from_bytearray(cls, tp: TypeInfo, extras: Extras): ...
+    @staticmethod
+    def dump_from_none(tp: TypeInfo, extras: Extras): ...
+    @staticmethod
+    def dump_from_enum(tp: TypeInfo, extras: Extras): ...
+    @staticmethod
+    def dump_from_uuid(tp: TypeInfo, extras: Extras): ...
+    @classmethod
+    def dump_from_iterable(cls, tp: TypeInfo, extras: Extras): ...
+    @classmethod
+    def dump_from_tuple(cls, tp: TypeInfo, extras: Extras): ...
+    @classmethod
+    def dump_from_named_tuple(cls, tp: TypeInfo, extras: Extras): ...
+    @classmethod
+    def dump_from_named_tuple_untyped(cls, tp: TypeInfo, extras: Extras): ...
+    @classmethod
+    def _build_dict_comp(cls, tp, v, i_next, k_next, v_next, kt, vt, extras): ...
+    @classmethod
+    def dump_from_dict(cls, tp: TypeInfo, extras: Extras): ...
+    @classmethod
+    def dump_from_defaultdict(cls, tp: TypeInfo, extras: Extras): ...
+    @classmethod
+    def dump_from_typed_dict(cls, tp: TypeInfo, extras: Extras): ...
+    @classmethod
+    def _dump_from_typed_dict_fn(cls, _cls, tp: TypeInfo, extras: Extras): ...
+    @classmethod
+    def dump_from_union(cls, _cls, tp: TypeInfo, extras: Extras): ...
+    @staticmethod
+    def dump_from_decimal(tp: TypeInfo, extras: Extras): ...
+    @staticmethod
+    def dump_from_path(tp: TypeInfo, extras: Extras): ...
+    @classmethod
+    def dump_from_date(cls, tp: TypeInfo, extras: Extras): ...
+    @classmethod
+    def dump_from_datetime(cls, tp: TypeInfo, extras: Extras): ...
+    @staticmethod
+    def dump_from_time(tp: TypeInfo, _extras: Extras): ...
+    @staticmethod
+    def dump_from_timedelta(tp: TypeInfo, extras: Extras): ...
+    @staticmethod
+    def dump_from_dataclass(tp: TypeInfo, extras: Extras, _cls: Incomplete | None = ...): ...
+    @classmethod
+    def dump_dispatcher_for_annotation(cls, tp, extras): ...
+def setup_default_dumper(cls: type[DumpMixin] = ...): ...
+def check_and_raise_missing_fields(_locals, o, cls, fields: tuple[Field, ...]): ...
+def dump_func_for_dataclass(cls: type, extras: Extras | None = ..., dumper_cls: type[DumpMixin] = ..., base_meta_cls: type = ...) -> Callable[[T], JSONObject] | str: ...
+def generate_field_code(cls_dumper: DumpMixin, extras: Extras, field: Field, field_i: int, var_name: Incomplete | None = ...) -> str | TypeInfo: ...
+def re_raise(e, cls, o, fields, field, value): ...
+def get_dumper(class_or_instance: Incomplete | None = ..., create: bool = ..., base_cls: type[D] = ...) -> type[D]: ...
+def asdict(o: T, *, cls: Incomplete | None = ..., dict_factory: type[dict] = ..., exclude: Collection[str] | None = ..., **kwargs) -> JSONObject: ...

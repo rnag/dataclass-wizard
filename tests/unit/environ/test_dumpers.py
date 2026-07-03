@@ -1,19 +1,23 @@
-import os
+from dataclass_wizard import Alias, EnvWizard
 
-from dataclass_wizard import EnvWizard, json_field
+from ..utils_env import from_env
 
 
 def test_dump_with_excluded_fields_and_skip_defaults():
 
-    os.environ['MY_FIRST_STR'] = 'hello'
-    os.environ['my-second-str'] = 'world'
-
-    class TestClass(EnvWizard, reload_env=True):
+    class TestClass(EnvWizard):
         my_first_str: str
-        my_second_str: str = json_field(..., dump=False)
+        my_second_str: str = Alias(skip=True)
         my_int: int = 123
 
-    assert TestClass(_reload=True).to_dict(
+    env = {'MY_FIRST_STR': 'hello',
+           'my_second_str': 'world'}
+
+    # alternatively -- although not ideal for unit test:
+    # os.environ['MY_FIRST_STR'] = 'hello'
+    # os.environ['my_second_str'] = 'world'
+
+    assert from_env(TestClass, env).to_dict(
         exclude=['my_first_str'],
         skip_defaults=True,
     ) == {}

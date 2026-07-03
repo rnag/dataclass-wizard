@@ -1,11 +1,16 @@
 import warnings
 from abc import ABC, abstractmethod
-from dataclasses import Field
-from typing import (Any, ClassVar, Iterable, Callable, Collection, Sequence)
-
+from collections.abc import Collection, Iterable, Sequence
+from dataclasses import Field, dataclass
+from json import JSONEncoder
+from typing import Any, Callable, ClassVar
 
 # added as we can't import from `type_def`, as we run into a circular import.
 JSONObject = dict[str, Any]
+_SafeEncoder: type[JSONEncoder] | None = None
+
+
+def safe_dumps(o: Any, **kwargs: Any) -> str: ...
 
 
 def type_name(obj: type) -> str:
@@ -26,6 +31,7 @@ def show_deprecation_warning(
     """
 
 
+@dataclass
 class JSONWizardError(ABC, Exception):
     """
     Base error class, for errors raised by this library.
@@ -37,9 +43,11 @@ class JSONWizardError(ABC, Exception):
     _class_name: str | None
     _default_class_name: str | None
 
+    @property
     def class_name(self) -> str | None: ...
-    # noinspection PyRedeclaration
-    def class_name(self) -> None: ...  # type: ignore[no-redef]
+
+    @class_name.setter
+    def class_name(self, cls: str | type | None) -> None: ...
 
     def parent_cls(self) -> type | None: ...
     # noinspection PyRedeclaration
@@ -63,7 +71,7 @@ class ParseError(JSONWizardError):
     Base error when an error occurs during the JSON load process.
     """
 
-    _TEMPLATE: str
+    _TEMPLATE: ClassVar[str]
 
     obj: Any
     obj_type: type
@@ -71,8 +79,7 @@ class ParseError(JSONWizardError):
     ann_type: type | Iterable | None
     base_error: Exception
     kwargs: dict[str, Any]
-    _class_name: str | None
-    _default_class_name: str | None
+    field_name: str | None
     _field_name: str | None
     _json_object: Any | None
     fields: Collection[Field] | None
@@ -85,10 +92,6 @@ class ParseError(JSONWizardError):
                  _field_name: str | None = None,
                  _json_object: Any = None,
                  **kwargs):
-        ...
-
-    @property
-    def field_name(self) -> str | None:
         ...
 
     @property
@@ -108,9 +111,8 @@ class ExtraData(JSONWizardError):
     `extra` field is specified in the :class:`Meta` class.
     """
 
-    _TEMPLATE: str
+    _TEMPLATE: ClassVar[str]
 
-    class_name: str
     extra_kwargs: Collection[str]
     field_names: Collection[str]
 
@@ -130,7 +132,7 @@ class MissingFields(JSONWizardError):
     missing arguments)
     """
 
-    _TEMPLATE: str
+    _TEMPLATE: ClassVar[str]
 
     obj: JSONObject
     fields: list[str]
@@ -139,7 +141,6 @@ class MissingFields(JSONWizardError):
     base_error: Exception | None
     missing_keys: Collection[str] | None
     kwargs: dict[str, Any]
-    class_name: str
     parent_cls: type
 
     def __init__(self, base_err: Exception | None,
@@ -162,17 +163,16 @@ class UnknownKeysError(JSONWizardError):
     encountered in the JSON load process.
 
     Note that this error class is only raised when the
-    `raise_on_unknown_json_key` flag is enabled in
+    `on_unknown_key='RAISE'` is enabled in
     the :class:`Meta` class.
     """
 
-    _TEMPLATE: str
+    _TEMPLATE: ClassVar[str]
 
     unknown_keys: list[str] | str
     obj: JSONObject
     fields: list[str]
     kwargs: dict[str, Any]
-    class_name: str
 
     def __init__(self,
                  unknown_keys: list[str] | str,
@@ -200,7 +200,7 @@ class MissingData(ParseError):
     is None.
     """
 
-    _TEMPLATE: str
+    _TEMPLATE: ClassVar[str]
 
     nested_class_name: str
 
@@ -211,30 +211,13 @@ class MissingData(ParseError):
     def message(self) -> str: ...
 
 
-class RecursiveClassError(JSONWizardError):
-    """
-    Error raised when we encounter a `RecursionError` due to cyclic
-    or self-referential dataclasses.
-    """
-
-    _TEMPLATE: str
-
-    class_name: str
-
-    def __init__(self, cls: type): ...
-
-    @property
-    def message(self) -> str: ...
-
-
 class InvalidConditionError(JSONWizardError):
     """
     Error raised when a condition is not wrapped in ``SkipIf``.
     """
 
-    _TEMPLATE: str
+    _TEMPLATE: ClassVar[str]
 
-    class_name: str
     field_name: str
 
     def __init__(self, cls: type, field_name: str):
@@ -250,9 +233,8 @@ class MissingVars(JSONWizardError):
     (most likely due to missing environment variables in the Environment)
 
     """
-    _TEMPLATE: str
+    _TEMPLATE: ClassVar[str]
 
-    class_name: str
     fields: str
     def_resolution: str
     init_resolution: str

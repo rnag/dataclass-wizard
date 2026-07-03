@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass, field
 
-from dataclass_wizard import property_wizard
+from dataclass_wizard.properties import property_wizard
 
 
 log = logging.getLogger(__name__)

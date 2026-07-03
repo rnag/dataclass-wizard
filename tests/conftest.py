@@ -13,7 +13,7 @@ from pathlib import Path
 import pytest
 
 from dataclass_wizard.constants import PACKAGE_NAME
-from dataclass_wizard.utils.string_conv import to_snake_case
+from dataclass_wizard.utils._string_case import to_snake_case
 
 from ._typing import PY312_OR_ABOVE
 
@@ -22,12 +22,14 @@ from ._typing import PY312_OR_ABOVE
 TEST_DATA_DIR = Path(__file__).resolve().parent / 'testdata'
 
 
+collect_ignore = []
+
 # Ignore test files if the Python version is below 3.12
 if not PY312_OR_ABOVE:
     print("Python version is below 3.12. Ignoring test files.")
-    collect_ignore = [
-        Path('unit', 'v1', 'test_union_as_type_alias_recursive.py').as_posix(),
-    ]
+    collect_ignore.append(
+        str(Path(__file__).parent / "unit" / "test_union_as_type_alias_recursive.py")
+    )
 
 
 @pytest.fixture

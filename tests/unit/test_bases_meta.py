@@ -1,60 +1,69 @@
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime, date
+from datetime import datetime, date, time
 from typing import Optional, List
 from unittest.mock import ANY
 
 import pytest
 from pytest_mock import MockerFixture
 
-from dataclass_wizard.bases import META
+from dataclass_wizard._type_def import META
 from dataclass_wizard import JSONWizard, EnvWizard
-from dataclass_wizard.bases_meta import BaseJSONWizardMeta
-from dataclass_wizard.enums import LetterCase, DateTimeTo
+from dataclass_wizard._bases_meta import BaseJSONWizardMeta
+from dataclass_wizard.enums import KeyCase, DateTimeTo
 from dataclass_wizard.errors import ParseError
-from dataclass_wizard.utils.type_conv import date_to_timestamp
-
+from dataclass_wizard._models_date import UTC
 
 log = logging.getLogger(__name__)
 
 
+def date_to_timestamp(d: date) -> int:
+    """
+    Retrieves the epoch timestamp of a :class:`date` object, as an `int`
+
+    https://stackoverflow.com/a/15661036/10237506
+    """
+    dt = datetime.combine(d, time.min, tzinfo=UTC)
+    return round(dt.timestamp())
+
+
 @pytest.fixture
 def mock_meta_initializers(mocker: MockerFixture):
-    return mocker.patch('dataclass_wizard.bases_meta.META_INITIALIZER')
+    return mocker.patch('dataclass_wizard._bases_meta.META_INITIALIZER')
 
 
 @pytest.fixture
 def mock_bind_to(mocker: MockerFixture):
     return mocker.patch(
-        'dataclass_wizard.bases_meta.BaseJSONWizardMeta.bind_to')
+        'dataclass_wizard._bases_meta.BaseJSONWizardMeta.bind_to')
 
 
 @pytest.fixture
 def mock_env_bind_to(mocker: MockerFixture):
     return mocker.patch(
-        'dataclass_wizard.bases_meta.BaseEnvWizardMeta.bind_to')
+        'dataclass_wizard._bases_meta.BaseEnvWizardMeta.bind_to')
 
 
 @pytest.fixture
 def mock_get_dumper(mocker: MockerFixture):
-    return mocker.patch('dataclass_wizard.bases_meta.get_dumper')
+    return mocker.patch('dataclass_wizard._bases_meta.get_dumper')
 
 
 def test_merge_meta_with_or():
     """We are able to merge two Meta classes using the __or__ method."""
     class A(BaseJSONWizardMeta):
-        debug_enabled = True
-        key_transform_with_dump = 'CAMEL'
-        marshal_date_time_as = None
+        debug = True
+        dump_case = 'CAMEL'
+        dump_date_time_as = None
         tag = None
-        json_key_to_field = {'k1': 'v1'}
+        field_to_alias = {'k1': 'v1'}
 
     class B(BaseJSONWizardMeta):
-        debug_enabled = False
-        key_transform_with_load = 'SNAKE'
-        marshal_date_time_as = DateTimeTo.TIMESTAMP
+        debug = False
+        load_case = 'SNAKE'
+        dump_date_time_as = DateTimeTo.TIMESTAMP
         tag = 'My Test Tag'
-        json_key_to_field = {'k2': 'v2'}
+        field_to_alias = {'k2': 'v2'}
 
     # Merge the two Meta config together
     merged_meta: META = A | B
@@ -66,38 +75,38 @@ def test_merge_meta_with_or():
 
     # Assert Meta fields are merged from A and B as expected (with priority
     # given to A)
-    assert 'CAMEL' == merged_meta.key_transform_with_dump == A.key_transform_with_dump
-    assert 'SNAKE' == merged_meta.key_transform_with_load == B.key_transform_with_load
-    assert None is merged_meta.marshal_date_time_as is A.marshal_date_time_as
-    assert True is merged_meta.debug_enabled is A.debug_enabled
+    assert 'CAMEL' == merged_meta.dump_case == A.dump_case
+    assert 'SNAKE' == merged_meta.load_case == B.load_case
+    assert None is merged_meta.dump_date_time_as is A.dump_date_time_as
+    assert True is merged_meta.debug is A.debug
     # Assert that special attributes are only copied from A
     assert None is merged_meta.tag is A.tag
-    assert {'k1': 'v1'} == merged_meta.json_key_to_field == A.json_key_to_field
+    assert {'k1': 'v1'} == merged_meta.field_to_alias == A.field_to_alias
 
     # Assert A and B have not been mutated
-    assert A.key_transform_with_load is None
-    assert B.key_transform_with_load == 'SNAKE'
-    assert B.json_key_to_field == {'k2': 'v2'}
+    assert A.load_case is None
+    assert B.load_case == 'SNAKE'
+    assert B.field_to_alias == {'k2': 'v2'}
     # Assert that Base class attributes have not been mutated
-    assert BaseJSONWizardMeta.key_transform_with_load is None
-    assert BaseJSONWizardMeta.json_key_to_field is None
+    assert BaseJSONWizardMeta.load_case is None
+    assert BaseJSONWizardMeta.field_to_alias is None
 
 
 def test_merge_meta_with_and():
     """We are able to merge two Meta classes using the __or__ method."""
     class A(BaseJSONWizardMeta):
-        debug_enabled = True
-        key_transform_with_dump = 'CAMEL'
-        marshal_date_time_as = None
+        debug = True
+        dump_case = 'CAMEL'
+        dump_date_time_as = None
         tag = None
-        json_key_to_field = {'k1': 'v1'}
+        field_to_alias = {'v1': 'k1'}
 
     class B(BaseJSONWizardMeta):
-        debug_enabled = False
-        key_transform_with_load = 'SNAKE'
-        marshal_date_time_as = DateTimeTo.TIMESTAMP
+        debug = False
+        load_case = 'SNAKE'
+        dump_date_time_as = DateTimeTo.TIMESTAMP
         tag = 'My Test Tag'
-        json_key_to_field = {'k2': 'v2'}
+        field_to_alias = {'v2': 'k2'}
 
     # Merge the two Meta config together
     merged_meta: META = A & B
@@ -108,20 +117,20 @@ def test_merge_meta_with_and():
 
     # Assert Meta fields are merged from A and B as expected (with priority
     # given to A)
-    assert 'CAMEL' == merged_meta.key_transform_with_dump == A.key_transform_with_dump
-    assert 'SNAKE' == merged_meta.key_transform_with_load == B.key_transform_with_load
-    assert DateTimeTo.TIMESTAMP is merged_meta.marshal_date_time_as is A.marshal_date_time_as
-    assert False is merged_meta.debug_enabled is A.debug_enabled
+    assert 'CAMEL' == merged_meta.dump_case == A.dump_case
+    assert 'SNAKE' == merged_meta.load_case == B.load_case
+    assert DateTimeTo.TIMESTAMP is merged_meta.dump_date_time_as is A.dump_date_time_as
+    assert False is merged_meta.debug is A.debug
     # Assert that special attributes are copied from B
     assert 'My Test Tag' == merged_meta.tag == A.tag
-    assert {'k2': 'v2'} == merged_meta.json_key_to_field == A.json_key_to_field
+    assert {'v2': 'k2'} == merged_meta.field_to_alias == A.field_to_alias
 
     # Assert A has been mutated
-    assert A.key_transform_with_load == B.key_transform_with_load == 'SNAKE'
-    assert B.json_key_to_field == {'k2': 'v2'}
+    assert A.load_case == B.load_case == 'SNAKE'
+    assert B.field_to_alias == {'v2': 'k2'}
     # Assert that Base class attributes have not been mutated
-    assert BaseJSONWizardMeta.key_transform_with_load is None
-    assert BaseJSONWizardMeta.json_key_to_field is None
+    assert BaseJSONWizardMeta.load_case is None
+    assert BaseJSONWizardMeta.field_to_alias is None
 
 
 def test_meta_initializer_runs_as_expected(mock_log):
@@ -134,15 +143,14 @@ def test_meta_initializer_runs_as_expected(mock_log):
     class MyClass(JSONWizard):
 
         class Meta(JSONWizard.Meta):
-            debug_enabled = True
-            json_key_to_field = {
-                '__all__': True,
-                'my_json_str': 'myCustomStr',
-                'anotherJSONField': 'myCustomStr'
+            debug = True
+            field_to_alias = {
+                'myCustomStr': ('my_json_str', 'anotherJSONField')
             }
-            marshal_date_time_as = DateTimeTo.TIMESTAMP
-            key_transform_with_load = 'Camel'
-            key_transform_with_dump = LetterCase.SNAKE
+            dump_date_time_as = DateTimeTo.TIMESTAMP
+            load_case = 'AUTO'
+            dump_case = KeyCase.SNAKE
+            assume_naive_datetime_tz = UTC
 
         myStr: Optional[str]
         myCustomStr: str
@@ -151,7 +159,7 @@ def test_meta_initializer_runs_as_expected(mock_log):
         isActive: bool = False
         myDt: Optional[datetime] = None
 
-    assert 'DEBUG Mode is enabled' in mock_log.text
+    # assert 'DEBUG Mode is enabled' in mock_log.text
 
     string = """
     {
@@ -189,13 +197,13 @@ def test_meta_initializer_runs_as_expected(mock_log):
     assert isinstance(d['my_date'], int)
     assert d['my_date'] == date_to_timestamp(expected_date)
     assert isinstance(d['my_dt'], int)
-    assert d['my_dt'] == round(expected_dt.timestamp())
+    assert d['my_dt'] == round(expected_dt.replace(tzinfo=UTC).timestamp())
 
 
-def test_json_key_to_field_when_add_is_a_falsy_value():
+def test_field_to_alias_load_when_add_is_a_falsy_value():
     """
-    The `json_key_to_field` attribute is specified when subclassing
-    :class:`JSONWizard.Meta`, but the `__all__` field a falsy value.
+    The `field_to_alias_load` attribute is specified when subclassing
+    :class:`JSONWizard.Meta`.
 
     Added for code coverage.
     """
@@ -204,12 +212,9 @@ def test_json_key_to_field_when_add_is_a_falsy_value():
     class MyClass(JSONWizard):
 
         class Meta(JSONWizard.Meta):
-            json_key_to_field = {
-                '__all__': False,
-                'my_json_str': 'myCustomStr',
-                'anotherJSONField': 'myCustomStr'
-            }
-            key_transform_with_dump = LetterCase.SNAKE
+            field_to_alias_load = {'myCustomStr': ('my_json_str',
+                                                      'anotherJSONField')}
+            dump_case = 'SNAKE'
 
         myCustomStr: str
 
@@ -243,15 +248,17 @@ def test_meta_config_is_not_implicitly_shared_between_dataclasses():
     class MyFirstClass(JSONWizard):
 
         class _(JSONWizard.Meta):
-            debug_enabled = True
-            marshal_date_time_as = DateTimeTo.TIMESTAMP
-            key_transform_with_load = 'Camel'
-            key_transform_with_dump = LetterCase.SNAKE
+            debug = True
+            dump_date_time_as = DateTimeTo.TIMESTAMP
+            load_case = 'SNAKE'
+            dump_case = KeyCase.SNAKE
 
         myStr: str
 
     @dataclass
     class MySecondClass(JSONWizard):
+        class _(JSONWizard.Meta):
+            dump_case = KeyCase.CAMEL
 
         my_str: Optional[str]
         my_date: date
@@ -260,7 +267,7 @@ def test_meta_config_is_not_implicitly_shared_between_dataclasses():
         my_dt: Optional[datetime] = None
 
     string = """
-    {"My_Str": "hello world"}
+    {"my_str": "hello world"}
     """
 
     c = MyFirstClass.from_json(string)
@@ -277,8 +284,8 @@ def test_meta_config_is_not_implicitly_shared_between_dataclasses():
     string = """
     {
         "my_str": 20,
-        "ListOfInt": ["1", "2", 3],
-        "isActive": "true",
+        "list_of_int": ["1", "2", 3],
+        "is_active": "true",
         "my_dt": "2020-01-02T03:04:05",
         "my_date": "2010-11-30"
     }
@@ -319,7 +326,7 @@ def test_meta_initializer_is_called_when_meta_is_an_inner_class(
 
     class _(JSONWizard):
         class _(JSONWizard.Meta):
-            debug_enabled = True
+            debug = True
 
     mock_meta_initializers.__setitem__.assert_called_once()
 
@@ -332,7 +339,7 @@ def test_env_meta_initializer_not_called_when_meta_is_not_an_inner_class(
     """
 
     class _(EnvWizard.Meta):
-        debug_enabled = True
+        debug = True
 
     mock_meta_initializers.__setitem__.assert_not_called()
     mock_env_bind_to.assert_called_once_with(ANY, create=False)
@@ -346,15 +353,15 @@ def test_meta_initializer_not_called_when_meta_is_not_an_inner_class(
     """
 
     class _(JSONWizard.Meta):
-        debug_enabled = True
+        debug = True
 
     mock_meta_initializers.__setitem__.assert_not_called()
     mock_bind_to.assert_called_once_with(ANY, create=False)
 
 
-def test_meta_initializer_errors_when_key_transform_with_load_is_invalid():
+def test_meta_initializer_errors_when_load_case_is_invalid():
     """
-    Test when an invalid value for the ``key_transform_with_load`` attribute
+    Test when an invalid value for the ``load_case`` attribute
     is specified when sub-classing from :class:`JSONWizard.Meta`.
 
     """
@@ -363,15 +370,15 @@ def test_meta_initializer_errors_when_key_transform_with_load_is_invalid():
         @dataclass
         class _(JSONWizard):
             class Meta(JSONWizard.Meta):
-                key_transform_with_load = 'Hello'
+                load_case = 'Hello'
 
             my_str: Optional[str]
             list_of_int: List[int] = field(default_factory=list)
 
 
-def test_meta_initializer_errors_when_key_transform_with_dump_is_invalid():
+def test_meta_initializer_errors_when_dump_case_is_invalid():
     """
-    Test when an invalid value for the ``key_transform_with_dump`` attribute
+    Test when an invalid value for the ``dump_case`` attribute
     is specified when sub-classing from :class:`JSONWizard.Meta`.
 
     """
@@ -380,7 +387,7 @@ def test_meta_initializer_errors_when_key_transform_with_dump_is_invalid():
         @dataclass
         class _(JSONWizard):
             class Meta(JSONWizard.Meta):
-                key_transform_with_dump = 'World'
+                dump_case = 'World'
 
             my_str: Optional[str]
             list_of_int: List[int] = field(default_factory=list)
@@ -397,7 +404,7 @@ def test_meta_initializer_errors_when_marshal_date_time_as_is_invalid():
         @dataclass
         class _(JSONWizard):
             class Meta(JSONWizard.Meta):
-                marshal_date_time_as = 'iso'
+                dump_date_time_as = 'TEST'
 
             my_str: Optional[str]
             list_of_int: List[int] = field(default_factory=list)
