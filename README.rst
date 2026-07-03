@@ -49,15 +49,6 @@
    transforms, and support for nested dataclasses. ``DataclassWizard``
    also auto-applies ``@dataclass`` to subclasses.
 
-.. tip::
-
-   A new **v1 engine** is available as an opt-in, offering explicit
-   environment precedence, nested dataclass support, and improved performance.
-
-   ``EnvWizard`` v1 adds field-level configuration on top of these improvements.
-
-   See the `Field Guide to V1 Opt-in`_ and the `hands-on quickstart`_ for details.
-
 .. contents:: Contents
    :depth: 1
    :local:
@@ -108,12 +99,12 @@ Quick Examples
     cfg = Config()
     assert cfg.debug is True
 
-.. rubric:: EnvWizard v1 (Opt-in)
+.. rubric:: EnvWizard
 
 .. code-block:: python3
 
     import os
-    from dataclass_wizard.v1 import EnvWizard, Env
+    from dataclass_wizard import EnvWizard, Env
 
     os.environ['DEBUG_MODE'] = 'true'
 
@@ -124,10 +115,6 @@ Quick Examples
 
     cfg = Config()
     assert cfg.debug is True
-
-.. tip::
-   EnvWizard v1 introduces explicit environment precedence and nested
-   dataclass support. See `Field Guide to V1 Opt-in`_ for full details.
 
 Installation
 ------------
@@ -206,7 +193,7 @@ See `Type Hooks`_ for details and examples.
 JSON Marshalling
 ----------------
 
-``JSONSerializable`` (aliased to ``JSONWizard``) is a Mixin_ class which
+``JSONWizard`` (or ``DataclassWizard`` which auto-applies ``@dataclass``) is a Mixin_ class which
 provides the following helper methods that are useful for serializing (and loading)
 a dataclass instance to/from JSON, as defined by the ``AbstractJSONWizard``
 interface.
@@ -257,11 +244,10 @@ representation of the dataclass instance, you can instead use
 ``repr(obj)`` or ``f'{obj!r}'``.
 
 To mark a dataclass as being JSON serializable (and
-de-serializable), simply sub-class from ``JSONSerializable`` as shown
-below. You can also extend from the aliased name ``JSONWizard``, if you
-prefer to use that instead.
+de-serializable), simply sub-class from ``JSONWizard`` as shown
+below.
 
-Check out a `more complete example`_ of using the ``JSONSerializable``
+Check out a `more complete example`_ of using the ``JSONWizard``
 Mixin class.
 
 No Inheritance Needed
@@ -314,9 +300,9 @@ Here is an example to demonstrate the usage of these helper functions:
         my_date: date | None = None
 
 
-    source_dict = {'createdAt': '2010-06-10 15:50:00Z',
-                   'List-Of-B': [
-                       {'MyStatus': '200', 'my_date': '2021-12-31'}
+    source_dict = {'created_at': '2010-06-10 15:50:00Z',
+                   'list_of_b': [
+                       {'my_status': '200', 'my_date': '2021-12-31'}
                    ]}
 
     # De-serialize the JSON dictionary object into an `A` instance.
@@ -331,15 +317,15 @@ Here is an example to demonstrate the usage of these helper functions:
     #
     # Note that `recursive=True` is the default, so this Meta config will be
     # merged with the Meta config (if specified) of each nested dataclass.
-    DumpMeta(marshal_date_time_as='TIMESTAMP',
-             key_transform='SNAKE',
+    DumpMeta(dump_date_time_as='TIMESTAMP',
+             case='SNAKE',
              # Finally, apply the Meta config to the main dataclass.
              ).bind_to(A)
 
     # Serialize the `A` instance to a Python dict object.
     json_dict = asdict(a)
 
-    expected_dict = {'created_at': 1276185000, 'list_of_b': [{'my_status': '200', 'my_date': 1640926800}]}
+    expected_dict = {'created_at': 1276185000, 'list_of_b': [{'my_status': '200', 'my_date': 1640908800}]}
 
     print(json_dict)
     # Assert that we get the expected dictionary object.
@@ -348,15 +334,8 @@ Here is an example to demonstrate the usage of these helper functions:
 Custom Key Mappings
 -------------------
 
-.. note::
-    **Important:** The functionality for **custom key mappings** (such as JSON-to-dataclass field mappings) is being re-imagined with the introduction of **V1 Opt-in**. Enhanced support for these features is now available, improving the user experience for working with custom mappings.
-
-    For more details, see the `Field Guide to V1 Opt-in`_ and the `V1 Alias`_ documentation.
-
-    This change is part of the ongoing improvements in version ``v0.35.0+``, and the old functionality will no longer be maintained in future releases.
-
 If you ever find the need to add a `custom mapping`_ of a JSON key to a dataclass
-field (or vice versa), the helper function ``json_field`` -- which can be
+field (or vice versa), the helper function ``Alias`` -- which can be
 considered an alias to ``dataclasses.field()`` -- is one approach that can
 resolve this.
 
@@ -364,15 +343,11 @@ Example below:
 
 .. code:: python3
 
-    from dataclasses import dataclass
-
-    from dataclass_wizard import JSONSerializable, json_field
+    from dataclass_wizard import DataclassWizard, Alias
 
 
-    @dataclass
-    class MyClass(JSONSerializable):
-
-        my_str: str = json_field('myString1', all=True)
+    class MyClass(DataclassWizard):
+        my_str: str = Alias('myString1')
 
 
     # De-serialize a dictionary object with the newly mapped JSON key.
@@ -389,16 +364,9 @@ Example below:
 Mapping Nested JSON Keys
 ------------------------
 
-.. note::
-    **Important:** The current "nested path" functionality is being re-imagined.
-    Please refer to the new docs for **V1 Opt-in** features, which introduce enhanced support for these use
-    cases. For more details, see the `Field Guide to V1 Opt-in`_ and the `V1 Alias`_ documentation.
-
-    This change is part of the ongoing improvements in version ``v0.35.0+``, and the old functionality will no longer be maintained in future releases.
-
 The ``dataclass-wizard`` library allows you to map deeply nested JSON keys to dataclass fields using custom path notation. This is ideal for handling complex or non-standard JSON structures.
 
-You can specify paths to JSON keys with the ``KeyPath`` or ``path_field`` helpers. For example, the deeply nested key ``data.items.myJSONKey`` can be mapped to a dataclass field, such as ``my_str``:
+You can specify paths to JSON keys with the ``AliasPath`` helpers. For example, the deeply nested key ``data.items.myJSONKey`` can be mapped to a dataclass field, such as ``my_str``:
 
 .. code:: python3
 
@@ -968,11 +936,9 @@ dataclasses in ``Union`` types. For more info, check out the
 Supercharged ``Union`` Parsing
 ------------------------------
 
-**What about untagged dataclasses in** ``Union`` **types or** ``|`` **syntax?** With the major release **V1** opt-in, ``dataclass-wizard`` supercharges *Union* parsing, making it intuitive and flexible, even without tags.
+**What about untagged dataclasses in** ``Union`` **types or** ``|`` **syntax?** With the major release **V1**, ``dataclass-wizard`` supercharges *Union* parsing, making it intuitive and flexible, even without tags.
 
 This is especially useful for collections like ``list[Wizard]`` or when tags (discriminators) are not feasible.
-
-To enable this feature, opt in to **v1** using the ``Meta`` settings. For details, see the `Field Guide to V1 Opt-in`_.
 
 .. code-block:: python3
 
@@ -1326,7 +1292,7 @@ explicitly passed in via the constructor method.
 To use it, simply import
 the ``property_wizard`` helper function, and add it as a metaclass on
 any dataclass where you would benefit from using field properties with
-default values. The metaclass also pairs well with the ``JSONSerializable``
+default values. The metaclass also pairs well with the ``JSONWizard``
 mixin class.
 
 For more examples and important how-to's on properties with default values,
