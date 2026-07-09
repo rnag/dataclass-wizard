@@ -3646,3 +3646,41 @@ def test_str_and_int_enum():
     t2 = Test.from_dict(t.to_dict())
     assert t2.str_e is MyStrEnum.B
     assert t2.int_e is MyIntEnum.Z
+
+
+def test_dict_with_union_key_of_int_and_literal():
+    """
+    Regression test for https://github.com/rnag/dataclass-wizard/issues/245
+
+    When a ``Dict`` has a ``Union`` key type (e.g. ``int | Literal["AAA"]``),
+    the generated union-loader for the *key* must reference the key variable
+    rather than the value variable. Previously the sub-type loaders emitted
+    references to ``v2`` while the enclosing key-loader parameter was ``k2``,
+    so every otherwise-valid key raised ``ParseError``.
+    """
+
+    @dataclass
+    class Test(JSONWizard):
+        error: Dict[Union[int, Literal["AAA"]], str]
+        successful: Union[int, Literal["AAA"]]
+
+    # int-coercible keys *and* the literal key should all parse.
+    t = Test.from_dict(
+        {'error': {'1': '1', '2': '2', '3': '3', 'AAA': '4'},
+         'successful': '1'}
+    )
+    assert t.error == {1: '1', 2: '2', 3: '3', 'AAA': '4'}
+    assert t.successful == 1
+
+    # The literal value is also accepted for the scalar union field.
+    t2 = Test.from_dict(
+        {'error': {'1': '1', 'AAA': '4'}, 'successful': 'AAA'}
+    )
+    assert t2.error == {1: '1', 'AAA': '4'}
+    assert t2.successful == 'AAA'
+
+    # A key that is neither an int nor the literal is still rejected.
+    with pytest.raises(ParseError):
+        Test.from_dict(
+            {'error': {'1': '1', 'BBB': '4'}, 'successful': '1'}
+        )

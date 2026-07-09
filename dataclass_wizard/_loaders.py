@@ -589,7 +589,7 @@ class LoadMixin(BaseLoadHook):
 
             possible_tp = eval_forward_ref_if_needed(possible_tp, actual_cls)
 
-            tp_new = TypeInfo(possible_tp, i=i)
+            tp_new = TypeInfo(possible_tp, i=i, prefix=tp.prefix)
             tp_new.in_optional = in_optional
 
             if possible_tp is NoneType:
