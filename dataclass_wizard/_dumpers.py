@@ -931,7 +931,13 @@ def dump_func_for_dataclass(
     skip_defaults = True if meta.skip_defaults else False
     skip_if = True if field_to_skip_if or skip_if_condition else False
 
-    catch_all_name: str | None = field_to_alias.pop(CATCH_ALL, None)
+    # Note: use `.get()` rather than `.pop()` here -- `field_to_alias` is a
+    # direct reference to a dict cached per-class (not a copy), so popping
+    # from it would permanently strip the `CATCH_ALL` marker from the shared
+    # cache the first time this runs, breaking any later codegen pass for
+    # this same class in a different structural context (e.g. nested vs.
+    # top-level). See: reuse-across-contexts regression test.
+    catch_all_name: str | None = field_to_alias.get(CATCH_ALL)
     has_catch_all = catch_all_name is not None
 
     if has_catch_all:
