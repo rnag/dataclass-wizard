@@ -1240,7 +1240,13 @@ def load_func_for_dataclass(
 
     on_unknown_key = meta.on_unknown_key
 
-    catch_all_field: str | None = field_to_aliases.pop(CATCH_ALL, None)
+    # Note: use `.get()` rather than `.pop()` here -- `field_to_aliases` is a
+    # direct reference to a dict cached per-class (not a copy), so popping
+    # from it would permanently strip the `CATCH_ALL` marker from the shared
+    # cache the first time this runs, breaking any later codegen pass for
+    # this same class in a different structural context (e.g. nested vs.
+    # top-level). See: reuse-across-contexts regression test.
+    catch_all_field: str | None = field_to_aliases.get(CATCH_ALL)
     has_catch_all = catch_all_field is not None
 
     if has_catch_all:

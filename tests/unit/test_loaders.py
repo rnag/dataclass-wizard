@@ -2806,6 +2806,54 @@ def test_catch_all_with_auto_key_case():
     assert opt == Options(my_extras={}, the_email='x@y.com')
 
 
+def test_catch_all_reused_across_structural_contexts():
+    """
+    A `CatchAll`-bearing dataclass must load/dump correctly regardless of how
+    many different "structural contexts" it's used in across a process: as
+    the direct top-level target of `from_dict`/`to_dict`, and as a field
+    nested inside one or more different enclosing classes.
+
+    Regression test for a bug where `load_func_for_dataclass` /
+    `dump_func_for_dataclass` popped the `CATCH_ALL` marker off of the
+    per-class alias dict returned by
+    `resolve_dataclass_field_to_alias_for_load` /
+    `resolve_dataclass_field_to_alias_for_dump` -- since that dict is a
+    direct (not copied) reference to a cache shared across all codegen
+    passes for the class, the first pass would permanently strip the
+    marker, and any later codegen pass for the same class (e.g. nested
+    inside a different enclosing class) would then treat it as having no
+    `CatchAll` field at all, causing the field's `NewType` annotation to
+    reach `issubclass()` and raise `TypeError`.
+    """
+    @dataclass
+    class Leaf(JSONWizard):
+        name: str
+        extra_data: CatchAll = field(default_factory=dict)
+
+    @dataclass
+    class WrapperA(JSONWizard):
+        value: Leaf
+
+    @dataclass
+    class WrapperB(JSONWizard):
+        other: Leaf
+
+    # First use: direct top-level target.
+    leaf = Leaf.from_dict({'name': 'a', 'unrecognized': 'x'})
+    assert leaf == Leaf(name='a', extra_data={'unrecognized': 'x'})
+    assert leaf.to_dict() == {'name': 'a', 'unrecognized': 'x'}
+
+    # Second use: nested inside a first enclosing class.
+    wa = WrapperA.from_dict({'value': {'name': 'b', 'unrecognized': 'y'}})
+    assert wa == WrapperA(value=Leaf(name='b', extra_data={'unrecognized': 'y'}))
+    assert wa.to_dict() == {'value': {'name': 'b', 'unrecognized': 'y'}}
+
+    # Third use: nested inside a second, different enclosing class.
+    wb = WrapperB.from_dict({'other': {'name': 'c', 'unrecognized': 'z'}})
+    assert wb == WrapperB(other=Leaf(name='c', extra_data={'unrecognized': 'z'}))
+    assert wb.to_dict() == {'other': {'name': 'c', 'unrecognized': 'z'}}
+
+
 def test_from_dict_with_nested_object_alias_path():
     """
     Specifying a custom mapping of "nested" alias to dataclass field,
