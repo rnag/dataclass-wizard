@@ -56,6 +56,8 @@ class EnvKeyStrategy(Enum):
     - `ENV` (default):
         Uses conventional environment variable naming.
         Tries SCREAMING_SNAKE_CASE first, then snake_case.
+        For uppercase names such as ``CC_2TEST``, the original spelling is
+        also tried last if normalization only added digit-to-letter separators.
 
         Example:
             Field: ``my_field_name``

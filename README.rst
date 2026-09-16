@@ -1244,6 +1244,12 @@ Easily map environment variables to Python dataclasses with ``EnvWizard``:
 
     - **Auto Parsing**: Supports complex types and nested structures.
     - **Configurable**: Customize variable names, prefixes, and dotenv files.
+    - **Numeric ENV Names**: With the default ``ENV`` lookup strategy, an ASCII
+      uppercase field name gets its original spelling as a last-resort fallback
+      when normalization only inserts underscores between digits and uppercase
+      letters. For ``CC_2TEST``, lookup tries ``CC_2_TEST``, then ``cc_2_test``,
+      then ``CC_2TEST``. Existing normalized keys take priority, even when their
+      values are empty strings.
     - **Validation**: Errors for missing or malformed variables.
 
     📖 `Full Documentation <https://dcw.ritviknag.com/en/latest/env_magic.html>`_

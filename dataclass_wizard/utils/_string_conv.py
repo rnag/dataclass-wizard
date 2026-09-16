@@ -3,6 +3,8 @@ __all__ = ['normalize',
            'possible_env_vars',
            'repl_or_with_union']
 
+import re
+
 from collections.abc import Iterable
 
 from ..enums import EnvKeyStrategy
@@ -93,6 +95,16 @@ def possible_env_vars(field: str, lookup_strat: 'EnvKeyStrategy') -> list[str]:
 
     if not _is_field_first or field != _snake:
         possible_keys.append(_snake)
+
+    # Preserve an uppercase env name when normalization only inserts digit-to-
+    # letter separators, without changing the priority of normalized names.
+    if (
+        lookup_strat is EnvKeyStrategy.ENV
+        and field not in possible_keys
+        and re.fullmatch(r'[A-Z_][A-Z0-9_]*', field)
+        and re.sub(r'(?<=[0-9])(?=[A-Z])', '_', field) == _screaming_snake
+    ):
+        possible_keys.append(field)
 
     return possible_keys
 
