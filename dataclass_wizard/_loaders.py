@@ -1247,6 +1247,11 @@ def load_func_for_dataclass(
         pre_assign = 'i+=1; '
         catch_all_field_stripped = catch_all_field.rstrip('?')
         catch_all_idx = cls_init_field_names.index(catch_all_field_stripped)
+        catch_all_field_def = cls_init_fields[catch_all_idx]
+        catch_all_has_default = (
+            catch_all_field_def.default is not MISSING
+            or catch_all_field_def.default_factory is not MISSING
+        )
         # remove catch all field from list, so we don't iterate over it
         del cls_init_fields[catch_all_idx]
     else:
@@ -1441,7 +1446,10 @@ def load_func_for_dataclass(
                 var = f'__{catch_all_field_stripped}'
                 fn_gen.add_line(f'{var} = {{}} if len(o) == i else {catch_all_def}')
 
-                if catch_all_field_stripped in cls_init_kw_only_field_names:
+                if (
+                    catch_all_has_default
+                    or catch_all_field_stripped in cls_init_kw_only_field_names
+                ):
                     kwargs.append(f'{catch_all_field_stripped}={var}')
                 else:
                     args.insert(catch_all_idx, var)
