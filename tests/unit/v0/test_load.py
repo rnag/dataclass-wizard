@@ -2581,3 +2581,36 @@ def test_dataclass_decorator_is_automatically_applied():
 
     with pytest.raises(TypeError, match=".*Test\.__init__\(\) missing 1 required positional argument: 'my_field'"):
         Test()
+
+
+def test_class_methods_do_not_shadow_types_in_annotations():
+    """
+    Methods defined on a class (e.g. ``list()``, ``List()``, ``dict()``)
+    should not shadow builtins or ``typing`` names used in its annotations.
+
+    With Python 3.14+ (PEP 649), such annotations are resolved against the
+    class namespace, which previously raised a ``TypeError``. See #219.
+    """
+
+    @dataclass
+    class Test(JSONWizard):
+        items: list[str]
+        numbers: List[int]
+        mapping: dict[str, int]
+
+        def list(self):
+            return self.items
+
+        def List(self):
+            return self.numbers
+
+        @property
+        def dict(self):
+            return self.mapping
+
+    d = {'items': ['a', 'b'], 'numbers': [1, 2], 'mapping': {'x': 1}}
+
+    t = Test.from_dict(d)
+    assert t == Test(['a', 'b'], [1, 2], {'x': 1})
+    assert t.list() == ['a', 'b']
+    assert t.to_dict() == d

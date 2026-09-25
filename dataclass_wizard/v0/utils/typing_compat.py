@@ -19,12 +19,13 @@ __all__ = [
 
 import functools
 import sys
+import types
 import typing
 # noinspection PyUnresolvedReferences,PyProtectedMember
 from typing import Literal, Union, _AnnotatedAlias
 
 from .string_conv import repl_or_with_union
-from ..constants import PY310_OR_ABOVE, PY313_OR_ABOVE
+from ..constants import PY310_OR_ABOVE, PY313_OR_ABOVE, PY314_OR_ABOVE
 from ..type_def import (FREF,
                         PyRequired,
                         PyNotRequired,
@@ -212,6 +213,45 @@ else:
     _eval_type = typing._eval_type
 
 
+if PY314_OR_ABOVE:  # pragma: no cover
+    # Objects bound in a class body which can never be used as a type
+    # (methods, properties, and similar descriptors).
+    _NON_TYPE_CLASS_ATTRS = (
+        types.FunctionType,
+        types.BuiltinFunctionType,
+        classmethod,
+        staticmethod,
+        property,
+        functools.cached_property,
+    )
+
+    def _get_typing_locals(base_type):
+        """
+        Return the local namespace to evaluate a forward reference with.
+
+        Starting with Python 3.14 (PEP 649 / PEP 749), a forward reference
+        created by :mod:`annotationlib` is evaluated against the namespace
+        of the class that owns the annotation. A method defined on that class,
+        such as ``def list(self)``, would then shadow the builtin ``list`` in
+        an annotation like ``items: list[str]``.
+
+        To avoid that, use the owner's namespace *without* any members which
+        can never be a type, so that such names are resolved from the module
+        globals or builtins instead.
+        """
+        owner = getattr(base_type, '__owner__', None)
+
+        if not isinstance(owner, type):
+            return _TYPING_LOCALS
+
+        return {name: value for name, value in vars(owner).items()
+                if not isinstance(value, _NON_TYPE_CLASS_ATTRS)}
+
+else:  # pragma: no cover
+    def _get_typing_locals(_base_type):
+        return _TYPING_LOCALS
+
+
 def eval_forward_ref(base_type: FREF,
                      cls: type):
     """
@@ -225,7 +265,7 @@ def eval_forward_ref(base_type: FREF,
     # Evaluate the ForwardRef here
     base_globals = sys.modules[cls.__module__].__dict__
 
-    return _eval_type(base_type, base_globals, _TYPING_LOCALS)
+    return _eval_type(base_type, base_globals, _get_typing_locals(base_type))
 
 
 _ForwardRefTypes = frozenset(FREF.__constraints__)

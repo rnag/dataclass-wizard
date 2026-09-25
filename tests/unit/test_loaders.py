@@ -3646,3 +3646,45 @@ def test_str_and_int_enum():
     t2 = Test.from_dict(t.to_dict())
     assert t2.str_e is MyStrEnum.B
     assert t2.int_e is MyIntEnum.Z
+
+
+def test_class_methods_do_not_shadow_types_in_annotations():
+    """
+    Methods defined on a class (e.g. ``list()``, ``List()``, ``dict()``)
+    should not shadow builtins or ``typing`` names used in its annotations.
+
+    With Python 3.14+ (PEP 649), such annotations are resolved against the
+    class namespace, which previously raised a ``TypeError``. See #219.
+    """
+
+    @dataclass
+    class Test(JSONWizard):
+        # nested classes are still resolved from the class namespace
+        @dataclass
+        class Inner:
+            a: int
+
+        items: list[str]
+        old_items: List[int]
+        mapping: dict[str, int]
+        inners: list[Inner]
+
+        def list(self):
+            return self.items
+
+        def List(self):
+            return self.old_items
+
+        @property
+        def dict(self):
+            return self.mapping
+
+    d = {'items': ['a', 'b'],
+         'old_items': [1, 2],
+         'mapping': {'x': 1},
+         'inners': [{'a': 3}]}
+
+    t = Test.from_dict(d)
+    assert t == Test(['a', 'b'], [1, 2], {'x': 1}, [Test.Inner(3)])
+    assert t.list() == ['a', 'b']
+    assert t.to_dict() == d
