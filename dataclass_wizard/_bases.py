@@ -298,6 +298,10 @@ class BaseMeta(metaclass=ABCOrAndMeta):
     #   This option enforces strict shape matching for performance reasons.
     namedtuple_as_dict: ClassVar[bool | None] = None
 
+    # Require both the value and its exact type to match a Literal argument
+    # while loading. False preserves the default value-only comparison.
+    strict_mode_for_literals: ClassVar[bool] = False
+
     # If True (default: False), ``None`` is coerced to an empty
     # string (``""``)
     # when loading ``str`` fields.

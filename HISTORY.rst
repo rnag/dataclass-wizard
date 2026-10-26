@@ -2,6 +2,13 @@
 History
 =======
 
+Unreleased
+----------
+
+- Add opt-in ``Meta.strict_mode_for_literals`` for exact type and value
+  matching of ``Literal`` arguments during loading (:issue:`170`).
+  The default value-only behavior is unchanged.
+
 1.0.0 (2026-07-02)
 ------------------
 

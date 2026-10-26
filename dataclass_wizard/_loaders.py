@@ -490,7 +490,7 @@ class LoadMixin(BaseLoadHook):
         return f'{{{dict_body}}}'
 
     @classmethod
-    @setup_recursive_safe_function
+    @setup_recursive_safe_function(per_class_cache=True)
     def _load_to_typed_dict_fn(cls, tp: TypeInfo, extras: Extras):
         fn_gen = extras['fn_gen']
 
@@ -717,36 +717,25 @@ class LoadMixin(BaseLoadHook):
         fn_gen.add_line(f"raise ParseError(e, {v}, fields, 'load', "
                         f'allowed_values=list(fields))')
 
-        # TODO Checks for Literal equivalence, as mentioned here:
-        #   https://www.python.org/dev/peps/pep-0586/#equivalence-of-two-literals
+    @staticmethod
+    @setup_recursive_safe_function_for_generic(prefix='load_strict')
+    def _load_to_literal_strict(tp: TypeInfo, extras: Extras):
+        """Build a Literal loader that matches both exact type and value."""
+        fn_gen = extras['fn_gen']
+        v = tp.v_for_def()
+        _locals = extras['locals']
+        # Keep equal-valued alternatives of distinct types, such as 0/False.
+        _locals['fields'] = tp.args
+        _locals['typed_fields'] = frozenset((type(a), a) for a in tp.args)
 
-        # extras_cp['locals'][fields] = {
-        #     a: type(a) for a in tp.args
-        # }
-        #
-        # with fn_gen.function(fn_name, ['v1'], None, _locals):
-        #
-        #     with fn_gen.try_():
-        #         with fn_gen.if_(f'type({tp.v()}) is {fields}[{tp.v()}]'):
-        #             fn_gen.add_line('return v1')
-        #
-        #         # The value of `o` is in the ones defined for the Literal, but
-        #         # also confirm the type matches the one defined for the Literal.
-        #         fn_gen.add_line("e = TypeError('Value did not match expected type for the Literal')")
-        #
-        #         fn_gen.add_line('raise ParseError('
-        #                         f'e, v1, {fields}, '
-        #                         'have_type=type(v1), '
-        #                         f'desired_type={fields}[v1], '
-        #                         f'desired_value=next(v for v in {fields} if v == v1), '
-        #                         f'allowed_values=list({fields})'
-        #                         ')')
-        #     with fn_gen.except_(KeyError):
-        #         # No such Literal with the value of `o`
-        #         fn_gen.add_line("e = ValueError('Value not in expected Literal values')")
-        #         fn_gen.add_line('raise ParseError('
-        #                         f'e, v1, {fields}, allowed_values=list({fields})'
-        #                         f')')
+        with fn_gen.if_(f'(type({v}), {v}) in typed_fields',
+                        comment=repr(tp.args)):
+            fn_gen.add_line(f'return {v}')
+
+        fn_gen.add_line("e = ValueError("
+                        "'Value or type not in expected Literal values')")
+        fn_gen.add_line(f"raise ParseError(e, {v}, fields, 'load', "
+                        f'allowed_values=list(fields))')
 
     @staticmethod
     def load_to_decimal(tp: TypeInfo, extras: Extras):
@@ -943,7 +932,9 @@ class LoadMixin(BaseLoadHook):
 
         # -> Literal[X, Y, ...]
         elif origin is Literal:
-            load_hook = cls.load_to_literal
+            load_hook = (cls._load_to_literal_strict
+                         if extras.get('strict_mode_for_literals', False)
+                         else cls.load_to_literal)
             args = get_args(type_ann)
 
         # https://stackoverflow.com/questions/76520264/dataclasswizard-after-upgrading-to-python3-11-is-not-working-as-expected
@@ -1191,6 +1182,8 @@ def load_func_for_dataclass(
     # we are being run for a nested dataclass
     else:
         is_main_class = False
+        # Keep each class's effective mode local to its code generation.
+        extras = extras.copy()
 
         # config for nested dataclasses
         config = extras['config']
@@ -1213,6 +1206,8 @@ def load_func_for_dataclass(
 
         # Added for a `EnvWizard` main class, which doesn't set this in globals
         fn_gen.globals.setdefault('raise_missing_fields', check_and_raise_missing_fields)
+
+    extras['strict_mode_for_literals'] = meta.strict_mode_for_literals
 
     key_case: KeyCase | None = cls_loader.transform_json_field
     auto_key_case = key_case is KeyCase.AUTO

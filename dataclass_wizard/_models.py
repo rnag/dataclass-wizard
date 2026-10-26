@@ -274,6 +274,7 @@ class Extras(TypedDict):
     cls_name: str
     fn_gen: FunctionBuilder
     locals: dict[str, Any]
+    strict_mode_for_literals: PyNotRequired[bool]
     pattern: PyNotRequired['PatternBase']
     recursion_guard: dict[type, str]
 
