@@ -78,6 +78,7 @@ class Extras(TypedDict):
     cls_name: str
     fn_gen: FunctionBuilder
     locals: dict[str, Any]
+    strict_mode_for_literals: NotRequired[bool]
     pattern: NotRequired[PatternBase]
     recursion_guard: dict[Any, str]
 

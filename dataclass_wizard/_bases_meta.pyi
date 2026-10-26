@@ -85,6 +85,7 @@ def LoadMeta(*,
              on_unknown_key: KeyAction | str | None = KeyAction.IGNORE,
              unsafe_parse_dataclass_in_union: bool = ...,
              namedtuple_as_dict: bool = ...,
+             strict_mode_for_literals: bool = ...,
              coerce_none_to_empty_str: bool = ...,
              leaf_handling: Literal['exact', 'issubclass'] = ...) -> META:
     ...
@@ -134,6 +135,7 @@ def EnvMeta(*,
             dump_date_time_as: DateTimeTo | str = ...,
             assume_naive_datetime_tz: tzinfo | None = ...,
             namedtuple_as_dict: bool = ...,
+            strict_mode_for_literals: bool = ...,
             coerce_none_to_empty_str: bool = ...,
             leaf_handling: Literal['exact', 'issubclass'] = ...) -> ENV_META:
     ...

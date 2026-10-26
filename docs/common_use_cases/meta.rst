@@ -575,3 +575,43 @@ as shown in the example below.
     if __name__ == '__main__':
         main()
 
+
+
+Strict Literal Loading
+----------------------
+
+``strict_mode_for_literals`` defaults to ``False``, preserving value-only
+matching. Enable it to require both the exact type and value of a
+``Literal`` argument, so that ``False`` does not match ``Literal[0]`` and
+an integer does not match an ``IntEnum`` member with the same value.
+Mixed alternatives such as ``Literal[0, False]`` accept both values.
+
+.. code:: python3
+
+    from dataclasses import dataclass
+    from typing import Literal
+
+    from dataclass_wizard import JSONWizard
+
+    @dataclass
+    class Request(JSONWizard):
+        class _(JSONWizard.Meta):
+            strict_mode_for_literals = True
+
+        mode: Literal[0, 1]
+
+    Request.from_dict({'mode': 0})      # Request(mode=0)
+    Request.from_dict({'mode': False})  # raises ParseError
+
+This loading option can also be set with
+``LoadMeta(strict_mode_for_literals=True).bind_to(Request)``. It follows the
+usual recursive Meta settings: the main class's setting cascades when
+``recursive=True``; a nested class can explicitly choose its own mode.
+It does not make other field types strict or change dumping behavior.
+The legacy ``dataclass_wizard.v0`` implementation is unchanged.
+
+The same option is available on ``EnvWizard.Meta`` and ``EnvMeta``. It
+validates the value passed to the Literal loader; it does not add environment
+string coercion. For example, an environment string ``'0'`` still does not
+match ``Literal[0]``, while ``'ready'`` matches ``Literal['ready']`` in both
+modes. Typed constructor values follow the selected mode.

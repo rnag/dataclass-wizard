@@ -168,6 +168,8 @@ Supported Types 🧑‍💻
 - 📋 **Collections**: Handle ``list``, ``dict``, and ``set`` effortlessly.
 - 🔢 **Typing Generics**: Manage ``Union``, ``Any``, and other types from the `typing`_ module.
 - 🌟 **Advanced Types**: Work with ``Enum``, ``defaultdict``, and ``datetime`` with ease.
+- **Strict Literals**: Opt in to exact type and value matching with
+  ``Meta.strict_mode_for_literals = True``.
 
 For more info, check out the `Supported Types`_ section in the docs for detailed insights into each type and the load/dump process!
 

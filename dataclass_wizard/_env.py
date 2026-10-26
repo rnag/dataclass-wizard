@@ -209,6 +209,7 @@ def load_func_for_dataclass(
     # noinspection PyTypeChecker
     extras: Extras = {
         'config': config,
+        'strict_mode_for_literals': meta.strict_mode_for_literals,
         'cls': cls,
         'cls_name': cls_name,
         'locals': new_locals,
