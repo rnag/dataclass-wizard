@@ -1250,6 +1250,58 @@ def get_dumper(class_or_instance=None, create=True,
             CLASS_TO_DUMPER, class_or_instance, base_cls)
 
 
+def dump_for_union(o: T,
+                   cls,
+                   dict_factory=dict,
+                   exclude: Collection[str] | None = None,
+                   **kwargs) -> JSONObject:
+    """
+    Dump an object whose annotated type is a ``Union``,
+    e.g. ``asdict(o, cls=A | B)``.
+
+    This mirrors the handling of ``Union``-typed fields: the object is
+    dumped with the one member whose type matches it exactly, and the
+    member's ``Meta.tag`` (if any) is added to the result under the
+    member's ``tag_key``.
+    """
+    args = get_args(cls)
+
+    for arg in args:
+        if arg is NoneType:
+            if o is None:
+                return None
+            continue
+
+        if is_dataclass(arg):
+            if type(o) is arg:
+                result = asdict(
+                    o, cls=arg, dict_factory=dict_factory,
+                    exclude=exclude, **kwargs)
+
+                meta = get_meta(arg)
+                tag = meta.tag
+                if not tag and meta.auto_assign_tags \
+                        and meta is not AbstractMeta:
+                    tag = arg.__name__
+                    meta.tag = tag
+
+                if tag:
+                    tag_key = meta.tag_key or TAG
+                    result[tag_key] = tag
+
+                return result
+
+        elif _type_returns_value_unchanged(arg, False) and type(o) is arg:
+            return o
+
+    # Invalid type for Union
+    raise ParseError(
+        TypeError('Object was not in any of Union types'),
+        o, cls, 'dump',
+        tag_key=TAG,
+    )
+
+
 def asdict(o: T,
            *, cls=None,
            dict_factory=dict,
@@ -1283,6 +1335,10 @@ def asdict(o: T,
     tuples, lists, and dicts.
     """
     cls = cls or type(o)
+
+    if is_union(get_origin_v2(cls)):
+        return dump_for_union(
+            o, cls, dict_factory, exclude, **kwargs)
 
     try:
         return cls.__dataclass_wizard_to_dict__(
