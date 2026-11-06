@@ -717,3 +717,71 @@ def test_env_wizard_with_debug(restore_logger):
     assert any(isinstance(h, StreamHandler) for h in logger.handlers)
     # optional: ensure it didn't add duplicates
     assert sum(isinstance(h, StreamHandler) for h in logger.handlers) == 1
+
+
+def test_env_var_name_containing_digits():
+    """
+    Regression test for issue #250.
+
+    An env var whose name contains a digit, such as `CC_2TEST`, was
+    never looked up: the field name was first converted to snake case
+    (`cc_2_test`), so only `CC_2_TEST` / `cc_2_test` were tried and the
+    field silently kept its default value.
+    """
+    class EnvVarAbc(EnvWizard):
+        ABC: str
+
+    class EnvVar(EnvVarAbc):
+        CC_TEST: str = "cc_test"
+        CC_2TEST: str = "cc_2test"
+
+    ev = from_env(EnvVar, {
+        'ABC': 'abc',
+        'CC_TEST': 'cc_test_new',
+        'CC_2TEST': 'cc_2test_new',
+    })
+
+    assert ev.CC_TEST == 'cc_test_new'
+    assert ev.CC_2TEST == 'cc_2test_new'
+
+
+def test_env_var_name_containing_digits_with_dotenv_file(tmp_path,
+                                                         monkeypatch):
+    """Issue #250, with values loaded from a `.env` file."""
+    (tmp_path / '.env').write_text(
+        'ABC=abc\n'
+        'CC_TEST=cc_test_new\n'
+        'CC_2TEST=cc_2test_new\n'
+    )
+    monkeypatch.chdir(tmp_path)
+
+    class EnvVarAbc(EnvWizard):
+        ABC: str
+
+    class EnvVar(EnvVarAbc):
+        class _(EnvWizard.Meta):
+            env_file = True
+
+        CC_TEST: str = "cc_test"
+        CC_2TEST: str = "cc_2test"
+
+    ev = EnvVar()
+
+    assert ev.CC_TEST == 'cc_test_new'
+    assert ev.CC_2TEST == 'cc_2test_new'
+
+
+def test_env_var_digit_name_does_not_shadow_converted_name():
+    """
+    The converted (snake case) env var name keeps its precedence over
+    the field name as written, which is only a fallback. Issue #250.
+    """
+    class EnvVar(EnvWizard):
+        CC_2TEST: str = "cc_2test"
+
+    ev = from_env(EnvVar, {
+        'CC_2_TEST': 'from_converted_name',
+        'CC_2TEST': 'from_exact_name',
+    })
+
+    assert ev.CC_2TEST == 'from_converted_name'

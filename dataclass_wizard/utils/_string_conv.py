@@ -94,6 +94,15 @@ def possible_env_vars(field: str, lookup_strat: 'EnvKeyStrategy') -> list[str]:
     if not _is_field_first or field != _snake:
         possible_keys.append(_snake)
 
+    # The field name as written is itself a valid env var name, so add it
+    # as a final fallback when the case conversions above produce a
+    # different name. This matters for field names containing digits:
+    # for example, `CC_2TEST` converts to the snake name `cc_2_test`, so
+    # an env var named exactly `CC_2TEST` would otherwise never be
+    # looked up. See https://github.com/rnag/dataclass-wizard/issues/250
+    if field not in possible_keys:
+        possible_keys.append(field)
+
     return possible_keys
 
 
