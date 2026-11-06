@@ -1,4 +1,5 @@
 import logging
+import sys
 from abc import ABC
 from base64 import b64decode
 from collections import deque, defaultdict
@@ -184,6 +185,106 @@ def test_tag_field_is_used_in_dump_process():
         }
     }
     assert d2 == expected
+
+
+def test_asdict_with_union_cls():
+    """
+    Passing a `Union` as `cls` to `asdict` dumps the object with the
+    member whose type matches exactly, and adds that member's `tag`
+    to the result.
+
+    See https://github.com/rnag/dataclass-wizard/issues/255
+    """
+
+    @dataclass
+    class ResErr:
+        item_id: str
+        msg: str
+
+    @dataclass
+    class ResOk:
+        item_id: str
+        item: str
+
+    LoadMeta(tag='ResErr').bind_to(ResErr)
+    LoadMeta(tag='ResOk').bind_to(ResOk)
+
+    Res = Union[ResErr, ResOk]
+
+    err = ResErr(item_id='Q0001', msg='err')
+    ok = ResOk(item_id='Q0002', item='thing')
+
+    assert asdict(err, cls=Res) == {
+        'item_id': 'Q0001', 'msg': 'err', TAG: 'ResErr'}
+    assert asdict(ok, cls=Res) == {
+        'item_id': 'Q0002', 'item': 'thing', TAG: 'ResOk'}
+
+    # An object that is not a member of the Union cannot be dumped.
+    @dataclass
+    class Other:
+        x: int
+
+    with pytest.raises(ParseError):
+        asdict(Other(1), cls=Res)
+
+    # Leaf and Optional unions also work.
+    assert asdict(5, cls=Union[int, str]) == 5
+    assert asdict('a', cls=Union[int, str]) == 'a'
+    assert asdict(None, cls=Optional[ResErr]) is None
+    assert asdict(err, cls=Optional[ResErr]) == {
+        'item_id': 'Q0001', 'msg': 'err', TAG: 'ResErr'}
+
+    # A member without a tag is dumped without one.
+    @dataclass
+    class Plain:
+        a: int
+
+    assert asdict(Plain(3), cls=Union[Plain, ResErr]) == {'a': 3}
+
+    # `None` in the middle of the Union is skipped for other values.
+    assert asdict(5, cls=Union[None, int, str]) == 5
+
+    # A member with `auto_assign_tags` uses its class name as the tag.
+    @dataclass
+    class Auto:
+        v: int
+
+    DumpMeta(auto_assign_tags=True).bind_to(Auto)
+    assert asdict(Auto(1), cls=Union[Auto, ResErr]) == {
+        'v': 1, TAG: 'Auto'}
+
+
+@pytest.mark.skipif(
+    sys.version_info < (3, 10),
+    reason='`X | Y` unions need Python 3.10+')
+def test_asdict_with_pep604_union_cls():
+    """
+    The `X | Y` form of a `Union` behaves the same as `typing.Union`
+    when passed as `cls` to `asdict`.
+
+    See https://github.com/rnag/dataclass-wizard/issues/255
+    """
+
+    @dataclass
+    class ResErr:
+        item_id: str
+        msg: str
+
+    @dataclass
+    class ResOk:
+        item_id: str
+        item: str
+
+    LoadMeta(tag='ResErr').bind_to(ResErr)
+    LoadMeta(tag='ResOk').bind_to(ResOk)
+
+    err = ResErr(item_id='Q0001', msg='err')
+    ok = ResOk(item_id='Q0002', item='thing')
+
+    assert asdict(err, cls=ResErr | ResOk) == {
+        'item_id': 'Q0001', 'msg': 'err', TAG: 'ResErr'}
+    assert asdict(ok, cls=ResErr | ResOk) == {
+        'item_id': 'Q0002', 'item': 'thing', TAG: 'ResOk'}
 
 
 def test_to_dict_key_transform_with_json_field():
