@@ -1408,6 +1408,88 @@ def test_union(input, expectation, expected):
         assert result.my_opt_str_int_or_bool == expected
 
 
+def test_fromdict_with_union_cls():
+    """
+    Passing a `Union` as `cls` to `fromdict` loads the object with
+    the member whose `tag` matches the input, and `fromlist` works
+    the same way for a list of such objects.
+
+    See https://github.com/rnag/dataclass-wizard/issues/255
+    """
+
+    @dataclass
+    class ResErr:
+        item_id: str
+        msg: str
+
+    @dataclass
+    class ResOk:
+        item_id: str
+        item: str
+
+    LoadMeta(tag='ResErr').bind_to(ResErr)
+    LoadMeta(tag='ResOk').bind_to(ResOk)
+
+    Res = Union[ResErr, ResOk]
+
+    err = ResErr(item_id='Q0001', msg='err')
+    ok = ResOk(item_id='Q0002', item='thing')
+
+    # Round trip through `asdict` with the same Union.
+    assert fromdict(Res, asdict(err, cls=Res)) == err
+    assert fromdict(Res, asdict(ok, cls=Res)) == ok
+
+    assert fromdict(Res, {
+        TAG: 'ResErr', 'item_id': 'Q0001', 'msg': 'err'}) == err
+    assert fromdict(Res, {
+        TAG: 'ResOk', 'item_id': 'Q0002', 'item': 'thing'}) == ok
+
+    # An unknown tag is an error, and the valid tags are reported.
+    with pytest.raises(ParseError) as exc_info:
+        fromdict(Res, {TAG: 'Nope', 'item_id': 'Q0001'})
+    assert exc_info.value.kwargs['valid_tags'] == ['ResErr', 'ResOk']
+
+    # A list of tagged objects loads with `fromlist`.
+    assert fromlist(Res, [
+        {TAG: 'ResErr', 'item_id': 'Q0001', 'msg': 'err'},
+        {TAG: 'ResOk', 'item_id': 'Q0002', 'item': 'thing'},
+    ]) == [err, ok]
+
+    # Without a tag, an untagged member is tried in order.
+    @dataclass
+    class Plain:
+        a: int
+
+    assert fromdict(Union[Plain, ResErr], {'a': 3}) == Plain(3)
+
+    # Members are tried in order until one loads.
+    @dataclass
+    class Other:
+        b: int
+
+    assert fromdict(Union[Plain, Other], {'b': 1}) == Other(1)
+
+    # A member with `auto_assign_tags` is dispatched by class name.
+    @dataclass
+    class Auto:
+        v: int
+
+    LoadMeta(auto_assign_tags=True).bind_to(Auto)
+    assert fromdict(Union[Auto, ResErr], {TAG: 'Auto', 'v': 2}) == Auto(2)
+
+    # Leaf and Optional unions also work.
+    assert fromdict(Union[int, str], 5) == 5
+    assert fromdict(Union[int, str], 'a') == 'a'
+    assert fromdict(Optional[ResErr], None) is None
+
+    # Literal members match by value.
+    assert fromdict(Union[Literal['a', 'b'], int], 'a') == 'a'
+
+    # No member matching at all is an error.
+    with pytest.raises(ParseError):
+        fromdict(Union[Plain, ResErr], {'zzz': 1})
+
+
 def test_forward_refs_are_resolved():
     """
     Confirm that :class:`typing.ForwardRef` usages, such as `List['B']`,

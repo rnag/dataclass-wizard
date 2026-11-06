@@ -2,6 +2,11 @@
 History
 =======
 
+Unreleased
+----------
+
+- Fixed ``asdict``, ``fromdict``, and ``fromlist`` when a ``Union`` type is passed as ``cls``: the ``__tag__`` of the matching member is now generated on dump and used to select the member on load (fixes :issue:`255`).
+
 1.0.0 (2026-07-02)
 ------------------
 

@@ -1650,6 +1650,81 @@ def get_loader(class_or_instance=None,
             CLASS_TO_LOADER, class_or_instance, base_cls)
 
 
+def load_for_union(cls, d: JSONObject) -> T:
+    """
+    Load an object whose annotated type is a ``Union``,
+    e.g. ``fromdict(A | B, {...})``.
+
+    This mirrors the handling of ``Union``-typed fields: when the input
+    carries a tag, the member with the matching ``Meta.tag`` is used;
+    otherwise each untagged dataclass member is tried in order, and
+    leaf types are matched by exact type.
+    """
+    args = get_args(cls)
+
+    tag_key = TAG
+    tag_to_member: dict[str, type] = {}
+    untagged_members: list[type] = []
+    leaf_args: list[type] = []
+
+    for arg in args:
+        if arg is NoneType:
+            if d is None:
+                return None
+            continue
+
+        if is_dataclass(arg):
+            meta = get_meta(arg)
+            tag = meta.tag
+            if not tag and meta.auto_assign_tags \
+                    and meta is not AbstractMeta:
+                tag = arg.__name__
+                meta.tag = tag
+
+            if tag:
+                tag_to_member[tag] = arg
+                tag_key = meta.tag_key or TAG
+            else:
+                untagged_members.append(arg)
+
+        else:
+            leaf_args.append(arg)
+
+    if isinstance(d, dict) and tag_key in d:
+        tag = d[tag_key]
+        member = tag_to_member.get(tag) if isinstance(tag, str) else None
+        if member is not None:
+            return fromdict(member, d)
+        raise ParseError(
+            TypeError('Object with tag was not in any of Union types'),
+            d, cls, 'load',
+            input_tag=tag,
+            tag_key=tag_key,
+            valid_tags=list(tag_to_member),
+        )
+
+    # No tag present: try each untagged dataclass member in order,
+    # then match leaf types by exact type.
+    for member in untagged_members:
+        try:
+            return fromdict(member, d)
+        except Exception:
+            pass
+
+    for arg in leaf_args:
+        if type(d) is arg:
+            return d
+        if get_origin_v2(arg) is Literal and d in get_args(arg):
+            return d
+
+    # Invalid type for Union
+    raise ParseError(
+        TypeError('Object was not in any of Union types'),
+        d, cls, 'load',
+        tag_key=tag_key,
+    )
+
+
 def fromdict(cls: type[T], d: JSONObject) -> T:
     """
     Converts a Python dictionary object to a dataclass instance.
@@ -1667,6 +1742,9 @@ def fromdict(cls: type[T], d: JSONObject) -> T:
         >>> fromdict(MyClass, {"myStr": "value"})
 
     """
+    if is_union(get_origin_v2(cls)):
+        return load_for_union(cls, d)
+
     try:
         return cls.__dataclass_wizard_from_dict__(d)
 
@@ -1684,6 +1762,9 @@ def fromlist(cls: type[T], list_of_dict: list[JSONObject]) -> list[T]:
     dataclasses will likewise be initialized as expected.
 
     """
+    if is_union(get_origin_v2(cls)):
+        return [fromdict(cls, d) for d in list_of_dict]
+
     try:
         load = cls.__dataclass_wizard_from_dict__
     except AttributeError:

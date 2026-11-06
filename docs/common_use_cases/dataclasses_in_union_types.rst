@@ -312,3 +312,44 @@ using any special class inheritance model:
     # Assert we end up with the same data when serializing and de-serializing.
     out_dict = asdict(container)
     assert container == fromdict(Container, out_dict)
+
+
+A ``Union`` as the Top-Level Type
+*********************************
+
+A ``Union`` can also be passed directly as the ``cls`` argument to
+``asdict``, ``fromdict``, and ``fromlist``, without a containing
+dataclass. The tag of the matching member is added when dumping, and
+is used to select the member when loading:
+
+.. code:: python3
+
+    from dataclasses import dataclass
+    from typing import Union
+
+    from dataclass_wizard import asdict, fromdict, LoadMeta
+
+
+    @dataclass
+    class ResErr:
+        item_id: str
+        msg: str
+
+
+    @dataclass
+    class ResOk:
+        item_id: str
+        item: str
+
+
+    Res = Union[ResErr, ResOk]
+
+    LoadMeta(tag='ResErr').bind_to(ResErr)
+    LoadMeta(tag='ResOk').bind_to(ResOk)
+
+    err = ResErr(item_id='Q0001', msg='err')
+
+    d = asdict(err, cls=Res)
+    # {'item_id': 'Q0001', 'msg': 'err', '__tag__': 'ResErr'}
+
+    assert fromdict(Res, d) == err
